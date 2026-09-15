@@ -10,19 +10,26 @@ namespace SoccerFight
     {
         static Color Hex(string hex) { ColorUtility.TryParseHtmlString(hex, out var c); return c; }
 
-        // Player kit
-        public static readonly Color Skin = Hex("#D8976E");
-        public static readonly Color SkinShade = Hex("#B5764F");
-        public static readonly Color Jersey = Hex("#FF5A3D");
-        public static readonly Color JerseyShade = Hex("#D8402A");
-        public static readonly Color JerseyLight = Hex("#FF8B6B");
-        public static readonly Color KitWhite = Hex("#F3F5F8");
-        public static readonly Color KitWhiteShade = Hex("#C4CCD8");
-        public static readonly Color Hair = Hex("#221816");
-        public static readonly Color Boot = Hex("#1B2233");
+        // Player kit: deep crimson + warm cream, shadows shifted towards the scene's teal so the
+        // character reads clearly against the night without looking pasted on
+        public static readonly Color Skin = Hex("#D9A07C");
+        public static readonly Color SkinShade = Hex("#9E6A5C");
+        public static readonly Color SkinLight = Hex("#F2C6A4");
+        public static readonly Color Jersey = Hex("#D6443A");
+        public static readonly Color JerseyShade = Hex("#862439");
+        public static readonly Color JerseyLight = Hex("#F07A5C");
+        public static readonly Color KitWhite = Hex("#ECE7DB");
+        public static readonly Color KitWhiteShade = Hex("#98ACB5");
+        public static readonly Color Hair = Hex("#1C1720");
+        public static readonly Color HairLight = Hex("#545066");
+        public static readonly Color Boot = Hex("#151C28");
+        public static readonly Color BootLight = Hex("#35465C");
         public static readonly Color Neon = Hex("#3DF2FF");
         public static readonly Color EyeDark = Hex("#1A1420");
-        public static readonly Color BackLimbTint = new Color(0.60f, 0.64f, 0.78f, 1f);
+        public static readonly Color PlayerLine = Hex("#0B1620");
+        public static readonly Color MoonRim = Hex("#BDF3FF");
+        public static readonly Color BackLimbTint = new Color(0.56f, 0.65f, 0.73f, 1f);
+        public static readonly Color Heal = Hex("#7CFFB8");
 
         // Ball
         public static readonly Color BallWhite = Hex("#F6F8FB");

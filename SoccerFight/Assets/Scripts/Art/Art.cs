@@ -14,6 +14,7 @@ namespace SoccerFight
         public static Material SpriteSolidMat;   // flat fill with renderer color (flashes, afterimages)
         public static Material SpriteAddMat;     // additive, LDR
         public static Material SpriteGlowMat;    // additive, HDR (blooms)
+        public static Material CharacterMat;     // rigged characters: moon rim, grass bounce, contact shade
         public static Material SpriteEmissiveMat;// alpha blended but HDR (eyes, neon)
 
         // Mesh / trail materials
@@ -98,6 +99,8 @@ namespace SoccerFight
             SpriteAddMat = MakeSpriteMaterial("SF Sprite Add", 1f, true);
             SpriteGlowMat = MakeSpriteMaterial("SF Sprite Glow", 2.4f, true);
             SpriteEmissiveMat = MakeSpriteMaterial("SF Sprite Emissive", 2.2f, false);
+            CharacterMat = new Material(FindShader("SoccerFight/Character")) { name = "SF Character" };
+            CharacterMat.SetColor("_RimColor", Palette.MoonRim);
         }
 
         // ------------------------------------------------------------------ generic

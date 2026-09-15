@@ -14,6 +14,7 @@ namespace SoccerFight
         public static bool JumpHeld;
         public static bool ShootPressed;
         public static bool FlickPressed;
+        public static bool JugglePressed;
         public static bool RestartPressed;
         public static bool PausePressed;
         public static bool ToggleFps;
@@ -31,7 +32,7 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = ShootPressed = FlickPressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = JumpHeld = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -52,7 +53,7 @@ namespace SoccerFight
             if (Blocked)
             {
                 MoveX = 0f;
-                JumpPressed = JumpHeld = ShootPressed = FlickPressed = false;
+                JumpPressed = JumpHeld = ShootPressed = FlickPressed = JugglePressed = false;
             }
             else
             {
@@ -64,6 +65,7 @@ namespace SoccerFight
                 JumpHeld = KeyBindings.IsPressed(GameAction.Jump);
                 ShootPressed = KeyBindings.WasPressed(GameAction.Shoot);
                 FlickPressed = KeyBindings.WasPressed(GameAction.Flick);
+                JugglePressed = KeyBindings.WasPressed(GameAction.Juggle);
             }
 
             if (cam != null)
@@ -76,7 +78,7 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = ShootPressed = FlickPressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
         }
     }
 }

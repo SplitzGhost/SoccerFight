@@ -7,14 +7,14 @@ namespace SoccerFight
     /// Fully procedural character animation. Nothing is keyframed in an editor: the run cycle is
     /// driven by distance travelled (feet never slide), legs are solved with 2-bone IK, and every
     /// secondary motion (lean, bob, squash, head, hair) runs through damped springs so it is
-    /// perfectly smooth at any frame rate. Kick and rainbow flick are authored as eased key poses
-    /// layered on top of locomotion.
+    /// perfectly smooth at any frame rate. Kick, rainbow flick and keep-ups are authored as eased
+    /// key poses layered on top of locomotion.
     /// </summary>
     public sealed class PlayerRig
     {
         public const int BaseOrder = 100;
         public const int BallOrderFront = 130;
-        public const int BallOrderBetweenLegs = 117;
+        public const int BallOrderBetweenLegs = 111;
 
         sealed class Leg { public Transform thigh, shin, boot, glow; }
         sealed class Arm { public Transform upper, fore, hand; }
@@ -27,6 +27,10 @@ namespace SoccerFight
         SpriteRenderer shadow;
         public readonly List<SpriteRenderer> Parts = new List<SpriteRenderer>();
         readonly List<Color> partColors = new List<Color>();
+        readonly List<Material> partMats = new List<Material>();
+
+        /// <summary>Set by the player: snapshots of the old pose sell the turn.</summary>
+        public Afterimages Ghosts;
 
         // locomotion state
         float phase;
@@ -36,7 +40,6 @@ namespace SoccerFight
         float lean, leanVel;
         float headTilt, headTiltVel;
         float squashX = 1f, squashXVel, squashY = 1f, squashYVel;
-        float flipT = 1f;
         float idleTime;
         float footOnBall, footOnBallVel;
         float tuftAngle, tuftVel;
@@ -45,6 +48,15 @@ namespace SoccerFight
         float time;
         float flashTimer;
         float touchKick;
+
+        // turning: the rig is drawn with its own facing, which lags the logical one during a skid
+        int visFacing = 1;
+        float turnT = 99f;
+        float skid, skidVel;
+
+        // air boost tuck and the last keep-up contact
+        float tuck;
+        Vector2 touchAt;
 
         // outputs
         public Vector2 BallHold { get; private set; }
@@ -57,14 +69,16 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ construction
 
-        SpriteRenderer Part(string name, Sprite sprite, int order, bool back, Material mat = null)
+        SpriteRenderer Part(string name, Sprite sprite, int order, bool back, bool glow = false)
         {
+            var mat = glow ? Art.SpriteGlowMat : Art.CharacterMat;
             var sr = Art.MakeSprite(name, flip, sprite, BaseOrder + order, mat);
             Color c = back ? Palette.BackLimbTint : Color.white;
-            if (mat == Art.SpriteGlowMat) c = back ? Palette.Neon.WithAlpha(0.35f) : Palette.Neon.WithAlpha(0.7f);
+            if (glow) c = back ? Palette.Neon.WithAlpha(0.35f) : Palette.Neon.WithAlpha(0.7f);
             sr.color = c;
             Parts.Add(sr);
             partColors.Add(c);
+            partMats.Add(mat);
             return sr;
         }
 
@@ -77,48 +91,52 @@ namespace SoccerFight
 
             shadow = Art.MakeSprite("Shadow", root, Art.Shadow, -45, Art.SpriteMat, new Color(0, 0, 0, 0.5f));
 
+            // back to front: far arm, far leg, neck, shorts, near leg, jersey (worn untucked over
+            // the hips), hair tuft, head, near arm. Within a limb the lower segment sits under the
+            // upper one (the boot over the sock), so the moonlit top of a joint cap is never exposed.
             farArm = new Arm
             {
-                upper = Part("FarUpperArm", PlayerArt.UpperArm, 1, true).transform,
+                hand = Part("FarHand", PlayerArt.Hand, 1, true).transform,
                 fore = Part("FarForearm", PlayerArt.Forearm, 2, true).transform,
-                hand = Part("FarHand", PlayerArt.Hand, 3, true).transform
+                upper = Part("FarUpperArm", PlayerArt.UpperArm, 3, true).transform
             };
             farLeg = new Leg
             {
-                thigh = Part("FarThigh", PlayerArt.Thigh, 4, true).transform,
-                shin = Part("FarShin", PlayerArt.Shin, 5, true).transform,
+                shin = Part("FarShin", PlayerArt.Shin, 4, true).transform,
+                thigh = Part("FarThigh", PlayerArt.Thigh, 5, true).transform,
                 boot = Part("FarBoot", PlayerArt.Boot, 6, true).transform,
-                glow = Part("FarBootGlow", PlayerArt.BootGlow, 7, true, Art.SpriteGlowMat).transform
+                glow = Part("FarBootGlow", PlayerArt.BootGlow, 7, true, true).transform
             };
             neck = Part("Neck", PlayerArt.Neck, 8, false).transform;
-            torso = Part("Torso", PlayerArt.Torso, 10, false).transform;
-            pelvis = Part("Pelvis", PlayerArt.Pelvis, 11, false).transform;
-            head = Part("Head", PlayerArt.Head, 14, false).transform;
-            tuft = Part("HairTuft", PlayerArt.HairTuft, 13, false).transform;
+            pelvis = Part("Pelvis", PlayerArt.Pelvis, 10, false).transform;
             nearLeg = new Leg
             {
-                thigh = Part("NearThigh", PlayerArt.Thigh, 20, false).transform,
-                shin = Part("NearShin", PlayerArt.Shin, 21, false).transform,
-                boot = Part("NearBoot", PlayerArt.Boot, 22, false).transform,
-                glow = Part("NearBootGlow", PlayerArt.BootGlow, 23, false, Art.SpriteGlowMat).transform
+                shin = Part("NearShin", PlayerArt.Shin, 12, false).transform,
+                thigh = Part("NearThigh", PlayerArt.Thigh, 13, false).transform,
+                boot = Part("NearBoot", PlayerArt.Boot, 14, false).transform,
+                glow = Part("NearBootGlow", PlayerArt.BootGlow, 15, false, true).transform
             };
+            torso = Part("Torso", PlayerArt.Torso, 18, false).transform;
+            tuft = Part("HairTuft", PlayerArt.HairTuft, 19, false).transform;
+            head = Part("Head", PlayerArt.Head, 20, false).transform;
             nearArm = new Arm
             {
-                upper = Part("NearUpperArm", PlayerArt.UpperArm, 25, false).transform,
+                hand = Part("NearHand", PlayerArt.Hand, 25, false).transform,
                 fore = Part("NearForearm", PlayerArt.Forearm, 26, false).transform,
-                hand = Part("NearHand", PlayerArt.Hand, 27, false).transform
+                upper = Part("NearUpperArm", PlayerArt.UpperArm, 27, false).transform
             };
         }
 
         public void ResetPose()
         {
             phase = 0f; runBlend = moveBlend = airBlend = 0f; lean = headTilt = 0f;
-            squashX = squashY = 1f; flipT = player.Facing; idleTime = 0f; footOnBall = 0f;
+            squashX = squashY = 1f; idleTime = 0f; footOnBall = 0f;
             runBlendVel = moveBlendVel = airBlendVel = leanVel = headTiltVel = squashXVel = squashYVel = 0f;
             hipDip = hipDipVel = 0f; tuftAngle = tuftVel = 0f; flashTimer = 0f;
+            visFacing = player.Facing; turnT = 99f; skid = skidVel = 0f; tuck = 0f;
             for (int i = 0; i < Parts.Count; i++)
             {
-                if (Parts[i].sharedMaterial == Art.SpriteSolidMat) Parts[i].sharedMaterial = Art.SpriteMat;
+                Parts[i].sharedMaterial = partMats[i];
                 Parts[i].enabled = true;
                 Parts[i].color = partColors[i];
             }
@@ -142,11 +160,42 @@ namespace SoccerFight
             float k = Mathf.Clamp01(impactSpeed / 18f);
             squashXVel += 4f * k + 1f; squashYVel -= 6f * k + 1.2f;
             hipDipVel -= 1.6f * k + 0.3f;
+            tuck = 0f;
         }
 
         public void OnBallReceived() { touchKick = 1f; }
 
         public void Flash(float duration) { flashTimer = duration; }
+
+        public void OnAirBoost(Vector2 push)
+        {
+            tuck = 1f;
+            float vertical = Mathf.Abs(push.normalized.y);
+            squashXVel -= 2.6f * vertical - 1.5f * (1f - vertical);
+            squashYVel += 3.6f * vertical - 1.2f * (1f - vertical);
+            tuftVel += 140f;
+        }
+
+        public void OnJuggleTouch(Player.Touch part)
+        {
+            touchAt = player.JuggleBallLocal;
+            if (part == Player.Touch.Head) { squashYVel += 1.4f; squashXVel -= 0.8f; }
+            else { squashYVel -= 0.7f; squashXVel += 0.4f; }
+        }
+
+        /// <summary>Flip the drawn facing in one frame. Springs that live in local space are mirrored so
+        /// the body carries its motion through the turn instead of snapping.</summary>
+        void Turn()
+        {
+            Ghosts?.Spawn(Palette.MoonRim, 0.15f, 0.2f);
+            visFacing = player.Facing;
+            turnT = 0f;
+            lean = -lean; leanVel = -leanVel;
+            headTilt = -headTilt; headTiltVel = -headTiltVel;
+            tuftAngle = -tuftAngle; tuftVel = -tuftVel + 150f;
+            squashXVel -= 2.2f; squashYVel += 1f;
+            hipDipVel -= 0.5f;
+        }
 
         // ------------------------------------------------------------------ helpers
 
@@ -215,10 +264,21 @@ namespace SoccerFight
             Vector2 vel = player.Vel;
             float speed01 = Mathf.Clamp01(Mathf.Abs(vel.x) / Player.MaxSpeed);
             bool grounded = player.Grounded;
+            bool acting = player.CurrentAction != Player.Action.None;
 
-            // --- facing flip ("paper turn": fast and smooth instead of an instant mirror)
-            flipT = Mathf.MoveTowards(flipT, player.Facing, dt / 0.075f);
-            float flipScale = Mathf.Sin(flipT * Mathf.PI * 0.5f);
+            // --- facing: while the body still slides the old way it skids (planted foot, leaning back),
+            //     then the drawn facing flips in one frame. Scaling through zero width looked like a
+            //     sheet of paper; the afterimage, a squash pop and the mirrored springs read as a turn.
+            bool sliding = false;
+            if (player.Facing != visFacing)
+            {
+                sliding = grounded && !acting && vel.x * visFacing > 1.2f;
+                if (!sliding) Turn();
+            }
+            turnT += dt;
+            MathUtil.Spring(ref skid, ref skidVel, sliding ? 1f : 0f, 7f, 1f, dt);
+            float sk = Mathf.Clamp01(skid);
+            float facing = visFacing;
 
             // --- blends
             MathUtil.Spring(ref runBlend, ref runBlendVel, speed01, 3.2f, 1f, dt);
@@ -227,8 +287,8 @@ namespace SoccerFight
             runBlend = Mathf.Clamp01(runBlend);
             moveBlend = Mathf.Clamp01(moveBlend);
             float air = Mathf.Clamp01(airBlend);
+            tuck = Mathf.Max(0f, tuck - dt * 2.6f);
 
-            bool acting = player.CurrentAction != Player.Action.None;
             if (speed01 < 0.05f && grounded && !acting) idleTime += dt; else idleTime = 0f;
             float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree ? 1f : 0f;
             MathUtil.Spring(ref footOnBall, ref footOnBallVel, footOnBallTarget, 2.6f, 1f, dt);
@@ -236,7 +296,7 @@ namespace SoccerFight
 
             // --- gait
             float cycleLen = Mathf.Lerp(1.25f, 2.35f, runBlend);
-            float forwardVel = vel.x * player.Facing;
+            float forwardVel = vel.x * facing;
             if (grounded) phase += forwardVel * dt / cycleLen;
             phase = Mathf.Repeat(phase, 1f);
             float stanceFrac = Mathf.Lerp(0.6f, 0.4f, runBlend);
@@ -249,7 +309,7 @@ namespace SoccerFight
             // --- acceleration lean + hip
             float accel = (vel.x - prevVelX) / Mathf.Max(dt, 1e-4f);
             prevVelX = vel.x;
-            float leanTarget = -(runBlend * 11f + Mathf.Clamp(accel * player.Facing * 0.35f, -7f, 9f)) * (1f - air * 0.5f);
+            float leanTarget = -(runBlend * 11f + Mathf.Clamp(accel * facing * 0.35f, -7f, 9f)) * (1f - air * 0.5f);
             leanTarget += air * Mathf.Clamp(-vel.y * 0.9f, -8f, 10f) * 0.4f;
 
             float hipY = PlayerDims.StandHip - runBlend * 0.06f;
@@ -272,12 +332,15 @@ namespace SoccerFight
             float nearPoint = nearSwing * moveBlend, farPoint = farSwing * moveBlend;
             nearFlat = Mathf.Max(nearFlat, fob);
 
-            // --- air pose
+            // --- air pose (tucks tight for a moment after a recoil boost)
             if (air > 0.001f)
             {
                 float rising = Mathf.Clamp01(vel.y / 7f * 0.5f + 0.5f);
                 Vector2 airNear = Vector2.Lerp(new Vector2(0.14f, hipY - 0.66f), new Vector2(0.24f, hipY - 0.44f), rising);
                 Vector2 airFar = Vector2.Lerp(new Vector2(-0.06f, hipY - 0.72f), new Vector2(-0.22f, hipY - 0.62f), rising);
+                float tk = MathUtil.Smooth01(tuck);
+                airNear = Vector2.Lerp(airNear, new Vector2(0.22f, hipY - 0.34f), tk);
+                airFar = Vector2.Lerp(airFar, new Vector2(-0.02f, hipY - 0.4f), tk);
                 nearFoot = Vector2.Lerp(nearFoot, airNear, air);
                 farFoot = Vector2.Lerp(farFoot, airFar, air);
                 nearFlat *= 1f - air; farFlat *= 1f - air;
@@ -296,15 +359,39 @@ namespace SoccerFight
             if (air > 0.001f)
             {
                 float rising = Mathf.Clamp01(vel.y / 7f * 0.5f + 0.5f);
-                nearShoulder = Mathf.Lerp(nearShoulder, Mathf.Lerp(40f, 125f, rising), air);
-                farShoulder = Mathf.Lerp(farShoulder, Mathf.Lerp(-55f, -110f, rising), air);
-                nearElbow = Mathf.Lerp(nearElbow, 35f, air);
-                farElbow = Mathf.Lerp(farElbow, 25f, air);
+                float tk = MathUtil.Smooth01(tuck);
+                nearShoulder = Mathf.Lerp(nearShoulder, Mathf.Lerp(Mathf.Lerp(40f, 125f, rising), 20f, tk), air);
+                farShoulder = Mathf.Lerp(farShoulder, Mathf.Lerp(Mathf.Lerp(-55f, -110f, rising), -30f, tk), air);
+                nearElbow = Mathf.Lerp(nearElbow, Mathf.Lerp(35f, 95f, tk), air);
+                farElbow = Mathf.Lerp(farElbow, Mathf.Lerp(25f, 90f, tk), air);
             }
 
             float headTarget = -leanTarget * 0.45f;
             float extraHipY = 0f;
             float torsoTwist = Mathf.Sin(MathUtil.Tau * phase * 2f) * 2.2f * runBlend * moveBlend;
+
+            // --- skid into a turn: front foot digs in, body leans back against the slide, arms balance
+            if (sk > 0.001f)
+            {
+                nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.34f, PlayerDims.AnkleHeight), sk);
+                farFoot = Vector2.Lerp(farFoot, new Vector2(-0.17f, PlayerDims.AnkleHeight + 0.03f), sk);
+                nearFlat = Mathf.Lerp(nearFlat, 1f, sk); nearPoint = Mathf.Lerp(nearPoint, 0f, sk);
+                farFlat = Mathf.Lerp(farFlat, 0.3f, sk); farPoint = Mathf.Lerp(farPoint, 0.5f, sk);
+                leanTarget = Mathf.Lerp(leanTarget, 14f, sk);
+                headTarget = Mathf.Lerp(headTarget, -4f, sk);
+                hipY -= 0.07f * sk;
+                nearShoulder = Mathf.Lerp(nearShoulder, -40f, sk); nearElbow = Mathf.Lerp(nearElbow, 55f, sk);
+                farShoulder = Mathf.Lerp(farShoulder, 60f, sk); farElbow = Mathf.Lerp(farElbow, 35f, sk);
+            }
+
+            // --- just after a turn the arms and hips swing through
+            if (turnT < 0.3f)
+            {
+                float k = 1f - MathUtil.Smooth01(turnT / 0.3f);
+                nearShoulder -= 26f * k;
+                farShoulder += 22f * k;
+                torsoTwist += 5f * k;
+            }
 
             // --- default ball hold: rolled ahead of the feet with little dribble touches
             float touchT = Mathf.Repeat(phase + 0.02f, 1f);
@@ -319,19 +406,26 @@ namespace SoccerFight
                 ballLocal = Vector2.Lerp(ballLocal, airBall, air);
             }
             ballLocal = Vector2.Lerp(ballLocal, ballLocalIdle, fob * (1f - moveBlend));
+            ballLocal.x = Mathf.Lerp(ballLocal.x, 0.72f, sk);   // the ball keeps rolling on while the player brakes
             BallIsScripted = false;
 
             // =============================================================== action layers
             float t = player.ActionTime;
             if (player.CurrentAction == Player.Action.Kick)
             {
-                PoseKick(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
+                PoseKick(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref extraHipY);
                 if (t < Player.KickContact) ballLocal = player.KickBallLocal;
             }
             else if (player.CurrentAction == Player.Action.Flick)
             {
                 PoseFlick(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
+            }
+            else if (player.CurrentAction == Player.Action.Juggle)
+            {
+                PoseJuggle(hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
                     ref extraHipY, ref ballLocal);
             }
@@ -344,7 +438,7 @@ namespace SoccerFight
 
             // --- apply
             root.localPosition = new Vector3(player.Pos.x, player.Pos.y, 0f);
-            flip.localScale = new Vector3(flipScale * squashX, squashY, 1f);
+            flip.localScale = new Vector3(facing * squashX, squashY, 1f);
 
             float hy = hipY + extraHipY;
             Vector2 hip = new Vector2(0f, hy);
@@ -359,7 +453,7 @@ namespace SoccerFight
             Place(head, headPos, headRot);
 
             // hair tuft: spring-driven secondary motion
-            float tuftTarget = Mathf.Clamp(-vel.x * player.Facing * 1.6f - vel.y * 1.8f, -28f, 28f) + Mathf.Sin(time * 3f) * 2f;
+            float tuftTarget = Mathf.Clamp(-vel.x * facing * 1.6f - vel.y * 1.8f, -28f, 28f) + Mathf.Sin(time * 3f) * 2f;
             MathUtil.Spring(ref tuftAngle, ref tuftVel, tuftTarget, 2.2f, 0.3f, dt);
             Vector2 tuftPos = headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot);
             Place(tuft, tuftPos, headRot + tuftAngle);
@@ -373,7 +467,6 @@ namespace SoccerFight
             PoseArm(nearArm, nearSh, nearShoulder + torsoRot, nearElbow);
 
             // --- outputs (world space)
-            float facing = player.Facing;
             Vector2 rootW = player.Pos;
             BallHold = rootW + new Vector2(ballLocal.x * facing, ballLocal.y);
             if (BallIsScripted) BallScripted = BallHold;
@@ -392,7 +485,7 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ kick
 
-        void PoseKick(float t, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+        void PoseKick(float t, float hipY, float air, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
             ref Vector2 farFoot, ref float farFlat,
             ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
             ref float leanTarget, ref float extraHipY)
@@ -441,8 +534,8 @@ namespace SoccerFight
             nearPoint = point;
             nearFlat = 0f;
 
-            // plant leg: firm, slightly bent, planted beside the ball
-            float plantW = 1f - MathUtil.Smooth01((t - Player.KickFollow) / (Player.KickDuration - Player.KickFollow));
+            // plant leg: firm, slightly bent, planted beside the ball (tucked instead when airborne)
+            float plantW = (1f - MathUtil.Smooth01((t - Player.KickFollow) / (Player.KickDuration - Player.KickFollow))) * (1f - air);
             farFoot = Vector2.Lerp(farFoot, new Vector2(0.05f, PlayerDims.AnkleHeight), plantW);
             farFlat = Mathf.Lerp(farFlat, 1f, plantW);
 
@@ -454,7 +547,7 @@ namespace SoccerFight
             farElbow = Mathf.Lerp(farElbow, 30f, w);
             nearShoulder = Mathf.Lerp(nearShoulder, -52f, w);
             nearElbow = Mathf.Lerp(nearElbow, 38f, w);
-            extraHipY += 0.035f * MathUtil.Bump(Mathf.Clamp01((t - Player.KickWindup) / 0.16f));
+            extraHipY += 0.035f * MathUtil.Bump(Mathf.Clamp01((t - Player.KickWindup) / 0.16f)) * (1f - air);
         }
 
         // ------------------------------------------------------------------ rainbow flick
@@ -538,6 +631,74 @@ namespace SoccerFight
 
         public void OnKickContact() { squashXVel += 1.2f; squashYVel -= 0.8f; }
 
+        // ------------------------------------------------------------------ keep-ups
+
+        void PoseJuggle(float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY, ref Vector2 ballLocal)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float w = MathUtil.Smooth01(player.ActionTime / 0.14f);
+            if (player.JuggleDropped) w *= 1f - MathUtil.Smooth01(player.JuggleDropTime / Player.JuggleRecover);
+
+            // Each body part rises to meet the ball as it drops into its touch point (reach), and after
+            // a touch flicks through and settles (recoil). A whiff plays the same swing into thin air.
+            float reach = player.JuggleDropped ? 0f : MathUtil.Smooth01(1f - player.JuggleTimeToContact / 0.3f);
+            float recoil = 1f - MathUtil.Smooth01(player.SinceTouch / 0.26f);
+            float flick = MathUtil.Bump(Mathf.Clamp01(player.SinceTouch / 0.18f));
+            Player.Touch next = player.NextTouch, last = player.LastTouch;
+            float wFoot = Mathf.Max(next == Player.Touch.Foot ? reach : 0f, last == Player.Touch.Foot ? recoil : 0f);
+            float wKnee = Mathf.Max(next == Player.Touch.Knee ? reach : 0f, last == Player.Touch.Knee ? recoil : 0f);
+            float wHead = Mathf.Max(next == Player.Touch.Head ? reach : 0f, last == Player.Touch.Head ? recoil : 0f);
+            float flickFoot = last == Player.Touch.Foot ? flick : 0f;
+            float flickKnee = last == Player.Touch.Knee ? flick : 0f;
+            float flickHead = last == Player.Touch.Head ? flick : 0f;
+
+            // where the part meets the ball: the coming contact while reaching, the last one while recoiling
+            Vector2 contact = reach > recoil ? player.JuggleContactLocal : touchAt;
+            Vector2 footAt = contact + new Vector2(-0.08f, -0.18f);
+            footAt.y = Mathf.Max(footAt.y, A);
+
+            // ready stance on soft knees; weight shifts onto the standing leg while a leg works
+            float legBusy = Mathf.Max(wFoot, wKnee);
+            Vector2 nf = new Vector2(0.1f, A), ff = new Vector2(Mathf.Lerp(-0.13f, -0.09f, legBusy), A);
+            float nflat = 1f, npoint = 0f;
+            nf = Vector2.Lerp(nf, footAt + new Vector2(0.02f, 0.06f) * flickFoot, wFoot);
+            nf = Vector2.Lerp(nf, new Vector2(0.27f, 0.5f) + new Vector2(0.02f, 0.07f) * flickKnee, wKnee);
+            npoint = Mathf.Lerp(npoint, 0.45f, wKnee);
+            nflat = Mathf.Lerp(nflat, 0f, wKnee);
+
+            // header: dip early while the ball is still high, stand tall into the contact, nod through
+            float reachHead = next == Player.Touch.Head ? reach : 0f;
+            float hipOff = -0.035f + Mathf.Sin(time * 5.5f) * 0.008f - 0.02f * legBusy;
+            hipOff += -0.07f * Mathf.Sin(Mathf.PI * reachHead) + 0.05f * flickHead;
+
+            // look at the ball
+            Vector2 toBall = player.JuggleBallLocal - new Vector2(0.05f, 1.63f);
+            float look = Mathf.Clamp(Mathf.Atan2(toBall.y, Mathf.Max(toBall.x, 0.05f)) * Mathf.Rad2Deg * 0.5f, -26f, 34f);
+            float headT = Mathf.Lerp(look, 30f, wHead) - 14f * flickHead;
+            float leanT = 2f + 8f * reachHead - 5f * flickHead;
+
+            // arms out for balance, wider for a header
+            float nsh = 28f + 12f * legBusy + 14f * wHead, nel = 44f;
+            float fsh = -38f - 10f * legBusy - 14f * wHead, fel = 34f;
+
+            nearFoot = Vector2.Lerp(nearFoot, nf, w); nearFlat = Mathf.Lerp(nearFlat, nflat, w); nearPoint = Mathf.Lerp(nearPoint, npoint, w);
+            farFoot = Vector2.Lerp(farFoot, ff, w); farFlat = Mathf.Lerp(farFlat, 1f, w); farPoint = Mathf.Lerp(farPoint, 0f, w);
+            nearShoulder = Mathf.Lerp(nearShoulder, nsh, w); nearElbow = Mathf.Lerp(nearElbow, nel, w);
+            farShoulder = Mathf.Lerp(farShoulder, fsh, w); farElbow = Mathf.Lerp(farElbow, fel, w);
+            headTarget = Mathf.Lerp(headTarget, headT, w);
+            leanTarget = Mathf.Lerp(leanTarget, leanT, w);
+            extraHipY += hipOff * w;
+
+            if (!player.JuggleDropped)
+            {
+                ballLocal = player.JuggleBallLocal;
+                BallIsScripted = true;
+            }
+        }
+
         // ------------------------------------------------------------------ flashes / invulnerability blink
 
         void UpdateFlash(float dt)
@@ -548,9 +709,8 @@ namespace SoccerFight
             for (int i = 0; i < Parts.Count; i++)
             {
                 var sr = Parts[i];
-                bool glow = sr.sharedMaterial == Art.SpriteGlowMat;
-                if (glow) { sr.enabled = !flashing; continue; }
-                sr.sharedMaterial = flashing ? Art.SpriteSolidMat : Art.SpriteMat;
+                if (partMats[i] == Art.SpriteGlowMat) { sr.enabled = !flashing; continue; }
+                sr.sharedMaterial = flashing ? Art.SpriteSolidMat : partMats[i];
                 Color c = flashing ? new Color(1f, 0.55f, 0.6f, 1f) : partColors[i];
                 if (blinkOff) c.a *= 0.35f;
                 sr.color = c;
@@ -558,6 +718,6 @@ namespace SoccerFight
         }
 
         /// <summary>Local (facing-right) vector → world vector for the current facing.</summary>
-        public Vector2 LocalToWorldDir(Vector2 v) => new Vector2(v.x * player.Facing, v.y);
+        public Vector2 LocalToWorldDir(Vector2 v) => new Vector2(v.x * visFacing, v.y);
     }
 }

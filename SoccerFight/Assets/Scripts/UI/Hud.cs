@@ -87,6 +87,12 @@ namespace SoccerFight
         CanvasGroup hintGroup;
         float time;
 
+        // keep-ups: an approach ring closes on the touch point, the streak counts behind the player
+        CanvasGroup jugGroup;
+        Image jugTarget, jugApproach, jugGlow;
+        TextMeshProUGUI jugCount, jugLabel, jugJudge;
+        float jugPop, jugPopVel, jugJudgeT = 99f, jugEndT = 99f;
+
         // ------------------------------------------------------------------ building helpers
 
         static RectTransform Node(string name, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size)
@@ -167,7 +173,21 @@ namespace SoccerFight
             flickSlot = BuildSlot("Flick", new Vector2(-82f, 92f), 104f, UiArt.IconFlick, UiArt.RingRainbow, Color.white, false);
             BuildCrosshair();
             BuildWave();
+            BuildJuggle();
             BuildMisc();
+        }
+
+        void BuildJuggle()
+        {
+            var root = Node("Juggle", canvasRect, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            jugGroup = root.gameObject.AddComponent<CanvasGroup>();
+            jugGroup.alpha = 0f;
+            jugGlow = Img("Glow", root, UiArt.Glow, Palette.ShotCyan.WithAlpha(0f), Vector2.zero, new Vector2(120f, 120f));
+            jugTarget = Img("Target", root, UiArt.RingThin, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(60f, 60f));
+            jugApproach = Img("Approach", root, UiArt.RingThin, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(60f, 60f));
+            jugCount = Text("Count", root, "", 44f, Color.white, TextAlignmentOptions.Center, Vector2.zero, new Vector2(200f, 56f), true, true, 2f);
+            jugLabel = Text("Label", root, "HOCHGEHALTEN", 12f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(240f, 20f), true, true, 5f);
+            jugJudge = Text("Judge", root, "", 17f, Palette.Gold, TextAlignmentOptions.Center, Vector2.zero, new Vector2(240f, 26f), true, true, 5f);
         }
 
         void BuildHealth()
@@ -261,9 +281,9 @@ namespace SoccerFight
                 s.badgeRim.rectTransform.sizeDelta = new Vector2(w + 2f, 28f);
             }
             if (hintText != null)
-                hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN      "
-                    + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN      " + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS      "
-                    + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK      ESC  PAUSE";
+                hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN     "
+                    + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN     " + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS     "
+                    + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK     " + KeyBindings.DisplayName(GameAction.Juggle) + "  HOCHHALTEN     ESC  PAUSE";
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -370,6 +390,10 @@ namespace SoccerFight
         public void SetVisible(bool visible) => canvas.enabled = visible;
 
         public void DamageNumber(Vector2 world, float amount, bool big)
+            => Popup(world, Mathf.RoundToInt(amount).ToString(), big ? Palette.Gold : Color.white, big ? 46f : 32f, big);
+
+        /// <summary>Floating text in world space (damage, healing).</summary>
+        public void Popup(Vector2 world, string text, Color color, float size, bool big = false)
         {
             var n = numbers[numberCursor];
             numberCursor = (numberCursor + 1) % numbers.Length;
@@ -377,10 +401,40 @@ namespace SoccerFight
             n.age = 0f;
             n.big = big;
             n.drift = Random.Range(-0.35f, 0.35f);
-            n.text.text = Mathf.RoundToInt(amount).ToString();
-            n.text.fontSize = big ? 46f : 32f;
-            n.text.color = big ? Palette.Gold : Color.white;
+            n.text.text = text;
+            n.text.fontSize = size;
+            n.text.color = color;
             n.rt.gameObject.SetActive(true);
+        }
+
+        public void OnJuggleStart()
+        {
+            jugEndT = 99f;
+            jugCount.text = "0";
+            jugCount.color = Color.white;
+            jugJudge.text = "";
+            jugJudgeT = 99f;
+        }
+
+        public void OnJuggleTouch(int count, bool perfect, float healed, Vector2 world)
+        {
+            jugCount.text = count.ToString();
+            jugCount.color = perfect ? Palette.Gold : Color.white;
+            jugPopVel += perfect ? 9f : 6f;
+            jugJudge.text = perfect ? "PERFEKT" : "GUT";
+            jugJudge.color = perfect ? Palette.Gold : Palette.ShotCyan;
+            jugJudgeT = 0f;
+            bool streak = count % 10 == 0;
+            if (healed > 0.01f) Popup(player.Pos + new Vector2(0f, 2.15f), "+" + Mathf.RoundToInt(healed), Palette.Heal, streak ? 38f : 26f, streak);
+            if (streak) ShowToast(count + "ER SERIE  ·  BONUS-HEILUNG");
+        }
+
+        public void OnJuggleEnd(int count, bool early)
+        {
+            jugEndT = 0f;
+            jugJudge.text = early ? "ZU FRÜH" : "ZU SPÄT";
+            jugJudge.color = Palette.Hurt;
+            jugJudgeT = 0f;
         }
 
         public void ResetState()
@@ -392,6 +446,8 @@ namespace SoccerFight
             fadeT = 0f;
             deathGroup.alpha = 0f;
             foreach (var n in numbers) { n.age = 99f; n.rt.gameObject.SetActive(false); }
+            jugEndT = 99f;
+            jugGroup.alpha = 0f;
         }
 
         // ------------------------------------------------------------------ update
@@ -408,10 +464,12 @@ namespace SoccerFight
             time += dt;
 
             UpdateHealth(dt);
-            UpdateSlot(shotSlot, player.ShotCd, Player.ShotCooldown, player.Ball.IsHeld && !player.Dead, dt, false);
-            UpdateSlot(flickSlot, player.FlickCd, Player.FlickCooldown, player.Ball.IsHeld && player.Grounded && !player.Dead, dt, true);
+            bool juggling = player.CurrentAction == Player.Action.Juggle;
+            UpdateSlot(shotSlot, player.ShotCd, Player.ShotCooldown, player.Ball.IsHeld && !player.Dead && !juggling, dt, false);
+            UpdateSlot(flickSlot, player.FlickCd, Player.FlickCooldown, player.Ball.IsHeld && player.Grounded && !player.Dead && !juggling, dt, true);
             UpdateCrosshair(dt);
             UpdateWave(dt);
+            UpdateJuggle(dt);
             UpdateNumbers(dt);
             UpdateMisc(dt);
             if (paused) bannerGroup.alpha = 0f;
@@ -560,6 +618,52 @@ namespace SoccerFight
                 bannerLineR.anchoredPosition = new Vector2(250f + lw * 0.5f, 10f);
             }
             else bannerGroup.alpha = 0f;
+        }
+
+        void UpdateJuggle(float dt)
+        {
+            bool juggling = player.CurrentAction == Player.Action.Juggle && !player.JuggleDropped;
+            jugEndT += dt;
+            float targetA = juggling ? 1f : 1f - MathUtil.Smooth01((jugEndT - 0.55f) / 0.4f);
+            jugGroup.alpha = MathUtil.Damp(jugGroup.alpha, targetA, 14f, dt);
+            if (jugGroup.alpha < 0.002f && !juggling) return;
+
+            Vector2 contactW = player.Pos + new Vector2(player.JuggleContactLocal.x * player.Facing, player.JuggleContactLocal.y);
+            Vector2 c = WorldToCanvas(contactW);
+            float ppu = (WorldToCanvas(contactW + Vector2.right) - c).x;
+            float d = (Art.BallRadius * 2f + 0.14f) * ppu;
+
+            // the approach ring meets the target ring exactly at the contact moment
+            float ttc = player.JuggleTimeToContact, win = player.JuggleWindow;
+            float k = Mathf.Clamp01(ttc / 0.5f);
+            bool inWindow = juggling && Mathf.Abs(ttc) <= win;
+            bool perfect = juggling && Mathf.Abs(ttc) <= win * 0.38f;
+            Color ring = perfect ? Palette.Gold : inWindow ? Palette.ShotCyan : Color.white;
+
+            jugTarget.rectTransform.anchoredPosition = c;
+            jugTarget.rectTransform.sizeDelta = new Vector2(d, d);
+            jugTarget.color = ring.WithAlpha(juggling ? (inWindow ? 0.95f : 0.3f) : 0f);
+            float s = 1f + 1.7f * k;
+            jugApproach.rectTransform.anchoredPosition = c;
+            jugApproach.rectTransform.sizeDelta = new Vector2(d * s, d * s);
+            jugApproach.color = ring.WithAlpha(juggling && ttc > -win ? Mathf.Lerp(0.9f, 0.12f, k) : 0f);
+            jugGlow.rectTransform.anchoredPosition = c;
+            jugGlow.rectTransform.sizeDelta = new Vector2(d * 2.4f, d * 2.4f);
+            jugGlow.color = ring.WithAlpha(inWindow ? 0.22f : 0f);
+
+            // streak counter floats behind the player's head, clear of the ball
+            MathUtil.Spring(ref jugPop, ref jugPopVel, 0f, 4f, 0.4f, dt);
+            Vector2 counter = WorldToCanvas(player.Pos + new Vector2(-player.Facing * 1.0f, 1.75f));
+            float ps = 1f + Mathf.Max(-0.2f, jugPop) * 0.35f;
+            jugCount.rectTransform.anchoredPosition = counter;
+            jugCount.rectTransform.localScale = new Vector3(ps, ps, 1f);
+            jugLabel.rectTransform.anchoredPosition = counter + new Vector2(0f, -32f);
+
+            // judgement under the counter, away from the ball's flight
+            jugJudgeT += dt;
+            float rise = MathUtil.EaseOutCubic(Mathf.Clamp01(jugJudgeT / 0.35f));
+            jugJudge.rectTransform.anchoredPosition = counter + new Vector2(0f, -66f + 10f * rise);
+            jugJudge.alpha = rise * (1f - MathUtil.Smooth01((jugJudgeT - 0.45f) / 0.3f));
         }
 
         void UpdateNumbers(float dt)

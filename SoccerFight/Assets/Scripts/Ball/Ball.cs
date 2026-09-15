@@ -18,12 +18,14 @@ namespace SoccerFight
         public bool IsHeldFree => St == State.Held;
         public bool IsDangerous => St == State.Shot || St == State.Rainbow || (St == State.Returning && Vel.magnitude > 9f);
         public bool IsRainbow => St == State.Rainbow;
+        /// <summary>Scripted by the player's keep-ups: drawn in front and spun by each touch.</summary>
+        public bool JuggleMode;
         const float R = Art.BallRadius;
 
         Transform root, stretch, spinNode;
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
         TrailRenderer shotTrail, rainbowTrail;
-        float spin;
+        float spin, spinVel;
         float stateTime;
         float squash, squashVel;
         Vector2 prevPos;
@@ -113,6 +115,7 @@ namespace SoccerFight
             Pos = prevPos = p;
             Vel = Vector2.zero;
             stateTime = 0f;
+            JuggleMode = false;
             shotTrail.Clear();
             rainbowTrail.Clear();
             shotTrail.emitting = rainbowTrail.emitting = false;
@@ -139,6 +142,11 @@ namespace SoccerFight
         public void BeginScripted() { Enter(State.Scripted); }
 
         public void Release() { Enter(State.Loose); Vel = new Vector2(0f, 3f); }
+
+        /// <summary>A missed keep-up: the ball carries on under normal physics and rolls home.</summary>
+        public void Drop(Vector2 velocity) { JuggleMode = false; Enter(State.Loose); Vel = velocity; }
+
+        public void OnJuggleTouch(float spinDegPerSec) { spinVel = spinDegPerSec; squashVel -= 5f; }
 
         public void StartRainbow(Vector2 from, Vector2 target, int facing)
         {
@@ -350,7 +358,8 @@ namespace SoccerFight
             bool onGround = Pos.y <= R + 0.02f;
 
             // spin: pure rolling on the ground, flicked spin in the air
-            if (onGround || St == State.Held) spin -= delta.x / R * Mathf.Rad2Deg;
+            if (JuggleMode && St == State.Scripted) { spin += spinVel * dt; spinVel *= Mathf.Exp(-0.8f * dt); }
+            else if (onGround || St == State.Held) spin -= delta.x / R * Mathf.Rad2Deg;
             else if (St == State.Rainbow) spin += -flickFacing * 900f * dt;
             else spin -= Mathf.Sign(Vel.x) * Mathf.Min(speed, 30f) * 18f * dt;
 
@@ -386,7 +395,7 @@ namespace SoccerFight
             rainbowTrail.emitting = St == State.Rainbow;
 
             // sorting: tuck between the legs while the flick rolls it up the calf
-            SetOrder(St == State.Scripted ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront);
+            SetOrder(St == State.Scripted && !JuggleMode ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront);
 
             // ground shadow
             float h = Mathf.Max(0f, Pos.y - R);

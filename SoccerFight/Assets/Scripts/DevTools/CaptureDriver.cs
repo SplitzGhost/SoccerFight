@@ -41,11 +41,17 @@ namespace SoccerFight
         Game G => Game.I;
         Player P => Game.I.Player;
         bool running;
+        bool juggleBot;
 
         // Started from Update (not Start) so the scenario restarts cleanly after a script reload.
         void Update()
         {
-            if (running || Finished || Game.I == null || Game.I.Player == null) return;
+            if (Game.I == null || Game.I.Player == null) return;
+            // keep-up bot: taps so the press lands on the contact frame (runs after Game.Update,
+            // so the edge is consumed by the next gameplay step)
+            if (juggleBot && P.CurrentAction == Player.Action.Juggle && !P.JuggleDropped && P.JuggleTimeToContact - 1f / 60f <= 0.008f)
+                GameInput.JugglePressed = true;
+            if (running || Finished) return;
             running = true;
             StartCoroutine(Main());
         }
@@ -66,6 +72,8 @@ namespace SoccerFight
             string scenario = Arg("-sfCapture");
             yield return Frames(5);
             if (scenario == "quick") yield return Quick();
+            else if (scenario == "moves") yield return Moves();
+            else if (scenario == "portrait") yield return Portrait();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -117,6 +125,98 @@ namespace SoccerFight
             Aim(new Vector2(5f, 1.5f));
             yield return Seconds(1.5f);
             yield return Shot("quick_idle");
+        }
+
+        IEnumerator WaitBallHome()
+        {
+            for (int i = 0; i < 240 && !(P.Ball.IsHeldFree && P.Grounded && P.CurrentAction == Player.Action.None); i++) yield return null;
+        }
+
+        /// <summary>Quick art check: the player up close and in the scene.</summary>
+        IEnumerator Portrait()
+        {
+            Aim(new Vector2(5f, 1.6f));
+            yield return Seconds(1.2f);
+            G.Hud.SetVisible(false);
+            G.Cam.SetOverride(P.Pos + new Vector2(0.15f, 0.95f), 1.1f);
+            yield return Frames(3);
+            yield return Shot("p01_portrait");
+            G.Cam.ClearOverride();
+            yield return Frames(3);
+            yield return Shot("p02_scene");
+        }
+
+        /// <summary>Player art, turning, keep-ups and the air-kick recoil.</summary>
+        IEnumerator Moves()
+        {
+            Aim(new Vector2(5f, 1.6f));
+            yield return Seconds(1.2f);
+
+            // A — the kit up close and in the scene
+            G.Hud.SetVisible(false);
+            G.Cam.SetOverride(P.Pos + new Vector2(0.15f, 0.95f), 1.1f);
+            yield return Frames(3);
+            yield return Shot("m01_portrait");
+            G.Cam.ClearOverride();
+            G.Hud.SetVisible(true);
+            yield return Frames(3);
+            yield return Shot("m01b_scene");
+
+            // B — full-speed turn: skid, flip, carry through
+            Move(1f);
+            yield return Seconds(0.9f);
+            Move(-1f);
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0f, 0.9f), 1.3f); yield return Frames(1); }
+            EndSheet("m02_turn_sheet");
+            Move(0f);
+            yield return Seconds(0.8f);
+            yield return WaitBallHome();
+
+            // C — keep-ups with a bot that taps on the beat
+            juggleBot = true;
+            GameInput.JugglePressed = true;
+            yield return Frames(2);
+            BeginSheet(6, 3);
+            for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.1f, 1.3f), 1.9f); yield return Frames(4); }
+            EndSheet("m03_juggle_sheet");
+            for (int i = 0; i < 300 && !(P.JuggleTimeToContact > 0.1f && P.JuggleTimeToContact < 0.13f); i++) yield return null;
+            yield return Shot("m04_juggle_approach");
+            yield return Seconds(1.6f);
+            yield return Shot("m05_juggle_count");
+
+            // D — tapping early swings through air and the ball drops
+            for (int i = 0; i < 300 && !(P.JuggleTimeToContact > 0.35f && P.JuggleTimeToContact < 0.45f); i++) yield return null;
+            juggleBot = false;
+            GameInput.JugglePressed = true;
+            yield return Frames(10);
+            yield return Shot("m06_juggle_early");
+            yield return Seconds(1f);
+            yield return WaitBallHome();
+
+            // E — air kick straight down at the apex: the recoil is a second jump
+            GameInput.JumpPressed = true;
+            GameInput.JumpHeld = true;
+            yield return Seconds(0.32f);
+            GameInput.JumpHeld = false;
+            Aim(new Vector2(0.3f, -4f));
+            GameInput.ShootPressed = true;
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0f, 1.4f), 2.4f); yield return Frames(2); }
+            EndSheet("m07_airboost_sheet");
+            yield return Seconds(1.2f);
+            yield return WaitBallHome();
+
+            // F — sideways air kick: dash the other way
+            GameInput.JumpPressed = true;
+            GameInput.JumpHeld = true;
+            yield return Seconds(0.25f);
+            Aim(new Vector2(6f, 0.3f));
+            GameInput.ShootPressed = true;
+            yield return Frames(12);
+            GameInput.JumpHeld = false;
+            yield return Shot("m08_airdash");
+            yield return Seconds(1f);
         }
 
         IEnumerator All()

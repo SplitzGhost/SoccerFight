@@ -10,7 +10,7 @@ namespace SoccerFight
         {
             public Transform root;
             public SpriteRenderer[] parts;
-            public float age, life;
+            public float age, life, alpha;
             public Color color;
             public bool active;
         }
@@ -44,7 +44,7 @@ namespace SoccerFight
             return g;
         }
 
-        public void Spawn(Color color, float life)
+        public void Spawn(Color color, float life, float alpha = 0.42f)
         {
             Ghost g = null;
             for (int i = 0; i < pool.Count; i++) if (!pool[i].active) { g = pool[i]; break; }
@@ -53,6 +53,7 @@ namespace SoccerFight
             g.active = true;
             g.age = 0f;
             g.life = life;
+            g.alpha = alpha;
             g.color = color;
             g.root.gameObject.SetActive(true);
             for (int i = 0; i < g.parts.Length; i++)
@@ -61,7 +62,7 @@ namespace SoccerFight
                 var dst = g.parts[i].transform;
                 dst.SetPositionAndRotation(src.position, src.rotation);
                 dst.localScale = src.lossyScale;
-                g.parts[i].color = color.WithAlpha(0.42f);
+                g.parts[i].color = color.WithAlpha(alpha);
             }
         }
 
@@ -79,7 +80,7 @@ namespace SoccerFight
                     g.root.gameObject.SetActive(false);
                     continue;
                 }
-                float a = 0.42f * (1f - MathUtil.EaseOutQuad(t));
+                float a = g.alpha * (1f - MathUtil.EaseOutQuad(t));
                 Color c = g.color.WithAlpha(a);
                 for (int k = 0; k < g.parts.Length; k++) g.parts[k].color = c;
             }

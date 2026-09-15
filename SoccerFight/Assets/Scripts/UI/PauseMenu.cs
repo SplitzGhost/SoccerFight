@@ -127,7 +127,7 @@ namespace SoccerFight
             {
                 var action = a;
                 keyRows[a] = UiKit.MakeKeyRow(settingsPanel, KeyBindings.ActionName(a), new Vector2(rx, y), colW, () => BeginCapture(action));
-                y -= 54f;
+                y -= 50f;
             }
             UiKit.MakeButton(settingsPanel, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 16f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
             UiKit.Label("KeyHint", settingsPanel, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 60f), new Vector2(colW, 20f), true, 4f);

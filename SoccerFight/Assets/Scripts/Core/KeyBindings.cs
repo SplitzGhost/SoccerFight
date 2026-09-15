@@ -4,7 +4,7 @@ using UnityEngine.InputSystem.Controls;
 
 namespace SoccerFight
 {
-    public enum GameAction { Left, Right, Jump, Shoot, Flick }
+    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -21,8 +21,8 @@ namespace SoccerFight
     /// <summary>Rebindable controls, persisted in PlayerPrefs. Binding an input that is already used swaps them.</summary>
     public static class KeyBindings
     {
-        public static readonly GameAction[] All = { GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Shoot, GameAction.Flick };
-        static readonly Binding[] current = new Binding[5];
+        public static readonly GameAction[] All = { GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Shoot, GameAction.Flick, GameAction.Juggle };
+        static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
 
         public static event System.Action Changed;
@@ -38,7 +38,8 @@ namespace SoccerFight
                 case GameAction.Right: return "NACH RECHTS";
                 case GameAction.Jump: return "SPRINGEN";
                 case GameAction.Shoot: return "SCHUSS";
-                default: return "RAINBOW FLICK";
+                case GameAction.Flick: return "RAINBOW FLICK";
+                default: return "BALL HOCHHALTEN";
             }
         }
 
@@ -50,7 +51,8 @@ namespace SoccerFight
                 case GameAction.Right: return Binding.K(Key.D);
                 case GameAction.Jump: return Binding.K(Key.Space);
                 case GameAction.Shoot: return Binding.M(0);
-                default: return Binding.K(Key.R);
+                case GameAction.Flick: return Binding.K(Key.R);
+                default: return Binding.K(Key.LeftShift);
             }
         }
 
