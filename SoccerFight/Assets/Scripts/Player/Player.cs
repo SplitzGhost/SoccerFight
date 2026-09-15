@@ -45,7 +45,22 @@ namespace SoccerFight
         const float JuggleHeal = 1f, JuggleHealPerfect = 2f, JuggleHealStreak = 4f;
         static readonly Touch[] TouchPattern = { Touch.Foot, Touch.Foot, Touch.Knee, Touch.Foot, Touch.Foot, Touch.Foot, Touch.Head, Touch.Foot };
 
-        public enum Action { None, Kick, Flick, Juggle }
+        // power shot (standing): longer wind-up, then a straight drive that passes through every
+        // monster in its path — each takes less than a normal shot
+        public const float PowerWindup = 0.2f, PowerContact = 0.26f, PowerFollow = 0.4f, PowerDuration = 0.58f;
+        public const float PowerCooldown = 4f, PowerSpeed = 36f, PowerDamage = 9f;
+
+        // step-over (on the ground): a feint over the ball, then an invulnerable dash through
+        // whatever stands in front
+        public const float StepOverTime = 0.3f, DashTime = 0.2f, StepOverDuration = 0.62f;
+        public const float StepOverCooldown = 3.5f;
+        const float DashSpeed = 24f;   // ≈ 4.8 units in DashTime
+
+        // bicycle kick (airborne): a backflip with a scissor kick; the ball explodes where it lands
+        public const float BicycleSet = 0.14f, BicycleContact = 0.22f, BicycleDuration = 0.62f;
+        public const float BicycleCooldown = 5f, BicycleSpeed = 27f, BlastDamage = 30f, BlastRadius = 2.8f;
+
+        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle }
 
         public Vector2 Pos;
         public Vector2 Vel;
@@ -63,6 +78,15 @@ namespace SoccerFight
 
         public float ShotCd;
         public float FlickCd;
+        public float PowerCd, StepOverCd, BicycleCd;
+        /// <summary>Step-over i-frames (separate from the post-hit blink).</summary>
+        public float DodgeTime;
+        /// <summary>The ball was at the feet when the step-over began and is carried through the dash.</summary>
+        public bool StepCarry;
+        /// <summary>Bicycle kick: ball position relative to the player (facing-local, not rotated with the body).</summary>
+        public Vector2 BikeBallLocal;
+        public bool ActionReleased => released;
+        public bool IsDashing => CurrentAction == Action.StepOver && ActionTime >= StepOverTime && ActionTime < StepOverTime + DashTime;
         public Action CurrentAction;
         public float ActionTime;
         public Vector2 KickAimLocal = Vector2.right;
@@ -88,7 +112,11 @@ namespace SoccerFight
         public Ball Ball;
         Afterimages ghosts;
 
-        float coyote, jumpBuffer, shotBuffer, flickBuffer, juggleBuffer;
+        float coyote, jumpBuffer, shotBuffer, flickBuffer, juggleBuffer, powerBuffer, stepBuffer, bikeBuffer;
+        int dashDir = 1;
+        bool dashStarted, dashEnded;
+        Vector2 bikeBallStart;
+        float chargeFxTimer;
         float dropTimer;
         int dropIgnore = Level.None;
         bool released;
@@ -121,10 +149,11 @@ namespace SoccerFight
             Hp = MaxHp;
             InvulnTimer = 0f;
             Dead = false;
-            ShotCd = FlickCd = 0f;
+            ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
+            DodgeTime = 0f;
             CurrentAction = Action.None;
             ActionTime = 0f;
-            coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = 0f;
+            coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = powerBuffer = stepBuffer = bikeBuffer = 0f;
             airBoosts = 1;
             boostT = boostGhostT = 0f;
             boostRise = false;
@@ -146,7 +175,11 @@ namespace SoccerFight
             var game = Game.I;
             ShotCd = Mathf.Max(0f, ShotCd - dt);
             FlickCd = Mathf.Max(0f, FlickCd - dt);
+            PowerCd = Mathf.Max(0f, PowerCd - dt);
+            StepOverCd = Mathf.Max(0f, StepOverCd - dt);
+            BicycleCd = Mathf.Max(0f, BicycleCd - dt);
             InvulnTimer = Mathf.Max(0f, InvulnTimer - dt);
+            DodgeTime = Mathf.Max(0f, DodgeTime - dt);
             boostT = Mathf.Max(0f, boostT - dt);
 
             float input = Dead ? 0f : GameInput.MoveX;
@@ -156,11 +189,17 @@ namespace SoccerFight
             shotBuffer = GameInput.ShootPressed && !Dead ? 0.35f : Mathf.Max(0f, shotBuffer - dt);
             flickBuffer = GameInput.FlickPressed && !Dead ? 0.3f : Mathf.Max(0f, flickBuffer - dt);
             juggleBuffer = GameInput.JugglePressed && !Dead ? 0.2f : Mathf.Max(0f, juggleBuffer - dt);
+            powerBuffer = GameInput.PowerPressed && !Dead ? 0.3f : Mathf.Max(0f, powerBuffer - dt);
+            stepBuffer = GameInput.StepOverPressed && !Dead ? 0.25f : Mathf.Max(0f, stepBuffer - dt);
+            bikeBuffer = GameInput.BicyclePressed && !Dead ? 0.25f : Mathf.Max(0f, bikeBuffer - dt);
 
             // --- start actions
             if (CurrentAction == Action.None && !Dead)
             {
                 if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
+                else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
+                else if (powerBuffer > 0f && PowerCd <= 0f && Grounded && TakeBall()) StartPower();
+                else if (stepBuffer > 0f && StepOverCd <= 0f && Grounded) StartStepOver();
                 else if (juggleBuffer > 0f && Ball.IsHeldFree && Grounded) StartJuggle();
                 else if (shotBuffer > 0f && ShotCd <= 0f)
                 {
@@ -175,6 +214,9 @@ namespace SoccerFight
             if (CurrentAction == Action.Kick) speedMul = 0.6f;
             else if (CurrentAction == Action.Flick) speedMul = ActionTime < FlickRelease ? 0.12f : 0.65f;
             else if (CurrentAction == Action.Juggle) speedMul = 0f;
+            else if (CurrentAction == Action.Power) speedMul = ActionTime < PowerContact ? 0f : 0.3f;
+            else if (CurrentAction == Action.StepOver) speedMul = 0.1f;
+            else if (CurrentAction == Action.Bicycle) speedMul = 0.4f;
             float target = input * MaxSpeed * speedMul;
             float accel;
             bool turning = false;
@@ -188,13 +230,14 @@ namespace SoccerFight
                 accel = Mathf.Abs(target) > 0.01f ? AirAccel : AirDecel;
                 if (boostT > 0f) accel *= 0.2f;   // let the recoil carry before air control takes over again
             }
-            Vel.x = Mathf.MoveTowards(Vel.x, target, accel * dt);
+            if (IsDashing) Vel.x = dashDir * DashSpeed;
+            else Vel.x = Mathf.MoveTowards(Vel.x, target, accel * dt);
 
             // --- facing
             if (CurrentAction == Action.None && Mathf.Abs(input) > 0.01f) Facing = input > 0f ? 1 : -1;
 
             // --- drop through the platform underfoot (down, or down + jump)
-            bool canMove = CurrentAction != Action.Flick && CurrentAction != Action.Juggle && !Dead;
+            bool canMove = (CurrentAction == Action.None || CurrentAction == Action.Kick) && !Dead;
             if (Grounded && OnPlatform != Level.None && canMove && (GameInput.DownPressed || (jumpBuffer > 0f && GameInput.DownHeld)))
             {
                 dropIgnore = OnPlatform;
@@ -218,13 +261,16 @@ namespace SoccerFight
                 FxSystem.I.Dust(Pos, new Vector2(-Vel.x * 0.1f, 0f), 6, 1.6f, 0.4f, 0.3f);
             }
 
-            // --- gravity with variable height and apex hang (a recoil boost rises like a held jump)
-            if (!Grounded)
+            // --- gravity with variable height and apex hang (a recoil boost rises like a held jump).
+            // The dash is flat even off a ledge; the bicycle kick hangs in the air for the scissor.
+            if (IsDashing) Vel.y = 0f;
+            else if (!Grounded)
             {
                 if (Vel.y <= 0f) boostRise = false;
                 bool floaty = GameInput.JumpHeld || boostRise;
                 float g = Vel.y > 0f ? (floaty ? RiseGravity : RiseGravity * 2.3f) : FallGravity;
                 if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
+                if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
                 Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall);
             }
 
@@ -364,6 +410,152 @@ namespace SoccerFight
             game.Cam.Kick(n * 0.14f);
             game.Cam.AddTrauma(0.1f);
             Rig.OnAirBoost(push);
+        }
+
+        /// <summary>Ball at the feet, or close enough to take first time.</summary>
+        bool TakeBall()
+        {
+            if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 1.6f)) Ball.ForceCatch(this);
+            return Ball.IsHeldFree;
+        }
+
+        Vector2 AimFrom(Vector2 from)
+        {
+            Vector2 dir = GameInput.AimWorld - from;
+            if (dir.sqrMagnitude < 0.01f) dir = new Vector2(Facing, 0.1f);
+            return dir.normalized;
+        }
+
+        // ------------------------------------------------------------------ power shot
+
+        void StartPower()
+        {
+            powerBuffer = 0f;
+            Vector2 aim = GameInput.AimWorld - Ball.Pos;
+            if (Mathf.Abs(aim.x) > 0.05f) Facing = aim.x > 0f ? 1 : -1;
+            KickAimLocal = ToLocal(Pos + aim.normalized);
+            KickBallLocal = ToLocal(Ball.Pos);
+            KickBallLocal = new Vector2(Mathf.Clamp(KickBallLocal.x, 0.34f, 0.56f), Art.BallRadius);
+            CurrentAction = Action.Power;
+            ActionTime = 0f;
+            released = false;
+            chargeFxTimer = 0f;
+            PowerCd = PowerCooldown;
+            Game.I.Hud.OnSkillUsed(GameAction.PowerShot);
+            Game.I.Cam.SetZoom(0.96f);
+        }
+
+        void ReleasePower()
+        {
+            Ball.Charge = 0f;
+            Vector2 from = Ball.Pos;
+            Vector2 dir = AimFrom(from);
+            if (Grounded && OnPlatform == Level.None && dir.y < -0.3f) dir = new Vector2(dir.x, -0.3f).normalized;
+            KickAimLocal = new Vector2(dir.x * Facing, dir.y);
+            Ball.Pierce(dir * PowerSpeed, Grounded ? OnPlatform : Level.None);
+
+            var fx = FxSystem.I;
+            fx.Flash(from, 2.4f, Palette.PowerGold, 0.18f, 3.2f);
+            fx.Flash(from, 1.1f, Color.white, 0.08f, 3.5f);
+            fx.Ring(FxLayer.Front, from, 0.15f, 1.5f, 0.24f, 0.01f, 0.28f, Color.white, Palette.PowerGold.WithAlpha(0f), 2.6f);
+            fx.Ring(FxLayer.Front, from + dir * 0.5f, 0.1f, 0.9f, 0.14f, 0.01f, 0.2f, Palette.Gold, Palette.BlastOrange.WithAlpha(0f), 2.4f);
+            fx.Sparks(from, dir, 28f, 16, 10f, 22f, Palette.PowerGold, 2.8f, 0.055f, 0.26f);
+            fx.Sparks(from, -dir, 80f, 6, 3f, 7f, Color.white, 2.2f, 0.04f, 0.18f);
+            for (int i = 0; i < 6; i++)
+            {
+                Vector2 side = new Vector2(-dir.y, dir.x) * Random.Range(-0.35f, 0.35f);
+                fx.Streak(FxLayer.Front, from + side, dir * Random.Range(14f, 24f), Random.Range(0.14f, 0.24f), 0.04f, 0.06f,
+                    Color.white.WithAlpha(0.9f), Palette.PowerGold.WithAlpha(0f), 2.4f, 4f);
+            }
+            if (Grounded) fx.Dust(Pos, new Vector2(-dir.x, 0.1f), 7, 2.4f, 0.4f, 0.34f);
+
+            var game = Game.I;
+            game.Cam.Kick(-dir * 0.3f);
+            game.Cam.AddTrauma(0.34f);
+            game.Cam.SetZoom(1f);
+            game.Cam.ZoomPunch(0.04f);
+            game.Post.Impact(0.5f);
+            TimeFx.HitStop(0.07f, 0.04f);
+            Vel.x -= dir.x * 4.5f;   // recoil slide
+            Rig.OnPowerContact();
+        }
+
+        // ------------------------------------------------------------------ step-over + dash
+
+        void StartStepOver()
+        {
+            stepBuffer = 0f;
+            if (Mathf.Abs(GameInput.MoveX) > 0.01f) Facing = GameInput.MoveX > 0f ? 1 : -1;
+            dashDir = Facing;
+            CurrentAction = Action.StepOver;
+            ActionTime = 0f;
+            dashStarted = dashEnded = false;
+            StepOverCd = StepOverCooldown;
+            DodgeTime = StepOverDuration + 0.08f;
+            StepCarry = Ball.IsHeldFree;
+            if (StepCarry) Ball.BeginScripted();
+            ghostTimer = 0f;
+            Game.I.Hud.OnSkillUsed(GameAction.StepOver);
+        }
+
+        void DashBurst()
+        {
+            var fx = FxSystem.I;
+            Vector2 back = new Vector2(-dashDir, 0f);
+            fx.Dust(Pos, new Vector2(-dashDir, 0.25f), 8, 2.8f, 0.42f, 0.36f);
+            fx.Ring(FxLayer.Front, Pos + new Vector2(-dashDir * 0.2f, 0.8f), 0.2f, 1.1f, 0.12f, 0.01f, 0.22f, Color.white, Palette.DashMint.WithAlpha(0f), 2f);
+            for (int i = 0; i < 6; i++)
+            {
+                Vector2 p = Pos + new Vector2(0f, Random.Range(0.2f, 1.7f));
+                fx.Streak(FxLayer.Front, p, back * Random.Range(9f, 15f), Random.Range(0.16f, 0.26f), 0.03f, 0.07f,
+                    Color.white.WithAlpha(0.85f), Palette.DashMint.WithAlpha(0f), 2f, 5f);
+            }
+            Game.I.Cam.Kick(new Vector2(dashDir * 0.18f, 0f));
+            Game.I.Cam.AddTrauma(0.08f);
+            Rig.OnDash();
+        }
+
+        // ------------------------------------------------------------------ bicycle kick
+
+        void StartBicycle()
+        {
+            bikeBuffer = 0f;
+            // back to the target: the ball goes over the head
+            float dx = GameInput.AimWorld.x - Pos.x;
+            if (Mathf.Abs(dx) > 0.2f) Facing = dx > 0f ? -1 : 1;
+            CurrentAction = Action.Bicycle;
+            ActionTime = 0f;
+            released = false;
+            ghostTimer = 0f;
+            BicycleCd = BicycleCooldown;
+            bikeBallStart = ToLocal(Ball.Pos);
+            BikeBallLocal = bikeBallStart;
+            Ball.BeginScripted();
+            Vel.y = Mathf.Max(Vel.y, 4.5f);
+            boostRise = true;
+            Game.I.Hud.OnSkillUsed(GameAction.Bicycle);
+            Game.I.Cam.SetZoom(0.95f);
+        }
+
+        void ReleaseBicycle()
+        {
+            Vector2 from = Ball.Pos;
+            Vector2 dir = AimFrom(from);
+            Ball.Blast(dir * BicycleSpeed);
+
+            var fx = FxSystem.I;
+            fx.Flash(from, 1.8f, Palette.BlastOrange, 0.14f, 3f);
+            fx.Ring(FxLayer.Front, from, 0.12f, 1.1f, 0.18f, 0.01f, 0.22f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.4f);
+            fx.Sparks(from, dir, 40f, 12, 8f, 18f, Palette.BlastOrange, 2.6f, 0.05f, 0.24f);
+            fx.Sparks(from, -dir, 90f, 5, 3f, 6f, Palette.Gold, 2f, 0.04f, 0.16f);
+
+            var game = Game.I;
+            game.Cam.Kick(-dir * 0.22f);
+            game.Cam.AddTrauma(0.26f);
+            game.Cam.SetZoom(1f);
+            game.Post.Impact(0.4f);
+            TimeFx.HitStop(0.05f, 0.05f);
+            Rig.OnKickContact();
         }
 
         // ------------------------------------------------------------------ rainbow flick
@@ -586,6 +778,68 @@ namespace SoccerFight
                 if (ActionTime >= FlickDuration) CurrentAction = Action.None;
             }
             else if (CurrentAction == Action.Juggle) UpdateJuggle(dt);
+            else if (CurrentAction == Action.Power) UpdatePower(dt);
+            else if (CurrentAction == Action.StepOver) UpdateStepOver(dt);
+            else if (CurrentAction == Action.Bicycle) UpdateBicycle(dt);
+        }
+
+        void UpdatePower(float dt)
+        {
+            if (!released)
+            {
+                float charge = Mathf.Clamp01(ActionTime / PowerContact);
+                Ball.Charge = charge;
+                // energy gathers into the ball during the wind-up
+                chargeFxTimer -= dt;
+                if (chargeFxTimer <= 0f)
+                {
+                    chargeFxTimer = 0.03f;
+                    Vector2 off = Random.insideUnitCircle.normalized * Random.Range(0.6f, 1.1f);
+                    FxSystem.I.Streak(FxLayer.Front, Ball.Pos + off, -off * Random.Range(5f, 8f), 0.12f, 0.028f, 0.05f,
+                        Palette.Gold.WithAlpha(0.9f), Palette.PowerGold.WithAlpha(0f), 2.4f, 2f);
+                }
+                if (ActionTime >= PowerContact) { released = true; ReleasePower(); }
+            }
+            if (ActionTime >= PowerDuration) CurrentAction = Action.None;
+        }
+
+        void UpdateStepOver(float dt)
+        {
+            if (IsDashing)
+            {
+                if (!dashStarted) { dashStarted = true; DashBurst(); }
+                ghostTimer -= dt;
+                if (ghostTimer <= 0f) { ghostTimer = 0.024f; ghosts.Spawn(Palette.DashMint, 0.26f, 0.34f); }
+            }
+            else if (dashStarted && !dashEnded)
+            {
+                dashEnded = true;
+                Vel.x = dashDir * MaxSpeed;   // carry the momentum out of the dash
+            }
+            if (ActionTime >= StepOverDuration)
+            {
+                CurrentAction = Action.None;
+                if (StepCarry) Ball.EndScripted();
+                StepCarry = false;
+            }
+        }
+
+        void UpdateBicycle(float dt)
+        {
+            if (!released)
+            {
+                // the first leg pops the ball up above and behind the head, where the kicking foot meets it
+                Vector2 contact = new Vector2(-0.2f, PlayerDims.StandHip + 0.66f);
+                float k = Mathf.Clamp01(ActionTime / BicycleContact);
+                BikeBallLocal = Vector2.Lerp(bikeBallStart, contact, MathUtil.EaseOutCubic(k)) + new Vector2(0f, 0.2f * MathUtil.Bump(k));
+                if (ActionTime >= BicycleContact) { released = true; ReleaseBicycle(); }
+            }
+            if (ActionTime > BicycleSet * 0.5f && ActionTime < BicycleContact + 0.2f)
+            {
+                ghostTimer -= dt;
+                if (ghostTimer <= 0f) { ghostTimer = 0.045f; ghosts.Spawn(Palette.MoonRim, 0.18f, 0.16f); }
+            }
+            if (ActionTime >= BicycleDuration || (released && Grounded)) CurrentAction = Action.None;
         }
 
         /// <summary>Called after the rig pose is computed so the scripted ball follows the leg.</summary>
@@ -598,7 +852,7 @@ namespace SoccerFight
 
         public void TakeDamage(float amount, Vector2 from)
         {
-            if (Dead || InvulnTimer > 0f) return;
+            if (Dead || InvulnTimer > 0f || DodgeTime > 0f) return;
             var game = Game.I;
             AbortJuggle();
             Hp = Mathf.Max(0f, Hp - amount);
@@ -615,7 +869,8 @@ namespace SoccerFight
             FxSystem.I.Sparks(Pos + new Vector2(0f, 1f), new Vector2(dir, 0.4f), 80f, 10, 5f, 11f, Palette.Hurt, 2.4f, 0.05f, 0.3f);
             FxSystem.I.Flash(Pos + new Vector2(0f, 1f), 1.8f, Palette.Hurt, 0.16f, 2.2f);
             game.Hud.OnPlayerDamaged(amount);
-            if (CurrentAction == Action.Flick && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
+            if ((CurrentAction == Action.Flick || CurrentAction == Action.Bicycle) && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
+            if (CurrentAction == Action.Power && !released) { CurrentAction = Action.None; Ball.Charge = 0f; game.Cam.SetZoom(1f); }
 
             if (Hp <= 0f) Die();
         }

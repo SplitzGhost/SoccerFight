@@ -40,6 +40,9 @@ namespace SoccerFight
         public static readonly Color ShotCyan = Hex("#5CF0FF");
         public static readonly Color ShotCore = Hex("#E8FDFF");
         public static readonly Color Gold = Hex("#FFD66B");
+        public static readonly Color PowerGold = Hex("#FFC24A");
+        public static readonly Color DashMint = Hex("#8CFFD9");
+        public static readonly Color BlastOrange = Hex("#FF8440");
         public static readonly Color HitWhite = Hex("#FFFFFF");
         public static readonly Color Hurt = Hex("#FF3B5C");
 

@@ -75,6 +75,7 @@ namespace SoccerFight
             else if (scenario == "moves") yield return Moves();
             else if (scenario == "portrait") yield return Portrait();
             else if (scenario == "platforms") yield return Platforms();
+            else if (scenario == "skills") yield return Skills();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -335,6 +336,80 @@ namespace SoccerFight
             yield return Shot("pl15_right_high");
             G.Cam.ClearOverride();
             G.Hud.SetVisible(true);
+        }
+
+        /// <summary>Power shot through a line of monsters, step-over dash through them, bicycle-kick blast.</summary>
+        IEnumerator Skills()
+        {
+            Aim(new Vector2(5f, 0.8f));
+            yield return Seconds(1f);
+
+            // A — power shot pierces three blobs
+            var p1 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3f, 0f));
+            var p2 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(4.4f, 0f));
+            var p3 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(5.8f, 0f));
+            yield return Frames(12);
+            Aim(new Vector2(9f, 0.35f));
+            GameInput.PowerPressed = true;
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0.4f, 0.9f), 1.3f); yield return Frames(1); }
+            EndSheet("s01_power_sheet");
+            yield return Shot("s02_power_pierce");
+            Debug.Log($"[Capture] power shot hp: {p1.Hp:0} {p2.Hp:0} {p3.Hp:0}");
+            yield return Seconds(1.2f);
+
+            // B — step-over, then an invulnerable dash through two blobs
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(2.3f, 0f));
+            G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3.5f, 0f));
+            yield return Frames(6);
+            float hpBefore = P.Hp;
+            Move(1f);
+            GameInput.StepOverPressed = true;
+            BeginSheet(6, 3);
+            for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.6f, 0.9f), 1.6f); yield return Frames(1); }
+            EndSheet("s03_stepover_sheet");
+            Move(0f);
+            Debug.Log($"[Capture] step-over hp: {hpBefore:0} -> {P.Hp:0}");
+            yield return Shot("s04_stepover_after");
+            yield return Seconds(0.8f);
+
+            // C — bicycle kick at the top of a jump; the ball blows up on the blobs ahead. Start on open
+            // pitch (between the low capitals, under the high rock) so it lands on the grass.
+            G.Waves.Restart(999f);
+            P.Pos = new Vector2(-2.2f, 0f);
+            P.Vel = Vector2.zero;
+            P.Facing = 1;
+            G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+            yield return Frames(20);
+            var k1 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3.3f, 0f));
+            var k2 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(4.3f, 0f));
+            yield return Frames(6);
+            GameInput.JumpPressed = true;
+            GameInput.JumpHeld = true;
+            yield return Seconds(0.24f);
+            Aim(new Vector2(3.6f, -2.8f));
+            GameInput.BicyclePressed = true;
+            BeginSheet(6, 3);
+            for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0f, 1.5f), 1.9f); yield return Frames(1); }
+            EndSheet("s05_bicycle_sheet");
+            GameInput.JumpHeld = false;
+            for (int i = 0; i < 120 && G.Ball.St == Ball.State.Blast; i++) yield return null;
+            yield return Frames(3);
+            yield return Shot("s06_bicycle_blast");
+            Debug.Log($"[Capture] bicycle blast at {G.Ball.Pos}, blob hp: {k1.Hp:0} {k2.Hp:0}");
+            yield return Seconds(1.2f);
+            yield return Shot("s07_hud");
+
+            // D — settings page with all ten bindings
+            G.Pause.Open();
+            yield return Frames(40);
+            G.Pause.OpenSettings();
+            yield return Frames(40);
+            yield return Shot("s08_settings");
+            G.Pause.Close();
+            yield return Frames(20);
         }
 
         IEnumerator All()

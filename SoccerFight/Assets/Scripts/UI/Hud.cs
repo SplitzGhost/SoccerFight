@@ -52,7 +52,8 @@ namespace SoccerFight
         int shownHp = -1;
         const float BarW = 300f, BarH = 26f, BarInset = 5f;
 
-        Slot shotSlot, flickSlot;
+        Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot;
+        Slot[] slots;
 
         RectTransform cross;
         Image crossArc;
@@ -169,8 +170,13 @@ namespace SoccerFight
             canvasRect = (RectTransform)go.transform;
 
             BuildHealth();
-            shotSlot = BuildSlot("Shot", new Vector2(-200f, 84f), 84f, UiArt.IconShot, UiArt.RingThick, Palette.ShotCyan, true);
-            flickSlot = BuildSlot("Flick", new Vector2(-82f, 92f), 104f, UiArt.IconFlick, UiArt.RingRainbow, Color.white, false);
+            // skill bar, right to left: rainbow flick (the big one), shot, power shot, step-over, bicycle kick
+            flickSlot = BuildSlot("Flick", new Vector2(-82f, 92f), 104f, UiArt.IconFlick, UiArt.RingRainbow, Color.white, GameAction.Flick);
+            shotSlot = BuildSlot("Shot", new Vector2(-198f, 84f), 84f, UiArt.IconShot, UiArt.RingThick, Palette.ShotCyan, GameAction.Shoot);
+            powerSlot = BuildSlot("Power", new Vector2(-296f, 82f), 78f, UiArt.IconPower, UiArt.RingThick, Palette.PowerGold, GameAction.PowerShot);
+            stepSlot = BuildSlot("StepOver", new Vector2(-388f, 82f), 78f, UiArt.IconStepOver, UiArt.RingThick, Palette.DashMint, GameAction.StepOver);
+            bikeSlot = BuildSlot("Bicycle", new Vector2(-480f, 82f), 78f, UiArt.IconBicycle, UiArt.RingThick, Palette.BlastOrange, GameAction.Bicycle);
+            slots = new[] { shotSlot, powerSlot, stepSlot, bikeSlot, flickSlot };
             BuildCrosshair();
             BuildWave();
             BuildJuggle();
@@ -231,12 +237,12 @@ namespace SoccerFight
             hpText = Text("Value", hpGroup, "100", 20f, Palette.UiText, TextAlignmentOptions.Right, new Vector2(barX + BarW - 60f, barY - 27f), new Vector2(120f, 24f));
         }
 
-        Slot BuildSlot(string name, Vector2 pos, float size, Sprite icon, Sprite ringSprite, Color accent, bool mouseKey)
+        Slot BuildSlot(string name, Vector2 pos, float size, Sprite icon, Sprite ringSprite, Color accent, GameAction action)
         {
             var s = new Slot { size = size, accent = accent };
             s.root = Node(name, canvasRect, new Vector2(1f, 0f), pos, new Vector2(size, size));
             Color glass = Palette.UiGlass.WithAlpha(0.88f);
-            s.glow = Img("Glow", s.root, UiArt.Glow, (mouseKey ? accent : Color.white).WithAlpha(0.0f), Vector2.zero, Vector2.one * size * 2f);
+            s.glow = Img("Glow", s.root, UiArt.Glow, accent.WithAlpha(0.0f), Vector2.zero, Vector2.one * size * 2f);
             Img("Shadow", s.root, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.45f), new Vector2(0f, -4f), Vector2.one * size * 1.45f);
             Img("Base", s.root, UiArt.Circle, glass, Vector2.zero, Vector2.one * size);
             s.icon = Img("Icon", s.root, icon, Color.white, Vector2.zero, Vector2.one * size * 0.72f);
@@ -257,7 +263,7 @@ namespace SoccerFight
             s.timer = Text("Timer", s.root, "", size * 0.3f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 1f), new Vector2(size, size * 0.5f));
 
             // key badge (follows the current key binding)
-            s.action = mouseKey ? GameAction.Shoot : GameAction.Flick;
+            s.action = action;
             Vector2 badgePos = new Vector2(0f, -size * 0.5f - 4f);
             s.badgeRim = Img("BadgeRim", s.root, UiArt.Pill, Color.white.WithAlpha(0.16f), badgePos, new Vector2(36f, 28f), Image.Type.Sliced);
             s.badge = Img("Badge", s.root, UiArt.Pill, Palette.UiGlass.WithAlpha(0.97f), badgePos, new Vector2(34f, 26f), Image.Type.Sliced);
@@ -268,23 +274,25 @@ namespace SoccerFight
 
         void RefreshBindings()
         {
-            foreach (var s in new[] { shotSlot, flickSlot })
+            foreach (var s in slots)
             {
                 var b = KeyBindings.Get(s.action);
-                bool leftMouse = b.Mouse && b.Button == 0;
-                s.mouseIcon.gameObject.SetActive(leftMouse);
-                s.keyText.gameObject.SetActive(!leftMouse);
+                bool mouse = b.Mouse && b.Button <= 1;   // left or right button: draw the mouse
+                s.mouseIcon.gameObject.SetActive(mouse);
+                s.mouseIcon.sprite = b.Button == 1 ? UiArt.IconMouseRight : UiArt.IconMouse;
+                s.keyText.gameObject.SetActive(!mouse);
                 string label = KeyBindings.ShortName(s.action);
                 s.keyText.text = label;
-                float w = leftMouse ? 34f : Mathf.Max(30f, 16f + label.Length * 11f);
+                float w = mouse ? 34f : Mathf.Max(30f, 16f + label.Length * 11f);
                 s.badge.rectTransform.sizeDelta = new Vector2(w, 26f);
                 s.badgeRim.rectTransform.sizeDelta = new Vector2(w + 2f, 28f);
             }
             if (hintText != null)
                 hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN    "
                     + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN    " + KeyBindings.DisplayName(GameAction.Down) + "  RUNTER    "
-                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    "
-                    + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK    " + KeyBindings.DisplayName(GameAction.Juggle) + "  HOCHHALTEN    ESC  PAUSE";
+                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    " + KeyBindings.DisplayName(GameAction.Juggle) + "  HOCHHALTEN    ESC  PAUSE\n"
+                    + KeyBindings.DisplayName(GameAction.PowerShot) + "  POWER-SCHUSS    " + KeyBindings.DisplayName(GameAction.StepOver) + "  ÜBERSTEIGER    "
+                    + KeyBindings.DisplayName(GameAction.Bicycle) + "  FALLRÜCKZIEHER (IN DER LUFT)    " + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK";
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -347,9 +355,10 @@ namespace SoccerFight
             deathSub = Text("Sub", death, "", 22f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -30f), new Vector2(900f, 30f), false, true, 4f);
             Text("Restart", death, "[ ENTER ]  NEUSTART", 18f, Palette.ShotCyan, TextAlignmentOptions.Center, new Vector2(0f, -86f), new Vector2(900f, 30f), true, true, 6f);
 
-            var hint = Node("Hint", canvasRect, new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(1500f, 30f));
+            // two lines (moves, then skills), shifted left so they clear the skill bar
+            var hint = Node("Hint", canvasRect, new Vector2(0.5f, 0f), new Vector2(-150f, 58f), new Vector2(1300f, 56f));
             hintGroup = hint.gameObject.AddComponent<CanvasGroup>();
-            hintText = Text("HintText", hint, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1500f, 30f), true, true, 2.5f);
+            hintText = Text("HintText", hint, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1300f, 56f), true, true, 2.5f);
             RefreshBindings();
             KeyBindings.Changed += RefreshBindings;
 
@@ -363,6 +372,12 @@ namespace SoccerFight
 
         public void OnShotUsed() { shotSlot.popVel -= 6f; crossPunchVel += 9f; }
         public void OnFlickUsed() { flickSlot.popVel -= 7f; }
+
+        public void OnSkillUsed(GameAction action)
+        {
+            foreach (var s in slots) if (s.action == action) s.popVel -= 7f;
+            if (action == GameAction.PowerShot) crossPunchVel += 12f;
+        }
 
         public void OnPlayerDamaged(float amount)
         {
@@ -466,8 +481,12 @@ namespace SoccerFight
 
             UpdateHealth(dt);
             bool juggling = player.CurrentAction == Player.Action.Juggle;
-            UpdateSlot(shotSlot, player.ShotCd, Player.ShotCooldown, player.Ball.IsHeld && !player.Dead && !juggling, dt, false);
-            UpdateSlot(flickSlot, player.FlickCd, Player.FlickCooldown, player.Ball.IsHeld && player.Grounded && !player.Dead && !juggling, dt, true);
+            bool withBall = player.Ball.IsHeld && !player.Dead && !juggling;
+            UpdateSlot(shotSlot, player.ShotCd, Player.ShotCooldown, withBall, dt, false);
+            UpdateSlot(powerSlot, player.PowerCd, Player.PowerCooldown, withBall && player.Grounded, dt, false);
+            UpdateSlot(stepSlot, player.StepOverCd, Player.StepOverCooldown, player.Grounded && !player.Dead && !juggling, dt, false);
+            UpdateSlot(bikeSlot, player.BicycleCd, Player.BicycleCooldown, withBall && !player.Grounded, dt, false);
+            UpdateSlot(flickSlot, player.FlickCd, Player.FlickCooldown, withBall && player.Grounded, dt, true);
             UpdateCrosshair(dt);
             UpdateWave(dt);
             UpdateJuggle(dt);

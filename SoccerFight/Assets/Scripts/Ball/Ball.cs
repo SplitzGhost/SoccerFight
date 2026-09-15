@@ -9,22 +9,28 @@ namespace SoccerFight
     /// </summary>
     public sealed class Ball
     {
-        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning }
+        // Pierce: power shot that flies straight through every monster. Blast: bicycle kick that
+        // explodes on the first thing it touches.
+        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast }
 
         public State St { get; private set; } = State.Held;
         public Vector2 Pos;
         public Vector2 Vel;
         public bool IsHeld => St == State.Held || St == State.Scripted;
         public bool IsHeldFree => St == State.Held;
-        public bool IsDangerous => St == State.Shot || St == State.Rainbow || (St == State.Returning && Vel.magnitude > 9f);
+        public bool IsDangerous => St == State.Shot || St == State.Rainbow || St == State.Pierce || St == State.Blast
+                                   || (St == State.Returning && Vel.magnitude > 9f);
         public bool IsRainbow => St == State.Rainbow;
         /// <summary>Scripted by the player's keep-ups: drawn in front and spun by each touch.</summary>
         public bool JuggleMode;
+        /// <summary>Power-shot wind-up (0..1): the held ball gathers a golden glow.</summary>
+        public float Charge;
         const float R = Art.BallRadius;
 
         Transform root, stretch, spinNode;
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
-        TrailRenderer shotTrail, rainbowTrail;
+        TrailRenderer shotTrail, rainbowTrail, heavyTrail;
+        Gradient pierceGradient, blastGradient;
         float spin, spinVel;
         float stateTime;
         float squash, squashVel;
@@ -80,6 +86,21 @@ namespace SoccerFight
                 new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.85f, 0.5f), new GradientAlphaKey(0f, 1f) });
             rainbowTrail.colorGradient = rg;
             rainbowTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 0.7f), new Keyframe(0.12f, 1f), new Keyframe(1f, 0.75f));
+
+            // one wide trail for the heavy shots, recoloured per flight
+            heavyTrail = MakeTrail("HeavyTrail", Art.TrailShotMat, 0.3f, R * 2.6f, order - 3);
+            heavyTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.35f, 0.7f), new Keyframe(1f, 0f));
+            pierceGradient = TrailGradient(Color.white, Palette.PowerGold, new Color(1f, 0.45f, 0.2f));
+            blastGradient = TrailGradient(new Color(1f, 0.95f, 0.8f), Palette.BlastOrange, new Color(0.75f, 0.15f, 0.2f));
+        }
+
+        static Gradient TrailGradient(Color head, Color mid, Color tail)
+        {
+            var g = new Gradient();
+            g.SetKeys(
+                new[] { new GradientColorKey(head, 0f), new GradientColorKey(mid, 0.3f), new GradientColorKey(tail, 1f) },
+                new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.75f, 0.35f), new GradientAlphaKey(0f, 1f) });
+            return g;
         }
 
         TrailRenderer MakeTrail(string name, Material mat, float time, float width, int sortingOrder)
@@ -120,9 +141,11 @@ namespace SoccerFight
             Vel = Vector2.zero;
             stateTime = 0f;
             JuggleMode = false;
+            Charge = 0f;
             shotTrail.Clear();
             rainbowTrail.Clear();
-            shotTrail.emitting = rainbowTrail.emitting = false;
+            heavyTrail.Clear();
+            shotTrail.emitting = rainbowTrail.emitting = heavyTrail.emitting = false;
             root.position = p;
         }
 
@@ -146,7 +169,34 @@ namespace SoccerFight
             squashVel += 6f;
         }
 
+        /// <summary>Power shot: dead straight and fast, passes through monsters (each is hit once).</summary>
+        public void Pierce(Vector2 velocity, int fromPlatform = Level.None)
+        {
+            Kick(velocity, fromPlatform);
+            Enter(State.Pierce);
+            heavyTrail.colorGradient = pierceGradient;
+            heavyTrail.Clear();
+            squashVel += 4f;
+        }
+
+        /// <summary>Bicycle kick: a heavy shot that explodes on the first surface or monster it meets.</summary>
+        public void Blast(Vector2 velocity)
+        {
+            Kick(velocity);
+            Enter(State.Blast);
+            heavyTrail.colorGradient = blastGradient;
+            heavyTrail.Clear();
+        }
+
         public void BeginScripted() { Enter(State.Scripted); }
+
+        /// <summary>Back to the feet after a move that carried the ball.</summary>
+        public void EndScripted()
+        {
+            if (St != State.Scripted) return;
+            JuggleMode = false;
+            Enter(State.Held);
+        }
 
         public void Release() { Enter(State.Loose); Vel = new Vector2(0f, 3f); }
 
@@ -212,6 +262,41 @@ namespace SoccerFight
         /// <summary>Was this monster already hit during the current flight?</summary>
         public bool TryRegisterHit(int monsterId) => hitIds.Add(monsterId);
 
+        /// <summary>Bicycle-kick blast: area damage and a big burst where the ball comes down.</summary>
+        public void Explode()
+        {
+            if (St != State.Blast) return;
+            var game = Game.I;
+            var fx = FxSystem.I;
+            Vector2 p = Pos;
+            game.Waves.Blast(p, Player.BlastRadius, Player.BlastDamage);
+
+            fx.Flash(p, 5f, Palette.BlastOrange, 0.24f, 2.6f);
+            fx.Flash(p, 2.4f, Color.white, 0.1f, 3.2f);
+            fx.Ring(FxLayer.Front, p, 0.3f, Player.BlastRadius * 1.1f, 0.55f, 0.03f, 0.45f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.6f);
+            fx.Ring(FxLayer.Front, p, 0.15f, Player.BlastRadius * 0.65f, 0.3f, 0.02f, 0.3f, Palette.Gold, Palette.Hurt.WithAlpha(0f), 2.4f);
+            fx.Sparks(p, Vector2.up, 200f, 26, 6f, 16f, Palette.BlastOrange, 2.8f, 0.06f, 0.42f, 14f);
+            for (int i = 0; i < 18; i++)
+            {
+                float ang = Random.Range(8f, 172f);
+                Color c = Color.Lerp(Palette.Gold, Palette.BlastOrange, Random.value);
+                fx.Streak(FxLayer.Front, p, MathUtil.Dir(ang) * Random.Range(7f, 16f), Random.Range(0.25f, 0.5f), 0.08f, 0.045f,
+                    Color.Lerp(c, Color.white, 0.35f), c.WithAlpha(0f), 2.8f, 3.5f, 10f);
+            }
+            fx.Dust(p, Vector2.right, 9, 3.6f, 0.65f, 0.42f);
+            fx.Dust(p, Vector2.left, 9, 3.6f, 0.65f, 0.42f);
+            fx.Sparkles(p + Vector2.up * 0.5f, 1.4f, 12, Palette.Gold, 3f, 0.8f);
+
+            game.Cam.AddTrauma(0.6f);
+            game.Cam.Kick(new Vector2(0f, -0.35f));
+            game.Post.Impact(0.8f);
+            TimeFx.HitStop(0.08f, 0.04f);
+
+            Vel = new Vector2(-Mathf.Sign(Vel.x) * 1.5f, 8f);
+            Enter(State.Loose);
+            squashVel -= 10f;
+        }
+
         public void BounceOff(Vector2 normal)
         {
             // deflect off a monster, lose energy, then come home
@@ -256,6 +341,23 @@ namespace SoccerFight
                     Pos += Vel * dt;
                     CollideWorld(0.55f);
                     if (stateTime > 0.4f || Vel.sqrMagnitude < 36f) Enter(State.Returning);
+                    break;
+                }
+                case State.Pierce:
+                {
+                    // no gravity and no bounce off monsters; floors deflect it, the arena wall ends it
+                    Pos += Vel * dt;
+                    CollideWorld(0.85f);
+                    if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) Enter(State.Returning);
+                    break;
+                }
+                case State.Blast:
+                {
+                    Vel.y -= 20f * dt;
+                    Pos += Vel * dt;
+                    float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f);
+                    if (Pos.y <= floor + R) { Pos.y = floor + R; Explode(); }
+                    else if (Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.6f || Pos.y > 12f || stateTime > 1.6f) Explode();
                     break;
                 }
                 case State.Rainbow:
@@ -400,7 +502,15 @@ namespace SoccerFight
                 case State.Rainbow: glowCol = Art.Rainbow(Mathf.PingPong(hueT, 1f)); glowA = 0.55f; glowSize = 1.15f; coreA = 0.5f; break;
                 case State.Returning: glowCol = Palette.ShotCyan; glowA = 0.38f; glowSize = 1.1f; coreA = 0.2f; break;
                 case State.Loose: glowCol = Palette.ShotCyan; glowA = 0.28f; glowSize = 1f; break;
+                case State.Pierce: glowCol = Palette.PowerGold; glowA = 0.85f; glowSize = 1.6f; coreA = 0.7f; break;
+                case State.Blast: glowCol = Palette.BlastOrange; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
                 default: glowCol = Palette.ShotCyan; glowA = 0.06f + 0.03f * Mathf.Sin(Time.time * 3f); glowSize = 0.85f; break;
+            }
+            if (Charge > 0f && IsHeld)
+            {
+                // wind-up of the power shot: gold glow swells and flickers faster as it fills
+                float c = Charge * (0.85f + 0.15f * Mathf.Sin(Time.time * 40f));
+                glowCol = Palette.PowerGold; glowA = 0.15f + 0.65f * c; glowSize = 0.9f + 0.7f * c; coreA = 0.55f * c;
             }
             glow.color = Color.Lerp(glow.color, glowCol.WithAlpha(glowA), 1f - Mathf.Exp(-14f * dt));
             glow.transform.localScale = Vector3.one * Mathf.Lerp(glow.transform.localScale.x, glowSize, 1f - Mathf.Exp(-12f * dt));
@@ -408,6 +518,14 @@ namespace SoccerFight
 
             shotTrail.emitting = St == State.Shot || (St == State.Returning && speed > 7f) || (St == State.Loose && speed > 7f);
             rainbowTrail.emitting = St == State.Rainbow;
+            heavyTrail.emitting = St == State.Pierce || St == State.Blast;
+
+            // heavy shots shed embers along their path
+            if ((St == State.Pierce || St == State.Blast) && Random.value < dt * 45f && speed > 1f)
+            {
+                Color c = St == State.Pierce ? Palette.PowerGold : Palette.BlastOrange;
+                FxSystem.I.Sparks(Pos, -delta.normalized, 35f, 1, 1.5f, 4.5f, c, 2.4f, 0.035f, 0.2f, St == State.Blast ? 6f : 0f);
+            }
 
             // sorting: tuck between the legs while the flick rolls it up the calf
             SetOrder(St == State.Scripted && !JuggleMode ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront);

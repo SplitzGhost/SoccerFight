@@ -4,7 +4,7 @@ using UnityEngine.InputSystem.Controls;
 
 namespace SoccerFight
 {
-    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down }
+    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down, PowerShot, StepOver, Bicycle }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -21,7 +21,11 @@ namespace SoccerFight
     /// <summary>Rebindable controls, persisted in PlayerPrefs. Binding an input that is already used swaps them.</summary>
     public static class KeyBindings
     {
-        public static readonly GameAction[] All = { GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot, GameAction.Flick, GameAction.Juggle };
+        public static readonly GameAction[] All =
+        {
+            GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot,
+            GameAction.PowerShot, GameAction.StepOver, GameAction.Bicycle, GameAction.Flick, GameAction.Juggle
+        };
         static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
 
@@ -40,6 +44,9 @@ namespace SoccerFight
                 case GameAction.Shoot: return "SCHUSS";
                 case GameAction.Flick: return "RAINBOW FLICK";
                 case GameAction.Down: return "DURCHFALLEN";
+                case GameAction.PowerShot: return "POWER-SCHUSS";
+                case GameAction.StepOver: return "ÜBERSTEIGER";
+                case GameAction.Bicycle: return "FALLRÜCKZIEHER";
                 default: return "BALL HOCHHALTEN";
             }
         }
@@ -54,6 +61,9 @@ namespace SoccerFight
                 case GameAction.Shoot: return Binding.M(0);
                 case GameAction.Flick: return Binding.K(Key.R);
                 case GameAction.Down: return Binding.K(Key.S);
+                case GameAction.PowerShot: return Binding.M(1);
+                case GameAction.StepOver: return Binding.K(Key.E);
+                case GameAction.Bicycle: return Binding.K(Key.Q);
                 default: return Binding.K(Key.LeftShift);
             }
         }

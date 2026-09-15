@@ -26,6 +26,9 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | Leertaste | Springen (länger halten = höher), auch durch Plattformen hindurch nach oben |
 | S | Durch die Plattform unter dir nach unten fallen (in der Luft gehalten: durch alle Plattformen) |
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
+| Rechtsklick | Power-Schuss (nur im Stand, Cooldown 4 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (9 statt 14) |
+| E | Übersteiger (am Boden, Cooldown 3,5 s): Fuß kreist über den Ball, dann ein Dash (~5 m) in Blick- oder Laufrichtung. Während des ganzen Moves unverwundbar, der Ball wird mitgenommen |
+| Q | Fallrückzieher (nur in der Luft, Cooldown 5 s): Rückwärtssalto mit Scherenschlag, harter Schuss Richtung Mauszeiger. Der Ball explodiert beim ersten Aufprall auf Boden, Plattform oder Gegner (Flächenschaden) |
 | R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
 | Shift | Ball hochhalten: drücken, wenn der Ball in den Ring fällt. Jede Berührung heilt ein wenig (perfekt = mehr, alle 10 ein Bonus). Zu früh oder zu spät und der Ball fällt, das Zeitfenster wird mit jeder Berührung enger. Währenddessen kein Laufen und kein Schuss |
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Beenden) |
@@ -33,7 +36,7 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | F2 | VSync an/aus (aus = unbegrenzte FPS) |
 | Enter | Neustart nach Niederlage |
 
-Laufen, Springen, Durchfallen, Schuss, Rainbow Flick und Hochhalten lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
+Alle zehn Aktionen (Laufen, Springen, Durchfallen, Schuss, Power-Schuss, Übersteiger, Fallrückzieher, Rainbow Flick, Hochhalten) lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
 (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build), VSync, FPS-Anzeige, Bildschirmwackeln,
 Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 
@@ -71,7 +74,8 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Timing von Schuss & Flick:** `KickWindup/KickContact/...` und `FlickSet/FlickRoll/...` in `Player.cs`
 - **Hochhalten:** `Juggle*`-Konstanten in `Player.cs` (Zeitfenster, Heilung, Flughöhen, Reihenfolge Fuß/Knie/Kopf)
 - **Luft-Rückstoß:** `AirKickBoost` / `BoostControlTime` in `Player.cs`
-- **Posen:** `PoseKick` / `PoseFlick` / `PoseJuggle` in `PlayerRig.cs`
+- **Skills:** `Power*`, `StepOver*`/`DashTime`/`DashSpeed`, `Bicycle*`/`Blast*` in `Player.cs` (Timing, Cooldowns, Schaden, Explosionsradius)
+- **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
 - **Spieler-Look:** Formen in `PlayerArt.cs`, Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`

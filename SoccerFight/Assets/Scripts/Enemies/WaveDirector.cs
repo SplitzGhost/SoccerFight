@@ -137,7 +137,15 @@ namespace SoccerFight
                     if (d.sqrMagnitude < r * r && ball.TryRegisterHit(m.Id))
                     {
                         Vector2 dir = ball.Vel.sqrMagnitude > 0.01f ? ball.Vel.normalized : -d.normalized;
-                        if (ball.IsRainbow)
+                        if (ball.St == Ball.State.Blast)
+                        {
+                            ball.Explode();   // the blast hits this monster and everything around it
+                        }
+                        else if (ball.St == Ball.State.Pierce)
+                        {
+                            m.Hit(Player.PowerDamage, dir, 4.5f, true);   // keeps flying: no bounce
+                        }
+                        else if (ball.IsRainbow)
                         {
                             m.Hit(RainbowPassDamage, dir, 5f, true);
                         }
@@ -206,6 +214,21 @@ namespace SoccerFight
             swirl.transform.localRotation = Quaternion.Euler(0f, 0f, portalSpin * (1f + c));
             float s = 0.75f + 0.25f * c + 0.03f * Mathf.Sin(portalSpin * 0.05f);
             swirl.transform.localScale = new Vector3(s, s, 1f);
+        }
+
+        /// <summary>Bicycle-kick explosion: falloff damage and an outward, upward shove.</summary>
+        public void Blast(Vector2 p, float radius, float damage)
+        {
+            foreach (var m in monsters)
+            {
+                if (!m.Alive) continue;
+                Vector2 d = m.Center - p;
+                float dist = d.magnitude;
+                if (dist > radius + m.Radius) continue;
+                float falloff = Mathf.Lerp(1f, 0.5f, Mathf.Clamp01(dist / radius));
+                Vector2 dir = (dist > 0.01f ? d / dist : Vector2.up) + Vector2.up * 0.6f;
+                m.Hit(Mathf.Round(damage * falloff), dir, 9f, true);
+            }
         }
 
         public void RainbowImpact(Vector2 p)

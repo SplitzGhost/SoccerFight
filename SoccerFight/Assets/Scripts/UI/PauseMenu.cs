@@ -98,42 +98,43 @@ namespace SoccerFight
 
         void BuildSettings(RectTransform root)
         {
-            settingsPanel = Panel(root, "Settings", new Vector2(1060f, 680f), out settingsGroup);
-            UiKit.Label("Title", settingsPanel, "EINSTELLUNGEN", 34f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 290f), new Vector2(1000f, 50f), true, 14f);
-            UiKit.Img("Divider", settingsPanel, UiArt.LineFade, Color.white.WithAlpha(0.1f), new Vector2(0f, -10f), new Vector2(440f, 2f)).rectTransform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            // tall enough for ten key rows next to the display/effects column
+            settingsPanel = Panel(root, "Settings", new Vector2(1060f, 840f), out settingsGroup);
+            UiKit.Label("Title", settingsPanel, "EINSTELLUNGEN", 34f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 366f), new Vector2(1000f, 50f), true, 14f);
+            UiKit.Img("Divider", settingsPanel, UiArt.LineFade, Color.white.WithAlpha(0.1f), new Vector2(0f, 20f), new Vector2(600f, 2f)).rectTransform.localRotation = Quaternion.Euler(0f, 0f, 90f);
 
             const float colW = 400f;
             float lx = -255f, rx = 255f;
 
-            UiKit.Section(settingsPanel, "ANZEIGE", new Vector2(lx, 214f), colW);
-            firstSettings = UiKit.MakeToggle(settingsPanel, "VOLLBILD", new Vector2(lx, 166f), colW,
+            UiKit.Section(settingsPanel, "ANZEIGE", new Vector2(lx, 294f), colW);
+            firstSettings = UiKit.MakeToggle(settingsPanel, "VOLLBILD", new Vector2(lx, 246f), colW,
                 () => GameSettings.Fullscreen, v => { GameSettings.Fullscreen = v; ApplySettings(); });
-            UiKit.MakeToggle(settingsPanel, "VSYNC", new Vector2(lx, 118f), colW,
+            UiKit.MakeToggle(settingsPanel, "VSYNC", new Vector2(lx, 198f), colW,
                 () => GameSettings.VSync, v => { GameSettings.VSync = v; ApplySettings(); });
-            UiKit.MakeToggle(settingsPanel, "FPS ANZEIGEN", new Vector2(lx, 70f), colW,
+            UiKit.MakeToggle(settingsPanel, "FPS ANZEIGEN", new Vector2(lx, 150f), colW,
                 () => GameSettings.ShowFps, v => { GameSettings.ShowFps = v; ApplySettings(); });
 
-            UiKit.Section(settingsPanel, "EFFEKTE", new Vector2(lx, 6f), colW);
-            UiKit.MakeSlider(settingsPanel, "BILDSCHIRMWACKELN", new Vector2(lx, -48f), colW, 0f, 1.5f,
+            UiKit.Section(settingsPanel, "EFFEKTE", new Vector2(lx, 86f), colW);
+            UiKit.MakeSlider(settingsPanel, "BILDSCHIRMWACKELN", new Vector2(lx, 32f), colW, 0f, 1.5f,
                 () => GameSettings.ScreenShake, v => { GameSettings.ScreenShake = v; GameSettings.Save(); }, v => Mathf.RoundToInt(v * 100f) + "%");
-            UiKit.MakeSlider(settingsPanel, "LEUCHTEN (BLOOM)", new Vector2(lx, -118f), colW, 0f, 1.5f,
+            UiKit.MakeSlider(settingsPanel, "LEUCHTEN (BLOOM)", new Vector2(lx, -38f), colW, 0f, 1.5f,
                 () => GameSettings.Bloom, v => { GameSettings.Bloom = v; GameSettings.Save(); }, v => Mathf.RoundToInt(v * 100f) + "%");
-            UiKit.MakeToggle(settingsPanel, "FARBSAUM-EFFEKT", new Vector2(lx, -180f), colW,
+            UiKit.MakeToggle(settingsPanel, "FARBSAUM-EFFEKT", new Vector2(lx, -100f), colW,
                 () => GameSettings.ChromaticAberration, v => { GameSettings.ChromaticAberration = v; ApplySettings(); });
 
-            UiKit.Section(settingsPanel, "STEUERUNG", new Vector2(rx, 214f), colW);
-            float y = 166f;
+            UiKit.Section(settingsPanel, "STEUERUNG", new Vector2(rx, 294f), colW);
+            float y = 248f;
             foreach (var a in KeyBindings.All)
             {
                 var action = a;
                 keyRows[a] = UiKit.MakeKeyRow(settingsPanel, KeyBindings.ActionName(a), new Vector2(rx, y), colW, () => BeginCapture(action));
-                y -= 46f;
+                y -= 44f;
             }
-            UiKit.MakeButton(settingsPanel, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 16f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
-            UiKit.Label("KeyHint", settingsPanel, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 60f), new Vector2(colW, 20f), true, 4f);
-            UiKit.Label("Pause", settingsPanel, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 84f), new Vector2(colW, 20f), true, 4f);
+            UiKit.MakeButton(settingsPanel, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 14f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
+            UiKit.Label("KeyHint", settingsPanel, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 56f), new Vector2(colW, 20f), true, 4f);
+            UiKit.Label("Pause", settingsPanel, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 78f), new Vector2(colW, 20f), true, 4f);
 
-            UiKit.MakeButton(settingsPanel, "ZURÜCK", new Vector2(0f, -284f), new Vector2(280f, 54f), () => ShowSettings(false), true);
+            UiKit.MakeButton(settingsPanel, "ZURÜCK", new Vector2(0f, -354f), new Vector2(280f, 54f), () => ShowSettings(false), true);
             RefreshKeys();
         }
 

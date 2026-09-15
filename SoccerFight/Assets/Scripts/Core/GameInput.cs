@@ -17,6 +17,9 @@ namespace SoccerFight
         public static bool ShootPressed;
         public static bool FlickPressed;
         public static bool JugglePressed;
+        public static bool PowerPressed;
+        public static bool StepOverPressed;
+        public static bool BicyclePressed;
         public static bool RestartPressed;
         public static bool PausePressed;
         public static bool ToggleFps;
@@ -34,7 +37,8 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
+            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -56,6 +60,7 @@ namespace SoccerFight
             {
                 MoveX = 0f;
                 JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
+                PowerPressed = StepOverPressed = BicyclePressed = false;
             }
             else
             {
@@ -70,6 +75,9 @@ namespace SoccerFight
                 ShootPressed = KeyBindings.WasPressed(GameAction.Shoot);
                 FlickPressed = KeyBindings.WasPressed(GameAction.Flick);
                 JugglePressed = KeyBindings.WasPressed(GameAction.Juggle);
+                PowerPressed = KeyBindings.WasPressed(GameAction.PowerShot);
+                StepOverPressed = KeyBindings.WasPressed(GameAction.StepOver);
+                BicyclePressed = KeyBindings.WasPressed(GameAction.Bicycle);
             }
 
             if (cam != null)
@@ -83,6 +91,7 @@ namespace SoccerFight
         public static void ClearEdges()
         {
             JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            PowerPressed = StepOverPressed = BicyclePressed = false;
         }
     }
 }

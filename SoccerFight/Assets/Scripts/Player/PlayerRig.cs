@@ -60,6 +60,9 @@ namespace SoccerFight
         float tuck;
         Vector2 touchAt;
 
+        // whole-body rotation around the hip (bicycle-kick backflip), degrees, positive = backwards
+        float spin;
+
         // outputs
         public Vector2 BallHold { get; private set; }
         public Vector2 BallScripted { get; private set; }
@@ -135,7 +138,7 @@ namespace SoccerFight
             squashX = squashY = 1f; idleTime = 0f; footOnBall = 0f;
             runBlendVel = moveBlendVel = airBlendVel = leanVel = headTiltVel = squashXVel = squashYVel = 0f;
             hipDip = hipDipVel = 0f; tuftAngle = tuftVel = 0f; flashTimer = 0f;
-            visFacing = player.Facing; turnT = 99f; skid = skidVel = 0f; tuck = 0f;
+            visFacing = player.Facing; turnT = 99f; skid = skidVel = 0f; tuck = 0f; spin = 0f;
             for (int i = 0; i < Parts.Count; i++)
             {
                 Parts[i].sharedMaterial = partMats[i];
@@ -177,6 +180,10 @@ namespace SoccerFight
             squashYVel += 3.6f * vertical - 1.2f * (1f - vertical);
             tuftVel += 140f;
         }
+
+        public void OnPowerContact() { squashXVel += 2.4f; squashYVel -= 1.6f; hipDipVel -= 0.6f; }
+
+        public void OnDash() { squashXVel += 3f; squashYVel -= 1.4f; tuftVel -= 180f; }
 
         public void OnJuggleTouch(Player.Touch part)
         {
@@ -290,6 +297,15 @@ namespace SoccerFight
             moveBlend = Mathf.Clamp01(moveBlend);
             float air = Mathf.Clamp01(airBlend);
             tuck = Mathf.Max(0f, tuck - dt * 2.6f);
+
+            // backflip angle: scripted during the bicycle kick; a flip cut short by landing spins on
+            // to upright instead of snapping back
+            if (player.CurrentAction == Player.Action.Bicycle) spin = BicycleSpin(player.ActionTime);
+            else if (spin != 0f)
+            {
+                spin = Mathf.MoveTowards(spin, spin > 180f ? 360f : 0f, 1500f * dt);
+                if (spin >= 360f || spin <= 0f) spin = 0f;
+            }
 
             if (speed01 < 0.05f && grounded && !acting) idleTime += dt; else idleTime = 0f;
             float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree ? 1f : 0f;
@@ -415,9 +431,28 @@ namespace SoccerFight
             float t = player.ActionTime;
             if (player.CurrentAction == Player.Action.Kick)
             {
-                PoseKick(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
+                PoseKick(t, Player.KickWindup, Player.KickContact, Player.KickFollow, Player.KickDuration, 0f, hipY, air,
+                    ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref extraHipY);
                 if (t < Player.KickContact) ballLocal = player.KickBallLocal;
+            }
+            else if (player.CurrentAction == Player.Action.Power)
+            {
+                PoseKick(t, Player.PowerWindup, Player.PowerContact, Player.PowerFollow, Player.PowerDuration, 1f, hipY, air,
+                    ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref extraHipY);
+                if (t < Player.PowerContact) ballLocal = player.KickBallLocal;
+            }
+            else if (player.CurrentAction == Player.Action.StepOver)
+            {
+                PoseStepOver(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
+            }
+            else if (player.CurrentAction == Player.Action.Bicycle)
+            {
+                PoseBicycle(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref ballLocal);
             }
             else if (player.CurrentAction == Player.Action.Flick)
             {
@@ -444,6 +479,12 @@ namespace SoccerFight
 
             float hy = hipY + extraHipY;
             Vector2 hip = new Vector2(0f, hy);
+
+            // backflip: rotate the whole body around the hip (the angle flips with the mirror)
+            float sp = spin * facing;
+            Vector2 rp = MathUtil.Rotate(hip, sp);
+            flip.localRotation = Z(sp);
+            flip.localPosition = new Vector3(hip.x - rp.x, hip.y - rp.y, 0f);
             float torsoRot = lean + torsoTwist;
             Place(torso, hip, torsoRot);
             Place(pelvis, hip, torsoRot * 0.35f);
@@ -472,8 +513,10 @@ namespace SoccerFight
             Vector2 rootW = player.Pos;
             BallHold = rootW + new Vector2(ballLocal.x * facing, ballLocal.y);
             if (BallIsScripted) BallScripted = BallHold;
-            NearFootWorld = rootW + new Vector2(nearFoot.x * facing, nearFoot.y);
-            HeadWorld = rootW + new Vector2(headPos.x * facing, headPos.y + 0.2f);
+            Vector2 footBody = hip + MathUtil.Rotate(nearFoot - hip, spin);
+            Vector2 headBody = hip + MathUtil.Rotate(headPos + new Vector2(0f, 0.2f) - hip, spin);
+            NearFootWorld = rootW + new Vector2(footBody.x * facing, footBody.y);
+            HeadWorld = rootW + new Vector2(headBody.x * facing, headBody.y);
 
             // --- contact shadow on whatever surface is below (pitch or platform)
             float floor = player.GroundY;
@@ -489,7 +532,10 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ kick
 
-        void PoseKick(float t, float hipY, float air, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+        /// <summary>Shot and power shot share one pendulum swing; power (0..1) winds further back,
+        /// leans harder into it and follows through higher.</summary>
+        void PoseKick(float t, float tWind, float tContact, float tFollow, float tEnd, float power, float hipY, float air,
+            ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
             ref Vector2 farFoot, ref float farFlat,
             ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
             ref float leanTarget, ref float extraHipY)
@@ -503,34 +549,34 @@ namespace SoccerFight
             Vector2 cRel = contactPos - hip;
             float contactAng = MathUtil.Angle(cRel);
             float contactRad = Mathf.Min(cRel.magnitude, 0.79f);
-            const float windAng = -128f, windRad = 0.56f;
-            float followAng = Mathf.Clamp(aimAng * 0.75f - 22f, -62f, 38f);
+            float windAng = Mathf.Lerp(-128f, -150f, power), windRad = Mathf.Lerp(0.56f, 0.66f, power);
+            float followAng = Mathf.Clamp(aimAng * 0.75f - 22f + 26f * power, -62f, 38f + 30f * power);
             const float followRad = 0.78f;
 
             Vector2 foot;
             float point;
-            if (t < Player.KickWindup)
+            if (t < tWind)
             {
-                float k = MathUtil.EaseOutCubic(t / Player.KickWindup);
+                float k = MathUtil.EaseOutCubic(t / tWind);
                 Vector2 wind = Polar(hip, windAng, windRad);
                 foot = Vector2.Lerp(nearFoot, wind, k);
                 point = Mathf.Lerp(nearPoint, 0.9f, k);
             }
-            else if (t < Player.KickContact)
+            else if (t < tContact)
             {
-                float k = MathUtil.EaseInQuad((t - Player.KickWindup) / (Player.KickContact - Player.KickWindup));
+                float k = MathUtil.EaseInQuad((t - tWind) / (tContact - tWind));
                 foot = Polar(hip, Mathf.Lerp(windAng, contactAng, k), Mathf.Lerp(windRad, contactRad, k));
                 point = Mathf.Lerp(0.9f, 0.55f, k);
             }
-            else if (t < Player.KickFollow)
+            else if (t < tFollow)
             {
-                float k = MathUtil.EaseOutCubic((t - Player.KickContact) / (Player.KickFollow - Player.KickContact));
+                float k = MathUtil.EaseOutCubic((t - tContact) / (tFollow - tContact));
                 foot = Polar(hip, Mathf.Lerp(contactAng, followAng, k), Mathf.Lerp(contactRad, followRad, k));
                 point = Mathf.Lerp(0.55f, 1f, k);
             }
             else
             {
-                float k = MathUtil.EaseInOutSine((t - Player.KickFollow) / (Player.KickDuration - Player.KickFollow));
+                float k = MathUtil.EaseInOutSine((t - tFollow) / (tEnd - tFollow));
                 foot = Vector2.Lerp(Polar(hip, followAng, followRad), nearFoot, k);
                 point = Mathf.Lerp(1f, nearPoint, k);
             }
@@ -539,19 +585,158 @@ namespace SoccerFight
             nearFlat = 0f;
 
             // plant leg: firm, slightly bent, planted beside the ball (tucked instead when airborne)
-            float plantW = (1f - MathUtil.Smooth01((t - Player.KickFollow) / (Player.KickDuration - Player.KickFollow))) * (1f - air);
-            farFoot = Vector2.Lerp(farFoot, new Vector2(0.05f, PlayerDims.AnkleHeight), plantW);
+            float plantW = (1f - MathUtil.Smooth01((t - tFollow) / (tEnd - tFollow))) * (1f - air);
+            farFoot = Vector2.Lerp(farFoot, new Vector2(0.05f - 0.06f * power, PlayerDims.AnkleHeight), plantW);
             farFlat = Mathf.Lerp(farFlat, 1f, plantW);
 
-            // upper body: lean back into the strike, arms counter-balance
-            float w = MathUtil.Bump(Mathf.Clamp01(t / Player.KickDuration));
-            float strike = MathUtil.Smooth01(t / Player.KickContact) * (1f - MathUtil.Smooth01((t - Player.KickFollow) / 0.16f));
-            leanTarget = Mathf.Lerp(leanTarget, 9f * strike - 5f * MathUtil.Smooth01((t - Player.KickContact) / 0.1f) * (1f - MathUtil.Smooth01((t - Player.KickFollow) / 0.18f)), Mathf.Max(w, strike));
-            farShoulder = Mathf.Lerp(farShoulder, 78f, w);
+            // upper body: lean back into the strike, arms counter-balance (wider for the power shot)
+            float w = MathUtil.Bump(Mathf.Clamp01(t / tEnd));
+            float strike = MathUtil.Smooth01(t / tContact) * (1f - MathUtil.Smooth01((t - tFollow) / 0.16f));
+            float lean = (9f + 7f * power) * strike - (5f + 5f * power) * MathUtil.Smooth01((t - tContact) / 0.1f) * (1f - MathUtil.Smooth01((t - tFollow) / 0.18f));
+            leanTarget = Mathf.Lerp(leanTarget, lean, Mathf.Max(w, strike));
+            farShoulder = Mathf.Lerp(farShoulder, 78f + 30f * power, w);
             farElbow = Mathf.Lerp(farElbow, 30f, w);
-            nearShoulder = Mathf.Lerp(nearShoulder, -52f, w);
-            nearElbow = Mathf.Lerp(nearElbow, 38f, w);
-            extraHipY += 0.035f * MathUtil.Bump(Mathf.Clamp01((t - Player.KickWindup) / 0.16f)) * (1f - air);
+            nearShoulder = Mathf.Lerp(nearShoulder, -52f - 30f * power, w);
+            nearElbow = Mathf.Lerp(nearElbow, 38f - 10f * power, w);
+            // the power shot sinks into the wind-up, then rises through the strike
+            float sink = power * MathUtil.Smooth01(t / tWind) * (1f - MathUtil.Smooth01((t - tWind) / (tContact - tWind)));
+            extraHipY += (0.035f * MathUtil.Bump(Mathf.Clamp01((t - tWind) / 0.16f)) - 0.08f * sink) * (1f - air);
+        }
+
+        // ------------------------------------------------------------------ step-over + dash
+
+        void PoseStepOver(float t, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY, ref Vector2 ballLocal)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float tS = Player.StepOverTime, tD = Player.StepOverTime + Player.DashTime, tE = Player.StepOverDuration;
+            float w = MathUtil.Smooth01(t / 0.06f) * (1f - MathUtil.Smooth01((t - tD) / (tE - tD)));
+
+            Vector2 nf, ff; float nflat, npoint, fflat, fpoint, lean, head, hipOff;
+            float nsh, nel, fsh, fel;
+            Vector2 ball;
+            if (t < tS)
+            {
+                // the near foot circles over the ball: from behind it, up and over, planting beyond it
+                float circleEnd = tS * 0.72f;
+                if (t < circleEnd)
+                {
+                    float k = MathUtil.EaseInOutSine(t / circleEnd);
+                    float ang = Mathf.Lerp(200f, -25f, k) * Mathf.Deg2Rad;
+                    nf = new Vector2(0.42f + Mathf.Cos(ang) * 0.3f, 0.3f + Mathf.Sin(ang) * 0.25f);
+                    nf.y = Mathf.Max(nf.y, A);
+                    nflat = 0f; npoint = 0.45f;
+                }
+                else
+                {
+                    float k = MathUtil.EaseOutCubic((t - circleEnd) / (tS - circleEnd));
+                    Vector2 from = new Vector2(0.42f + Mathf.Cos(-25f * Mathf.Deg2Rad) * 0.3f, Mathf.Max(A, 0.3f + Mathf.Sin(-25f * Mathf.Deg2Rad) * 0.25f));
+                    nf = Vector2.Lerp(from, new Vector2(0.64f, A), k);
+                    nflat = k; npoint = 0.45f * (1f - k);
+                }
+                // the standing leg sinks as the body feints, then loads for the burst
+                float load = MathUtil.Smooth01((t - circleEnd) / (tS - circleEnd));
+                ff = new Vector2(Mathf.Lerp(-0.08f, -0.2f, load), A); fflat = 1f; fpoint = 0f;
+                float sway = Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / circleEnd));
+                lean = Mathf.Lerp(7f * sway, -20f, load);
+                head = Mathf.Lerp(-14f * sway, -6f, load);
+                hipOff = -0.05f * sway - 0.09f * load;
+                nsh = Mathf.Lerp(40f * sway, -30f, load); nel = 40f;
+                fsh = Mathf.Lerp(-30f * sway, 50f, load); fel = 45f;
+                ball = new Vector2(0.42f, Art.BallRadius);
+            }
+            else
+            {
+                // dash: low, long stride frozen mid-sprint, arms swept back
+                float k = MathUtil.Smooth01((t - tS) / 0.05f);
+                nf = Vector2.Lerp(new Vector2(0.64f, A), new Vector2(0.5f, A + 0.06f), k); nflat = 0.2f; npoint = 0.5f;
+                ff = Vector2.Lerp(new Vector2(-0.2f, A), new Vector2(-0.55f, A + 0.16f), k); fflat = 0f; fpoint = 1f;
+                lean = -26f; head = 8f; hipOff = -0.11f;
+                nsh = -70f; nel = 30f; fsh = -88f; fel = 24f;
+                ball = new Vector2(0.72f, Art.BallRadius);
+            }
+
+            nearFoot = Vector2.Lerp(nearFoot, nf, w); nearFlat = Mathf.Lerp(nearFlat, nflat, w); nearPoint = Mathf.Lerp(nearPoint, npoint, w);
+            farFoot = Vector2.Lerp(farFoot, ff, w); farFlat = Mathf.Lerp(farFlat, fflat, w); farPoint = Mathf.Lerp(farPoint, fpoint, w);
+            nearShoulder = Mathf.Lerp(nearShoulder, nsh, w); nearElbow = Mathf.Lerp(nearElbow, nel, w);
+            farShoulder = Mathf.Lerp(farShoulder, fsh, w); farElbow = Mathf.Lerp(farElbow, fel, w);
+            leanTarget = Mathf.Lerp(leanTarget, lean, w);
+            headTarget = Mathf.Lerp(headTarget, head, w);
+            extraHipY += hipOff * w;
+
+            if (player.StepCarry)
+            {
+                ballLocal = t < tD ? ball : Vector2.Lerp(ball, ballLocal, MathUtil.Smooth01((t - tD) / (tE - tD)));
+                BallIsScripted = true;
+            }
+        }
+
+        // ------------------------------------------------------------------ bicycle kick
+
+        /// <summary>Backflip schedule: tip back, whip through the strike, finish the full turn.</summary>
+        static float BicycleSpin(float t)
+        {
+            if (t < Player.BicycleSet) return 70f * MathUtil.EaseInOutSine(t / Player.BicycleSet);
+            if (t < Player.BicycleContact) return Mathf.Lerp(70f, 125f, (t - Player.BicycleSet) / (Player.BicycleContact - Player.BicycleSet));
+            return Mathf.Lerp(125f, 360f, MathUtil.EaseOutCubic(Mathf.Clamp01((t - Player.BicycleContact) / (Player.BicycleDuration - Player.BicycleContact))));
+        }
+
+        void PoseBicycle(float t, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref Vector2 ballLocal)
+        {
+            float tS = Player.BicycleSet, tC = Player.BicycleContact, tE = Player.BicycleDuration;
+            float w = MathUtil.Smooth01(t / 0.05f) * (1f - MathUtil.Smooth01((t - (tE - 0.1f)) / 0.1f));
+            Vector2 pivot = new Vector2(0f, hipY);
+
+            // where the ball hangs, seen from the rotating body: the kicking foot aims there
+            Vector2 ballBody = pivot + MathUtil.Rotate(player.BikeBallLocal - pivot, -spin);
+            Vector2 toBall = ballBody - pivot;
+            Vector2 strikeAt = pivot + toBall.normalized * Mathf.Min(toBall.magnitude - 0.1f, 0.78f);
+
+            Vector2 cocked = new Vector2(-0.12f, hipY - 0.72f);
+            Vector2 tuckNear = new Vector2(0.18f, hipY - 0.42f), tuckFar = new Vector2(-0.02f, hipY - 0.46f);
+            Vector2 nf, ff; float np;
+            if (t < tS)
+            {
+                // scissor: the non-kicking leg swings up first while the kicking leg cocks low
+                float k = MathUtil.EaseOutCubic(t / tS);
+                nf = Vector2.Lerp(nearFoot, cocked, k); np = 0.6f;
+                ff = Vector2.Lerp(farFoot, new Vector2(0.36f, hipY + 0.14f), k);
+            }
+            else if (t < tC)
+            {
+                // the kicking leg whips up to the ball as the other drops away
+                float k = MathUtil.EaseInQuad((t - tS) / (tC - tS));
+                nf = Vector2.Lerp(cocked, strikeAt, k); np = Mathf.Lerp(0.6f, 0.9f, k);
+                ff = Vector2.Lerp(new Vector2(0.36f, hipY + 0.14f), new Vector2(-0.08f, hipY - 0.6f), k);
+            }
+            else
+            {
+                // follow through over the top, then tuck to finish the flip
+                float k = MathUtil.EaseOutCubic(Mathf.Clamp01((t - tC) / 0.14f));
+                float k2 = MathUtil.EaseInOutSine(Mathf.Clamp01((t - tC - 0.1f) / (tE - tC - 0.1f)));
+                Vector2 over = pivot + new Vector2(0.3f, 0.62f);
+                nf = Vector2.Lerp(Vector2.Lerp(strikeAt, over, k), tuckNear, k2); np = 1f;
+                ff = Vector2.Lerp(new Vector2(-0.08f, hipY - 0.6f), tuckFar, k2);
+            }
+
+            nearFoot = Vector2.Lerp(nearFoot, nf, w); nearFlat *= 1f - w; nearPoint = Mathf.Lerp(nearPoint, np, w);
+            farFoot = Vector2.Lerp(farFoot, ff, w); farFlat *= 1f - w; farPoint = Mathf.Lerp(farPoint, 0.8f, w);
+            // arms thrown out towards the ground to brace, head watching the ball
+            nearShoulder = Mathf.Lerp(nearShoulder, -95f, w); nearElbow = Mathf.Lerp(nearElbow, 18f, w);
+            farShoulder = Mathf.Lerp(farShoulder, -135f, w); farElbow = Mathf.Lerp(farElbow, 14f, w);
+            headTarget = Mathf.Lerp(headTarget, 26f, w);
+            leanTarget = Mathf.Lerp(leanTarget, 0f, w);
+
+            if (!player.ActionReleased)
+            {
+                ballLocal = player.BikeBallLocal;
+                BallIsScripted = true;
+            }
         }
 
         // ------------------------------------------------------------------ rainbow flick
