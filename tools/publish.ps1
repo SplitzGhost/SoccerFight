@@ -12,6 +12,7 @@ $site    = Join-Path $work 'site'
 $log     = Join-Path $work 'publish.log'
 $pending = Join-Path $work 'pending'
 $stamp   = Join-Path $work 'deployed.txt'
+$built   = Join-Path $work 'built.txt'
 $unity   = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe'
 
 New-Item -ItemType Directory -Force $work | Out-Null
@@ -45,24 +46,29 @@ try {
         # 2) WebGL nur neu bauen, wenn sich Spielinhalte geändert haben
         $tree = (git rev-parse HEAD:SoccerFight/Assets HEAD:SoccerFight/Packages HEAD:SoccerFight/ProjectSettings) -join ','
         if (-not $Force -and (Test-Path $stamp) -and (Get-Content $stamp -Raw).Trim() -eq $tree) { continue }
-        $Force = $false
-
-        # 3) In die Build-Kopie spiegeln (der offene Editor sperrt das Original)
-        foreach ($d in 'Assets', 'Packages', 'ProjectSettings') {
-            robocopy (Join-Path $src $d) (Join-Path $mirror $d) /MIR /NFL /NDL /NJH /NJS /NP /R:2 /W:1 | Out-Null
-        }
-
-        # 4) WebGL bauen
         $sha = git rev-parse --short HEAD
-        Log "build $sha ..."
-        Remove-Item $out -Recurse -Force -ErrorAction SilentlyContinue
-        $unityArgs = "-batchmode -quit -projectPath `"$mirror`" -buildTarget WebGL " +
-                     "-executeMethod SoccerFight.EditorTools.WebGLBuilder.Build -sfOut `"$out`" -logFile `"$work\unity-build.log`""
-        $p = Start-Process $unity -ArgumentList $unityArgs -Wait -PassThru -WindowStyle Hidden
-        if ($p.ExitCode -ne 0 -or -not (Test-Path (Join-Path $out 'index.html'))) {
-            Log "build FAILED (exit $($p.ExitCode)), siehe .build\unity-build.log"
-            break
+
+        $isBuilt = (Test-Path $built) -and (Get-Content $built -Raw).Trim() -eq $tree -and (Test-Path (Join-Path $out 'index.html'))
+        if ($Force -or -not $isBuilt) {
+            # 3) In die Build-Kopie spiegeln (der offene Editor sperrt das Original)
+            foreach ($d in 'Assets', 'Packages', 'ProjectSettings') {
+                robocopy (Join-Path $src $d) (Join-Path $mirror $d) /MIR /NFL /NDL /NJH /NJS /NP /R:2 /W:1 | Out-Null
+            }
+
+            # 4) WebGL bauen
+            Log "build $sha ..."
+            Remove-Item $out, $built -Recurse -Force -ErrorAction SilentlyContinue
+            $unityArgs = "-batchmode -quit -projectPath `"$mirror`" -buildTarget WebGL " +
+                         "-executeMethod SoccerFight.EditorTools.WebGLBuilder.Build -sfOut `"$out`" -logFile `"$work\unity-build.log`""
+            $p = Start-Process $unity -ArgumentList $unityArgs -Wait -PassThru -WindowStyle Hidden
+            if ($p.ExitCode -ne 0 -or -not (Test-Path (Join-Path $out 'index.html'))) {
+                Log "build FAILED (exit $($p.ExitCode)), siehe .build\unity-build.log"
+                break
+            }
+            Set-Content $built $tree
+            Log "build ok"
         }
+        $Force = $false
 
         # 5) Auf gh-pages veröffentlichen, immer als einzelner Commit, damit das Repo klein bleibt
         $url = git remote get-url origin
