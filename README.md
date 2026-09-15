@@ -91,9 +91,9 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
-| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`) |
+| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne |
-| `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen (`Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool und Kollisionen (`WaveDirector`) |
+| `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
 | `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Pausemenü (`PauseMenu`, Widgets in `UiKit`) |
 | `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
@@ -105,7 +105,9 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Schwierigkeit:** alle Formeln in `Difficulty.cs` (Leben, Schaden, Tempo, Budget, Elite-Chance, Minibosse, Boss-Werte), Grundwerte der Gegner in `EnemyDefs.cs`, Heilung nach Welle/Boss in `RunDirector`
 - **Developer-Modus:** Schalter in `DevMode.cs`, Panel in `UI/DevPanel.cs`, Aktionen (`Dev*`-Methoden) in `RunDirector`
 - **Upgrades:** Werte, Beschreibung und Stapelgrenze in `UpgradeDb` (`Upgrades.cs`), Seltenheits-Gewichte in `UpgradeRoller.Weights`
-- **Stages:** Name, Farbstimmung, Wetter, Gegner, Boss und Regel in `StageThemes.cs`
+- **Stages:** Name, Farbstimmung, Wetter, Gegner, Plattform-Stile, Boss (samt Körper `Look`) und Regel in `StageThemes.cs`
+- **Upgrade-Takt:** `RunState.RoundsPerUpgrade` (heute 2)
+- **Monster-Körper:** je eine Funktion pro Körper in `MonsterArt.cs` (Form, Teile, Augen, Ketten, Animationsart)
 - **Spielgefühl:** Konstanten oben in `Player.cs` (Tempo, Sprung, Cooldowns, Schaden)
 - **Timing von Schuss & Flick:** `KickWindup/KickContact/...` und `FlickSet/FlickRoll/...` in `Player.cs`
 - **Hochhalten:** `Juggle*`-Konstanten in `Player.cs` (Zeitfenster, Heilung, Flughöhen, Reihenfolge Fuß/Knie/Kopf)
@@ -115,7 +117,7 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Spieler-Look:** Formen in `PlayerArt.cs`, Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
-- **Plattformen:** Lage und Höhe in `Level.Platforms` (Grafik und Pflanzen passen sich automatisch an), Sprungverhalten der Blobs in `Monster.PlanLeap`
+- **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Tiefenwirkung:** Parallax-Faktoren in `WorldEnvironment.AddLayer(...)`-Aufrufen, Abdunklung pro Ebene über die `D*`-Konstanten und `DepthTint`
 - **Glow/Bloom:** `PostFx.cs` und die Material-Intensitäten in `Art.cs`
 - **Wind:** Stärke von Neigung und Böen in `WorldEnvironment.Update`, Wellenform im Shader `SF_Foliage`
@@ -132,7 +134,9 @@ Nach jeder Antwort von Claude Code startet ein Stop-Hook (`.claude/settings.loca
 
 Von Hand geht es mit `powershell -File tools\publish.ps1` (mit `-Force` wird auch ohne Änderung neu gebaut).
 Visuelle Prüfung: `tools\capture.ps1 -Scenario run` (Stage-Karte, Welle, Karten, Fähigkeitswahl, Boss, alle 8 Themen,
-Zusammenfassung) und `-Scenario sim` (ein Bot spielt einen echten Lauf und protokolliert jede Phase im Unity-Log).
+Zusammenfassung), `-Scenario bestiary` (alle Monster-Körper), `-Scenario layouts` (die Arenen aller Stages samt
+Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt) und `-Scenario sim` (ein Bot spielt einen echten Lauf
+und protokolliert jede Phase im Unity-Log).
 Protokoll: `.build/publish.log`, Unity-Log des letzten Builds: `.build/unity-build.log`.
 Für die Pushes muss die GitHub-CLI eingeloggt sein (`gh auth login`).
 
