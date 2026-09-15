@@ -1,49 +1,98 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SoccerFight
 {
     /// <summary>
-    /// Two enemy types sharing one class: the hopping Gloom blob and the floating Wisp.
-    /// All motion is spring-based squash & stretch; hits flash white, knock back and pop a damage number.
+    /// Every enemy: two bodies (hopping blob, floating wisp) carrying nine behaviour archetypes, elite
+    /// affixes, mini-boss specials and stage bosses. All motion is spring-based squash & stretch; hits
+    /// flash white, knock back and pop a damage number. Stats come from the difficulty level at spawn.
     /// </summary>
     public sealed class Monster
     {
         public enum Kind { Blob, Wisp }
 
+        public struct SpawnSpec
+        {
+            public EnemyType Type;
+            public Vector2 At, Vel;
+            public float Level;
+            public Rank Rank;
+            public int Affixes;
+            public StageTheme Theme;
+            public string Name;
+            public BossDef Boss;
+        }
+
         static int nextId;
+        static readonly List<EliteAffix> affixPool = new List<EliteAffix>();
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { nextId = 0; }
 
+        // ---- identity and stats
         public int Id { get; private set; }
         public Kind K { get; private set; }
+        public EnemyType Type { get; private set; }
+        public Rank Rank { get; private set; }
+        public readonly List<EliteAffix> Affixes = new List<EliteAffix>();
+        public string DisplayName { get; private set; }
+        public BossDef Boss { get; private set; }
         public Vector2 Pos, Vel;
         public float Radius;
         public float Hp, MaxHp;
         public bool Alive;
         public float ContactDamage;
+        public float DifficultyLevel { get; private set; }
         public Vector2 Center => K == Kind.Blob ? Pos + new Vector2(0f, 0.36f * scaleNow) : Pos;
+        public bool Named => Rank != Rank.Normal;
+        public bool Has(EliteAffix a) => Affixes.Contains(a);
+        public float DamageTakenMul => Has(EliteAffix.Armored) ? 0.65f : 1f;
+        public float TopY => Center.y + Radius + 0.15f;
+        public int BossPhase => Rank != Rank.Boss ? 0 : Hp > MaxHp * 0.66f ? 0 : Hp > MaxHp * 0.33f ? 1 : 2;
 
+        // ---- status effects
+        public float BurnTime, BurnDps, SlowTime, SlowAmount, FreezeTime;
+        public int HitCount;
+        public bool Burning => BurnTime > 0f;
+        public bool Slowed => SlowTime > 0f || FreezeTime > 0f;
+        public float PullStrength;       // cyclone / singularity pull
+        public Vector2 PullTo;
+
+        // ---- rendering
         Transform root, body;
-        SpriteRenderer bodySr, glow, shadow, hpBack, hpFill;
-        SpriteRenderer[] eyes, pupils, extras;
+        SpriteRenderer bodySr, glow, shadow, hpBack, hpFill, aura, auraRing, crown;
+        SpriteRenderer[] eyes, pupils, extras, features;
+        Material[] extraMats;
         Color[] extraColors;
         Transform[] tail;
         Vector2[] tailPos;
-        float spawnT;
-        float scaleNow = 1f;
-        float flash;
-        float hpShow;
-        float hpDisplay = 1f;
-        float squash, squashVel;
-        float faceT = -1f;
-        float blinkTimer, blink;
+        StageTheme theme;
+        MonsterSkin skin;
+        float spawnT, scaleNow = 1f, flash, hpShow, hpDisplay = 1f, squash, squashVel, faceT = -1f, blinkTimer, blink, t;
+        float sizeMul = 1f, speedMul = 1f, fade = 1f;
+        Color auraColor;
+
+        // ---- behaviour
         float hopTimer;
         bool grounded;
         int standing = Level.None;     // platform under a grounded blob
         bool leapPlanned;              // the next hop is a big leap up to a platform (longer crouch)
-        float t;
         float diveTimer, windup, diveTime;
-        float sizeMul = 1f;
+        float attackTimer, attackWind;  // spitter / lantern / brute charge / mini special
+        float chargeTime;
+        int burst;
+        float burstTimer;
+        float regenDelay;
+        float primeTime;               // bomber fuse
+        bool detonated;                // blew itself up (no second death blast)
+        float teleportT = -1f;
+
+        // ---- boss brain
+        int moveIndex;
+        BossMove move;
+        float moveT, moveCd;
+        bool moveActive;
+        int lastPhase;
 
         public void Build(Transform parent, Kind kind)
         {
@@ -53,6 +102,8 @@ namespace SoccerFight
             body = new GameObject("Body").transform;
             body.SetParent(root, false);
             shadow = Art.MakeSprite("Shadow", root, Art.Shadow, -43, Art.SpriteMat, new Color(0, 0, 0, 0.4f));
+            aura = Art.MakeSprite("Aura", body, Art.SoftGlow, 56, Art.SpriteGlowMat, Color.clear);
+            auraRing = Art.MakeSprite("AuraRing", body, Art.Ring, 57, Art.SpriteGlowMat, Color.clear);
 
             if (kind == Kind.Blob)
             {
@@ -63,27 +114,22 @@ namespace SoccerFight
                 footL.transform.localPosition = new Vector3(-0.2f, 0.03f, 0f);
                 var footR = Art.MakeSprite("FootR", body, MonsterArt.BlobFoot, 59);
                 footR.transform.localPosition = new Vector3(0.22f, 0.03f, 0f);
-                var hornL = Art.MakeSprite("HornL", body, MonsterArt.BlobHorn, 59);
+                var hornL = Art.MakeSprite("FeatureL", body, MonsterArt.BlobHorn, 59);
                 hornL.transform.localPosition = new Vector3(-0.2f, 0.66f, 0f);
-                hornL.transform.localRotation = Quaternion.Euler(0, 0, 22f);
-                var hornR = Art.MakeSprite("HornR", body, MonsterArt.BlobHorn, 59);
+                var hornR = Art.MakeSprite("FeatureR", body, MonsterArt.BlobHorn, 59);
                 hornR.transform.localPosition = new Vector3(0.18f, 0.68f, 0f);
-                hornR.transform.localRotation = Quaternion.Euler(0, 0, -16f);
                 hornR.transform.localScale = new Vector3(-1f, 1f, 1f);
                 bodySr = Art.MakeSprite("Body", body, MonsterArt.BlobBody, 60);
                 eyes = new SpriteRenderer[2];
                 pupils = new SpriteRenderer[2];
                 for (int i = 0; i < 2; i++)
                 {
-                    var eg = Art.MakeSprite("EyeGlow", body, Art.SoftGlow, 61, Art.SpriteGlowMat, Palette.MonsterEye.WithAlpha(0.5f));
-                    eg.transform.localPosition = new Vector3(i == 0 ? 0.02f : 0.22f, 0.44f, 0f);
-                    eg.transform.localScale = Vector3.one * 0.32f;
                     eyes[i] = Art.MakeSprite("Eye", body, MonsterArt.Eye, 62, Art.SpriteEmissiveMat, Palette.MonsterEye);
                     eyes[i].transform.localPosition = new Vector3(i == 0 ? 0.02f : 0.22f, 0.44f, 0f);
                     pupils[i] = Art.MakeSprite("Pupil", eyes[i].transform, MonsterArt.Pupil, 63);
                 }
                 extras = new[] { footL, footR, hornL, hornR };
-                Radius = 0.42f;
+                features = new[] { hornL, hornR };
             }
             else
             {
@@ -96,22 +142,19 @@ namespace SoccerFight
                 {
                     tailSrs[i] = Art.MakeSprite("Tail" + i, root, MonsterArt.WispTail, 57 - i);
                     tail[i] = tailSrs[i].transform;
-                    float s = 0.9f - i * 0.22f;
-                    tail[i].localScale = Vector3.one * s;
                 }
                 bodySr = Art.MakeSprite("Body", body, MonsterArt.WispBody, 60);
                 eyes = new SpriteRenderer[1];
                 pupils = new SpriteRenderer[0];
-                var eg = Art.MakeSprite("EyeGlow", body, Art.SoftGlow, 61, Art.SpriteGlowMat, new Color(1f, 0.95f, 0.8f, 0.45f));
-                eg.transform.localPosition = new Vector3(0.06f, 0.04f, 0f);
-                eg.transform.localScale = Vector3.one * 0.5f;
                 eyes[0] = Art.MakeSprite("Eye", body, MonsterArt.WispEye, 62, Art.SpriteEmissiveMat, Color.white);
                 eyes[0].transform.localPosition = new Vector3(0.06f, 0.04f, 0f);
                 extras = tailSrs;
-                Radius = 0.34f;
+                features = new SpriteRenderer[0];
             }
+            crown = Art.MakeSprite("Crown", body, MonsterArt.Crown, 64, Art.SpriteEmissiveMat, Color.white);
+            crown.enabled = false;
             extraColors = new Color[extras.Length];
-            for (int i = 0; i < extras.Length; i++) extraColors[i] = extras[i].color;
+            extraMats = new Material[extras.Length];
 
             hpBack = Art.MakeSprite("HpBack", root, Art.Pill, 70, Art.SpriteMat, new Color(0.02f, 0.03f, 0.08f, 0f));
             hpBack.drawMode = SpriteDrawMode.Sliced;
@@ -122,31 +165,109 @@ namespace SoccerFight
             root.gameObject.SetActive(false);
         }
 
-        public void Spawn(Vector2 at, Vector2 vel, float hpMul)
+        // ------------------------------------------------------------------ spawn
+
+        public void Spawn(in SpawnSpec s)
         {
             Id = ++nextId;
-            Pos = at;
-            Vel = vel;
-            sizeMul = K == Kind.Blob ? Random.Range(0.92f, 1.12f) : Random.Range(0.95f, 1.08f);
-            MaxHp = Hp = (K == Kind.Blob ? 36f : 24f) * hpMul;
-            ContactDamage = K == Kind.Blob ? 12f : 10f;
+            Type = s.Type;
+            Rank = s.Rank;
+            Boss = s.Boss;
+            DifficultyLevel = s.Level;
+            theme = s.Theme ?? StageThemes.All[0];
+            skin = MonsterArt.Skin(theme);
+            Pos = s.At;
+            Vel = s.Vel;
+            var def = EnemyDef.Get(Type);
+
+            float rankHp = 1f, rankDmg = 1f, rankSize = 1f;
+            Affixes.Clear();
+            if (Rank == Rank.Elite) { rankHp = Difficulty.EliteHealth; rankDmg = Difficulty.EliteDamage; rankSize = Difficulty.EliteSize; }
+            else if (Rank == Rank.MiniBoss) { rankDmg = Difficulty.MiniDamage; rankSize = Difficulty.MiniSize; }
+            else if (Rank == Rank.Boss) { rankDmg = Difficulty.BossDamage; rankSize = K == Kind.Blob ? 1.95f : 2.1f; }
+            if (Rank == Rank.Elite || Rank == Rank.MiniBoss) RollAffixes(s.Affixes);
+
+            float jitter = Rank == Rank.Normal ? (K == Kind.Blob ? Random.Range(0.92f, 1.12f) : Random.Range(0.95f, 1.08f)) : 1f;
+            sizeMul = def.Size * rankSize * jitter;
+            float baseHp = Rank == Rank.Boss ? Difficulty.BossBaseHealth : Rank == Rank.MiniBoss ? Difficulty.MiniBaseHealth : def.Hp * rankHp;
+            MaxHp = baseHp * Difficulty.HealthMul(DifficultyLevel);
+            Hp = MaxHp;
+            float baseDmg = Rank == Rank.Boss ? Difficulty.BossBaseDamage : Rank == Rank.MiniBoss ? Difficulty.MiniBaseDamage : def.Damage;
+            ContactDamage = baseDmg * Difficulty.DamageMul(DifficultyLevel) * rankDmg;
+            speedMul = Difficulty.SpeedMul(DifficultyLevel) * (Has(EliteAffix.Swift) ? 1.35f : 1f) * (Has(EliteAffix.Frenzied) ? 1.15f : 1f);
+            Radius = (K == Kind.Blob ? 0.42f : 0.34f) * sizeMul;
+            DisplayName = s.Name;
+
             Alive = true;
-            spawnT = 0f;
-            flash = 0f;
-            hpShow = 0f;
-            hpDisplay = 1f;
+            spawnT = 0f; flash = 0f; hpShow = 0f; hpDisplay = 1f; fade = 1f;
             squash = squashVel = 0f;
-            grounded = false;
-            standing = Level.None;
-            leapPlanned = false;
+            grounded = false; standing = Level.None; leapPlanned = false;
             hopTimer = Random.Range(0.2f, 0.5f);
             diveTimer = Random.Range(2.5f, 4.5f);
             windup = diveTime = 0f;
+            attackTimer = Random.Range(1.8f, 3f); attackWind = 0f; chargeTime = 0f; burst = 0; burstTimer = 0f;
+            primeTime = 0f; detonated = false; slamPending = false; teleportT = -1f; regenDelay = 0f;
+            BurnTime = BurnDps = SlowTime = SlowAmount = FreezeTime = 0f; HitCount = 0; PullStrength = 0f;
+            moveIndex = 0; moveT = 0f; moveCd = 2.2f; moveActive = false; lastPhase = 0;
             t = Random.value * 10f;
-            faceT = vel.x >= 0f ? 1f : -1f;
-            if (tailPos != null) for (int i = 0; i < tailPos.Length; i++) tailPos[i] = at;
+            faceT = s.Vel.x >= 0f ? 1f : -1f;
+            if (tailPos != null) for (int i = 0; i < tailPos.Length; i++) tailPos[i] = s.At;
+            ApplySkin();
             root.gameObject.SetActive(true);
             SetBodyMaterial(false);
+        }
+
+        void RollAffixes(int count)
+        {
+            affixPool.Clear();
+            affixPool.Add(EliteAffix.Swift); affixPool.Add(EliteAffix.Armored); affixPool.Add(EliteAffix.Regenerating);
+            affixPool.Add(EliteAffix.Volatile); affixPool.Add(EliteAffix.Frenzied);
+            for (int i = 0; i < count && affixPool.Count > 0; i++)
+            {
+                int k = Random.Range(0, affixPool.Count);
+                Affixes.Add(affixPool[k]);
+                affixPool.RemoveAt(k);
+            }
+        }
+
+        void ApplySkin()
+        {
+            if (K == Kind.Blob)
+            {
+                bodySr.sprite = skin.BlobBody;
+                extras[0].sprite = extras[1].sprite = skin.BlobFoot;
+                float tilt = skin.FeatureTilt;
+                for (int i = 0; i < features.Length; i++)
+                {
+                    features[i].sprite = skin.BlobFeature;
+                    features[i].transform.localRotation = Quaternion.Euler(0f, 0f, (i == 0 ? 22f : 16f) * tilt);
+                }
+                glow.color = skin.Glow.WithAlpha(0.18f);
+                foreach (var e in eyes) e.color = skin.Eye;
+            }
+            else
+            {
+                bodySr.sprite = skin.WispBody;
+                foreach (var e in extras) e.sprite = skin.WispTail;
+            }
+            for (int i = 0; i < extras.Length; i++)
+            {
+                bool emissive = System.Array.IndexOf(features, extras[i]) >= 0 && skin.EmissiveFeature;
+                extraMats[i] = emissive ? Art.SpriteEmissiveMat : Art.SpriteMat;
+                extraColors[i] = Color.white;
+            }
+
+            // rank dressing: affix aura for elites and mini-bosses, crown for the boss
+            auraColor = Affixes.Count > 0 && Rank != Rank.Boss ? EnemyDef.AffixColor(Affixes[0]) : Rank != Rank.Normal ? theme.Accent : Color.clear;
+            crown.enabled = Rank == Rank.Boss;
+            if (crown.enabled)
+            {
+                crown.color = Color.Lerp(Color.white, theme.Accent, 0.25f) * 1.2f;
+                crown.transform.localPosition = K == Kind.Blob ? new Vector3(0.02f, 0.72f, 0f) : new Vector3(0f, 0.28f, 0f);
+                crown.transform.localScale = Vector3.one * (K == Kind.Blob ? 0.9f : 0.75f);
+            }
+            aura.transform.localPosition = K == Kind.Blob ? new Vector3(0f, 0.38f, 0f) : Vector3.zero;
+            auraRing.transform.localPosition = aura.transform.localPosition;
         }
 
         public void Deactivate()
@@ -157,36 +278,62 @@ namespace SoccerFight
 
         void SetBodyMaterial(bool white)
         {
-            var mat = white ? Art.SpriteSolidMat : Art.SpriteMat;
-            bodySr.sharedMaterial = mat;
+            bodySr.sharedMaterial = white ? Art.SpriteSolidMat : Art.SpriteMat;
             bodySr.color = Color.white;
             for (int i = 0; i < extras.Length; i++)
             {
-                extras[i].sharedMaterial = mat;
+                extras[i].sharedMaterial = white ? Art.SpriteSolidMat : extraMats[i];
                 extras[i].color = white ? Color.white : extraColors[i];
             }
         }
 
-        // ------------------------------------------------------------------ damage
+        // ------------------------------------------------------------------ damage and status
 
-        public void Hit(float dmg, Vector2 dir, float knock, bool big)
+        /// <summary>Applies damage (already scaled by the caller). Returns true if this killed the monster.</summary>
+        public bool Hit(float dmg, Vector2 dir, float knock, bool big, bool crit = false)
         {
-            if (!Alive) return;
+            if (!Alive) return false;
             Hp -= dmg;
+            HitCount++;
+            regenDelay = 1.2f;
             flash = big ? 0.1f : 0.07f;
             hpShow = 1.6f;
-            Vel += dir.normalized * knock + Vector2.up * (K == Kind.Blob ? knock * 0.45f : 0f);
-            if (K == Kind.Blob && Vel.y > 0.5f) { grounded = false; standing = Level.None; leapPlanned = false; }
+            float knockMul = Rank == Rank.Boss ? 0.12f : Rank == Rank.MiniBoss ? 0.35f : Rank == Rank.Elite ? 0.7f : 1f;
+            if (Has(EliteAffix.Armored)) knockMul *= 0.6f;
+            Vel += dir.normalized * knock * knockMul + Vector2.up * (K == Kind.Blob ? knock * 0.45f * knockMul : 0f);
+            if (K == Kind.Blob && Vel.y > 0.5f && Rank != Rank.Boss) { grounded = false; standing = Level.None; leapPlanned = false; }
             squashVel += big ? 14f : 9f;
-            windup = 0f;
-            diveTime = 0f;
+            if (Rank == Rank.Normal) { windup = 0f; diveTime = 0f; attackWind = 0f; }
             var fx = FxSystem.I;
             Vector2 c = Center;
-            fx.Flash(c, big ? 2.2f : 1.4f, Color.white, 0.12f, 2.6f);
-            fx.Sparks(c, dir, 110f, big ? 14 : 8, 5f, 12f, K == Kind.Blob ? Palette.MonsterGlow : Palette.WispGlow, 2.6f, 0.05f, 0.25f, 2f);
-            Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big);
-            if (Hp <= 0f) Die(dir);
-            else TimeFx.HitStop(big ? 0.05f : 0.03f, 0.06f);
+            fx.Flash(c, (big ? 2.2f : 1.4f) * Mathf.Sqrt(sizeMul), Color.white, 0.12f, 2.6f);
+            Color spark = K == Kind.Blob ? skin.Glow : skin.WispGlow;
+            fx.Sparks(c, dir, 110f, big ? 14 : 8, 5f, 12f, spark, 2.6f, 0.05f, 0.25f, 2f);
+            Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big, crit);
+            if (Hp <= 0f) { Die(dir); return true; }
+            if (Rank != Rank.Boss) TimeFx.HitStop(big ? 0.05f : 0.03f, 0.06f);
+            return false;
+        }
+
+        public void Ignite(float dps, float time)
+        {
+            if (!Alive) return;
+            BurnDps = Mathf.Max(BurnDps, dps);
+            BurnTime = Mathf.Max(BurnTime, time);
+        }
+
+        public void Chill(float amount, float time)
+        {
+            if (!Alive) return;
+            SlowAmount = Mathf.Max(SlowAmount, amount);
+            SlowTime = Mathf.Max(SlowTime, time);
+        }
+
+        public void Freeze(float time)
+        {
+            if (!Alive || Rank == Rank.Boss) return;
+            FreezeTime = Mathf.Max(FreezeTime, Rank == Rank.MiniBoss ? time * 0.4f : time);
+            FxSystem.I.Ring(FxLayer.Front, Center, 0.1f, Radius * 2.4f, 0.12f, 0.01f, 0.25f, Color.white, new Color(0.6f, 0.9f, 1f, 0f), 2f);
         }
 
         void Die(Vector2 dir)
@@ -194,15 +341,37 @@ namespace SoccerFight
             Alive = false;
             var fx = FxSystem.I;
             Vector2 c = Center;
-            if (K == Kind.Blob) fx.Burst(c, Palette.MonsterTop, Palette.MonsterGlow, sizeMul);
-            else fx.Burst(c, Palette.WispTop, Palette.WispGlow, 0.85f);
-            fx.Motes(c, Vector2.up * 2f, Palette.MonsterEye, 6, 0.3f);
+            Color top = K == Kind.Blob ? theme.BlobTop : theme.WispTop;
+            Color g = K == Kind.Blob ? skin.Glow : skin.WispGlow;
+            fx.Burst(c, top, g, K == Kind.Blob ? sizeMul : 0.85f * sizeMul);
+            fx.Motes(c, Vector2.up * 2f, skin.Eye, 6, 0.3f);
+            if (Named)
+            {
+                fx.Ring(FxLayer.Front, c, 0.2f, 2.6f * Mathf.Sqrt(sizeMul), 0.3f, 0.02f, 0.5f, Color.white, auraColor.WithAlpha(0f), 2.4f);
+                fx.Sparkles(c, 0.8f * sizeMul, Rank == Rank.Boss ? 30 : 12, Palette.Gold, 2.8f, 0.9f);
+            }
             var game = Game.I;
-            game.Cam.AddTrauma(0.22f);
-            game.Post.Impact(0.3f);
-            TimeFx.HitStop(0.06f, 0.05f);
+            game.Cam.AddTrauma(Rank == Rank.Boss ? 0.8f : Named ? 0.4f : 0.22f);
+            game.Post.Impact(Rank == Rank.Boss ? 1f : 0.3f);
+            TimeFx.HitStop(Rank == Rank.Boss ? 0.14f : 0.06f, 0.05f);
+            if (Rank == Rank.Boss) TimeFx.SlowMo(0.25f, 0.5f, 0.8f);
             root.gameObject.SetActive(false);
-            game.Hud.OnMonsterKilled();
+            game.Waves.OnDied(this);
+        }
+
+        /// <summary>Bomber fuse or volatile affix: a blast that hurts the player.</summary>
+        void Explode(float radius, float damage)
+        {
+            Vector2 c = Center;
+            var fx = FxSystem.I;
+            fx.Flash(c, radius * 1.6f, Palette.BlastOrange, 0.2f, 2.6f);
+            fx.Ring(FxLayer.Front, c, 0.2f, radius, 0.35f, 0.02f, 0.35f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.4f);
+            fx.Sparks(c, Vector2.up, 200f, 16, 5f, 12f, Palette.BlastOrange, 2.6f, 0.05f, 0.35f, 10f);
+            fx.Dust(c, Vector2.right, 5, 2.4f, 0.5f, 0.35f);
+            fx.Dust(c, Vector2.left, 5, 2.4f, 0.5f, 0.35f);
+            Game.I.Cam.AddTrauma(0.3f);
+            var p = Game.I.Player;
+            if (!p.Dead && (p.Pos + new Vector2(0f, 0.8f) - c).magnitude < radius) p.TakeDamage(damage, c);
         }
 
         // ------------------------------------------------------------------ update
@@ -210,13 +379,37 @@ namespace SoccerFight
         public void Update(float dt, Player player)
         {
             t += dt;
-            spawnT = Mathf.Min(1f, spawnT + dt / 0.45f);
+            spawnT = Mathf.Min(1f, spawnT + dt / (Rank == Rank.Boss ? 0.9f : 0.45f));
             scaleNow = MathUtil.EaseOutBack(spawnT, 2.2f) * sizeMul;
             Vector2 toPlayer = player.Pos + new Vector2(0f, 0.8f) - Center;
             float targetFace = Mathf.Abs(toPlayer.x) > 0.2f ? Mathf.Sign(toPlayer.x) : faceT;
 
-            if (K == Kind.Blob) UpdateBlob(dt, player, toPlayer);
-            else UpdateWisp(dt, player, toPlayer);
+            UpdateStatus(dt);
+            if (!Alive) return;
+
+            float slow = FreezeTime > 0f ? 0f : 1f - SlowAmount * (SlowTime > 0f ? 1f : 0f);
+            float spd = speedMul * slow * StageMechanics.EnemySpeedBoost;
+            if (FreezeTime > 0f)
+            {
+                // frozen solid: only gravity and knockback move it
+                if (K == Kind.Blob && !grounded) Vel.y -= BlobGravity * dt;
+                Vel *= Mathf.Exp(-6f * dt);
+                Vector2 prev = Pos;
+                Pos += Vel * dt;
+                if (K == Kind.Blob) LandCheck(prev.y);
+            }
+            else if (Rank == Rank.Boss) UpdateBoss(dt, player, toPlayer, spd);
+            else if (K == Kind.Blob) UpdateBlob(dt, player, toPlayer, spd);
+            else UpdateWisp(dt, player, toPlayer, spd);
+
+            // cyclone / black-hole pull
+            if (PullStrength > 0f && Rank != Rank.Boss)
+            {
+                Vector2 d = PullTo - Center;
+                Vel = MathUtil.Damp(Vel, d * PullStrength, 6f, dt);
+                if (K == Kind.Blob && d.y > 0.3f) { grounded = false; standing = Level.None; }
+                PullStrength = 0f;
+            }
 
             // monsters may emerge from the goal nets but are always nudged back onto the pitch
             if (Mathf.Abs(Pos.x) > Player.ArenaHalf) Vel.x -= Mathf.Sign(Pos.x) * 10f * dt;
@@ -224,77 +417,68 @@ namespace SoccerFight
             if (Pos.x < -wall) { Pos.x = -wall; Vel.x = Mathf.Abs(Vel.x) * 0.5f; }
             if (Pos.x > wall) { Pos.x = wall; Vel.x = -Mathf.Abs(Vel.x) * 0.5f; }
 
-            // face turn (smooth flip)
-            faceT = Mathf.MoveTowards(faceT, targetFace, dt / 0.12f);
-            MathUtil.Spring(ref squash, ref squashVel, 0f, 3.2f, 0.32f, dt);
-            float sq = Mathf.Clamp(squash * 0.05f, -0.35f, 0.35f);
-            float flipScale = Mathf.Sin(faceT * Mathf.PI * 0.5f);
-            body.localScale = new Vector3(flipScale * (1f - sq) * scaleNow, (1f + sq) * scaleNow, 1f);
-            root.position = new Vector3(Pos.x, Pos.y, 0f);
-
-            // eyes: look at the player, blink now and then
-            blinkTimer -= dt;
-            if (blinkTimer <= 0f) { blinkTimer = Random.Range(1.8f, 4.5f); blink = 1f; }
-            blink = Mathf.Max(0f, blink - dt / 0.12f);
-            float eyeY = 1f - MathUtil.Bump(1f - blink) * 0.9f;
-            Vector2 look = toPlayer.normalized;
-            for (int i = 0; i < eyes.Length; i++)
-            {
-                float baseScale = K == Kind.Blob ? (i == 0 ? 0.9f : 1f) : 1f;
-                eyes[i].transform.localScale = new Vector3(baseScale, baseScale * Mathf.Max(0.1f, eyeY), 1f);
-            }
-            for (int i = 0; i < pupils.Length; i++)
-                pupils[i].transform.localPosition = new Vector3(Mathf.Abs(look.x) * 0.018f + 0.004f, look.y * 0.022f, 0f);
-
-            // flash + glow
-            if (flash > 0f)
-            {
-                flash -= Time.unscaledDeltaTime;
-                SetBodyMaterial(flash > 0f);
-            }
-            float pulse = 0.5f + 0.5f * Mathf.Sin(t * 3.4f);
-            Color gc = K == Kind.Blob ? Palette.MonsterGlow : Palette.WispGlow;
-            float ga = (K == Kind.Blob ? 0.14f + 0.08f * pulse : 0.28f + 0.1f * pulse) + windup * 0.6f;
-            glow.color = gc.WithAlpha(ga);
-
-            // shadow on the surface below
-            float floor = K == Kind.Blob && grounded ? Pos.y : Level.FloorBelow(Pos.x, Pos.y + 0.02f, 0.15f);
-            float h = Mathf.Max(0f, Pos.y - floor - (K == Kind.Wisp ? 0.4f : 0f));
-            float s = Mathf.Lerp(0.95f, 0.35f, Mathf.Clamp01(h / 4f)) * scaleNow;
-            shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
-            shadow.transform.localScale = new Vector3(s, s, 1f);
-            shadow.color = new Color(0, 0, 0, Mathf.Lerp(0.42f, 0.08f, Mathf.Clamp01(h / 4f)));
-
-            // tiny health bar that only appears after taking damage
-            hpShow = Mathf.Max(0f, hpShow - dt);
-            hpDisplay = MathUtil.Damp(hpDisplay, Mathf.Clamp01(Hp / MaxHp), 10f, dt);
-            float ha = Mathf.Clamp01(hpShow * 3f);
-            float topY = (K == Kind.Blob ? 1.0f : 0.62f) * scaleNow;
-            Vector2 hp = new Vector2(K == Kind.Blob ? 0f : 0f, topY);
-            hpBack.transform.localPosition = hp;
-            hpBack.color = new Color(0.02f, 0.03f, 0.08f, 0.7f * ha);
-            float w = Mathf.Max(0.07f, 0.66f * hpDisplay);
-            hpFill.size = new Vector2(w, 0.07f);
-            hpFill.transform.localPosition = hp + new Vector2(-(0.66f - w) * 0.5f, 0f);
-            hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
+            faceT = Mathf.MoveTowards(faceT, targetFace, dt / (Rank == Rank.Boss ? 0.25f : 0.12f));
+            UpdateVisuals(dt, toPlayer);
         }
+
+        void UpdateStatus(float dt)
+        {
+            if (BurnTime > 0f)
+            {
+                BurnTime -= dt;
+                float d = BurnDps * dt;
+                Hp -= d;
+                hpShow = Mathf.Max(hpShow, 0.6f);
+                if (Random.value < dt * 14f)
+                    FxSystem.I.Sparks(Center + Random.insideUnitCircle * Radius * 0.7f, Vector2.up, 40f, 1, 1.5f, 3.5f, Palette.BlastOrange, 2.4f, 0.04f, 0.3f, -4f);
+                if (Hp <= 0f) { Die(Vector2.up); return; }
+            }
+            if (SlowTime > 0f) SlowTime -= dt; else SlowAmount = 0f;
+            if (FreezeTime > 0f) FreezeTime -= dt;
+            if (Has(EliteAffix.Regenerating))
+            {
+                regenDelay -= dt;
+                if (regenDelay <= 0f && Hp < MaxHp) Hp = Mathf.Min(MaxHp, Hp + MaxHp * 0.025f * dt);
+            }
+        }
+
+        // ------------------------------------------------------------------ blob body
 
         const float BlobGravity = 24f;
         const float LeapCrouch = 0.34f, HopCrouch = 0.16f;
         const float MaxLeapRise = 2.7f, MaxLeapReach = 4.6f;
 
-        void UpdateBlob(float dt, Player player, Vector2 toPlayer)
+        void UpdateBlob(float dt, Player player, Vector2 toPlayer, float spd)
         {
-            if (grounded)
+            bool frenzied = Has(EliteAffix.Frenzied);
+            if (Type == EnemyType.Bomber && primeTime > 0f)
+            {
+                // fuse lit: sizzle, swell, pop
+                primeTime -= dt;
+                Vel.x = Mathf.MoveTowards(Vel.x, 0f, 20f * dt);
+                squashVel += Mathf.Sin(t * 60f) * 30f * dt;
+                if (Random.value < dt * 30f) FxSystem.I.Sparks(Center + Vector2.up * Radius, Vector2.up, 60f, 1, 2f, 4f, Palette.Gold, 2.6f, 0.04f, 0.2f);
+                if (primeTime <= 0f) { Explode(1.9f * Mathf.Sqrt(sizeMul), ContactDamage * 1.4f); detonated = true; Hp = 0f; Die(Vector2.up); return; }
+            }
+            else if (Type == EnemyType.Brute && (attackWind > 0f || chargeTime > 0f))
+            {
+                UpdateBruteCharge(dt, player, toPlayer, spd);
+            }
+            else if (grounded)
             {
                 Vel.x = Mathf.MoveTowards(Vel.x, 0f, 14f * dt);
-                float before = hopTimer;
-                hopTimer -= dt;
-                // decide early whether the next hop is a leap, so the crouch can telegraph it
-                if (before >= LeapCrouch && hopTimer < LeapCrouch) leapPlanned = PlanLeap(player, out _, out _);
-                float crouch = leapPlanned ? LeapCrouch : HopCrouch;
-                if (hopTimer < crouch && hopTimer > 0f) squashVel -= (leapPlanned ? 70f : 55f) * dt; // crouch anticipation
-                if (hopTimer <= 0f && spawnT >= 1f) Hop(player, toPlayer);
+                if (attackWind > 0f) UpdateSpitterWindup(dt, player);
+                else
+                {
+                    float before = hopTimer;
+                    hopTimer -= dt * spd * (frenzied ? 1.4f : 1f);
+                    // decide early whether the next hop is a leap, so the crouch can telegraph it
+                    if (before >= LeapCrouch && hopTimer < LeapCrouch) leapPlanned = PlanLeap(player, out _, out _);
+                    float crouch = leapPlanned ? LeapCrouch : HopCrouch;
+                    if (hopTimer < crouch && hopTimer > 0f) squashVel -= (leapPlanned ? 70f : 55f) * dt; // crouch anticipation
+                    if (hopTimer <= 0f && spawnT >= 1f) Hop(player, toPlayer, spd);
+                    UpdateBlobAttacks(dt, player, toPlayer);
+                }
             }
             else
             {
@@ -303,6 +487,12 @@ namespace SoccerFight
 
             float prevY = Pos.y;
             Pos += Vel * dt;
+            if (!Alive) return;
+            LandCheck(prevY);
+        }
+
+        void LandCheck(float prevY)
+        {
             float half = 0.2f * sizeMul;
             if (grounded)
             {
@@ -321,13 +511,98 @@ namespace SoccerFight
                     Vel.y = 0f;
                     grounded = true;
                     standing = index;
+                    OnLanded(floor, impact);
                 }
             }
         }
 
-        void Hop(Player player, Vector2 toPlayer)
+        /// <summary>Per-type attacks that start while standing still.</summary>
+        void UpdateBlobAttacks(float dt, Player player, Vector2 toPlayer)
         {
-            hopTimer = Random.Range(0.45f, 0.85f);
+            float rate = Has(EliteAffix.Frenzied) ? 1.6f : 1f;
+            switch (Type)
+            {
+                case EnemyType.Spitter:
+                    attackTimer -= dt * rate;
+                    if (attackTimer <= 0f && spawnT >= 1f && Mathf.Abs(toPlayer.x) < 11f) { attackWind = 0.0001f; attackTimer = Random.Range(2.4f, 3.2f); }
+                    break;
+                case EnemyType.Brute:
+                    attackTimer -= dt * rate;
+                    if (attackTimer <= 0f && spawnT >= 1f && Mathf.Abs(toPlayer.x) < 9f && Mathf.Abs(toPlayer.y) < 2f)
+                    { attackWind = 0.0001f; attackTimer = Random.Range(3.5f, 4.5f); }
+                    break;
+                case EnemyType.Bomber:
+                    if (toPlayer.magnitude < 1.5f && spawnT >= 1f) primeTime = 0.6f;
+                    break;
+            }
+            if (Rank == Rank.MiniBoss)
+            {
+                // mini-boss special: a high leap that ends in a two-way shockwave
+                moveCd -= dt * rate;
+                if (moveCd <= 0f && spawnT >= 1f) { moveCd = Random.Range(5f, 6.5f); LeapAt(player.Pos.x, 1.4f); slamPending = true; }
+            }
+        }
+
+        bool slamPending;
+
+        void OnLanded(float floor, float impact)
+        {
+            if (slamPending || (Rank == Rank.Boss && move == BossMove.LeapSlam && moveActive && burst == 1))
+            {
+                slamPending = false;
+                float dmg = ContactDamage * 0.8f;
+                var ep = EnemyProjectiles.I;
+                ep.Shockwave(new Vector2(Pos.x, floor), 1f, dmg, theme.Accent);
+                ep.Shockwave(new Vector2(Pos.x, floor), -1f, dmg, theme.Accent);
+                var fx = FxSystem.I;
+                fx.Dust(new Vector2(Pos.x, floor), Vector2.right, 8, 3.2f, 0.6f, 0.4f);
+                fx.Dust(new Vector2(Pos.x, floor), Vector2.left, 8, 3.2f, 0.6f, 0.4f);
+                fx.Ring(FxLayer.Front, new Vector2(Pos.x, floor + 0.2f), 0.3f, 2.4f, 0.3f, 0.02f, 0.35f, Color.white, theme.Accent.WithAlpha(0f), 2.2f);
+                Game.I.Cam.AddTrauma(Rank == Rank.Boss ? 0.5f : 0.32f);
+                if (moveActive) moveT = 99f;
+            }
+        }
+
+        void UpdateSpitterWindup(float dt, Player player)
+        {
+            attackWind += dt;
+            squashVel -= 40f * dt;
+            if (attackWind >= 0.55f)
+            {
+                attackWind = 0f;
+                Vector2 from = Center + new Vector2(faceT * Radius * 0.6f, Radius * 0.5f);
+                EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(Random.Range(-0.4f, 0.4f), 0.2f), ContactDamage * 0.85f, skin.Glow);
+                squashVel += 16f;
+                if (Rank != Rank.Normal)
+                {
+                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(-1.6f, 0.2f), ContactDamage * 0.85f, skin.Glow);
+                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(1.6f, 0.2f), ContactDamage * 0.85f, skin.Glow);
+                }
+            }
+        }
+
+        void UpdateBruteCharge(float dt, Player player, Vector2 toPlayer, float spd)
+        {
+            if (attackWind > 0f)
+            {
+                attackWind += dt;
+                Vel.x = Mathf.MoveTowards(Vel.x, -faceT * 1.2f, 10f * dt);   // rear back
+                squashVel -= 30f * dt;
+                if (Random.value < dt * 20f) FxSystem.I.Dust(Pos, new Vector2(-faceT, 0.2f), 1, 1.4f, 0.35f, 0.28f);
+                if (attackWind >= 0.7f) { attackWind = 0f; chargeTime = 0.65f; Vel = new Vector2(Mathf.Sign(toPlayer.x) * 11f * spd, 1.2f); squashVel += 14f; }
+            }
+            else
+            {
+                chargeTime -= dt;
+                if (Random.value < dt * 30f) FxSystem.I.Dust(Pos, new Vector2(-Mathf.Sign(Vel.x), 0.2f), 1, 1.8f, 0.4f, 0.3f);
+                if (!grounded) Vel.y -= BlobGravity * dt;
+                if (chargeTime <= 0f) Vel.x *= 0.3f;
+            }
+        }
+
+        void Hop(Player player, Vector2 toPlayer, float spd)
+        {
+            hopTimer = Random.Range(0.45f, 0.85f) * (Type == EnemyType.Spawnling || Type == EnemyType.Bomber ? 0.65f : 1f);
             bool planned = leapPlanned;
             leapPlanned = false;
             float dir = Mathf.Sign(toPlayer.x == 0f ? 1f : toPlayer.x);
@@ -351,7 +626,10 @@ namespace SoccerFight
                 var p = Level.Platforms[standing];
                 if (player.Pos.x > p.X0 - 0.6f && player.Pos.x < p.X1 + 0.6f) dir = Pos.x - p.X0 < p.X1 - Pos.x ? -1f : 1f;
             }
-            Vel = new Vector2(dir * Random.Range(2.2f, 3.4f), Random.Range(5.8f, 7.6f));
+            else if (Type == EnemyType.Spitter && Mathf.Abs(toPlayer.x) < 5f) dir = -dir;   // keep lobbing distance
+            float hx = Random.Range(2.2f, 3.4f), hy = Random.Range(5.8f, 7.6f);
+            if (Type == EnemyType.Brute) { hx = 1.8f; hy = 4.2f; }
+            Vel = new Vector2(dir * hx * spd, hy);
             grounded = false;
             standing = Level.None;
             squashVel += 12f;
@@ -413,47 +691,389 @@ namespace SoccerFight
             FxSystem.I.Dust(Pos, new Vector2(-Mathf.Sign(Vel.x + 0.001f), 0.2f), 4, 1.4f, 0.34f, 0.28f);
         }
 
-        void UpdateWisp(float dt, Player player, Vector2 toPlayer)
+        /// <summary>High arcing leap onto an x on the current floor (mini-boss and boss slams).</summary>
+        void LeapAt(float x, float airTime)
+        {
+            x = Mathf.Clamp(x, -Player.ArenaHalf + 1f, Player.ArenaHalf - 1f);
+            float vy = BlobGravity * airTime * 0.5f;
+            Vel = new Vector2((x - Pos.x) / airTime, vy);
+            grounded = false;
+            standing = Level.None;
+            squashVel += 20f;
+            FxSystem.I.Dust(Pos, Vector2.up, 6, 2f, 0.45f, 0.32f);
+        }
+
+        // ------------------------------------------------------------------ wisp body
+
+        void UpdateWisp(float dt, Player player, Vector2 toPlayer, float spd)
         {
             float side = Pos.x > player.Pos.x ? 1f : -1f;
-            Vector2 hover = player.Pos + new Vector2(side * 2.6f, 2.4f + Mathf.Sin(t * 1.3f) * 0.45f);
+            bool lantern = Type == EnemyType.Lantern;
+            float dist = lantern ? 4.6f : 2.6f, height = lantern ? 3.2f : 2.4f;
+            Vector2 hover = player.Pos + new Vector2(side * dist, height + Mathf.Sin(t * 1.3f) * 0.45f);
+            float rate = Has(EliteAffix.Frenzied) ? 1.6f : 1f;
 
-            if (windup > 0f)
+            if (teleportT >= 0f)
+            {
+                // shade blink: fade out, reappear behind the player, then dive
+                teleportT += dt;
+                fade = teleportT < 0.3f ? 1f - teleportT / 0.3f : Mathf.Clamp01((teleportT - 0.45f) / 0.25f);
+                Vel *= Mathf.Exp(-8f * dt);
+                if (teleportT >= 0.3f && teleportT - dt < 0.3f)
+                {
+                    FxSystem.I.Burst(Center, theme.WispTop, skin.WispGlow, 0.5f);
+                    Pos = player.Pos + new Vector2(-player.Facing * 2.4f, 2.2f);
+                    for (int i = 0; tailPos != null && i < tailPos.Length; i++) tailPos[i] = Pos;
+                    FxSystem.I.Ring(FxLayer.Front, Pos, 0.1f, 1.2f, 0.12f, 0.01f, 0.25f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2.2f);
+                }
+                if (teleportT >= 0.7f) { teleportT = -1f; fade = 1f; windup = 0.0001f; }
+            }
+            else if (windup > 0f)
             {
                 windup += dt;
                 Vel = MathUtil.Damp(Vel, -toPlayer.normalized * 0.8f, 6f, dt);
-                if (windup > 0.5f) { windup = 0f; diveTime = 0.55f; Vel = toPlayer.normalized * 10.5f; squashVel += 10f; }
+                if (windup > 0.5f) { windup = 0f; diveTime = 0.55f; Vel = toPlayer.normalized * 10.5f * spd; squashVel += 10f; }
             }
             else if (diveTime > 0f)
             {
                 diveTime -= dt;
-                Vel = MathUtil.Damp(Vel, Vel.normalized * 10.5f, 2f, dt);
+                Vel = MathUtil.Damp(Vel, Vel.normalized * 10.5f * spd, 2f, dt);
                 if (Random.value < dt * 30f)
-                    FxSystem.I.Spawn(FxLayer.Back, true, Art.CellGlow, Pos, -Vel * 0.05f, 0.35f, 0.3f, 0f, Palette.WispGlow, Palette.WispGlow.WithAlpha(0f), 2f);
+                    FxSystem.I.Spawn(FxLayer.Back, true, Art.CellGlow, Pos, -Vel * 0.05f, 0.35f, 0.3f, 0f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2f);
+            }
+            else if (attackWind > 0f)
+            {
+                // lantern: glow up, then a burst of bolts
+                attackWind += dt;
+                Vel = MathUtil.Damp(Vel, Vector2.zero, 5f, dt);
+                if (attackWind >= 0.5f)
+                {
+                    burstTimer -= dt;
+                    if (burstTimer <= 0f && burst > 0)
+                    {
+                        burst--;
+                        burstTimer = 0.14f;
+                        Vector2 dir = (player.Pos + new Vector2(0f, 0.8f) - Center).normalized;
+                        EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 9f * Mathf.Min(spd, 1.3f), ContactDamage * 0.8f, skin.WispGlow);
+                        squashVel += 6f;
+                    }
+                    if (burst <= 0) attackWind = 0f;
+                }
             }
             else
             {
-                Vector2 desired = Vector2.ClampMagnitude((hover - Pos) * 1.5f, 4.2f);
+                Vector2 desired = Vector2.ClampMagnitude((hover - Pos) * 1.5f, 4.2f * spd);
                 Vel = MathUtil.Damp(Vel, desired, 2.6f, dt);
-                diveTimer -= dt;
-                if (diveTimer <= 0f && spawnT >= 1f) { diveTimer = Random.Range(3f, 5f); windup = 0.0001f; }
+                diveTimer -= dt * rate;
+                if (diveTimer <= 0f && spawnT >= 1f)
+                {
+                    diveTimer = Random.Range(3f, 5f);
+                    if (Type == EnemyType.Shade) teleportT = 0f;
+                    else if (lantern) { attackWind = 0.0001f; burst = Rank != Rank.Normal ? 5 : 3; burstTimer = 0f; diveTimer = Random.Range(2.4f, 3.2f); }
+                    else windup = 0.0001f;
+                }
+                if (Rank == Rank.MiniBoss)
+                {
+                    moveCd -= dt * rate;
+                    if (moveCd <= 0f && spawnT >= 1f) { moveCd = Random.Range(4.5f, 6f); RadialBurst(10, ContactDamage * 0.7f); }
+                }
             }
             Pos += Vel * dt;
             if (Pos.y < 0.5f) { Pos.y = 0.5f; Vel.y = Mathf.Abs(Vel.y) * 0.5f; }
             if (Pos.y > 9.2f) { Pos.y = 9.2f; Vel.y = -Mathf.Abs(Vel.y) * 0.5f; }
+        }
 
-            // tail: each segment chases the previous one (smooth trailing motion)
-            Vector2 anchor = Pos + new Vector2(-Mathf.Sign(faceT) * 0.18f, -0.12f);
-            for (int i = 0; i < tail.Length; i++)
+        void RadialBurst(int count, float damage)
+        {
+            float off = Random.value * 360f;
+            for (int i = 0; i < count; i++)
             {
-                Vector2 target = i == 0 ? anchor : tailPos[i - 1] + new Vector2(0f, -0.06f);
-                tailPos[i] = MathUtil.Damp(tailPos[i], target, 14f - i * 3f, dt);
-                Vector2 d = tailPos[i] - target;
-                float maxD = 0.16f + i * 0.02f;
-                if (d.magnitude > maxD) tailPos[i] = target + d.normalized * maxD;
-                tail[i].position = new Vector3(tailPos[i].x, tailPos[i].y + Mathf.Sin(t * 5f + i) * 0.02f, 0f);
-                tail[i].localScale = Vector3.one * (0.9f - i * 0.22f) * scaleNow;
+                Vector2 dir = MathUtil.Dir(off + i * 360f / count);
+                EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 7f, damage, skin.WispGlow);
             }
+            FxSystem.I.Ring(FxLayer.Front, Center, 0.2f, Radius * 3f, 0.2f, 0.01f, 0.3f, Color.white, skin.WispGlow.WithAlpha(0f), 2.4f);
+            squashVel += 14f;
+        }
+
+        // ------------------------------------------------------------------ boss brain
+
+        void UpdateBoss(float dt, Player player, Vector2 toPlayer, float spd)
+        {
+            int phase = BossPhase;
+            if (phase != lastPhase)
+            {
+                // phase change: roar, shake, reinforcements
+                lastPhase = phase;
+                var fx = FxSystem.I;
+                fx.Ring(FxLayer.Front, Center, 0.4f, 5f, 0.5f, 0.03f, 0.6f, Color.white, theme.Accent.WithAlpha(0f), 2.6f);
+                Game.I.Cam.AddTrauma(0.5f);
+                Game.I.Post.Impact(0.6f);
+                Game.I.Hud.ShowToast(DisplayName + " WIRD WÜTEND");
+                for (int i = 0; i < 2 + phase; i++) Game.I.Waves.SpawnMinion(Boss.Minion, Center + new Vector2((i - 1) * 1.5f, 0.5f), this);
+                moveCd = Mathf.Min(moveCd, 0.8f);
+            }
+            float tempo = 1f + 0.35f * phase;
+
+            if (!moveActive)
+            {
+                // idle locomotion between moves
+                if (K == Kind.Blob)
+                {
+                    if (grounded)
+                    {
+                        Vel.x = Mathf.MoveTowards(Vel.x, 0f, 10f * dt);
+                        hopTimer -= dt * tempo;
+                        if (hopTimer <= 0f && spawnT >= 1f)
+                        {
+                            // stalk from a distance: close in when far, back off when crowding the player
+                            hopTimer = Random.Range(1f, 1.4f);
+                            float adx = Mathf.Abs(toPlayer.x);
+                            float dir = adx > 5f ? Mathf.Sign(toPlayer.x) : adx < 3f ? -Mathf.Sign(toPlayer.x) : 0f;
+                            Vel = new Vector2(dir * 2.6f * spd, 5.5f);
+                            grounded = false; standing = Level.None; squashVel += 12f;
+                        }
+                    }
+                    else Vel.y -= BlobGravity * dt;
+                }
+                else
+                {
+                    float side = Pos.x > player.Pos.x ? 1f : -1f;
+                    Vector2 hover = new Vector2(player.Pos.x + side * 4.5f, 4.2f + Mathf.Sin(t * 0.9f) * 0.6f);
+                    Vel = MathUtil.Damp(Vel, Vector2.ClampMagnitude((hover - Pos) * 1.2f, 4f), 2f, dt);
+                }
+                moveCd -= dt * tempo;
+                if (moveCd <= 0f && spawnT >= 1f) BeginMove();
+            }
+            else RunMove(dt, player, toPlayer, phase, spd);
+
+            float prevY = Pos.y;
+            Pos += Vel * dt;
+            if (K == Kind.Blob) LandCheck(prevY);
+            else
+            {
+                if (Pos.y < 1.2f) { Pos.y = 1.2f; Vel.y = Mathf.Abs(Vel.y) * 0.5f; }
+                if (Pos.y > 8.5f) { Pos.y = 8.5f; Vel.y = -Mathf.Abs(Vel.y) * 0.5f; }
+            }
+        }
+
+        void BeginMove()
+        {
+            var moves = Boss.Moves;
+            move = moves[moveIndex % moves.Length];
+            moveIndex += Random.value < 0.25f ? 2 : 1;
+            // blob-only / wisp-only moves fall back to something the body can do
+            if (K == Kind.Wisp && (move == BossMove.LeapSlam || move == BossMove.Charge)) move = BossMove.RadialBurst;
+            if (K == Kind.Blob && move == BossMove.Teleport) move = BossMove.LeapSlam;
+            moveActive = true;
+            moveT = 0f;
+            burst = 0;
+        }
+
+        void EndMove(float cooldown)
+        {
+            moveActive = false;
+            moveCd = cooldown;
+        }
+
+        void RunMove(float dt, Player player, Vector2 toPlayer, int phase, float spd)
+        {
+            moveT += dt;
+            float tell = 0.7f - 0.1f * phase;
+            bool telegraph = moveT < tell;
+            if (telegraph) { squashVel -= 25f * dt; if (K == Kind.Blob && grounded) Vel.x = Mathf.MoveTowards(Vel.x, 0f, 12f * dt); }
+            if (K == Kind.Blob && !grounded) Vel.y -= BlobGravity * dt;
+            if (K == Kind.Wisp) Vel = MathUtil.Damp(Vel, Vector2.zero, 3f, dt);
+            var ep = EnemyProjectiles.I;
+
+            switch (move)
+            {
+                case BossMove.LeapSlam:
+                    if (!telegraph && burst == 0 && grounded) { burst = 1; LeapAt(player.Pos.x, 1.15f - 0.1f * phase); }
+                    if (moveT > 99f || (burst == 1 && moveT > 3.5f)) EndMove(2.2f);
+                    break;
+                case BossMove.Charge:
+                    if (!telegraph && burst == 0) { burst = 1; chargeTime = 0.9f; Vel = new Vector2(Mathf.Sign(toPlayer.x) * 13f * spd, 1.5f); squashVel += 16f; }
+                    if (burst == 1)
+                    {
+                        chargeTime -= dt;
+                        if (Random.value < dt * 40f) FxSystem.I.Dust(Pos, new Vector2(-Mathf.Sign(Vel.x), 0.2f), 2, 2.4f, 0.5f, 0.35f);
+                        if (chargeTime <= 0f || Mathf.Abs(Pos.x) > Player.ArenaHalf - 0.5f) { Vel.x *= 0.2f; EndMove(2f); }
+                    }
+                    break;
+                case BossMove.Volley:
+                    if (!telegraph)
+                    {
+                        burstTimer -= dt;
+                        int total = 5 + 2 * phase;
+                        if (burstTimer <= 0f && burst < total)
+                        {
+                            burstTimer = K == Kind.Blob ? 0.12f : 0.1f;
+                            float spread = (burst - (total - 1) * 0.5f) * 0.9f;
+                            Vector2 from = Center + new Vector2(0f, Radius * 0.6f);
+                            if (K == Kind.Blob) ep.Lob(from, player.Pos + new Vector2(spread, 0.2f), ContactDamage * 0.55f, skin.Glow);
+                            else
+                            {
+                                Vector2 dir = MathUtil.Rotate((player.Pos + new Vector2(0f, 0.8f) - from).normalized, spread * 7f);
+                                ep.Bolt(from, dir, 9.5f, ContactDamage * 0.5f, skin.WispGlow);
+                            }
+                            burst++;
+                            squashVel += 5f;
+                        }
+                        if (burst >= total) EndMove(1.8f);
+                    }
+                    break;
+                case BossMove.RadialBurst:
+                    if (!telegraph && burst == 0) { burst = 1; RadialBurst(12 + 4 * phase, ContactDamage * 0.5f); }
+                    if (burst == 1 && moveT > tell + 0.5f && phase > 0) { burst = 2; RadialBurst(12 + 4 * phase, ContactDamage * 0.5f); }
+                    if (moveT > tell + 1f) EndMove(2f);
+                    break;
+                case BossMove.Summon:
+                    if (!telegraph && burst == 0)
+                    {
+                        burst = 1;
+                        int n = 2 + phase;
+                        for (int i = 0; i < n; i++) Game.I.Waves.SpawnMinion(Boss.Minion, Center + new Vector2((i - (n - 1) * 0.5f) * 1.4f, 0.6f), this);
+                        FxSystem.I.Ring(FxLayer.Front, Center, 0.3f, 3f, 0.3f, 0.02f, 0.45f, theme.Accent, theme.Accent.WithAlpha(0f), 2.4f);
+                    }
+                    if (moveT > tell + 0.8f) EndMove(3f);
+                    break;
+                case BossMove.Teleport:
+                    if (burst == 0 && moveT > 0.3f)
+                    {
+                        burst = 1;
+                        FxSystem.I.Burst(Center, theme.WispTop, skin.WispGlow, 1.2f);
+                        Pos = new Vector2(Mathf.Clamp(player.Pos.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
+                        for (int i = 0; tailPos != null && i < tailPos.Length; i++) tailPos[i] = Pos;
+                        FxSystem.I.Ring(FxLayer.Front, Pos, 0.2f, 2.4f, 0.2f, 0.01f, 0.35f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2.4f);
+                    }
+                    fade = moveT < 0.3f ? 1f - moveT / 0.3f : Mathf.Clamp01((moveT - 0.3f) / 0.25f);
+                    if (moveT > 0.8f) { fade = 1f; move = BossMove.Volley; moveT = tell; burst = 0; }
+                    break;
+                case BossMove.LightningCall:
+                case BossMove.GeyserCall:
+                    if (!telegraph && burst == 0)
+                    {
+                        burst = 1;
+                        int n = 3 + phase;
+                        for (int i = 0; i < n; i++)
+                        {
+                            float x = player.Pos.x + (i - (n - 1) * 0.5f) * 2.2f + Random.Range(-0.4f, 0.4f);
+                            if (move == BossMove.LightningCall) StageMechanics.I.Strike(x, ContactDamage * 0.9f, 0.9f + i * 0.12f);
+                            else StageMechanics.I.Geyser(x, ContactDamage * 0.9f, 0.9f + i * 0.12f);
+                        }
+                    }
+                    if (moveT > tell + 1.4f) EndMove(2.4f);
+                    break;
+            }
+        }
+
+        // ------------------------------------------------------------------ visuals
+
+        void UpdateVisuals(float dt, Vector2 toPlayer)
+        {
+            MathUtil.Spring(ref squash, ref squashVel, 0f, 3.2f, 0.32f, dt);
+            float sq = Mathf.Clamp(squash * 0.05f, -0.35f, 0.35f);
+            float flipScale = Mathf.Sin(faceT * Mathf.PI * 0.5f);
+            float shiver = primeTime > 0f ? 1f + 0.05f * Mathf.Sin(t * 70f) : 1f;
+            body.localScale = new Vector3(flipScale * (1f - sq) * scaleNow * shiver, (1f + sq) * scaleNow * shiver, 1f);
+            root.position = new Vector3(Pos.x, Pos.y, 0f);
+
+            // eyes: look at the player, blink now and then
+            blinkTimer -= dt;
+            if (blinkTimer <= 0f) { blinkTimer = Random.Range(1.8f, 4.5f); blink = 1f; }
+            blink = Mathf.Max(0f, blink - dt / 0.12f);
+            float eyeY = 1f - MathUtil.Bump(1f - blink) * 0.9f;
+            Vector2 look = toPlayer.normalized;
+            for (int i = 0; i < eyes.Length; i++)
+            {
+                float baseScale = K == Kind.Blob ? (i == 0 ? 0.9f : 1f) : 1f;
+                eyes[i].transform.localScale = new Vector3(baseScale, baseScale * Mathf.Max(0.1f, eyeY), 1f);
+            }
+            for (int i = 0; i < pupils.Length; i++)
+                pupils[i].transform.localPosition = new Vector3(Mathf.Abs(look.x) * 0.018f + 0.004f, look.y * 0.022f, 0f);
+
+            // flash, frost tint and fade (shade blink)
+            if (flash > 0f)
+            {
+                flash -= Time.unscaledDeltaTime;
+                SetBodyMaterial(flash > 0f);
+            }
+            if (flash <= 0f)
+            {
+                Color tint = Color.white;
+                if (FreezeTime > 0f) tint = new Color(0.62f, 0.85f, 1f);
+                else if (SlowTime > 0f) tint = Color.Lerp(Color.white, new Color(0.7f, 0.88f, 1f), 0.6f);
+                else if (BurnTime > 0f) tint = Color.Lerp(Color.white, new Color(1f, 0.72f, 0.55f), 0.35f + 0.15f * Mathf.Sin(t * 20f));
+                tint.a = fade;
+                bodySr.color = tint;
+                for (int i = 0; i < extras.Length; i++) extras[i].color = extraColors[i] * tint;
+            }
+            foreach (var e in eyes) { Color ec = e.color; ec.a = fade; e.color = ec; }
+
+            float pulse = 0.5f + 0.5f * Mathf.Sin(t * 3.4f);
+            Color gc = K == Kind.Blob ? skin.Glow : skin.WispGlow;
+            float windGlow = Mathf.Max(windup, attackWind > 0f ? 1f : 0f, primeTime > 0f ? 1f : 0f, moveActive && moveT < 0.7f ? 1f : 0f);
+            float ga = (K == Kind.Blob ? 0.14f + 0.08f * pulse : 0.28f + 0.1f * pulse) + windGlow * 0.5f;
+            glow.color = gc.WithAlpha(ga * fade);
+
+            // elite / boss aura
+            if (Named)
+            {
+                float ap = 0.5f + 0.5f * Mathf.Sin(t * 4f);
+                aura.color = auraColor.WithAlpha((Rank == Rank.Boss ? 0.28f : 0.22f + 0.08f * ap) * fade);
+                aura.transform.localScale = Vector3.one * (K == Kind.Blob ? 2.4f : 2.1f) * (1f + 0.06f * ap);
+                auraRing.color = auraColor.WithAlpha(0.35f * fade);
+                auraRing.transform.localScale = Vector3.one * (K == Kind.Blob ? 1.35f : 1.1f) * (1f + 0.08f * Mathf.Sin(t * 2.3f));
+                auraRing.transform.localRotation = Quaternion.Euler(0f, 0f, t * 40f);
+            }
+            else { aura.color = Color.clear; auraRing.color = Color.clear; }
+
+            // shadow on the surface below
+            float floor = K == Kind.Blob && grounded ? Pos.y : Level.FloorBelow(Pos.x, Pos.y + 0.02f, 0.15f);
+            float h = Mathf.Max(0f, Pos.y - floor - (K == Kind.Wisp ? 0.4f : 0f));
+            float s = Mathf.Lerp(0.95f, 0.35f, Mathf.Clamp01(h / 4f)) * scaleNow;
+            shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
+            shadow.transform.localScale = new Vector3(s, s, 1f);
+            shadow.color = new Color(0, 0, 0, Mathf.Lerp(0.42f, 0.08f, Mathf.Clamp01(h / 4f)) * fade);
+
+            // wisp tail: each segment chases the previous one (smooth trailing motion)
+            if (tail != null)
+            {
+                Vector2 anchor = Pos + new Vector2(-Mathf.Sign(faceT) * 0.18f, -0.12f) * sizeMul;
+                for (int i = 0; i < tail.Length; i++)
+                {
+                    Vector2 target = i == 0 ? anchor : tailPos[i - 1] + new Vector2(0f, -0.06f * sizeMul);
+                    tailPos[i] = MathUtil.Damp(tailPos[i], target, 14f - i * 3f, dt);
+                    Vector2 d = tailPos[i] - target;
+                    float maxD = (0.16f + i * 0.02f) * sizeMul;
+                    if (d.magnitude > maxD) tailPos[i] = target + d.normalized * maxD;
+                    tail[i].position = new Vector3(tailPos[i].x, tailPos[i].y + Mathf.Sin(t * 5f + i) * 0.02f, 0f);
+                    tail[i].localScale = Vector3.one * (0.9f - i * 0.22f) * scaleNow;
+                }
+            }
+
+            // small health bar after damage (named enemies use the HUD instead)
+            hpShow = Mathf.Max(0f, hpShow - dt);
+            hpDisplay = MathUtil.Damp(hpDisplay, Mathf.Clamp01(Hp / MaxHp), 10f, dt);
+            float ha = Rank == Rank.Boss ? 0f : Mathf.Clamp01(hpShow * 3f) * fade;
+            float topY = (K == Kind.Blob ? 1.0f : 0.62f) * scaleNow;
+            Vector2 hp = new Vector2(0f, topY);
+            float barW = Rank == Rank.MiniBoss ? 1.2f : Rank == Rank.Elite ? 0.9f : 0.66f;
+            hpBack.transform.localPosition = hp;
+            hpBack.size = new Vector2(barW + 0.04f, 0.1f);
+            hpBack.color = new Color(0.02f, 0.03f, 0.08f, 0.7f * ha);
+            float w = Mathf.Max(0.07f, barW * hpDisplay);
+            hpFill.size = new Vector2(w, 0.07f);
+            hpFill.transform.localPosition = hp + new Vector2(-(barW - w) * 0.5f, 0f);
+            hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
+        }
+
+        /// <summary>Volatile elites burst when they die (the fight-ending pop you have to respect).</summary>
+        public void OnDeathEffects()
+        {
+            if (detonated) return;
+            if (Has(EliteAffix.Volatile)) Explode(2.2f, ContactDamage * 1.2f);
+            else if (Type == EnemyType.Bomber) Explode(1.6f, ContactDamage);
         }
     }
 }

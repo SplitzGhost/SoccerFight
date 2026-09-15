@@ -36,6 +36,7 @@ namespace SoccerFight
         System.Random rng;
         float moteTimer, crystalTimer, splashTimer;
 
+        public Transform Root => root;
         public Transform LeftPortal { get; private set; }
         public Transform RightPortal { get; private set; }
         public float Wind { get; private set; }

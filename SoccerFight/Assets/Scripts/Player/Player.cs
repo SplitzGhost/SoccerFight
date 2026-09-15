@@ -62,6 +62,9 @@ namespace SoccerFight
 
         public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle }
 
+        public const float BaseMaxHp = 100f;
+        const float DashStrikeDamage = 30f;
+
         public Vector2 Pos;
         public Vector2 Vel;
         public int Facing = 1;
@@ -70,8 +73,25 @@ namespace SoccerFight
         public int OnPlatform = Level.None;
         /// <summary>Height of the surface under the feet (the one the player stands on, or would land on).</summary>
         public float GroundY => Grounded ? Pos.y : Level.FloorBelow(Pos.x, Pos.y + 0.02f, FootHalf);
-        public float MaxHp = 100f;
-        public float Hp = 100f;
+        public float MaxHp = BaseMaxHp;
+        public float Hp = BaseMaxHp;
+
+        // ---- build (upgrades and unlocked abilities)
+        static RunState Run => Game.I.Run;
+        static PlayerStats S => Game.I.Run.Stats;
+        public float ShotCooldownTotal => ShotCooldown * S.ShotCooldownMul / Combat.AdrenalineMul;
+        public float PowerCooldownTotal => PowerCooldown * S.CooldownMul;
+        public float FlickCooldownTotal => FlickCooldown * S.CooldownMul;
+        public float StepOverCooldownTotal => StepOverCooldown * S.CooldownMul;
+        public float BicycleCooldownTotal => BicycleCooldown * S.CooldownMul;
+        public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul;
+        /// <summary>Captain's shield: blocks one hit, then recharges.</summary>
+        public int Shield;
+        public float ShieldCharge;
+        readonly System.Collections.Generic.HashSet<int> dashHits = new System.Collections.Generic.HashSet<int>();
+        int shotCount;
+        float regenAcc;
+        Vector2 dashStartPos;
         public float InvulnTimer;
         public bool Dead;
         public float DeadTime;
@@ -146,15 +166,17 @@ namespace SoccerFight
             OnPlatform = Level.None;
             dropTimer = 0f;
             dropIgnore = Level.None;
-            Hp = MaxHp;
+            ApplyStats(true);
             InvulnTimer = 0f;
             Dead = false;
+            shotCount = 0;
+            regenAcc = 0f;
             ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
             DodgeTime = 0f;
             CurrentAction = Action.None;
             ActionTime = 0f;
             coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = powerBuffer = stepBuffer = bikeBuffer = 0f;
-            airBoosts = 1;
+            airBoosts = 0;
             boostT = boostGhostT = 0f;
             boostRise = false;
             JuggleCount = 0;
@@ -167,6 +189,60 @@ namespace SoccerFight
 
         Vector2 ToLocal(Vector2 world) => new Vector2((world.x - Pos.x) * Facing, world.y - Pos.y);
         Vector2 ToWorld(Vector2 local) => Pos + new Vector2(local.x * Facing, local.y);
+
+        // ------------------------------------------------------------------ build
+
+        /// <summary>Re-read the build after a pick. fresh: new run (full health, full shield).</summary>
+        public void ApplyStats(bool fresh)
+        {
+            var s = S;
+            MaxHp = BaseMaxHp + s.MaxHpBonus;
+            Hp = fresh ? MaxHp : Mathf.Min(Hp, MaxHp);
+            if (fresh || Shield > s.ShieldCharges) Shield = s.ShieldCharges;
+            if (s.ShieldCharges > 0 && Shield == 0 && fresh) Shield = 1;
+            if (!Run.Has(Ability.AirKick)) airBoosts = 0;
+        }
+
+        public void Heal(float amount, bool popup = false)
+        {
+            if (Dead || amount <= 0f) return;
+            float before = Hp;
+            Hp = Mathf.Min(MaxHp, Hp + amount);
+            float gained = Hp - before;
+            if (popup && gained >= 1f)
+            {
+                Game.I.Hud.Popup(Pos + new Vector2(0f, 2.2f), "+" + Mathf.RoundToInt(gained), Palette.Heal, 30f, gained >= 20f);
+                FxSystem.I.Motes(Pos + new Vector2(0f, 1f), Vector2.up * 1.2f, Palette.Heal, Mathf.Clamp(Mathf.RoundToInt(gained / 4f), 3, 12), 0.45f);
+            }
+        }
+
+        /// <summary>Geysers and bosses throw the player into the air.</summary>
+        public void Launch(float vy)
+        {
+            if (Dead) return;
+            AbortJuggle();
+            Vel.y = Mathf.Max(Vel.y, vy);
+            Grounded = false;
+            OnPlatform = Level.None;
+            boostRise = true;
+        }
+
+        public void ReduceCooldowns(float seconds)
+        {
+            ShotCd = Mathf.Max(0f, ShotCd - seconds);
+            FlickCd = Mathf.Max(0f, FlickCd - seconds);
+            PowerCd = Mathf.Max(0f, PowerCd - seconds);
+            StepOverCd = Mathf.Max(0f, StepOverCd - seconds);
+            BicycleCd = Mathf.Max(0f, BicycleCd - seconds);
+        }
+
+        /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
+        public void DashStrike(Monster m)
+        {
+            if (!dashHits.Add(m.Id)) return;
+            Combat.Hit(m, DashStrikeDamage * S.DashDamageFrac, new Vector2(dashDir, 0.5f), 8f, Src.Dash, big: true);
+            FxSystem.I.Sparks(m.Center, new Vector2(dashDir, 0.2f), 60f, 8, 5f, 12f, Palette.DashMint, 2.4f, 0.05f, 0.25f);
+        }
 
         // ------------------------------------------------------------------ update
 
@@ -182,6 +258,28 @@ namespace SoccerFight
             DodgeTime = Mathf.Max(0f, DodgeTime - dt);
             boostT = Mathf.Max(0f, boostT - dt);
 
+            var s = S;
+            var run = Run;
+            if (!Dead)
+            {
+                // regeneration ticks in whole points so the number doesn't flicker
+                if (s.RegenPerSec > 0f && Hp < MaxHp)
+                {
+                    regenAcc += s.RegenPerSec * dt;
+                    if (regenAcc >= 1f) { float n = Mathf.Floor(regenAcc); regenAcc -= n; Hp = Mathf.Min(MaxHp, Hp + n); }
+                }
+                if (s.ShieldCharges > 0 && Shield < s.ShieldCharges)
+                {
+                    ShieldCharge += dt / Mathf.Max(1f, s.ShieldRecharge);
+                    if (ShieldCharge >= 1f)
+                    {
+                        ShieldCharge = 0f;
+                        Shield++;
+                        FxSystem.I.Ring(FxLayer.Front, Pos + new Vector2(0f, 0.95f), 0.4f, 1.1f, 0.12f, 0.01f, 0.35f, Color.white, Palette.ShotCyan.WithAlpha(0f), 2.2f);
+                    }
+                }
+            }
+
             float input = Dead ? 0f : GameInput.MoveX;
 
             // --- buffers
@@ -196,6 +294,12 @@ namespace SoccerFight
             // --- start actions
             if (CurrentAction == Action.None && !Dead)
             {
+                // locked abilities stay silent until the run unlocks them
+                if (flickBuffer > 0f && !run.Has(Ability.Flick)) { flickBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Flick); }
+                if (bikeBuffer > 0f && !run.Has(Ability.Bicycle)) { bikeBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Bicycle); }
+                if (stepBuffer > 0f && !run.Has(Ability.StepOver)) { stepBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.StepOver); }
+                if (juggleBuffer > 0f && !run.Has(Ability.Juggle)) { juggleBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Juggle); }
+
                 if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
                 else if (powerBuffer > 0f && PowerCd <= 0f && Grounded && TakeBall()) StartPower();
@@ -204,7 +308,7 @@ namespace SoccerFight
                 else if (shotBuffer > 0f && ShotCd <= 0f)
                 {
                     // one-touch: a ball that is almost home gets taken first time
-                    if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 1.6f)) Ball.ForceCatch(this);
+                    if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 1.6f * s.CatchRadiusMul)) Ball.ForceCatch(this);
                     if (Ball.IsHeld) StartKick();
                 }
             }
@@ -217,20 +321,22 @@ namespace SoccerFight
             else if (CurrentAction == Action.Power) speedMul = ActionTime < PowerContact ? 0f : 0.3f;
             else if (CurrentAction == Action.StepOver) speedMul = 0.1f;
             else if (CurrentAction == Action.Bicycle) speedMul = 0.4f;
-            float target = input * MaxSpeed * speedMul;
+            float target = input * MaxSpeedNow * speedMul;
             float accel;
             bool turning = false;
             if (Grounded)
             {
                 turning = Mathf.Abs(target) > 0.01f && Mathf.Sign(target) != Mathf.Sign(Vel.x) && Mathf.Abs(Vel.x) > 0.1f;
                 accel = turning ? TurnAccel : (Mathf.Abs(target) > Mathf.Abs(Vel.x) ? Accel : Decel);
+                // ice: the feet find little grip for braking and turning
+                if (s.Slippery) accel *= turning ? 0.2f : Mathf.Abs(target) > Mathf.Abs(Vel.x) ? 0.55f : 0.12f;
             }
             else
             {
                 accel = Mathf.Abs(target) > 0.01f ? AirAccel : AirDecel;
                 if (boostT > 0f) accel *= 0.2f;   // let the recoil carry before air control takes over again
             }
-            if (IsDashing) Vel.x = dashDir * DashSpeed;
+            if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul;
             else Vel.x = Mathf.MoveTowards(Vel.x, target, accel * dt);
 
             // --- facing
@@ -254,7 +360,7 @@ namespace SoccerFight
             coyote = Grounded ? CoyoteTime : Mathf.Max(0f, coyote - dt);
             if (jumpBuffer > 0f && coyote > 0f && canMove)
             {
-                Vel.y = JumpVel;
+                Vel.y = JumpVel * s.JumpMul;
                 Grounded = false;
                 coyote = jumpBuffer = 0f;
                 Rig.OnJump();
@@ -271,7 +377,8 @@ namespace SoccerFight
                 float g = Vel.y > 0f ? (floaty ? RiseGravity : RiseGravity * 2.3f) : FallGravity;
                 if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
                 if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
-                Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall);
+                g *= s.GravityMul;
+                Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall * Mathf.Sqrt(s.GravityMul));
             }
 
             float prevY = Pos.y;
@@ -297,7 +404,7 @@ namespace SoccerFight
                 Vel.y = 0f;
                 Grounded = true;
                 OnPlatform = floorIndex;
-                airBoosts = 1;
+                airBoosts = run.Has(Ability.AirKick) ? s.AirBoosts : 0;
                 boostRise = false;
             }
             else if (Pos.y > floor + 0.001f)
@@ -311,7 +418,7 @@ namespace SoccerFight
             if (Pos.x > ArenaHalf) { Pos.x = ArenaHalf; Vel.x = Mathf.Min(0f, Vel.x); }
 
             // --- running dust puffs, and a spray from the planted foot while skidding into a turn
-            if (Grounded && Mathf.Abs(Vel.x) > MaxSpeed * 0.8f)
+            if (Grounded && Mathf.Abs(Vel.x) > MaxSpeedNow * 0.8f)
             {
                 stepDustTimer -= dt;
                 if (stepDustTimer <= 0f)
@@ -326,8 +433,8 @@ namespace SoccerFight
                 if (skidDustTimer <= 0f)
                 {
                     skidDustTimer = 0.035f;
-                    float s = Mathf.Sign(Vel.x);
-                    FxSystem.I.Dust(Pos + new Vector2(s * 0.3f, 0f), new Vector2(s, 0.35f), 2, 1.8f, 0.3f, 0.3f);
+                    float side = Mathf.Sign(Vel.x);
+                    FxSystem.I.Dust(Pos + new Vector2(side * 0.3f, 0f), new Vector2(side, 0.35f), 2, 1.8f, 0.3f, 0.3f);
                 }
             }
 
@@ -349,7 +456,7 @@ namespace SoccerFight
             CurrentAction = Action.Kick;
             ActionTime = 0f;
             released = false;
-            ShotCd = ShotCooldown;
+            ShotCd = ShotCooldownTotal;
             Game.I.Hud.OnShotUsed();
         }
 
@@ -365,7 +472,26 @@ namespace SoccerFight
             if (Grounded && OnPlatform == Level.None && dir.y < -0.35f) dir = new Vector2(dir.x, -0.35f).normalized;
             KickAimLocal = new Vector2(dir.x * Facing, dir.y);
 
-            Ball.Kick(dir * ShotSpeed, Grounded ? OnPlatform : Level.None);
+            var s = S;
+            bool runUp = s.RunUpBonus > 0f && Grounded && Mathf.Abs(Vel.x) > MaxSpeedNow * 0.75f;
+            Ball.Kick(dir * ShotSpeed * s.BallSpeedMul, Grounded ? OnPlatform : Level.None);
+            Ball.ShotMul = runUp ? 1f + s.RunUpBonus : 1f;
+            Ball.RicochetsLeft = s.Ricochets;
+            shotCount++;
+            Ball.GoldenShot = s.GoldenBoot && shotCount % 3 == 0;
+            if (Ball.GoldenShot)
+            {
+                fx.Flash(from, 1.8f, Palette.Gold, 0.16f, 3.2f);
+                fx.Sparkles(from, 0.3f, 8, Palette.Gold, 3f, 0.5f);
+            }
+            if (runUp) fx.Sparks(from, -dir, 40f, 5, 4f, 8f, Palette.Gold, 2.2f, 0.035f, 0.18f);
+
+            // echo balls fan out around the real shot, alternating sides
+            for (int i = 0; i < s.EchoBalls; i++)
+            {
+                float ang = s.EchoSpread * ((i >> 1) + 1) * (i % 2 == 0 ? 1f : -1f);
+                EchoBalls.I.Fire(from, MathUtil.Rotate(dir, ang), ShotSpeed * s.BallSpeedMul * 0.95f, ShotDamage, Src.Echo, Palette.ShotCyan, false, false, s.EchoRicochet);
+            }
 
             fx.Flash(from, 1.1f, Palette.ShotCyan, 0.12f, 3f);
             fx.Ring(FxLayer.Front, from, 0.12f, 0.85f, 0.12f, 0.01f, 0.2f, Palette.ShotCore, Palette.ShotCyan.WithAlpha(0f), 2.4f);
@@ -440,7 +566,7 @@ namespace SoccerFight
             ActionTime = 0f;
             released = false;
             chargeFxTimer = 0f;
-            PowerCd = PowerCooldown;
+            PowerCd = PowerCooldownTotal;
             Game.I.Hud.OnSkillUsed(GameAction.PowerShot);
             Game.I.Cam.SetZoom(0.96f);
         }
@@ -452,7 +578,12 @@ namespace SoccerFight
             Vector2 dir = AimFrom(from);
             if (Grounded && OnPlatform == Level.None && dir.y < -0.3f) dir = new Vector2(dir.x, -0.3f).normalized;
             KickAimLocal = new Vector2(dir.x * Facing, dir.y);
-            Ball.Pierce(dir * PowerSpeed, Grounded ? OnPlatform : Level.None);
+            var s = S;
+            Ball.Pierce(dir * PowerSpeed * s.BallSpeedMul, Grounded ? OnPlatform : Level.None);
+            if (s.Trident)
+                for (int i = -1; i <= 1; i += 2)
+                    EchoBalls.I.Fire(from, MathUtil.Rotate(dir, 11f * i), PowerSpeed * s.BallSpeedMul, PowerDamage, Src.Power, Palette.PowerGold, true);
+            Combat.Maestro(this);
 
             var fx = FxSystem.I;
             fx.Flash(from, 2.4f, Palette.PowerGold, 0.18f, 3.2f);
@@ -490,11 +621,12 @@ namespace SoccerFight
             CurrentAction = Action.StepOver;
             ActionTime = 0f;
             dashStarted = dashEnded = false;
-            StepOverCd = StepOverCooldown;
+            StepOverCd = StepOverCooldownTotal;
             DodgeTime = StepOverDuration + 0.08f;
             StepCarry = Ball.IsHeldFree;
             if (StepCarry) Ball.BeginScripted();
             ghostTimer = 0f;
+            dashHits.Clear();
             Game.I.Hud.OnSkillUsed(GameAction.StepOver);
         }
 
@@ -513,6 +645,8 @@ namespace SoccerFight
             Game.I.Cam.Kick(new Vector2(dashDir * 0.18f, 0f));
             Game.I.Cam.AddTrauma(0.08f);
             Rig.OnDash();
+            dashStartPos = Pos;
+            Combat.Maestro(this);
         }
 
         // ------------------------------------------------------------------ bicycle kick
@@ -527,7 +661,7 @@ namespace SoccerFight
             ActionTime = 0f;
             released = false;
             ghostTimer = 0f;
-            BicycleCd = BicycleCooldown;
+            BicycleCd = BicycleCooldownTotal;
             bikeBallStart = ToLocal(Ball.Pos);
             BikeBallLocal = bikeBallStart;
             Ball.BeginScripted();
@@ -541,7 +675,12 @@ namespace SoccerFight
         {
             Vector2 from = Ball.Pos;
             Vector2 dir = AimFrom(from);
-            Ball.Blast(dir * BicycleSpeed);
+            var s = S;
+            Ball.Blast(dir * BicycleSpeed * s.BallSpeedMul);
+            if (s.EchoFlip)
+                for (int i = -1; i <= 1; i += 2)
+                    EchoBalls.I.Fire(from, MathUtil.Rotate(dir, 18f * i), BicycleSpeed * 0.9f, BlastDamage, Src.Blast, Palette.BlastOrange, false, true);
+            Combat.Maestro(this);
 
             var fx = FxSystem.I;
             fx.Flash(from, 1.8f, Palette.BlastOrange, 0.14f, 3f);
@@ -575,7 +714,7 @@ namespace SoccerFight
             released = false;
             ghostTimer = 0f;
             ghostIndex = 0;
-            FlickCd = FlickCooldown;
+            FlickCd = FlickCooldownTotal;
             Ball.BeginScripted();
             Game.I.Cam.SetZoom(0.94f);
             Game.I.Hud.OnFlickUsed();
@@ -585,6 +724,7 @@ namespace SoccerFight
         {
             Vector2 at = Ball.Pos;
             Ball.StartRainbow(at, FlickTarget, Facing, Pos.y);
+            Combat.Maestro(this);
             // Release accent: small and crisp — the rainbow arc itself is the star of the move.
             var fx = FxSystem.I;
             fx.Flash(at, 0.85f, Color.white, 0.12f, 2f);
@@ -625,7 +765,7 @@ namespace SoccerFight
             JuggleLastPerfect = false;
             LastTouch = Touch.Foot;
             SinceTouch = 0f;          // the opening scoop animates like a foot touch
-            JuggleWindow = JuggleWindowEasy;
+            JuggleWindow = JuggleWindowEasy * S.JuggleWindowMul;
             Ball.BeginScripted();
             Ball.JuggleMode = true;
             Vector2 from = ToLocal(Ball.Pos);
@@ -683,10 +823,11 @@ namespace SoccerFight
             Vector2 at = JuggleBallLocal;
             Touch next = TouchPattern[JuggleCount % TouchPattern.Length];
             LaunchJuggle(at, next, ApexFor(next));
-            JuggleWindow = Mathf.Lerp(JuggleWindowEasy, JuggleWindowHard, Mathf.Clamp01(JuggleCount / 24f));
+            JuggleWindow = Mathf.Lerp(JuggleWindowEasy, JuggleWindowHard, Mathf.Clamp01(JuggleCount / 24f)) * S.JuggleWindowMul;
 
             bool streak = JuggleCount % 10 == 0;
-            float heal = (perfect ? JuggleHealPerfect : JuggleHeal) + (streak ? JuggleHealStreak : 0f);
+            float heal = ((perfect ? JuggleHealPerfect : JuggleHeal) + (streak ? JuggleHealStreak : 0f)) * S.JuggleHealMul;
+            if (perfect && S.BulletTime) TimeFx.SlowMo(0.5f, 0.08f, 0.2f);
             float before = Hp;
             Hp = Mathf.Min(MaxHp, Hp + heal);
 
@@ -787,6 +928,8 @@ namespace SoccerFight
         {
             if (!released)
             {
+                // overcharge: the whole wind-up plays faster (the rig follows ActionTime)
+                ActionTime += dt * (1f / Mathf.Max(0.2f, S.PowerChargeMul) - 1f);
                 float charge = Mathf.Clamp01(ActionTime / PowerContact);
                 Ball.Charge = charge;
                 // energy gathers into the ball during the wind-up
@@ -814,7 +957,10 @@ namespace SoccerFight
             else if (dashStarted && !dashEnded)
             {
                 dashEnded = true;
-                Vel.x = dashDir * MaxSpeed;   // carry the momentum out of the dash
+                Vel.x = dashDir * MaxSpeedNow;   // carry the momentum out of the dash
+                // cyclone: a swirl stays behind in the middle of the dash path
+                if (S.CycloneStep)
+                    Vortices.I.Spawn((dashStartPos + Pos) * 0.5f + new Vector2(0f, 0.9f), 2.4f * S.AreaMul, 2f, 22f, 0f, false, Palette.DashMint);
             }
             if (ActionTime >= StepOverDuration)
             {
@@ -850,15 +996,35 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ damage
 
-        public void TakeDamage(float amount, Vector2 from)
+        /// <summary>Returns true if the hit connected (shield blocks count).</summary>
+        public bool TakeDamage(float amount, Vector2 from)
         {
-            if (Dead || InvulnTimer > 0f || DodgeTime > 0f) return;
+            if (Dead || InvulnTimer > 0f || DodgeTime > 0f) return false;
             var game = Game.I;
-            AbortJuggle();
-            Hp = Mathf.Max(0f, Hp - amount);
-            InvulnTimer = 1.0f;
+            var s = S;
             float dir = Mathf.Sign(Pos.x - from.x);
             if (dir == 0f) dir = -Facing;
+
+            // captain's shield soaks the whole hit
+            if (Shield > 0)
+            {
+                Shield--;
+                ShieldCharge = 0f;
+                InvulnTimer = 0.6f;
+                Vel.x += dir * 4f;
+                var fx = FxSystem.I;
+                Vector2 c = Pos + new Vector2(0f, 0.95f);
+                fx.Ring(FxLayer.Front, c, 0.6f, 1.6f, 0.2f, 0.01f, 0.3f, Color.white, Palette.ShotCyan.WithAlpha(0f), 2.6f);
+                fx.Sparks(c, new Vector2(-dir, 0.3f), 120f, 12, 4f, 9f, Palette.ShotCyan, 2.4f, 0.04f, 0.25f);
+                game.Cam.AddTrauma(0.15f);
+                game.Hud.ShowToast("SCHILD BLOCKT");
+                return true;
+            }
+
+            AbortJuggle();
+            amount *= 1f - Mathf.Min(0.6f, s.Armor);
+            Hp = Mathf.Max(0f, Hp - amount);
+            InvulnTimer = 1.0f + s.InvulnBonus;
             Vel = new Vector2(dir * 7.5f, Grounded ? 6.5f : Mathf.Max(Vel.y, 4f));
             Grounded = false;
             Rig.Flash(0.09f);
@@ -872,7 +1038,41 @@ namespace SoccerFight
             if ((CurrentAction == Action.Flick || CurrentAction == Action.Bicycle) && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
             if (CurrentAction == Action.Power && !released) { CurrentAction = Action.None; Ball.Charge = 0f; game.Cam.SetZoom(1f); }
 
-            if (Hp <= 0f) Die();
+            if (Hp <= 0f)
+            {
+                if (s.Revives > 0) Revive();
+                else Die();
+                return true;
+            }
+            if (s.CounterStomp > 0f) Combat.Stomp(this, s.CounterStomp);
+            return true;
+        }
+
+        /// <summary>Phoenix: back on your feet at half health in a burst of fire.</summary>
+        void Revive()
+        {
+            var run = Run;
+            run.RevivesUsed++;
+            run.Rebuild();
+            Hp = MaxHp * 0.5f;
+            InvulnTimer = 2.2f;
+            var fx = FxSystem.I;
+            Vector2 c = Pos + new Vector2(0f, 1f);
+            fx.Flash(c, 7f, Palette.BlastOrange, 0.4f, 3f);
+            fx.Flash(c, 3f, Color.white, 0.15f, 3.4f);
+            fx.Ring(FxLayer.Front, c, 0.3f, 5f, 0.6f, 0.03f, 0.6f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.8f);
+            for (int i = 0; i < 24; i++)
+            {
+                float ang = Random.Range(20f, 160f);
+                Color col = Color.Lerp(Palette.Gold, Palette.BlastOrange, Random.value);
+                fx.Streak(FxLayer.Front, c, MathUtil.Dir(ang) * Random.Range(6f, 14f), Random.Range(0.4f, 0.7f), 0.08f, 0.05f,
+                    Color.Lerp(col, Color.white, 0.4f), col.WithAlpha(0f), 2.8f, 2.5f, -3f);
+            }
+            Combat.Explosion(c, 4f, 80f, Palette.BlastOrange);
+            TimeFx.SlowMo(0.25f, 0.35f, 0.6f);
+            Game.I.Cam.AddTrauma(0.6f);
+            Game.I.Post.Impact(0.9f);
+            Game.I.Hud.ShowToast("PHÖNIX  ·  WIEDERBELEBT");
         }
 
         void Die()
@@ -880,6 +1080,7 @@ namespace SoccerFight
             Dead = true;
             DeadTime = 0f;
             CurrentAction = Action.None;
+            Game.I.Director.OnPlayerDied();
             TimeFx.SlowMo(0.2f, 0.4f, 0.9f);
             var fx = FxSystem.I;
             Vector2 c = Pos + new Vector2(0f, 1f);

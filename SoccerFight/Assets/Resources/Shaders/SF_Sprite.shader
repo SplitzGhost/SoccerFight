@@ -9,6 +9,7 @@ Shader "SoccerFight/Sprite"
         _MainTex ("Sprite Texture", 2D) = "white" {}
         _Intensity ("Intensity", Float) = 1
         _Solid ("Solid Fill", Range(0, 1)) = 0
+        _EnvGraded ("Environment Grade", Float) = 0
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
         [HideInInspector] _Color ("Tint", Color) = (1,1,1,1)
@@ -52,7 +53,16 @@ Shader "SoccerFight/Sprite"
                 half4 _Color;
                 float _Intensity;
                 float _Solid;
+                float _EnvGraded;
             CBUFFER_END
+
+            // environment grade (stage themes): rgb' = M rgb + t * coverage, only on graded clones
+            float4x4 _SF_EnvGrade;
+            half3 EnvGrade(half3 rgb, half coverage)
+            {
+                float3 g = mul((float3x3)_SF_EnvGrade, (float3)rgb) + _SF_EnvGrade._m03_m13_m23 * coverage;
+                return lerp(rgb, (half3)max(g, 0.0), (half)_EnvGraded);
+            }
 
             Varyings vert(Attributes input)
             {
@@ -66,7 +76,7 @@ Shader "SoccerFight/Sprite"
             half4 frag(Varyings i) : SV_Target
             {
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
-                half3 rgb = lerp(tex.rgb, tex.aaa, (half)_Solid) * i.color.rgb;
+                half3 rgb = EnvGrade(lerp(tex.rgb, tex.aaa, (half)_Solid) * i.color.rgb, tex.a);
                 return half4(rgb * (i.color.a * _Intensity), tex.a * i.color.a);
             }
             ENDHLSL

@@ -23,6 +23,18 @@ namespace SoccerFight
         public WorldEnvironment Environment { get; private set; }
         public bool CaptureMode { get; private set; }
 
+        // roguelite run
+        public RunState Run { get; private set; }
+        public RunDirector Director { get; private set; }
+        public RewardScreen Rewards { get; private set; }
+        public ThemeGrade Grade { get; private set; }
+        public StageMechanics Mechanics { get; private set; }
+        EnemyProjectiles enemyShots;
+        Lightning lightning;
+        EchoBalls echoes;
+        Vortices vortices;
+        TwinSun twinSun;
+
         float envTime;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -52,6 +64,9 @@ namespace SoccerFight
             GameSettings.Load();
             GameSettings.Apply();
             TimeFx.ResetAll();
+            Combat.Reset();
+            Run = new RunState();
+            Run.Reset();
 
             // The backdrop generates on worker threads while the main thread builds everything else.
             EnvironmentArt.Begin();
@@ -69,20 +84,38 @@ namespace SoccerFight
             BuildTimer.Mark("wait for backdrop");
             Environment = new WorldEnvironment();
             Environment.Build(transform, Cam);
+            Grade = new ThemeGrade();
+            Grade.Build(Environment, Cam, transform);
             BuildTimer.Mark("env objects");
             FxSystem.Create(transform);
+            lightning = new Lightning();
+            lightning.Build(transform);
             Ball = new Ball();
             Ball.Build(transform);
             Player = new Player();
             Player.Build(transform, Ball);
             Waves = new WaveDirector();
             Waves.Build(transform, Environment);
+            enemyShots = new EnemyProjectiles();
+            enemyShots.Build(transform);
+            Mechanics = new StageMechanics();
+            Mechanics.Build(transform);
+            echoes = new EchoBalls();
+            echoes.Build(transform);
+            vortices = new Vortices();
+            vortices.Build(transform);
+            twinSun = new TwinSun();
+            twinSun.Build(transform);
             BuildTimer.Mark("actors");
             Hud = new Hud();
             Hud.Build(transform, Cam.Cam, Player, Waves, CaptureMode);
+            Rewards = new RewardScreen();
+            Rewards.Build(transform, Cam.Cam, CaptureMode);
             Pause = new PauseMenu();
             Pause.Build(transform, Cam.Cam, CaptureMode);
             Pause.RestartRequested += () => { Pause.Close(); Restart(); };
+            Director = new RunDirector();
+            Director.Build(Run, Waves, Player, Rewards);
             BuildTimer.Mark("hud");
 
             Restart();
@@ -105,14 +138,25 @@ namespace SoccerFight
             Time.timeScale = 1f;
         }
 
+        /// <summary>A fresh run from stage 1.</summary>
         public void Restart()
         {
             TimeFx.ResetAll();
             FxSystem.I.Clear();
+            Rewards.Cancel();
+            enemyShots.Clear();
+            echoes.Clear();
+            vortices.Clear();
+            lightning.Clear();
+            Mechanics.SetRunning(false);
+            Run.Reset();
+            Combat.Reset();
             Player.Respawn();
             Ball.ResetTo(Player.Pos + new Vector2(0.5f, Art.BallRadius));
             Waves.Restart();
+            Director.StartRun();
             Hud.ResetState();
+            Hud.ShowStageCard(Run.Stage, Run.Theme);
             Cam.SetZoom(1f);
             Cam.Snap(Player.Pos);
         }
@@ -120,9 +164,9 @@ namespace SoccerFight
         void Update()
         {
             if (RecoverFromReload()) return;
-            float udt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            float udt = TimeFx.UiDelta;
 
-            GameInput.Blocked = Pause.IsOpen;
+            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen;
             GameInput.Poll(Cam.Cam);
 
             if (GameInput.PausePressed)
@@ -130,7 +174,8 @@ namespace SoccerFight
                 if (Pause.IsOpen) Pause.HandleEscape();
                 else if (!CaptureMode) Pause.Open();
             }
-            bool paused = Pause.IsOpen;
+            // reward screens freeze the fight exactly like the pause menu
+            bool paused = Pause.IsOpen || Rewards.IsOpen;
             TimeFx.Paused = paused;
             TimeFx.Update(udt);
             Hud.SetPaused(paused);
@@ -167,6 +212,14 @@ namespace SoccerFight
             Ball.Update(dt, Player);
             Player.LateVisuals(dt);
             Waves.Update(dt, Player, Ball);
+            echoes.Update(dt);
+            vortices.Update(dt);
+            twinSun.Update(dt, Player, Director.Fighting);
+            enemyShots.Update(dt, Player);
+            Mechanics.Update(dt, Player, Ball, Waves);
+            lightning.Update(dt);
+            Combat.Update(dt);
+            Director.Update(dt);
 
             if (GameInput.Scripted) GameInput.ClearEdges();
         }
@@ -174,9 +227,9 @@ namespace SoccerFight
         void LateUpdate()
         {
             if (Cam == null || Player == null) return;
-            float udt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            float udt = TimeFx.UiDelta;
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
-            bool paused = Pause.IsOpen;
+            bool paused = Pause.IsOpen || Rewards.IsOpen;
 
             Vector2 aimOffset = Vector2.ClampMagnitude((GameInput.AimWorld - (Player.Pos + Vector2.up)) * 0.09f, 1.1f);
             Vector2 look = new Vector2(Player.Facing * 0.8f + aimOffset.x, aimOffset.y * 0.35f);
@@ -184,7 +237,9 @@ namespace SoccerFight
 
             envTime += dt;
             Environment.Update(dt, envTime, Player, Ball);
+            Grade.Update(dt, Player, Ball);
             Hud.Update(paused ? 0f : udt);
+            Rewards.Update(udt, !Pause.IsOpen);
             Pause.Update(udt);
             Post.Update(udt);
         }

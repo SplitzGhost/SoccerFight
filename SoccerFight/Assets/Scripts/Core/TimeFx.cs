@@ -14,6 +14,9 @@ namespace SoccerFight
 
         public static float Scale { get; private set; } = 1f;
 
+        /// <summary>Real frame time for UI and time effects — or the fixed step while a capture records frames.</summary>
+        public static float UiDelta => Mathf.Min(Time.captureDeltaTime > 0f ? Time.captureDeltaTime : Time.unscaledDeltaTime, 0.05f);
+
         /// <summary>Pause menu open: freezes game time completely (UI keeps running on unscaled time).</summary>
         public static bool Paused;
 

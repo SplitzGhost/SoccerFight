@@ -1,7 +1,24 @@
 # SoccerFight
 
-2D-Side-View-PvE: Ein Fußballspieler kämpft mit seinem Ball gegen Monster-Wellen.
+2D-Side-View-Roguelite: Ein Fußballspieler kämpft sich mit seinem Ball durch Stages voller Monster-Wellen.
 Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gibt keine importierten Sprites.
+
+## Ein Lauf
+
+- **Stage → Wellen → Boss:** Stage 1 hat 3 Wellen, Stage 2 hat 4, ab Stage 3 sind es 5, danach kommt der Stage-Boss.
+  Die Schwierigkeit ist eine durchgehende Kurve (`Difficulty.cs`): Jede Welle +1 Stufe, jede neue Stage beginnt
+  0,35 Stufen unter dem Ende der vorigen – die letzte Welle einer Stage ist also etwas härter als die erste der nächsten.
+- **Nach jeder Welle:** 3 zufällige Upgrade-Karten (Gewöhnlich / Selten / Episch / Legendär), eine davon nimmst du
+  (Taste 1/2/3 oder Klick, R mischt einmal pro Stage neu). 59 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
+- **Nach jedem Boss:** eine Boss-Belohnung (nur Selten+) und die Wahl zwischen 2 zufälligen Fähigkeiten.
+  Zu Beginn hast du nur **Schuss** und **Power-Schuss**; Rainbow Flick, Hochhalten, Übersteiger, Fallrückzieher und
+  Luft-Rückstoß werden Stage für Stage freigeschaltet. Die nicht gewählte Fähigkeit kommt zurück in den Pool.
+- **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
+  Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
+  Glutschmiede (Lavageysire), Frostgipfel (Glatteis), Sternengarten (geringe Schwerkraft), Eklipse (Verstärkungs-Pulse).
+  Danach beginnt der Zyklus von vorn („II“, „III“ …) mit weiter steigender Kurve.
+- **Gegner:** 9 Verhaltensarten (Hüpfer, Sturzflieger, Teiler, Spucker, Koloss, Schemen, Laterne, Bombe …), Elite-Gegner mit
+  Eigenschaften (Flink, Gepanzert, Regenerierend, Instabil, Rasend), Minibosse in den späten Wellen und Bosse mit Phasen.
 
 ## ▶ Im Browser spielen
 
@@ -31,10 +48,13 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | Q | Fallrückzieher (nur in der Luft, Cooldown 5 s): Rückwärtssalto mit Scherenschlag, harter Schuss Richtung Mauszeiger. Der Ball explodiert beim ersten Aufprall auf Boden, Plattform oder Gegner (Flächenschaden) |
 | R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
 | Shift | Ball hochhalten: drücken, wenn der Ball in den Ring fällt. Jede Berührung heilt ein wenig (perfekt = mehr, alle 10 ein Bonus). Zu früh oder zu spät und der Ball fällt, das Zeitfenster wird mit jeder Berührung enger. Währenddessen kein Laufen und kein Schuss |
+| 1 / 2 / 3 | Upgrade- bzw. Fähigkeitskarte wählen (R: neu mischen) |
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Beenden) |
 | F1 | FPS-Anzeige an/aus |
 | F2 | VSync an/aus (aus = unbegrenzte FPS) |
-| Enter | Neustart nach Niederlage |
+| Enter | Neuer Lauf nach Niederlage |
+
+Flick, Hochhalten, Übersteiger, Fallrückzieher und Luft-Rückstoß sind zu Beginn gesperrt (Schloss im HUD) und werden nach Boss-Siegen freigeschaltet.
 
 Alle zehn Aktionen (Laufen, Springen, Durchfallen, Schuss, Power-Schuss, Übersteiger, Fallrückzieher, Rainbow Flick, Hochhalten) lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
 (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build), VSync, FPS-Anzeige, Bildschirmwackeln,
@@ -62,14 +82,20 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 | `World/` | Begehbare Geometrie und Plattformen (`Level`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
-| `Enemies/` | Monster (Blob, Wisp) und Wellen-Logik |
-| `FX/` | Partikelsystem, Kamera (Follow, Shake, Zoom), Post-Processing |
-| `UI/` | HUD (Healthbar, Cooldown-Icons, Banner, Schadenszahlen), Pausemenü mit Einstellungen (`PauseMenu`, Widgets in `UiKit`) |
+| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`) |
+| `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne |
+| `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen (`Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool und Kollisionen (`WaveDirector`) |
+| `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Pausemenü (`PauseMenu`, Widgets in `UiKit`) |
+| `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
 
 ## Wo man dreht
 
+- **Schwierigkeit:** alle Formeln in `Difficulty.cs` (Leben, Schaden, Tempo, Budget, Elite-Chance, Minibosse, Boss-Werte)
+- **Upgrades:** Werte, Beschreibung und Stapelgrenze in `UpgradeDb` (`Upgrades.cs`), Seltenheits-Gewichte in `UpgradeRoller.Weights`
+- **Stages:** Name, Farbstimmung, Wetter, Gegner, Boss und Regel in `StageThemes.cs`
 - **Spielgefühl:** Konstanten oben in `Player.cs` (Tempo, Sprung, Cooldowns, Schaden)
 - **Timing von Schuss & Flick:** `KickWindup/KickContact/...` und `FlickSet/FlickRoll/...` in `Player.cs`
 - **Hochhalten:** `Juggle*`-Konstanten in `Player.cs` (Zeitfenster, Heilung, Flughöhen, Reihenfolge Fuß/Knie/Kopf)
@@ -95,6 +121,8 @@ Nach jeder Antwort von Claude Code startet ein Stop-Hook (`.claude/settings.loca
 3. Der Build landet als einzelner Commit auf dem Branch `gh-pages`, den GitHub Pages ausliefert.
 
 Von Hand geht es mit `powershell -File tools\publish.ps1` (mit `-Force` wird auch ohne Änderung neu gebaut).
+Visuelle Prüfung: `tools\capture.ps1 -Scenario run` (Stage-Karte, Welle, Karten, Fähigkeitswahl, Boss, alle 8 Themen,
+Zusammenfassung) und `-Scenario sim` (ein Bot spielt einen echten Lauf und protokolliert jede Phase im Unity-Log).
 Protokoll: `.build/publish.log`, Unity-Log des letzten Builds: `.build/unity-build.log`.
 Für die Pushes muss die GitHub-CLI eingeloggt sein (`gh auth login`).
 

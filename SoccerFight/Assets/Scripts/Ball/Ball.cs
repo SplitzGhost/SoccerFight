@@ -19,13 +19,19 @@ namespace SoccerFight
         public bool IsHeld => St == State.Held || St == State.Scripted;
         public bool IsHeldFree => St == State.Held;
         public bool IsDangerous => St == State.Shot || St == State.Rainbow || St == State.Pierce || St == State.Blast
-                                   || (St == State.Returning && Vel.magnitude > 9f);
+                                   || (St == State.Returning && Vel.magnitude > (Game.I.Run.Stats.Boomerang ? 4f : 9f));
         public bool IsRainbow => St == State.Rainbow;
         /// <summary>Scripted by the player's keep-ups: drawn in front and spun by each touch.</summary>
         public bool JuggleMode;
         /// <summary>Power-shot wind-up (0..1): the held ball gathers a golden glow.</summary>
         public float Charge;
+        /// <summary>Set by the kick: run-up damage bonus, golden-boot crit, ricochets left.</summary>
+        public float ShotMul = 1f;
+        public bool GoldenShot;
+        public int RicochetsLeft;
         const float R = Art.BallRadius;
+        float rainbowEcho = -1f;
+        Vector2 rainbowEchoAt;
 
         Transform root, stretch, spinNode;
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
@@ -269,12 +275,14 @@ namespace SoccerFight
             var game = Game.I;
             var fx = FxSystem.I;
             Vector2 p = Pos;
-            game.Waves.Blast(p, Player.BlastRadius, Player.BlastDamage);
+            var st = game.Run.Stats;
+            float radius = Player.BlastRadius * st.BlastRadiusMul * st.AreaMul;
+            game.Waves.Blast(p, radius, Player.BlastDamage);
 
             fx.Flash(p, 5f, Palette.BlastOrange, 0.24f, 2.6f);
             fx.Flash(p, 2.4f, Color.white, 0.1f, 3.2f);
-            fx.Ring(FxLayer.Front, p, 0.3f, Player.BlastRadius * 1.1f, 0.55f, 0.03f, 0.45f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.6f);
-            fx.Ring(FxLayer.Front, p, 0.15f, Player.BlastRadius * 0.65f, 0.3f, 0.02f, 0.3f, Palette.Gold, Palette.Hurt.WithAlpha(0f), 2.4f);
+            fx.Ring(FxLayer.Front, p, 0.3f, radius * 1.1f, 0.55f, 0.03f, 0.45f, Color.white, Palette.BlastOrange.WithAlpha(0f), 2.6f);
+            fx.Ring(FxLayer.Front, p, 0.15f, radius * 0.65f, 0.3f, 0.02f, 0.3f, Palette.Gold, Palette.Hurt.WithAlpha(0f), 2.4f);
             fx.Sparks(p, Vector2.up, 200f, 26, 6f, 16f, Palette.BlastOrange, 2.8f, 0.06f, 0.42f, 14f);
             for (int i = 0; i < 18; i++)
             {
@@ -309,9 +317,35 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ update
 
+        static float Gravity => Game.I.Run.Stats.GravityMul;
+
+        void StartReturn()
+        {
+            // boomerang: the way home is a second pass through everything
+            if (Game.I.Run.Stats.Boomerang && (St == State.Shot || St == State.Pierce)) hitIds.Clear();
+            Enter(State.Returning);
+        }
+
+        /// <summary>Ricochet: redirect a shot that just hit into the nearest other monster.</summary>
+        public bool TryRicochet(Monster from)
+        {
+            if (RicochetsLeft <= 0 || St != State.Shot) return false;
+            var next = Combat.NearestTo(Pos, 7.5f, from);
+            if (next == null || hitIds.Contains(next.Id)) return false;
+            RicochetsLeft--;
+            Vel = (next.Center - Pos).normalized * Mathf.Max(Vel.magnitude, 20f);
+            stateTime = Mathf.Min(stateTime, 0.15f);
+            squashVel -= 6f;
+            var fx = FxSystem.I;
+            fx.Ring(FxLayer.Front, Pos, 0.05f, 0.6f, 0.1f, 0.01f, 0.18f, Color.white, Palette.ShotCyan.WithAlpha(0f), 2.2f);
+            fx.Sparks(Pos, Vel, 40f, 5, 5f, 10f, Palette.ShotCyan, 2.4f, 0.04f, 0.18f);
+            return true;
+        }
+
         public void Update(float dt, Player player)
         {
             stateTime += dt;
+            if (rainbowEcho >= 0f && (rainbowEcho -= dt) < 0f) RainbowEcho();
             passTimer = Mathf.Max(0f, passTimer - dt);
             prevPos = Pos;
             var rig = player.Rig;
@@ -337,10 +371,10 @@ namespace SoccerFight
                 }
                 case State.Shot:
                 {
-                    Vel.y -= 4f * dt;
+                    Vel.y -= 4f * Gravity * dt;
                     Pos += Vel * dt;
                     CollideWorld(0.55f);
-                    if (stateTime > 0.4f || Vel.sqrMagnitude < 36f) Enter(State.Returning);
+                    if (stateTime > 0.4f || Vel.sqrMagnitude < 36f) StartReturn();
                     break;
                 }
                 case State.Pierce:
@@ -348,12 +382,12 @@ namespace SoccerFight
                     // no gravity and no bounce off monsters; floors deflect it, the arena wall ends it
                     Pos += Vel * dt;
                     CollideWorld(0.85f);
-                    if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) Enter(State.Returning);
+                    if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) { Combat.OnPierceEnd(Pos); StartReturn(); }
                     break;
                 }
                 case State.Blast:
                 {
-                    Vel.y -= 20f * dt;
+                    Vel.y -= 20f * Gravity * dt;
                     Pos += Vel * dt;
                     float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f);
                     if (Pos.y <= floor + R) { Pos.y = floor + R; Explode(); }
@@ -375,11 +409,11 @@ namespace SoccerFight
                 }
                 case State.Loose:
                 {
-                    Vel.y -= 26f * dt;
+                    Vel.y -= 26f * Gravity * dt;
                     Vel.x *= Mathf.Exp(-0.6f * dt);
                     Pos += Vel * dt;
                     CollideWorld(0.6f);
-                    if (stateTime > 0.4f) Enter(State.Returning);
+                    if (stateTime > 0.4f / Mathf.Sqrt(Gravity)) StartReturn();
                     break;
                 }
                 case State.Returning:
@@ -388,7 +422,7 @@ namespace SoccerFight
                     Vector2 to = target - Pos;
                     float dist = to.magnitude;
                     float ramp = MathUtil.EaseOutQuad(stateTime / 0.25f);
-                    float speed = Mathf.Lerp(5f, 30f, ramp) + dist * 1.5f;
+                    float speed = (Mathf.Lerp(5f, 30f, ramp) + dist * 1.5f) * Game.I.Run.Stats.ReturnSpeedMul;
                     Vector2 desired = dist > 1e-4f ? to / dist * speed : Vector2.zero;
                     Vel = MathUtil.Damp(Vel, desired, 7f + ramp * 8f, dt);
                     Pos += Vel * dt;
@@ -429,6 +463,7 @@ namespace SoccerFight
             Vector2 p = new Vector2(Pos.x, b3.y);   // the target sits on the pitch or a platform
             Pos = p;
             game.Waves.RainbowImpact(p);
+            if (game.Run.Stats.DoubleRainbow) { rainbowEcho = 0.38f; rainbowEchoAt = p; }
 
             fx.Flash(p + Vector2.up * 0.3f, 3.2f, Color.white, 0.2f, 2.4f);
             fx.Ring(FxLayer.Front, p, 0.2f, 3.1f, 0.6f, 0.04f, 0.5f, Color.white, Color.white.WithAlpha(0f), 2.2f, true);
@@ -452,6 +487,19 @@ namespace SoccerFight
             Vel = new Vector2(flickFacing * 2.2f, 8.5f);
             Enter(State.Loose);
             squashVel -= 10f;
+        }
+
+        /// <summary>Double rainbow: a second, smaller impact right after the first.</summary>
+        void RainbowEcho()
+        {
+            var game = Game.I;
+            var fx = FxSystem.I;
+            Vector2 p = rainbowEchoAt;
+            game.Waves.RainbowImpact(p, 0.6f);
+            fx.Flash(p + Vector2.up * 0.3f, 2.4f, Color.white, 0.16f, 2.2f);
+            fx.Ring(FxLayer.Front, p, 0.2f, 2.4f, 0.45f, 0.03f, 0.42f, Color.white, Color.white.WithAlpha(0f), 2.2f, true);
+            fx.Sparkles(p + Vector2.up * 0.4f, 1f, 10, Palette.Gold, 3f, 0.7f);
+            game.Cam.AddTrauma(0.25f);
         }
 
         void Catch(Player player)

@@ -70,8 +70,17 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
+            if (scenario != "run" && scenario != "quick" && scenario != "sim")
+            {
+                // the older scenarios show every move: skip the run intro and unlock everything
+                G.Director.DebugJump(1, 1, 0, false);
+                foreach (var a in Abilities.Unlockable) G.Run.Unlock(a);
+                P.ApplyStats(true);
+            }
             yield return Frames(5);
             if (scenario == "quick") yield return Quick();
+            else if (scenario == "run") yield return RunTour();
+            else if (scenario == "sim") yield return Simulate();
             else if (scenario == "moves") yield return Moves();
             else if (scenario == "portrait") yield return Portrait();
             else if (scenario == "platforms") yield return Platforms();
@@ -127,6 +136,176 @@ namespace SoccerFight
             Aim(new Vector2(5f, 1.5f));
             yield return Seconds(1.5f);
             yield return Shot("quick_idle");
+        }
+
+        /// <summary>A bot that keeps shooting the nearest monster (and stays alive for the pictures).</summary>
+        IEnumerator AutoFight(float seconds)
+        {
+            int frames = Mathf.RoundToInt(seconds * 60f);
+            for (int f = 0; f < frames; f++)
+            {
+                P.Hp = P.MaxHp;
+                var m = Combat.NearestTo(P.Pos + Vector2.up, 40f);
+                if (m != null)
+                {
+                    GameInput.AimWorld = m.Center;
+                    float dx = m.Center.x - P.Pos.x;
+                    Move(Mathf.Abs(dx) > 6f ? Mathf.Sign(dx) : Mathf.Abs(dx) < 2f ? -Mathf.Sign(dx) : 0f);
+                    if (f % 18 == 0) GameInput.ShootPressed = true;
+                    if (f % 150 == 75) GameInput.PowerPressed = true;
+                }
+                yield return null;
+            }
+            Move(0f);
+        }
+
+        void SpawnSpec(EnemyType type, Vector2 at, Rank rank, int affixes, string name)
+        {
+            var run = G.Run;
+            G.Waves.Spawn(new Monster.SpawnSpec { Type = type, At = at, Level = run.Level, Rank = rank, Affixes = affixes, Theme = run.Theme, Name = name });
+        }
+
+        /// <summary>The roguelite loop: stage card, a wave, reward cards, ability pick, a boss, all eight themes, the run summary.</summary>
+        IEnumerator RunTour()
+        {
+            G.Waves.Enabled = true;
+            G.Restart();
+            Aim(new Vector2(5f, 1.5f));
+            yield return Seconds(1.1f);
+            yield return Shot("r01_stage_card");
+
+            // mid-run: stage 2, wave 3 with a small build
+            G.Director.DebugJump(2, 3, 5, true);
+            yield return Seconds(0.9f);
+            yield return Shot("r02_wave_banner");
+            yield return AutoFight(6f);
+            yield return Shot("r03_fight");
+            var theme = G.Run.Theme;
+            SpawnSpec(EnemyType.Splitter, P.Pos + new Vector2(5f, 0.5f), Rank.Elite, 2, theme.Roster[1].Name);
+            SpawnSpec(EnemyType.Brute, P.Pos + new Vector2(-6f, 0.5f), Rank.MiniBoss, 1, theme.MiniBossName);
+            yield return Seconds(1.2f);
+            yield return Shot("r04_elites");
+
+            // wave reward → pick the middle card
+            G.Director.DebugOpenReward(false);
+            yield return Seconds(1.3f);
+            yield return Shot("r05_reward");
+            G.Rewards.DebugPick(1);
+            yield return Seconds(1f);
+
+            // boss reward, then the ability choice opens by itself
+            G.Director.DebugOpenReward(true);
+            yield return Seconds(1.3f);
+            yield return Shot("r06_boss_reward");
+            G.Rewards.DebugPick(0);
+            yield return Seconds(1.4f);
+            yield return Shot("r07_ability_pick");
+            G.Rewards.DebugPick(0);
+            yield return Seconds(1.4f);
+            yield return Shot("r08_next_stage");
+
+            // boss of stage 3
+            G.Director.DebugJump(3, Difficulty.WavesInStage(3) + 1, 8, true);
+            yield return Seconds(1.3f);
+            yield return Shot("r09_boss_intro");
+            yield return Seconds(1.6f);
+            yield return AutoFight(4f);
+            yield return Shot("r10_boss_fight");
+
+            // every theme with a few of its monsters
+            for (int s = 1; s <= StageThemes.All.Length; s++)
+            {
+                G.Director.DebugJump(s, 2, 0, false);
+                FxSystem.I.Clear();
+                var th = G.Run.Theme;
+                P.Pos = new Vector2(-2f, 0f); P.Vel = Vector2.zero;
+                G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+                G.Cam.Snap(P.Pos);
+                SpawnSpec(th.Roster[0].Type, new Vector2(2.5f, 0.5f), Rank.Normal, 0, th.Roster[0].Name);
+                SpawnSpec(th.Roster[1].Type, new Vector2(4.5f, 1.2f), Rank.Normal, 0, th.Roster[1].Name);
+                SpawnSpec(th.Roster[2].Type, new Vector2(-6f, 0.5f), Rank.Elite, 1, th.Roster[2].Name);
+                if (s >= 3) G.Mechanics.SetRunning(true);
+                for (int i = 0; i < 230; i++) { P.Hp = P.MaxHp; yield return null; }
+                yield return Shot("t" + s + "_" + th.Name.ToLowerInvariant());
+                G.Mechanics.SetRunning(false);
+            }
+
+            // the run summary
+            G.Director.DebugJump(4, 2, 10, false);
+            P.Hp = 1f;
+            P.InvulnTimer = 0f;
+            P.Shield = 0;
+            G.Run.Stats.Revives = 0;
+            P.TakeDamage(50f, P.Pos + Vector2.right);
+            yield return Seconds(2.2f);
+            yield return Shot("r11_death");
+        }
+
+        /// <summary>
+        /// Plays the real run with a simple bot (keeps distance, shoots, uses unlocked skills, juggles
+        /// to heal) and always takes the first card. Logs every phase so flow and pacing can be checked.
+        /// </summary>
+        IEnumerator Simulate()
+        {
+            G.Waves.Enabled = true;
+            G.Restart();
+            var d = G.Director;
+            var lastPhase = (RunDirector.Phase)(-1);
+            int frame = 0, shots = 0, rewardFrames = 0;
+            float damageTaken = 0f, lastHp = P.Hp;
+            bool bossShot = false, rewardShot = false, stage2Shot = false;
+            const int maxFrames = 60 * 60 * 9;
+            while (frame++ < maxFrames)
+            {
+                if (P.Hp < lastHp) damageTaken += lastHp - P.Hp;
+                // flow test: the bot can't die (damage taken is logged as the difficulty signal)
+                if (!P.Dead && P.Hp < 60f) P.Hp = Mathf.Min(60f, P.MaxHp);
+                lastHp = P.Hp;
+                if (d.P != lastPhase)
+                {
+                    lastPhase = d.P;
+                    Debug.Log($"[Sim] t={G.Run.Time,6:F1}s stage={G.Run.Stage} wave={G.Run.Wave}/{G.Run.WavesInStage} {d.P,-12} hp={P.Hp:F0}/{P.MaxHp:F0} kills={G.Run.Kills} dmgTaken={damageTaken:F0} L={G.Run.Level:F2} build={string.Join(",", G.Run.PickOrder)} abil={string.Join(",", G.Run.Unlocked)}");
+                }
+                if (P.Dead) { Debug.Log($"[Sim] DIED at stage {G.Run.Stage} wave {G.Run.Wave} after {G.Run.Time:F0}s"); yield return Seconds(1.5f); yield return Shot("s9_death"); break; }
+                if (G.Run.Stage >= 5) { Debug.Log("[Sim] reached stage 5"); break; }
+
+                if (G.Rewards.IsOpen)
+                {
+                    if (++rewardFrames % 70 == 50)
+                    {
+                        if (!rewardShot) { rewardShot = true; yield return Shot("s2_reward"); }
+                        G.Rewards.DebugPick(0);
+                    }
+                    yield return null;
+                    continue;
+                }
+                rewardFrames = 0;
+
+                var m = Combat.NearestTo(P.Pos + Vector2.up, 40f);
+                if (m != null && d.Fighting)
+                {
+                    GameInput.AimWorld = m.Center;
+                    float dx = m.Center.x - P.Pos.x, adx = Mathf.Abs(dx);
+                    Move(adx > 7f ? Mathf.Sign(dx) : adx < 3f ? -Mathf.Sign(dx) : 0f);
+                    if (Mathf.Abs(P.Pos.x) > Player.ArenaHalf - 1f) Move(-Mathf.Sign(P.Pos.x));
+                    if (frame % 16 == 0) { GameInput.ShootPressed = true; shots++; }
+                    if (frame % 200 == 100) GameInput.PowerPressed = true;
+                    if (adx < 1.8f && G.Run.Has(Ability.StepOver) && P.StepOverCd <= 0f) GameInput.StepOverPressed = true;
+                    else if (adx < 2.2f && P.Grounded && frame % 30 == 0) GameInput.JumpPressed = true;
+                    // a human would hop over a charging heavyweight
+                    if (m.Rank >= Rank.MiniBoss && adx < 4.5f && Mathf.Abs(m.Vel.x) > 6f && Mathf.Sign(m.Vel.x) == -Mathf.Sign(dx) && P.Grounded) { GameInput.JumpPressed = true; GameInput.JumpHeld = true; }
+                    else if (P.Grounded) GameInput.JumpHeld = false;
+                    if (G.Run.Has(Ability.Flick) && P.FlickCd <= 0f && frame % 45 == 0) GameInput.FlickPressed = true;
+                    if (!P.Grounded && G.Run.Has(Ability.Bicycle) && P.BicycleCd <= 0f) GameInput.BicyclePressed = true;
+                    if (G.Run.IsBossWave && !bossShot && G.Waves.Boss != null && d.PhaseTime > 4f) { bossShot = true; yield return Shot("s3_boss"); }
+                    if (G.Run.Stage == 2 && G.Run.Wave == 2 && !stage2Shot && d.PhaseTime > 6f) { stage2Shot = true; yield return Shot("s4_stage2"); }
+                }
+                else Move(0f);
+                if (frame == 60 * 20) yield return Shot("s1_first_wave");
+                yield return null;
+            }
+            Move(0f);
+            Debug.Log($"[Sim] end: stage={G.Run.Stage} wave={G.Run.Wave} time={G.Run.Time:F0}s kills={G.Run.Kills} shots={shots} dmgTaken={damageTaken:F0}");
         }
 
         IEnumerator WaitBallHome()

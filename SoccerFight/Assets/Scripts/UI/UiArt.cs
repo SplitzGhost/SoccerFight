@@ -7,9 +7,9 @@ namespace SoccerFight
     /// <summary>Resolution-independent looking HUD sprites (rasterized at 2x) and the Inter font assets.</summary>
     public static class UiArt
     {
-        public static Sprite Pill, BarFill, Panel, Circle, Glow, RingThin, RingThick, RingRainbow;
+        public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
-        public static Sprite IconPower, IconStepOver, IconBicycle;
+        public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -22,7 +22,7 @@ namespace SoccerFight
         /// Canvas units are UI pixels. uGUI measures sprites against referencePixelsPerUnit (100), so the
         /// sprite must use ppu = density * 100 for sliced borders to map 1:1 to UI pixels.
         /// </summary>
-        static Sprite ToUi(SdfCanvas c, string name, Vector4 border = default)
+        internal static Sprite ToUi(SdfCanvas c, string name, Vector4 border = default)
         {
             var tex = c.ToTexture(name, false, true, TextureWrapMode.Clamp, false, false);
             var s = Sprite.Create(tex, new Rect(0, 0, c.Width, c.Height), new Vector2(0.5f, 0.5f), c.Ppu * 100f, 0,
@@ -51,6 +51,11 @@ namespace SoccerFight
             var panel = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
             panel.Fill(p => Sdf.Box(p, Vector2.zero, new Vector2(31.5f, 31.5f), 14f), Color.white);
             Panel = ToUi(panel, "UiPanel", new Vector4(16 * D, 16 * D, 16 * D, 16 * D));
+
+            // outline of the panel shape: borders drawn on top of glass never tint it while fading
+            var panelRing = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
+            panelRing.Fill(p => Mathf.Abs(Sdf.Box(p, Vector2.zero, new Vector2(30.75f, 30.75f), 14f)) - 0.9f, Color.white);
+            PanelRing = ToUi(panelRing, "UiPanelRing", new Vector4(16 * D, 16 * D, 16 * D, 16 * D));
 
             var circle = new SdfCanvas(new Rect(-64, -64, 128, 128), D);
             circle.Fill(p => Sdf.Circle(p, Vector2.zero, 63f), Color.white);
@@ -214,6 +219,48 @@ namespace SoccerFight
             bk.Fill(p => Sdf.Star4(MathUtil.Rotate(p - burst, 45f) + burst, burst, 13f, 0.5f), new Color(1f, 0.85f, 0.45f));
             bk.Fill(p => Sdf.Circle(p, burst, 5f), Color.white);
             IconBicycle = ToUi(bk, "UiIconBicycle");
+
+            // Keep-ups: the ball floats above a raised knee, the rhythm dotted in between
+            var jg = new SdfCanvas(new Rect(-64, -64, 128, 128), D);
+            Color heal = new Color(0.55f, 1f, 0.75f);
+            jg.Fill(p => Sdf.Intersect(Sdf.Ring(p, new Vector2(-6f, -58f), 44f, 6.5f), Sdf.HalfPlane(p, new Vector2(-6f, -30f), Vector2.down)), heal);
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2 dp = new Vector2(-6f + (i - 1) * 3f, -8f + i * 11f);
+                jg.Fill(p => Sdf.Circle(p, dp, 3.2f - i * 0.5f), heal.WithAlpha(0.9f - i * 0.2f));
+            }
+            IconBall(jg, new Vector2(-4f, 34f), 21f);
+            jg.Fill(p => Sdf.Star4(p, new Vector2(30f, 14f), 11f, 0.5f), new Color(1f, 0.95f, 0.75f));
+            IconJuggle = ToUi(jg, "UiIconJuggle");
+
+            // Air kick: the ball shoots down-forward, the recoil throws the body up-back
+            var ak = new SdfCanvas(new Rect(-64, -64, 128, 128), D);
+            Color cyan = new Color(0.55f, 0.95f, 1f);
+            Vector2 ab = new Vector2(24f, -26f);
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2 o = new Vector2((i - 1) * 12f, (i - 1) * -12f);
+                ak.Fill(p => Sdf.Tapered(p, ab + new Vector2(-40f, 40f) + o * 0.6f, 1.2f, ab + new Vector2(-18f, 18f) + o * 0.4f, 3.6f), cyan.WithAlpha(0.8f));
+            }
+            IconBall(ak, ab, 19f);
+            Vector2 ua = new Vector2(-30f, 10f), ub = new Vector2(-8f, 40f);
+            ak.Fill(p => Sdf.Capsule(p, ua, ub, 5f), Color.white);
+            Vector2 ud = (ub - ua).normalized, un = new Vector2(-ud.y, ud.x);
+            ak.Fill(p => Sdf.Triangle(p, ub + ud * 14f, ub + un * 11f - ud * 2f, ub - un * 11f - ud * 2f), Color.white);
+            IconAirKick = ToUi(ak, "UiIconAirKick");
+
+            // Lock for abilities the run hasn't unlocked yet
+            var lk = new SdfCanvas(new Rect(-32, -32, 64, 64), D * 2f);
+            lk.Fill(p => Sdf.Intersect(Sdf.Ring(p, new Vector2(0f, 4f), 11f, 3.6f), -(p.y - 4f)), Color.white);
+            lk.Fill(p => Sdf.Capsule(p, new Vector2(-11f, 4f), new Vector2(-11f, -2f), 1.8f), Color.white);
+            lk.Fill(p => Sdf.Capsule(p, new Vector2(11f, 4f), new Vector2(11f, -2f), 1.8f), Color.white);
+            lk.Fill(p => Sdf.Subtract(Sdf.Box(p, new Vector2(0f, -10f), new Vector2(16f, 12f), 4f),
+                Sdf.Union(Sdf.Circle(p, new Vector2(0f, -7f), 3.4f), Sdf.Box(p, new Vector2(0f, -13f), new Vector2(1.5f, 5f)))), Color.white);
+            IconLock = ToUi(lk, "UiIconLock");
+
+            var dm = new SdfCanvas(new Rect(-16, -16, 32, 32), D * 2f);
+            dm.Fill(p => Sdf.Box(p, Vector2.zero, new Vector2(9f, 9f), 2f, 45f), Color.white);
+            Diamond = ToUi(dm, "UiDiamond");
         }
 
         static void BuildFonts()

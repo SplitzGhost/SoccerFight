@@ -14,6 +14,7 @@ Shader "SoccerFight/Foliage"
         _FogAmount ("Fog Amount", Range(0, 1)) = 0
         _WindScale ("Wind Scale", Float) = 1
         _Tint ("Depth Tint", Color) = (1, 1, 1, 1)
+        _EnvGraded ("Environment Grade", Float) = 0
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
     }
@@ -61,7 +62,16 @@ Shader "SoccerFight/Foliage"
                 float _FogAmount;
                 float _WindScale;
                 half4 _Tint;
+                float _EnvGraded;
             CBUFFER_END
+
+            // environment grade (stage themes): rgb' = M rgb + t * coverage, only on graded clones
+            float4x4 _SF_EnvGrade;
+            half3 EnvGrade(half3 rgb, half coverage)
+            {
+                float3 g = mul((float3x3)_SF_EnvGrade, (float3)rgb) + _SF_EnvGrade._m03_m13_m23 * coverage;
+                return lerp(rgb, (half3)max(g, 0.0), (half)_EnvGraded);
+            }
 
             // set every frame by WorldEnvironment
             float4 _SF_Wind;   // x base lean, y gust strength, z flutter strength, w time
@@ -110,7 +120,7 @@ Shader "SoccerFight/Foliage"
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 half a = tex.a * i.color.a;
                 half3 rgb = tex.rgb * i.color.rgb;
-                rgb = lerp(rgb, _FogColor.rgb * tex.a, _FogAmount) * _Tint.rgb;
+                rgb = EnvGrade(lerp(rgb, _FogColor.rgb * tex.a, _FogAmount) * _Tint.rgb, tex.a);
                 return half4(rgb * (i.color.a * _Intensity * i.pulse), a);
             }
             ENDHLSL

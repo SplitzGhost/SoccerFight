@@ -3,26 +3,29 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Spawns monster waves out of the goal portals and resolves all combat collisions.</summary>
+    /// <summary>
+    /// Owns the monster pool: spawns out of the goal portals (the RunDirector decides what and when),
+    /// resolves ball and contact collisions through Combat, and handles deaths (splitters, bombers,
+    /// kill effects). Area helpers for the blast, the rainbow impact, wind and stage hazards live here.
+    /// </summary>
     public sealed class WaveDirector
     {
-        enum Phase { Intermission, Spawning }
-
         readonly List<Monster> monsters = new List<Monster>();
         Transform parent;
         WorldEnvironment env;
-        Phase phase = Phase.Intermission;
-        float timer;
-        float spawnTimer;
-        int toSpawn;
         int spawnSide;
         float leftCharge, rightCharge;
         float portalSpin;
+        Color portalColor = Palette.MonsterGlow;
+
+        /// <summary>Capture scenes switch the run off and place monsters by hand.</summary>
         public bool Enabled = true;
 
-        public int Wave { get; private set; }
+        public List<Monster> Monsters => monsters;
         public int AliveCount { get; private set; }
-        public int RemainingInWave => AliveCount + toSpawn;
+        /// <summary>Deaths since the last reset (the run director reads this for wave progress).</summary>
+        public int Deaths { get; private set; }
+        public Monster Boss { get; private set; }
 
         public const float RainbowRadius = 2.9f;
         public const float RainbowDamage = 55f;
@@ -35,14 +38,17 @@ namespace SoccerFight
             env = environment;
         }
 
-        public void Restart(float delay = 1.6f)
+        /// <summary>Clears the pitch. The delay is kept for the capture scripts (it no longer schedules anything).</summary>
+        public void Restart(float delay = 0f)
         {
             foreach (var m in monsters) m.Deactivate();
-            Wave = 0;
-            toSpawn = 0;
-            phase = Phase.Intermission;
-            timer = delay;
+            AliveCount = 0;
+            Deaths = 0;
+            Boss = null;
+            EnemyProjectiles.I?.Clear();
         }
+
+        public void SetTheme(StageTheme theme) => portalColor = theme.Glow;
 
         Monster Get(Monster.Kind kind)
         {
@@ -53,118 +59,137 @@ namespace SoccerFight
             return nm;
         }
 
-        /// <summary>Debug/capture helper: drop a monster somewhere specific.</summary>
-        public Monster SpawnAt(Monster.Kind kind, Vector2 pos)
+        public Monster Spawn(in Monster.SpawnSpec spec)
         {
-            var m = Get(kind);
-            m.Spawn(pos, Vector2.zero, 1f);
+            var m = Get(EnemyDef.Get(spec.Type).Body);
+            m.Spawn(spec);
+            AliveCount++;
+            if (spec.Rank == Rank.Boss) Boss = m;
             return m;
         }
 
-        void SpawnOne()
+        /// <summary>Debug/capture helper: drop a basic monster of the current stage somewhere specific.</summary>
+        public Monster SpawnAt(Monster.Kind kind, Vector2 pos)
+        {
+            var run = Game.I.Run;
+            return Spawn(new Monster.SpawnSpec
+            {
+                Type = kind == Monster.Kind.Wisp ? EnemyType.Diver : EnemyType.Hopper,
+                At = pos, Level = run.Level, Theme = run.Theme, Rank = Rank.Normal,
+            });
+        }
+
+        /// <summary>Spits a monster out of the next goal portal, alternating sides.</summary>
+        public Monster SpawnFromPortal(EnemyType type, float level, Rank rank = Rank.Normal, int affixes = 0, string name = null, BossDef boss = null)
         {
             bool left = spawnSide++ % 2 == 0;
             Transform portal = left ? env.LeftPortal : env.RightPortal;
             Vector2 at = portal.position;
             float inward = left ? 1f : -1f;
-            bool wisp = Wave >= 2 && Random.value < Mathf.Min(0.45f, 0.18f + Wave * 0.04f);
-            var m = Get(wisp ? Monster.Kind.Wisp : Monster.Kind.Blob);
+            bool wisp = EnemyDef.Get(type).Body == Monster.Kind.Wisp;
             Vector2 v = wisp ? new Vector2(inward * 3f, 1.5f) : new Vector2(inward * Random.Range(3.5f, 5f), Random.Range(2.5f, 4f));
-            m.Spawn(at, v, 1f + (Wave - 1) * 0.08f);
+            if (rank >= Rank.MiniBoss) v *= 0.8f;
+            var m = Spawn(new Monster.SpawnSpec
+            {
+                Type = type, At = at, Vel = v, Level = level, Rank = rank, Affixes = affixes,
+                Theme = Game.I.Run.Theme, Name = name, Boss = boss,
+            });
             if (left) leftCharge = 1.4f; else rightCharge = 1.4f;
             var fx = FxSystem.I;
-            fx.Flash(at, 2.6f, Palette.MonsterGlow, 0.25f, 2.6f);
-            fx.Ring(FxLayer.Front, at, 0.3f, 1.4f, 0.25f, 0.02f, 0.4f, Palette.MonsterGlow, Palette.MonsterGlow.WithAlpha(0f), 2.2f);
-            fx.Sparks(at, new Vector2(inward, 0.3f), 90f, 8, 3f, 8f, Palette.MonsterGlow, 2.4f, 0.05f, 0.3f);
+            float big = rank >= Rank.MiniBoss ? 1.8f : rank == Rank.Elite ? 1.3f : 1f;
+            fx.Flash(at, 2.6f * big, portalColor, 0.25f, 2.6f);
+            fx.Ring(FxLayer.Front, at, 0.3f, 1.4f * big, 0.25f, 0.02f, 0.4f, portalColor, portalColor.WithAlpha(0f), 2.2f);
+            fx.Sparks(at, new Vector2(inward, 0.3f), 90f, Mathf.RoundToInt(8 * big), 3f, 8f, portalColor, 2.4f, 0.05f, 0.3f);
+            if (rank >= Rank.MiniBoss) Game.I.Cam.AddTrauma(0.25f);
+            return m;
+        }
+
+        /// <summary>Bosses and splitters: a small monster popping out next to its parent.</summary>
+        public void SpawnMinion(EnemyType type, Vector2 pos, Monster owner)
+        {
+            if (AliveCount >= 22) return;
+            var m = Spawn(new Monster.SpawnSpec
+            {
+                Type = type, At = pos, Vel = new Vector2(Random.Range(-3f, 3f), Random.Range(3f, 5.5f)),
+                Level = owner != null ? owner.DifficultyLevel : Game.I.Run.Level, Theme = Game.I.Run.Theme, Rank = Rank.Normal,
+            });
+            FxSystem.I.Ring(FxLayer.Front, m.Center, 0.1f, 0.9f, 0.14f, 0.01f, 0.25f, Color.white, portalColor.WithAlpha(0f), 2f);
+            FxSystem.I.Motes(m.Center, Vector2.up, portalColor, 4, 0.2f);
+        }
+
+        /// <summary>Every death runs through here, whatever killed the monster.</summary>
+        public void OnDied(Monster m)
+        {
+            AliveCount = Mathf.Max(0, AliveCount - 1);
+            Deaths++;
+            if (m == Boss) Boss = null;
+            Combat.OnKill(m);
+            if (m.Type == EnemyType.Splitter)
+                for (int i = 0; i < 2; i++) SpawnMinion(EnemyType.Spawnling, m.Center + new Vector2((i - 0.5f) * 0.5f, 0.1f), m);
+            m.OnDeathEffects();
+            Game.I.Director?.OnMonsterDied(m);
+        }
+
+        /// <summary>Wind: a sideways shove for everything alive (bosses barely move).</summary>
+        public void Push(float dvx)
+        {
+            foreach (var m in monsters)
+            {
+                if (!m.Alive) continue;
+                float k = m.Rank == Rank.Boss ? 0.1f : m.Rank == Rank.MiniBoss ? 0.35f : m.K == Monster.Kind.Wisp ? 1f : 0.6f;
+                m.Vel.x += dvx * k;
+            }
+        }
+
+        /// <summary>Lightning strikes and geysers hurt monsters too.</summary>
+        public void HazardHit(Vector2 c, float radius, float dmg, bool launch)
+        {
+            float scaled = dmg * Mathf.Sqrt(Difficulty.HealthMul(Game.I.Run.Level));
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var m = monsters[i];
+                if (!m.Alive) continue;
+                Vector2 d = m.Center - c;
+                if (Mathf.Abs(d.x) > radius + m.Radius || Mathf.Abs(d.y) > 3.5f) continue;
+                Combat.Hit(m, scaled, launch ? Vector2.up : new Vector2(Mathf.Sign(d.x), 0.4f), launch ? 12f : 6f, Src.Hazard, big: true);
+            }
         }
 
         public void Update(float dt, Player player, Ball ball)
         {
-            if (Enabled && !player.Dead)
-            {
-                if (phase == Phase.Intermission)
-                {
-                    timer -= dt;
-                    if (timer <= 0f)
-                    {
-                        Wave++;
-                        toSpawn = 3 + Wave * 2;
-                        spawnTimer = 0.9f;
-                        phase = Phase.Spawning;
-                        Game.I.Hud.ShowWaveBanner(Wave);
-                    }
-                }
-                else
-                {
-                    if (toSpawn > 0)
-                    {
-                        spawnTimer -= dt;
-                        // telegraph: the next portal starts glowing before it spits a monster out
-                        bool nextLeft = spawnSide % 2 == 0;
-                        if (spawnTimer < 0.6f) { if (nextLeft) leftCharge = Mathf.Max(leftCharge, 1f - spawnTimer / 0.6f); else rightCharge = Mathf.Max(rightCharge, 1f - spawnTimer / 0.6f); }
-                        if (spawnTimer <= 0f)
-                        {
-                            SpawnOne();
-                            toSpawn--;
-                            spawnTimer = Mathf.Max(0.4f, 1.0f - Wave * 0.06f);
-                        }
-                    }
-                    else if (AliveCount == 0)
-                    {
-                        phase = Phase.Intermission;
-                        timer = 2.8f;
-                        Game.I.Hud.OnWaveCleared(Wave);
-                    }
-                }
-            }
-
-            // monsters
+            var stats = Game.I.Run.Stats;
             int alive = 0;
-            Vector2 playerCenter = player.Pos + new Vector2(0f, 0.8f);
             for (int i = 0; i < monsters.Count; i++)
             {
                 var m = monsters[i];
                 if (!m.Alive) continue;
                 m.Update(dt, player);
                 if (!m.Alive) continue;
-                alive++;
 
                 // ball vs monster
                 if (ball.IsDangerous)
                 {
                     Vector2 d = ball.Pos - m.Center;
                     float r = m.Radius + Art.BallRadius + 0.05f;
-                    if (d.sqrMagnitude < r * r && ball.TryRegisterHit(m.Id))
-                    {
-                        Vector2 dir = ball.Vel.sqrMagnitude > 0.01f ? ball.Vel.normalized : -d.normalized;
-                        if (ball.St == Ball.State.Blast)
-                        {
-                            ball.Explode();   // the blast hits this monster and everything around it
-                        }
-                        else if (ball.St == Ball.State.Pierce)
-                        {
-                            m.Hit(Player.PowerDamage, dir, 4.5f, true);   // keeps flying: no bounce
-                        }
-                        else if (ball.IsRainbow)
-                        {
-                            m.Hit(RainbowPassDamage, dir, 5f, true);
-                        }
-                        else
-                        {
-                            bool returning = ball.St == Ball.State.Returning;
-                            m.Hit(returning ? Player.ShotDamage * 0.6f : Player.ShotDamage, dir, 6.5f, false);
-                            if (!returning) ball.BounceOff(d.normalized);
-                        }
-                    }
+                    if (d.sqrMagnitude < r * r && ball.TryRegisterHit(m.Id)) BallHit(ball, m, d, stats);
                 }
 
                 // monster vs player
                 if (m.Alive && !player.Dead)
                 {
-                    float pr = m.Radius + 0.32f;
-                    Vector2 pd = m.Center - playerCenter;
-                    if (Mathf.Abs(pd.x) < pr && Mathf.Abs(pd.y) < pr + 0.5f) player.TakeDamage(m.ContactDamage, m.Center);
+                    // the player is a capsule (shins to head), monsters a slightly forgiving circle —
+                    // so a well-timed jump really clears a charging boss
+                    Vector2 c = m.Center;
+                    Vector2 closest = new Vector2(player.Pos.x, Mathf.Clamp(c.y, player.Pos.y + 0.3f, player.Pos.y + 1.45f));
+                    float reach = m.Radius * (m.Rank >= Rank.MiniBoss ? 0.84f : 0.92f) + 0.3f;
+                    if ((c - closest).sqrMagnitude < reach * reach)
+                    {
+                        if (player.IsDashing && stats.DashDamageFrac > 0f) player.DashStrike(m);
+                        else if (player.TakeDamage(m.ContactDamage * StageMechanics.EnemyDamageBoost, m.Center) && m.Rank >= Rank.MiniBoss)
+                            m.Vel.x = Mathf.Sign(m.Center.x - player.Pos.x) * 5f;   // big ones bounce off instead of sitting on the player
+                    }
                 }
+                if (m.Alive) alive++;
             }
             AliveCount = alive;
             Separate();
@@ -175,6 +200,31 @@ namespace SoccerFight
             rightCharge = Mathf.Max(0f, rightCharge - dt * 1.6f);
             UpdatePortal(env.LeftPortal, leftCharge);
             UpdatePortal(env.RightPortal, rightCharge);
+        }
+
+        void BallHit(Ball ball, Monster m, Vector2 d, PlayerStats s)
+        {
+            Vector2 dir = ball.Vel.sqrMagnitude > 0.01f ? ball.Vel.normalized : -d.normalized;
+            switch (ball.St)
+            {
+                case Ball.State.Blast:
+                    ball.Explode();   // the blast hits this monster and everything around it
+                    break;
+                case Ball.State.Pierce:
+                    Combat.Hit(m, Player.PowerDamage, dir, 4.5f, Src.Power, big: true);   // keeps flying: no bounce
+                    break;
+                case Ball.State.Rainbow:
+                    Combat.Hit(m, RainbowPassDamage, dir, 5f, Src.RainbowPass, big: true);
+                    break;
+                case Ball.State.Returning:
+                    Combat.Hit(m, Player.ShotDamage * (s.Boomerang ? 1f : 0.6f), dir, 6.5f, Src.Returning);
+                    break;
+                default:
+                    Combat.Hit(m, Player.ShotDamage * ball.ShotMul, dir, 6.5f, Src.Shot, ball.GoldenShot);
+                    ball.GoldenShot = false;
+                    if (!ball.TryRicochet(m)) ball.BounceOff(d.normalized);
+                    break;
+            }
         }
 
         /// <summary>Soft push-apart so monsters never merge into one blob. Blobs only slide sideways.</summary>
@@ -195,11 +245,14 @@ namespace SoccerFight
                     float dist = Mathf.Sqrt(dist2);
                     Vector2 n = dist > 1e-4f ? d / dist : new Vector2(a.Id < b.Id ? 1f : -1f, 0f);
                     float push = (min - dist) * 0.5f;
+                    // heavier monsters shove lighter ones
+                    float wa = a.Radius * a.Radius, wb = b.Radius * b.Radius;
+                    float ka = 2f * wb / (wa + wb), kb = 2f * wa / (wa + wb);
                     float sx = Mathf.Abs(n.x) > 1e-3f ? Mathf.Sign(n.x) : (a.Id < b.Id ? 1f : -1f);
                     Vector2 pa = a.K == Monster.Kind.Blob ? new Vector2(sx, 0f) : n;
                     Vector2 pb = b.K == Monster.Kind.Blob ? new Vector2(sx, 0f) : n;
-                    a.Pos -= pa * push;
-                    b.Pos += pb * push;
+                    a.Pos -= pa * push * ka;
+                    b.Pos += pb * push * kb;
                 }
             }
         }
@@ -209,39 +262,49 @@ namespace SoccerFight
             float c = Mathf.Clamp01(charge);
             var glow = portal.GetChild(0).GetComponent<SpriteRenderer>();
             var swirl = portal.GetChild(1).GetComponent<SpriteRenderer>();
-            glow.color = Palette.MonsterGlow.WithAlpha(0.06f + 0.4f * c);
-            swirl.color = Palette.MonsterGlow.WithAlpha(0.1f + 0.75f * c);
+            glow.color = portalColor.WithAlpha(0.06f + 0.4f * c);
+            swirl.color = portalColor.WithAlpha(0.1f + 0.75f * c);
             swirl.transform.localRotation = Quaternion.Euler(0f, 0f, portalSpin * (1f + c));
             float s = 0.75f + 0.25f * c + 0.03f * Mathf.Sin(portalSpin * 0.05f);
             swirl.transform.localScale = new Vector3(s, s, 1f);
         }
 
-        /// <summary>Bicycle-kick explosion: falloff damage and an outward, upward shove.</summary>
-        public void Blast(Vector2 p, float radius, float damage)
+        /// <summary>Glow the portal that the next spawn will come out of.</summary>
+        public void ChargeNextPortal(float k)
         {
-            foreach (var m in monsters)
+            if (spawnSide % 2 == 0) leftCharge = Mathf.Max(leftCharge, k); else rightCharge = Mathf.Max(rightCharge, k);
+        }
+
+        /// <summary>Explosion: falloff damage and an outward, upward shove.</summary>
+        public void Blast(Vector2 p, float radius, float damage, Src src = Src.Blast)
+        {
+            for (int i = 0; i < monsters.Count; i++)
             {
+                var m = monsters[i];
                 if (!m.Alive) continue;
                 Vector2 d = m.Center - p;
                 float dist = d.magnitude;
                 if (dist > radius + m.Radius) continue;
                 float falloff = Mathf.Lerp(1f, 0.5f, Mathf.Clamp01(dist / radius));
                 Vector2 dir = (dist > 0.01f ? d / dist : Vector2.up) + Vector2.up * 0.6f;
-                m.Hit(Mathf.Round(damage * falloff), dir, 9f, true);
+                Combat.Hit(m, damage * falloff, dir, 9f, src, big: true);
             }
         }
 
-        public void RainbowImpact(Vector2 p)
+        public void RainbowImpact(Vector2 p, float damageMul = 1f)
         {
-            foreach (var m in monsters)
+            var s = Game.I.Run.Stats;
+            float radius = RainbowRadius * s.FlickRadiusMul * s.AreaMul;
+            for (int i = 0; i < monsters.Count; i++)
             {
+                var m = monsters[i];
                 if (!m.Alive) continue;
                 Vector2 d = m.Center - p;
                 float dist = d.magnitude;
-                if (dist > RainbowRadius + m.Radius) continue;
-                float falloff = Mathf.Lerp(1f, 0.55f, Mathf.Clamp01(dist / RainbowRadius));
+                if (dist > radius + m.Radius) continue;
+                float falloff = Mathf.Lerp(1f, 0.55f, Mathf.Clamp01(dist / radius));
                 Vector2 dir = new Vector2(Mathf.Sign(d.x == 0f ? 1f : d.x) * 0.8f, 1f);
-                m.Hit(Mathf.Round(RainbowDamage * falloff), dir, 7f, true);
+                Combat.Hit(m, RainbowDamage * falloff * damageMul, dir, 7f, Src.Rainbow, big: true);
             }
         }
     }

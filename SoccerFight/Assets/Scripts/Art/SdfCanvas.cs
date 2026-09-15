@@ -106,6 +106,22 @@ namespace SoccerFight
             });
         }
 
+        /// <summary>Cut a shape out of what is already there (amount 1 = fully transparent).</summary>
+        public void Erase(SdfFn sdf, float amount = 1f, float softness = 0f, Rect? bounds = null)
+        {
+            PixelRange(bounds, out int x0, out int y0, out int x1, out int y1);
+            ForRows(x0, x1, y0, y1, y =>
+            {
+                for (int x = x0; x < x1; x++)
+                {
+                    int i = y * Width + x;
+                    if (px[i].a <= 0f) continue;
+                    float cov = Coverage(sdf(ToUnits(x, y)), softness) * amount;
+                    if (cov > 0f) px[i].a *= 1f - cov;
+                }
+            });
+        }
+
         /// <summary>Paint inside existing pixels only (like a clipping mask). Alpha is preserved.</summary>
         public void Paint(SdfFn region, Color color, float softness = 0f, Rect? bounds = null)
         {
