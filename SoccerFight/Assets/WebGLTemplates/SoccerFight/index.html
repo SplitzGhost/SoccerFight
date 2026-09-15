@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #070b16; }
+      #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; background: #070b16; }
+      #loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: radial-gradient(ellipse at 50% 40%, #16233f 0%, #070b16 70%); color: #dbe7ff;
+        font: 500 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; transition: opacity .6s ease;
+      }
+      #loader.done { opacity: 0; pointer-events: none; }
+      #title {
+        font-size: clamp(32px, 6vw, 56px); font-weight: 800; letter-spacing: .04em;
+        background: linear-gradient(90deg, #7fd8ff, #c89bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      #bar { width: min(340px, 70vw); height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+      #fill { width: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7fd8ff, #c89bff); transition: width .2s ease; }
+      #status { opacity: .75; }
+      #hint { position: absolute; bottom: 16px; left: 16px; right: 16px; text-align: center; opacity: .45; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loader">
+      <div id="title">{{{ PRODUCT_NAME }}}</div>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Lädt …</div>
+      <div id="hint">A/D laufen · Leertaste springen · Linksklick schießen · R Rainbow Flick · Esc Menü</div>
+    </div>
+    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
+    <script>
+      (function () {
+        var canvas = document.querySelector("#unity-canvas");
+        var loader = document.querySelector("#loader");
+        var fill = document.querySelector("#fill");
+        var statusText = document.querySelector("#status");
+        canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        createUnityInstance(canvas, {
+          arguments: [],
+#if PROGRESSIVE_ASSET_LOADING
+          primaryDataUrls: {{{ JSON.stringify(PRIMARY_DATA_FILES) }}},
+          secondaryDataUrls: {{{ JSON.stringify(SECONDARY_DATA_FILES) }}},
+#else
+          dataUrl: "Build/{{{ DATA_FILENAME }}}",
+#endif
+          frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_WASM
+          codeUrl: "Build/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+          symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
+#endif
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+          productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+          productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        }, function (progress) {
+          fill.style.width = (100 * progress) + "%";
+          statusText.textContent = progress < 1 ? "Lädt … " + Math.round(100 * progress) + " %" : "Welt wird erzeugt …";
+        }).then(function () {
+          loader.classList.add("done");
+          canvas.focus();
+        }).catch(function (message) {
+          statusText.textContent = "Fehler: " + message;
+        });
+      })();
+    </script>
+  </body>
+</html>

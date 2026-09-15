@@ -1,0 +1,30 @@
+# Unity (Projekt liegt in SoccerFight/)
+SoccerFight/[Ll]ibrary/
+SoccerFight/[Tt]emp/
+SoccerFight/[Oo]bj/
+SoccerFight/[Bb]uild/
+SoccerFight/[Bb]uilds/
+SoccerFight/[Ll]ogs/
+SoccerFight/[Uu]ser[Ss]ettings/
+SoccerFight/[Mm]emoryCaptures/
+SoccerFight/[Rr]ecordings/
+SoccerFight/*.csproj
+SoccerFight/*.sln
+SoccerFight/*.slnx
+SoccerFight/.vs/
+SoccerFight/.vscode/
+SoccerFight/.idea/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-build.properties
+.DS_Store
+Thumbs.db
+
+# Referenzbilder sind urheberrechtlich geschützt, nicht veröffentlichen
+Inspiration/
+
+# Lokale Build-Kopie für WebGL und persönliche Claude-Einstellungen
+.build/
+.claude/settings.local.json
