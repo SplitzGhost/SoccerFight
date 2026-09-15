@@ -136,6 +136,11 @@ namespace SoccerFight
         TextMeshProUGUI toast;
         float toastT = 99f;
 
+        // developer mode: badge with the active cheats, optional live numbers
+        TextMeshProUGUI devBadge, devInfo;
+        Image devInfoBack;
+        float devTimer;
+
         Number[] numbers;
         int numberCursor;
 
@@ -497,6 +502,21 @@ namespace SoccerFight
             fr.anchorMin = fr.anchorMax = new Vector2(1f, 1f);
             fr.anchoredPosition = new Vector2(-124f, -30f);
 
+            devBadge = Text("DevBadge", canvasRect, "", 13f, Palette.Gold, TextAlignmentOptions.Right, Vector2.zero, new Vector2(1000f, 20f), true, true, 3f);
+            devBadge.rectTransform.anchorMin = devBadge.rectTransform.anchorMax = new Vector2(1f, 1f);
+            devBadge.rectTransform.anchoredPosition = new Vector2(-524f, -56f);
+            // the info block sits on dark glass: the moon behind the top-right corner would swallow white text
+            devInfoBack = Img("DevInfoBack", canvasRect, UiArt.Pill, Palette.UiGlass.WithAlpha(0.82f), Vector2.zero, new Vector2(560f, 84f), Image.Type.Sliced);
+            var bRt = devInfoBack.rectTransform;
+            bRt.anchorMin = bRt.anchorMax = bRt.pivot = new Vector2(1f, 1f);
+            bRt.anchoredPosition = new Vector2(-20f, -70f);
+            devInfoBack.enabled = false;
+            devInfo = Text("DevInfo", canvasRect, "", 13f, Palette.UiText, TextAlignmentOptions.TopRight, Vector2.zero, new Vector2(760f, 72f), false, false, 0.5f);
+            var iRt = devInfo.rectTransform;
+            iRt.anchorMin = iRt.anchorMax = iRt.pivot = new Vector2(1f, 1f);
+            iRt.anchoredPosition = new Vector2(-40f, -80f);
+            devInfo.lineSpacing = 6f;
+
             toast = Text("Toast", canvasRect, "", 18f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 300f), new Vector2(900f, 30f), true, true, 4f);
             toast.alpha = 0f;
 
@@ -615,7 +635,7 @@ namespace SoccerFight
         public void OnUpgradeTaken(UpgradeDef u)
         {
             SyncBuild();
-            foreach (var b in buildIcons) if (b.id == u.Id) b.popVel += 14f;
+            if (u != null) foreach (var b in buildIcons) if (b.id == u.Id) b.popVel += 14f;
         }
 
         public void OnAbilityUnlocked(Ability a)
@@ -1170,6 +1190,45 @@ namespace SoccerFight
             }
         }
 
+        static string PhaseName(RunDirector.Phase p)
+        {
+            switch (p)
+            {
+                case RunDirector.Phase.StageIntro: return "STAGE-INTRO";
+                case RunDirector.Phase.WaveIntro: return "WELLEN-INTRO";
+                case RunDirector.Phase.Fighting: return "KAMPF";
+                case RunDirector.Phase.WaveCleared: return "WELLE GESCHAFFT";
+                case RunDirector.Phase.Reward: return "KARTEN";
+                case RunDirector.Phase.AbilityPick: return "FÄHIGKEIT";
+                case RunDirector.Phase.BossIntro: return "BOSS-INTRO";
+                case RunDirector.Phase.StageCleared: return "STAGE GESCHAFFT";
+                case RunDirector.Phase.RunOver: return "LAUF VORBEI";
+                default: return "LEERLAUF";
+            }
+        }
+
+        /// <summary>Developer badge (always when a cheat touched the run) and the live numbers of the info toggle.</summary>
+        void UpdateDev(float dt, RunState run)
+        {
+            devTimer -= dt;
+            if (devTimer > 0f && dt > 0f) return;   // 5× per second while playing, every frame while paused
+            devTimer = 0.2f;
+            bool dev = DevMode.UsedThisRun || DevMode.AnyCheat;
+            devBadge.text = dev ? DevMode.Badge() : "";
+            devInfoBack.enabled = DevMode.ShowInfo;
+            if (!DevMode.ShowInfo) { devInfo.text = ""; return; }
+            var d = Game.I.Director;
+            float l = run.Level;
+            int wave = Mathf.Max(1, run.IsBossWave ? run.WavesInStage : run.Wave);
+            devInfo.text =
+                "STUFE " + l.ToString("0.00") + "     LEBEN ×" + Difficulty.HealthMul(l).ToString("0.00") + "     SCHADEN ×" + Difficulty.DamageMul(l).ToString("0.00")
+                + "     TEMPO ×" + Difficulty.SpeedMul(l).ToString("0.00") + "\n"
+                + PhaseName(d.P) + "     PLAN " + d.PlanIndex + " / " + d.PlanCount + "     FELD " + waves.AliveCount + " / " + Difficulty.MaxAlive(l)
+                + "     ELITE " + Mathf.RoundToInt(Difficulty.EliteChance(run.Stage, wave, l) * 100f) + " %\n"
+                + "BUDGET " + Difficulty.Budget(l).ToString("0.0") + "     SPAWN " + Difficulty.SpawnInterval(l).ToString("0.00") + " s     SIEGE " + run.Kills
+                + "     ZEIT " + Clock(run.Time) + "     LEBEN " + Mathf.CeilToInt(player.Hp) + " / " + Mathf.RoundToInt(player.MaxHp);
+        }
+
         static string Clock(float seconds)
         {
             int s = Mathf.FloorToInt(seconds);
@@ -1201,7 +1260,8 @@ namespace SoccerFight
                 int ups = run.PickOrder.Count;
                 deathStats.text = "GEGNER BESIEGT  " + run.Kills + "      ZEIT  " + Clock(run.Time) + "      UPGRADES  " + ups + "      FÄHIGKEITEN  " + run.Unlocked.Count;
                 int best = RunState.BestStage;
-                deathBest.text = run.Stage >= best ? "NEUER REKORD  ·  STAGE " + run.Stage : "BESTER LAUF  ·  STAGE " + best;
+                deathBest.text = DevMode.UsedThisRun ? "DEV-LAUF  ·  ZÄHLT NICHT FÜR DEN REKORD"
+                    : run.Stage >= best ? "NEUER REKORD  ·  STAGE " + run.Stage : "BESTER LAUF  ·  STAGE " + best;
                 for (int i = deathBuild.childCount - 1; i >= 0; i--) Object.Destroy(deathBuild.GetChild(i).gameObject);
                 var order = new List<string>();
                 foreach (var id in run.PickOrder) if (!order.Contains(id)) order.Add(id);
@@ -1217,6 +1277,7 @@ namespace SoccerFight
             else if (!player.Dead) deathTextSet = false;
 
             hintGroup.alpha = 1f - MathUtil.Smooth01((time - 9f) / 1.5f);
+            UpdateDev(dt, run);
 
             // fade in from black on start / restart (also hides first-frame shader warm-up)
             fadeT += dt;

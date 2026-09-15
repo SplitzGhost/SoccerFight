@@ -77,7 +77,7 @@ namespace SoccerFight
             }
 
             Scale = s;
-            Time.timeScale = s;
+            Time.timeScale = s * DevMode.Speed;
         }
     }
 }

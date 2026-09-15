@@ -31,18 +31,18 @@ namespace SoccerFight
         public static float BossLevel(int stage) => Level(stage, WavesInStage(stage)) + 0.5f;
 
         public static float HealthMul(float level) => (1f + 0.1f * level) * Mathf.Pow(1.016f, level);
-        public static float DamageMul(float level) => 1f + 0.055f * level;
+        public static float DamageMul(float level) => 1f + 0.045f * level;
         public static float SpeedMul(float level) => 1f + 0.3f * (1f - Mathf.Exp(-level / 14f));
 
         /// <summary>Threat points to spend on a wave (a basic hopper costs 1).</summary>
-        public static float Budget(float level) => 7f + 2.4f * Mathf.Pow(level, 0.9f);
+        public static float Budget(float level) => 5f + 2f * Mathf.Pow(level, 0.9f);
 
-        public static int MaxAlive(float level) => Mathf.Min(16, 6 + Mathf.RoundToInt(level * 0.5f));
-        public static float SpawnInterval(float level) => Mathf.Max(0.35f, 1.05f - 0.035f * level);
+        public static int MaxAlive(float level) => Mathf.Min(14, 4 + Mathf.RoundToInt(level * 0.45f));
+        public static float SpawnInterval(float level) => Mathf.Max(0.45f, 1.4f - 0.04f * level);
 
-        /// <summary>Chance that a spawned regular enemy is an elite (from stage 1, wave 2).</summary>
+        /// <summary>Chance that a spawned regular enemy is an elite (from stage 1, wave 3).</summary>
         public static float EliteChance(int stage, int wave, float level)
-            => stage == 1 && wave < 2 ? 0f : Mathf.Min(0.35f, 0.02f + 0.013f * level);
+            => stage == 1 && wave < 3 ? 0f : Mathf.Min(0.3f, 0.015f + 0.011f * level);
 
         public static int EliteAffixes(int stage) => stage >= 7 ? 3 : stage >= 4 ? 2 : 1;
 
@@ -57,10 +57,10 @@ namespace SoccerFight
         }
 
         // multipliers on top of the level scaling
-        public const float EliteHealth = 3.2f, EliteDamage = 1.45f, EliteSize = 1.3f, EliteCost = 3f;
+        public const float EliteHealth = 2.8f, EliteDamage = 1.3f, EliteSize = 1.3f, EliteCost = 3f;
         // mini-bosses and bosses use fixed bases (not their archetype's numbers) so every stage's
         // big fights weigh the same at the same level
-        public const float MiniBaseHealth = 260f, MiniBaseDamage = 14f, MiniDamage = 1.4f, MiniSize = 1.8f, MiniCost = 10f;
-        public const float BossBaseHealth = 440f, BossBaseDamage = 16f, BossDamage = 1f;
+        public const float MiniBaseHealth = 220f, MiniBaseDamage = 11f, MiniDamage = 1.35f, MiniSize = 1.8f, MiniCost = 10f;
+        public const float BossBaseHealth = 380f, BossBaseDamage = 13f, BossDamage = 1f;
     }
 }

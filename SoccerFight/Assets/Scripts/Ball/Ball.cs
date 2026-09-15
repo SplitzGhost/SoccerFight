@@ -413,7 +413,7 @@ namespace SoccerFight
                     Vel.x *= Mathf.Exp(-0.6f * dt);
                     Pos += Vel * dt;
                     CollideWorld(0.6f);
-                    if (stateTime > 0.4f / Mathf.Sqrt(Gravity)) StartReturn();
+                    if (stateTime > 0.28f / Mathf.Sqrt(Gravity)) StartReturn();
                     break;
                 }
                 case State.Returning:
@@ -422,7 +422,7 @@ namespace SoccerFight
                     Vector2 to = target - Pos;
                     float dist = to.magnitude;
                     float ramp = MathUtil.EaseOutQuad(stateTime / 0.25f);
-                    float speed = (Mathf.Lerp(5f, 30f, ramp) + dist * 1.5f) * Game.I.Run.Stats.ReturnSpeedMul;
+                    float speed = (Mathf.Lerp(7f, 34f, ramp) + dist * 1.6f) * Game.I.Run.Stats.ReturnSpeedMul;
                     Vector2 desired = dist > 1e-4f ? to / dist * speed : Vector2.zero;
                     Vel = MathUtil.Damp(Vel, desired, 7f + ramp * 8f, dt);
                     Pos += Vel * dt;

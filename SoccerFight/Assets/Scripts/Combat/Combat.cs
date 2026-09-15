@@ -74,6 +74,8 @@ namespace SoccerFight
             }
             knock *= s.KnockbackMul;
 
+            if (DevMode.OneHit) d = Mathf.Max(d, m.Hp + 1f);
+
             bool direct = Direct(src);
             bool shock = direct && s.ThermalShock && m.Burning && m.Slowed;
             Vector2 at = m.Center;

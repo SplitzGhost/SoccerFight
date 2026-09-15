@@ -29,6 +29,7 @@ namespace SoccerFight
         public RewardScreen Rewards { get; private set; }
         public ThemeGrade Grade { get; private set; }
         public StageMechanics Mechanics { get; private set; }
+        public DevPanel Dev { get; private set; }
         EnemyProjectiles enemyShots;
         Lightning lightning;
         EchoBalls echoes;
@@ -114,6 +115,10 @@ namespace SoccerFight
             Pause = new PauseMenu();
             Pause.Build(transform, Cam.Cam, CaptureMode);
             Pause.RestartRequested += () => { Pause.Close(); Restart(); };
+            Dev = new DevPanel();
+            Dev.Build(transform, Cam.Cam, CaptureMode);
+            // not while a card choice is open: the dev actions would pull the run out from under it
+            Pause.DevRequested += () => { if (Rewards.IsOpen) return; Pause.Close(); Dev.Open(); };
             Director = new RunDirector();
             Director.Build(Run, Waves, Player, Rewards);
             BuildTimer.Mark("hud");
@@ -151,6 +156,7 @@ namespace SoccerFight
             Mechanics.SetRunning(false);
             Run.Reset();
             Combat.Reset();
+            DevMode.OnRunStart();
             Player.Respawn();
             Ball.ResetTo(Player.Pos + new Vector2(0.5f, Art.BallRadius));
             Waves.Restart();
@@ -166,16 +172,22 @@ namespace SoccerFight
             if (RecoverFromReload()) return;
             float udt = TimeFx.UiDelta;
 
-            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen;
+            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
             GameInput.Poll(Cam.Cam);
 
+            if (GameInput.DevPressed && !CaptureMode)
+            {
+                if (Dev.IsOpen) Dev.Close();
+                else if (!Rewards.IsOpen) { Pause.Close(); Dev.Open(); }
+            }
             if (GameInput.PausePressed)
             {
-                if (Pause.IsOpen) Pause.HandleEscape();
+                if (Dev.IsOpen) Dev.Close();
+                else if (Pause.IsOpen) Pause.HandleEscape();
                 else if (!CaptureMode) Pause.Open();
             }
-            // reward screens freeze the fight exactly like the pause menu
-            bool paused = Pause.IsOpen || Rewards.IsOpen;
+            // reward screens and the dev panel freeze the fight exactly like the pause menu
+            bool paused = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
             TimeFx.Paused = paused;
             TimeFx.Update(udt);
             Hud.SetPaused(paused);
@@ -229,7 +241,7 @@ namespace SoccerFight
             if (Cam == null || Player == null) return;
             float udt = TimeFx.UiDelta;
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
-            bool paused = Pause.IsOpen || Rewards.IsOpen;
+            bool paused = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
 
             Vector2 aimOffset = Vector2.ClampMagnitude((GameInput.AimWorld - (Player.Pos + Vector2.up)) * 0.09f, 1.1f);
             Vector2 look = new Vector2(Player.Facing * 0.8f + aimOffset.x, aimOffset.y * 0.35f);
@@ -241,6 +253,7 @@ namespace SoccerFight
             Hud.Update(paused ? 0f : udt);
             Rewards.Update(udt, !Pause.IsOpen);
             Pause.Update(udt);
+            Dev.Update(udt);
             Post.Update(udt);
         }
     }

@@ -17,15 +17,15 @@ namespace SoccerFight
         {
             switch (t)
             {
-                case EnemyType.Diver: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 24f, Damage = 10f, Cost = 1.3f, Size = 1f };
-                case EnemyType.Splitter: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 46f, Damage = 12f, Cost = 1.8f, Size = 1.15f };
-                case EnemyType.Spawnling: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 12f, Damage = 6f, Cost = 0.4f, Size = 0.6f };
-                case EnemyType.Spitter: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 30f, Damage = 10f, Cost = 2f, Size = 0.95f };
-                case EnemyType.Brute: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 120f, Damage = 20f, Cost = 4f, Size = 1.6f };
-                case EnemyType.Shade: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 26f, Damage = 11f, Cost = 2f, Size = 1f };
-                case EnemyType.Lantern: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 28f, Damage = 9f, Cost = 2f, Size = 1.05f };
-                case EnemyType.Bomber: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 30f, Damage = 16f, Cost = 1.6f, Size = 0.9f };
-                default: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 36f, Damage = 12f, Cost = 1f, Size = 1f };
+                case EnemyType.Diver: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 24f, Damage = 7f, Cost = 1.3f, Size = 1f };
+                case EnemyType.Splitter: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 46f, Damage = 9f, Cost = 1.8f, Size = 1.15f };
+                case EnemyType.Spawnling: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 12f, Damage = 4f, Cost = 0.4f, Size = 0.6f };
+                case EnemyType.Spitter: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 30f, Damage = 7f, Cost = 2f, Size = 0.95f };
+                case EnemyType.Brute: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 120f, Damage = 14f, Cost = 4f, Size = 1.6f };
+                case EnemyType.Shade: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 26f, Damage = 8f, Cost = 2f, Size = 1f };
+                case EnemyType.Lantern: return new EnemyDef { Body = Monster.Kind.Wisp, Hp = 28f, Damage = 6f, Cost = 2f, Size = 1.05f };
+                case EnemyType.Bomber: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 30f, Damage = 11f, Cost = 1.6f, Size = 0.9f };
+                default: return new EnemyDef { Body = Monster.Kind.Blob, Hp = 36f, Damage = 8f, Cost = 1f, Size = 1f };
             }
         }
 

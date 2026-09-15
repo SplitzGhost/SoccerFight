@@ -43,7 +43,7 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | Leertaste | Springen (länger halten = höher), auch durch Plattformen hindurch nach oben |
 | S | Durch die Plattform unter dir nach unten fallen (in der Luft gehalten: durch alle Plattformen) |
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
-| Rechtsklick | Power-Schuss (nur im Stand, Cooldown 4 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (9 statt 14) |
+| Rechtsklick | Power-Schuss (nur im Stand, Cooldown 3,5 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (12 statt 18) |
 | E | Übersteiger (am Boden, Cooldown 3,5 s): Fuß kreist über den Ball, dann ein Dash (~5 m) in Blick- oder Laufrichtung. Während des ganzen Moves unverwundbar, der Ball wird mitgenommen |
 | Q | Fallrückzieher (nur in der Luft, Cooldown 5 s): Rückwärtssalto mit Scherenschlag, harter Schuss Richtung Mauszeiger. Der Ball explodiert beim ersten Aufprall auf Boden, Plattform oder Gegner (Flächenschaden) |
 | R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
@@ -52,6 +52,7 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Beenden) |
 | F1 | FPS-Anzeige an/aus |
 | F2 | VSync an/aus (aus = unbegrenzte FPS) |
+| F3 | Developer-Modus (auch im Pausemenü): Unverwundbar, keine Abklingzeiten, Ein-Treffer-Kills, Spieltempo, Stage-Sprung, Welle überspringen, Boss/Gegner rufen, Karten öffnen, jedes Upgrade gezielt hinzufügen, Live-Zahlen. Dev-Läufe zählen nicht für den Rekord |
 | Enter | Neuer Lauf nach Niederlage |
 
 Flick, Hochhalten, Übersteiger, Fallrückzieher und Luft-Rückstoß sind zu Beginn gesperrt (Schloss im HUD) und werden nach Boss-Siegen freigeschaltet.
@@ -93,7 +94,8 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 
 ## Wo man dreht
 
-- **Schwierigkeit:** alle Formeln in `Difficulty.cs` (Leben, Schaden, Tempo, Budget, Elite-Chance, Minibosse, Boss-Werte)
+- **Schwierigkeit:** alle Formeln in `Difficulty.cs` (Leben, Schaden, Tempo, Budget, Elite-Chance, Minibosse, Boss-Werte), Grundwerte der Gegner in `EnemyDefs.cs`, Heilung nach Welle/Boss in `RunDirector`
+- **Developer-Modus:** Schalter in `DevMode.cs`, Panel in `UI/DevPanel.cs`, Aktionen (`Dev*`-Methoden) in `RunDirector`
 - **Upgrades:** Werte, Beschreibung und Stapelgrenze in `UpgradeDb` (`Upgrades.cs`), Seltenheits-Gewichte in `UpgradeRoller.Weights`
 - **Stages:** Name, Farbstimmung, Wetter, Gegner, Boss und Regel in `StageThemes.cs`
 - **Spielgefühl:** Konstanten oben in `Player.cs` (Tempo, Sprung, Cooldowns, Schaden)

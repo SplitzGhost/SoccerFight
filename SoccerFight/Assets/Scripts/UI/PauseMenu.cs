@@ -29,6 +29,7 @@ namespace SoccerFight
         float lastCaptureEnd = -10f;
 
         public event System.Action RestartRequested;
+        public event System.Action DevRequested;
 
         // ------------------------------------------------------------------ build
 
@@ -83,17 +84,19 @@ namespace SoccerFight
 
         void BuildMain(RectTransform root)
         {
-            mainPanel = Panel(root, "Main", new Vector2(460f, 560f), out mainGroup);
-            UiKit.Label("Title", mainPanel, "PAUSE", 58f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 196f), new Vector2(440f, 80f), true, 22f);
-            UiKit.Label("Sub", mainPanel, "SPIEL ANGEHALTEN", 14f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 146f), new Vector2(440f, 24f), true, 7f);
+            mainPanel = Panel(root, "Main", new Vector2(460f, 632f), out mainGroup);
+            UiKit.Label("Title", mainPanel, "PAUSE", 58f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 232f), new Vector2(440f, 80f), true, 22f);
+            UiKit.Label("Sub", mainPanel, "SPIEL ANGEHALTEN", 14f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 182f), new Vector2(440f, 24f), true, 7f);
             Vector2 size = new Vector2(340f, 58f);
-            firstMain = UiKit.MakeButton(mainPanel, "WEITER", new Vector2(0f, 64f), size, Close, true);
-            UiKit.MakeButton(mainPanel, "EINSTELLUNGEN", new Vector2(0f, -8f), size, () => ShowSettings(true));
-            UiKit.MakeButton(mainPanel, "NEU STARTEN", new Vector2(0f, -80f), size, () => RestartRequested?.Invoke());
+            float y = 100f;
+            firstMain = UiKit.MakeButton(mainPanel, "WEITER", new Vector2(0f, y), size, Close, true);
+            UiKit.MakeButton(mainPanel, "EINSTELLUNGEN", new Vector2(0f, y -= 72f), size, () => ShowSettings(true));
+            UiKit.MakeButton(mainPanel, "DEVELOPER-MODUS", new Vector2(0f, y -= 72f), size, () => DevRequested?.Invoke());
+            UiKit.MakeButton(mainPanel, "NEU STARTEN", new Vector2(0f, y -= 72f), size, () => RestartRequested?.Invoke());
 #if !UNITY_WEBGL || UNITY_EDITOR
-            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, -152f), size, Quit);   // a browser tab can't be quit
+            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, y -= 72f), size, Quit);   // a browser tab can't be quit
 #endif
-            UiKit.Label("Hint", mainPanel, "ESC  ZURÜCK ZUM SPIEL", 12f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -232f), new Vector2(440f, 20f), true, 5f);
+            UiKit.Label("Hint", mainPanel, "ESC  ZURÜCK ZUM SPIEL  ·  F3  DEVELOPER", 12f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -268f), new Vector2(440f, 20f), true, 5f);
         }
 
         void BuildSettings(RectTransform root)
@@ -132,7 +135,7 @@ namespace SoccerFight
             }
             UiKit.MakeButton(settingsPanel, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 14f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
             UiKit.Label("KeyHint", settingsPanel, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 56f), new Vector2(colW, 20f), true, 4f);
-            UiKit.Label("Pause", settingsPanel, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 78f), new Vector2(colW, 20f), true, 4f);
+            UiKit.Label("Pause", settingsPanel, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC  ·  F3  DEVELOPER", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 78f), new Vector2(colW, 20f), true, 4f);
 
             UiKit.MakeButton(settingsPanel, "ZURÜCK", new Vector2(0f, -354f), new Vector2(280f, 54f), () => ShowSettings(false), true);
             RefreshKeys();

@@ -26,6 +26,8 @@ namespace SoccerFight
         public int Remaining => (plan.Count - planIndex) + (bossPending ? 1 : 0) + waves.AliveCount;
         public int WaveTotal { get; private set; }
         public bool Fighting => P == Phase.Fighting;
+        public int PlanIndex => planIndex;
+        public int PlanCount => plan.Count;
 
         readonly List<PlannedSpawn> plan = new List<PlannedSpawn>();
         readonly List<EnemyType> escortPool = new List<EnemyType>();
@@ -80,7 +82,7 @@ namespace SoccerFight
             if (P == Phase.RunOver) return;
             StageMechanics.I.SetRunning(false);
             int reached = run.Stage;
-            if (reached > RunState.BestStage) RunState.BestStage = reached;
+            if (!DevMode.UsedThisRun && reached > RunState.BestStage) RunState.BestStage = reached;
             Enter(Phase.RunOver);
         }
 
@@ -194,7 +196,7 @@ namespace SoccerFight
                     if (!stageHealed && t > 0.8f)
                     {
                         stageHealed = true;
-                        float heal = player.MaxHp * 0.3f;
+                        float heal = player.MaxHp * 0.5f;
                         player.Heal(heal, true);
                     }
                     if (t > 2.8f) OpenReward(true);
@@ -251,7 +253,7 @@ namespace SoccerFight
             StageMechanics.I.SetRunning(false);
             EnemyProjectiles.I.Clear();
             var s = run.Stats;
-            float heal = player.MaxHp * 0.08f + s.HealOnWave;
+            float heal = player.MaxHp * 0.15f + s.HealOnWave;
             player.Heal(heal, true);
             Game.I.Hud.OnWaveCleared(run.Wave, run.WavesInStage);
             Enter(Phase.WaveCleared);
@@ -309,7 +311,7 @@ namespace SoccerFight
                 FxSystem.I.Burst(m.Center, Color.white, run.Theme.Glow, 0.7f);
                 m.Deactivate();
             }
-            if (run.Stage + 1 > RunState.BestStage) RunState.BestStage = run.Stage + 1;
+            if (!DevMode.UsedThisRun && run.Stage + 1 > RunState.BestStage) RunState.BestStage = run.Stage + 1;
             Game.I.Hud.OnStageCleared(run.Stage, run.Theme);
             Enter(Phase.StageCleared);
         }
@@ -369,6 +371,172 @@ namespace SoccerFight
             run.Stage++;
             run.Rerolls++;
             BeginStage(false);
+        }
+
+        // ------------------------------------------------------------------ developer mode
+
+        /// <summary>Removes everything on the pitch without kill credit (no splitters, no kill effects).</summary>
+        void ClearPitch()
+        {
+            foreach (var m in waves.Monsters)
+            {
+                if (!m.Alive) continue;
+                FxSystem.I.Burst(m.Center, Color.white, run.Theme.Glow, 0.6f);
+                m.Deactivate();
+            }
+            EnemyProjectiles.I.Clear();
+        }
+
+        /// <summary>Jump to a stage, keeping the build and the unlocked abilities.</summary>
+        public void DevGoToStage(int stage)
+        {
+            DevMode.MarkRun();
+            StageMechanics.I.SetRunning(false);
+            ClearPitch();
+            plan.Clear(); planIndex = 0; bossPending = false;
+            run.Stage = Mathf.Max(1, stage);
+            BeginStage(false);
+        }
+
+        /// <summary>End the current wave as if it had been cleared (the boss wave counts as won).</summary>
+        public void DevSkipWave()
+        {
+            DevMode.MarkRun();
+            switch (P)
+            {
+                case Phase.StageIntro:
+                case Phase.WaveIntro:
+                    t = 99f;   // fast-forward the intro
+                    return;
+                case Phase.BossIntro:
+                    bossPending = false;
+                    bossSeen = true;
+                    ClearPitch();
+                    Enter(Phase.Fighting);
+                    BossDefeated();
+                    return;
+                case Phase.Fighting:
+                    plan.Clear(); planIndex = 0;
+                    if (run.IsBossWave) { bossPending = false; ClearPitch(); BossDefeated(); }
+                    else ClearPitch();   // UpdateWave sees an empty pitch and finishes the wave
+                    return;
+            }
+        }
+
+        /// <summary>Straight to this stage's boss.</summary>
+        public void DevCallBoss()
+        {
+            DevMode.MarkRun();
+            if (P == Phase.Reward || P == Phase.AbilityPick || P == Phase.RunOver) return;
+            StageMechanics.I.SetRunning(false);
+            ClearPitch();
+            StartWave(run.WavesInStage + 1);
+        }
+
+        /// <summary>Defeat everything on the pitch (kill effects and splitters included).</summary>
+        public void DevKillAll()
+        {
+            DevMode.MarkRun();
+            for (int pass = 0; pass < 3; pass++)
+            {
+                bool any = false;
+                var list = waves.Monsters;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var m = list[i];
+                    if (!m.Alive || m.Rank == Rank.Boss && P != Phase.Fighting) continue;
+                    any = true;
+                    Combat.Hit(m, m.Hp + 1f, Vector2.up, 3f, Src.Hazard, big: true);
+                }
+                if (!any) break;
+            }
+        }
+
+        /// <summary>A monster of the current stage out of the next portal.</summary>
+        public void DevSpawn(Rank rank)
+        {
+            DevMode.MarkRun();
+            var theme = run.Theme;
+            int wave = Mathf.Max(1, run.IsBossWave ? run.WavesInStage : run.Wave);
+            var options = new List<RosterEntry>();
+            foreach (var e in theme.Roster) if (e.FromWave <= wave) options.Add(e);
+            if (options.Count == 0) options.Add(theme.Roster[0]);
+            var pick = options[Random.Range(0, options.Count)];
+            int affixes = Difficulty.EliteAffixes(run.Stage);
+            if (rank == Rank.MiniBoss)
+            {
+                waves.SpawnFromPortal(MiniBossType(theme), run.Level, Rank.MiniBoss, Mathf.Max(1, affixes - 1), theme.MiniBossName);
+                Game.I.Hud.ShowToast(theme.MiniBossName + "  NAHT");
+            }
+            else waves.SpawnFromPortal(pick.Type, run.Level, rank, rank == Rank.Elite ? affixes : 0, pick.Name);
+        }
+
+        void DevAfterPick()
+        {
+            player.ApplyStats(false);
+            Game.I.Hud.OnUpgradeTaken(null);
+        }
+
+        /// <summary>Offer cards without touching the wave flow (the fight resumes after the pick).</summary>
+        public void DevOfferCards(bool boss)
+        {
+            DevMode.MarkRun();
+            var offer = UpgradeRoller.Offer(run, 3, boss);
+            rewards.ShowUpgrades(offer, boss, run, u => { run.Take(u, player); player.ApplyStats(false); Game.I.Hud.OnUpgradeTaken(u); });
+        }
+
+        public void DevOfferAbility()
+        {
+            DevMode.MarkRun();
+            var locked = run.LockedAbilities();
+            if (locked.Count == 0) { Game.I.Hud.ShowToast("ALLE FÄHIGKEITEN SIND SCHON FREI"); return; }
+            var choice = new List<Ability>();
+            while (choice.Count < Mathf.Min(2, locked.Count))
+            {
+                var a = locked[Random.Range(0, locked.Count)];
+                if (!choice.Contains(a)) choice.Add(a);
+            }
+            rewards.ShowAbilities(choice, run.Stage, a => { run.Unlock(a); player.ApplyStats(false); Game.I.Hud.OnAbilityUnlocked(a); });
+        }
+
+        /// <summary>+1 stack of a specific card. Returns false at the stack limit.</summary>
+        public bool DevAddUpgrade(UpgradeDef u)
+        {
+            if (run.Stacks(u.Id) >= u.Max) return false;
+            DevMode.MarkRun();
+            run.Take(u, player);
+            player.ApplyStats(false);
+            Game.I.Hud.OnUpgradeTaken(u);
+            return true;
+        }
+
+        public void DevAddRandomUpgrades(int count)
+        {
+            DevMode.MarkRun();
+            for (int i = 0; i < count; i++)
+            {
+                var offer = UpgradeRoller.Offer(run, 1, false);
+                if (offer.Count > 0) run.Take(offer[0], player);
+            }
+            DevAfterPick();
+        }
+
+        public void DevUnlockAll()
+        {
+            DevMode.MarkRun();
+            foreach (var a in run.LockedAbilities()) run.Unlock(a);
+            player.ApplyStats(false);
+            foreach (var a in Abilities.Unlockable) Game.I.Hud.OnAbilityUnlocked(a);
+            Game.I.Hud.ShowToast("ALLE FÄHIGKEITEN FREIGESCHALTET");
+        }
+
+        public void DevClearBuild()
+        {
+            DevMode.MarkRun();
+            run.Owned.Clear();
+            run.PickOrder.Clear();
+            run.Rebuild();
+            DevAfterPick();
         }
 
         /// <summary>Capture/debug: open the reward screens directly.</summary>

@@ -28,8 +28,8 @@ namespace SoccerFight
         public Monster Boss { get; private set; }
 
         public const float RainbowRadius = 2.9f;
-        public const float RainbowDamage = 55f;
-        public const float RainbowPassDamage = 22f;
+        public const float RainbowDamage = 65f;
+        public const float RainbowPassDamage = 26f;
 
         public void Build(Transform root, WorldEnvironment environment)
         {
@@ -185,8 +185,8 @@ namespace SoccerFight
                     if ((c - closest).sqrMagnitude < reach * reach)
                     {
                         if (player.IsDashing && stats.DashDamageFrac > 0f) player.DashStrike(m);
-                        else if (player.TakeDamage(m.ContactDamage * StageMechanics.EnemyDamageBoost, m.Center) && m.Rank >= Rank.MiniBoss)
-                            m.Vel.x = Mathf.Sign(m.Center.x - player.Pos.x) * 5f;   // big ones bounce off instead of sitting on the player
+                        else if (player.TakeDamage(m.ContactDamage * StageMechanics.EnemyDamageBoost, m.Center))
+                            m.Vel.x = Mathf.Sign(m.Center.x - player.Pos.x) * (m.Rank >= Rank.MiniBoss ? 5f : 3.5f);   // bounce off instead of sitting on the player
                     }
                 }
                 if (m.Alive) alive++;

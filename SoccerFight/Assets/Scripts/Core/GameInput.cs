@@ -24,6 +24,8 @@ namespace SoccerFight
         public static bool PausePressed;
         public static bool ToggleFps;
         public static bool ToggleVsync;
+        /// <summary>F3: developer panel.</summary>
+        public static bool DevPressed;
         public static Vector2 AimScreen;
         public static Vector2 AimWorld;
 
@@ -38,7 +40,7 @@ namespace SoccerFight
         {
             MoveX = 0f;
             JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
-            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -54,6 +56,7 @@ namespace SoccerFight
             RestartPressed = kb != null && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame);
             ToggleFps = kb != null && kb.f1Key.wasPressedThisFrame;
             ToggleVsync = kb != null && kb.f2Key.wasPressedThisFrame;
+            DevPressed = kb != null && kb.f3Key.wasPressedThisFrame;
             if (mouse != null) AimScreen = mouse.position.ReadValue();
 
             if (Blocked)
@@ -90,7 +93,7 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = false;
             PowerPressed = StepOverPressed = BicyclePressed = false;
         }
     }

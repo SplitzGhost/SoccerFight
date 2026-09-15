@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -82,6 +82,7 @@ namespace SoccerFight
             else if (scenario == "run") yield return RunTour();
             else if (scenario == "sim") yield return Simulate();
             else if (scenario == "themes") { G.Waves.Enabled = true; G.Restart(); yield return ThemeTour(); }
+            else if (scenario == "dev") yield return DevTour();
             else if (scenario == "moves") yield return Moves();
             else if (scenario == "portrait") yield return Portrait();
             else if (scenario == "platforms") yield return Platforms();
@@ -164,6 +165,24 @@ namespace SoccerFight
         {
             var run = G.Run;
             G.Waves.Spawn(new Monster.SpawnSpec { Type = type, At = at, Level = run.Level, Rank = rank, Affixes = affixes, Theme = run.Theme, Name = name });
+        }
+
+        /// <summary>Developer panel and the live info lines.</summary>
+        IEnumerator DevTour()
+        {
+            G.Waves.Enabled = true;
+            G.Restart();
+            Aim(new Vector2(5f, 1.5f));
+            yield return Seconds(6f);
+            DevMode.ShowInfo = true;
+            DevMode.God = true;
+            G.Dev.Open();
+            yield return Seconds(0.8f);
+            yield return Shot("d01_panel");
+            G.Dev.Close();
+            G.Director.DevSpawn(Rank.Elite);
+            yield return Seconds(2f);
+            yield return Shot("d02_info");
         }
 
         /// <summary>Every stage theme with a few of its monsters (the player is untouchable for the pictures).</summary>

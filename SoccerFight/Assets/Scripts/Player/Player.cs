@@ -27,7 +27,7 @@ namespace SoccerFight
         public const float ShotCooldown = 0.45f;
         public const float FlickCooldown = 6f;
         public const float ShotSpeed = 25f;
-        public const float ShotDamage = 14f;
+        public const float ShotDamage = 18f;
 
         // air kick: the recoil pushes the player the opposite way (once per airtime — a double jump)
         const float AirKickBoost = 12.5f;
@@ -48,7 +48,7 @@ namespace SoccerFight
         // power shot (standing): longer wind-up, then a straight drive that passes through every
         // monster in its path — each takes less than a normal shot
         public const float PowerWindup = 0.2f, PowerContact = 0.26f, PowerFollow = 0.4f, PowerDuration = 0.58f;
-        public const float PowerCooldown = 4f, PowerSpeed = 36f, PowerDamage = 9f;
+        public const float PowerCooldown = 3.5f, PowerSpeed = 36f, PowerDamage = 12f;
 
         // step-over (on the ground): a feint over the ball, then an invulnerable dash through
         // whatever stands in front
@@ -58,11 +58,11 @@ namespace SoccerFight
 
         // bicycle kick (airborne): a backflip with a scissor kick; the ball explodes where it lands
         public const float BicycleSet = 0.14f, BicycleContact = 0.22f, BicycleDuration = 0.62f;
-        public const float BicycleCooldown = 5f, BicycleSpeed = 27f, BlastDamage = 30f, BlastRadius = 2.8f;
+        public const float BicycleCooldown = 5f, BicycleSpeed = 27f, BlastDamage = 38f, BlastRadius = 2.8f;
 
         public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle }
 
-        public const float BaseMaxHp = 100f;
+        public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
 
         public Vector2 Pos;
@@ -257,6 +257,7 @@ namespace SoccerFight
             InvulnTimer = Mathf.Max(0f, InvulnTimer - dt);
             DodgeTime = Mathf.Max(0f, DodgeTime - dt);
             boostT = Mathf.Max(0f, boostT - dt);
+            if (DevMode.NoCooldowns) ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
 
             var s = S;
             var run = Run;
@@ -308,7 +309,7 @@ namespace SoccerFight
                 else if (shotBuffer > 0f && ShotCd <= 0f)
                 {
                     // one-touch: a ball that is almost home gets taken first time
-                    if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 1.6f * s.CatchRadiusMul)) Ball.ForceCatch(this);
+                    if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 2.1f * s.CatchRadiusMul)) Ball.ForceCatch(this);
                     if (Ball.IsHeld) StartKick();
                 }
             }
@@ -541,7 +542,7 @@ namespace SoccerFight
         /// <summary>Ball at the feet, or close enough to take first time.</summary>
         bool TakeBall()
         {
-            if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 1.6f)) Ball.ForceCatch(this);
+            if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 2.1f * S.CatchRadiusMul)) Ball.ForceCatch(this);
             return Ball.IsHeldFree;
         }
 
@@ -999,7 +1000,7 @@ namespace SoccerFight
         /// <summary>Returns true if the hit connected (shield blocks count).</summary>
         public bool TakeDamage(float amount, Vector2 from)
         {
-            if (Dead || InvulnTimer > 0f || DodgeTime > 0f) return false;
+            if (Dead || InvulnTimer > 0f || DodgeTime > 0f || DevMode.God) return false;
             var game = Game.I;
             var s = S;
             float dir = Mathf.Sign(Pos.x - from.x);
@@ -1024,7 +1025,7 @@ namespace SoccerFight
             AbortJuggle();
             amount *= 1f - Mathf.Min(0.6f, s.Armor);
             Hp = Mathf.Max(0f, Hp - amount);
-            InvulnTimer = 1.0f + s.InvulnBonus;
+            InvulnTimer = 1.3f + s.InvulnBonus;
             Vel = new Vector2(dir * 7.5f, Grounded ? 6.5f : Mathf.Max(Vel.y, 4f));
             Grounded = false;
             Rig.Flash(0.09f);
