@@ -78,6 +78,7 @@ try {
         robocopy $out $site /E /NFL /NDL /NJH /NJS /NP | Out-Null
         New-Item -ItemType File -Force (Join-Path $site '.nojekyll') | Out-Null
         git -C $site init -q
+        git -C $site config core.autocrlf false
         git -C $site add -A
         git -C $site commit -q -m "Deploy $sha"
         $res = git -C $site @cred push -q -f $url HEAD:gh-pages 2>&1

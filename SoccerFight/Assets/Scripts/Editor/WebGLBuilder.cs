@@ -23,6 +23,7 @@ namespace SoccerFight.EditorTools
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.showDiagnostics = false;
             PlayerSettings.WebGL.powerPreference = WebGLPowerPreference.HighPerformance;
+            PlayerSettings.SplashScreen.show = false;   // optional for Personal since Unity 6
 
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
