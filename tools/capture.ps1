@@ -23,4 +23,9 @@ try {
 }
 finally {
     $mutex.ReleaseMutex()
+    # Ein Veröffentlichungslauf, der während der Aufnahme dazukam, hat nur eine Markierung hinterlassen:
+    # jetzt nachholen, sonst geht er verloren.
+    if (Test-Path (Join-Path $root '.build\pending')) {
+        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\publish.ps1`""
+    }
 }

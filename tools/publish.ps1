@@ -23,7 +23,12 @@ function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Add-Con
 # Nur ein Lauf gleichzeitig. Wer während eines Laufs dazukommt, hinterlässt eine Markierung,
 # und der laufende Prozess macht danach noch eine Runde.
 $mutex = New-Object System.Threading.Mutex($false, 'SoccerFightPublish')
-if (-not $mutex.WaitOne(0)) { New-Item -ItemType File -Force $pending | Out-Null; exit 0 }
+if (-not $mutex.WaitOne(0)) {
+    # Die Build-Kopie ist belegt (anderer Lauf oder capture.ps1): Markierung setzen, der Belegende holt nach
+    New-Item -ItemType File -Force $pending | Out-Null
+    Log 'wartet: Build-Kopie belegt, wird danach nachgeholt'
+    exit 0
+}
 
 try {
     Set-Location $root
