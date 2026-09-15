@@ -176,7 +176,7 @@ namespace SoccerFight
             CurrentAction = Action.None;
             ActionTime = 0f;
             coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = powerBuffer = stepBuffer = bikeBuffer = 0f;
-            airBoosts = 0;
+            airBoosts = 1;
             boostT = boostGhostT = 0f;
             boostRise = false;
             JuggleCount = 0;
@@ -200,7 +200,7 @@ namespace SoccerFight
             Hp = fresh ? MaxHp : Mathf.Min(Hp, MaxHp);
             if (fresh || Shield > s.ShieldCharges) Shield = s.ShieldCharges;
             if (s.ShieldCharges > 0 && Shield == 0 && fresh) Shield = 1;
-            if (!Run.Has(Ability.AirKick)) airBoosts = 0;
+
         }
 
         public void Heal(float amount, bool popup = false)
@@ -405,7 +405,7 @@ namespace SoccerFight
                 Vel.y = 0f;
                 Grounded = true;
                 OnPlatform = floorIndex;
-                airBoosts = run.Has(Ability.AirKick) ? s.AirBoosts : 0;
+                airBoosts = s.AirBoosts;
                 boostRise = false;
             }
             else if (Pos.y > floor + 0.001f)

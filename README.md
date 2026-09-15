@@ -11,8 +11,9 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
 - **Nach jeder Welle:** 3 zufällige Upgrade-Karten (Gewöhnlich / Selten / Episch / Legendär), eine davon nimmst du
   (Taste 1/2/3 oder Klick, R mischt einmal pro Stage neu). 59 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
 - **Nach jedem Boss:** eine Boss-Belohnung (nur Selten+) und die Wahl zwischen 2 zufälligen Fähigkeiten.
-  Zu Beginn hast du nur **Schuss** und **Power-Schuss**; Rainbow Flick, Hochhalten, Übersteiger, Fallrückzieher und
-  Luft-Rückstoß werden Stage für Stage freigeschaltet. Die nicht gewählte Fähigkeit kommt zurück in den Pool.
+  Zu Beginn hast du nur **Schuss** und **Power-Schuss** (der Luft-Rückstoß beim Schießen in der Luft geht immer);
+  Rainbow Flick, Hochhalten, Übersteiger und Fallrückzieher werden Stage für Stage freigeschaltet.
+  Die nicht gewählte Fähigkeit kommt zurück in den Pool.
 - **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
   Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
   Glutschmiede (Lavageysire), Frostgipfel (Glatteis), Sternengarten (geringe Schwerkraft), Eklipse (Verstärkungs-Pulse).
@@ -55,7 +56,7 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | F3 | Developer-Modus (auch im Pausemenü): Unverwundbar, keine Abklingzeiten, Ein-Treffer-Kills, Spieltempo, Stage-Sprung, Welle überspringen, Boss/Gegner rufen, Karten öffnen, jedes Upgrade gezielt hinzufügen, Live-Zahlen. Dev-Läufe zählen nicht für den Rekord |
 | Enter | Neuer Lauf nach Niederlage |
 
-Flick, Hochhalten, Übersteiger, Fallrückzieher und Luft-Rückstoß sind zu Beginn gesperrt (Schloss im HUD) und werden nach Boss-Siegen freigeschaltet.
+Flick, Hochhalten, Übersteiger und Fallrückzieher sind zu Beginn gesperrt und erscheinen erst nach ihrer Freischaltung (nach Boss-Siegen) in der Skill-Leiste – links neben den vorhandenen, alle gleich groß; der normale Schuss sitzt etwas größer ganz rechts.
 
 Alle zehn Aktionen (Laufen, Springen, Durchfallen, Schuss, Power-Schuss, Übersteiger, Fallrückzieher, Rainbow Flick, Hochhalten) lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
 (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build), VSync, FPS-Anzeige, Bildschirmwackeln,

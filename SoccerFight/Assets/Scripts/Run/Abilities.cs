@@ -2,12 +2,12 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Player abilities. A run starts with Shot + Power Shot; the rest are unlocked one per stage.</summary>
+    /// <summary>Player abilities. A run starts with Shot + Power Shot (the air-kick recoil always works); the rest are unlocked one per stage.</summary>
     public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick }
 
     public static class Abilities
     {
-        public static readonly Ability[] Unlockable = { Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle, Ability.AirKick };
+        public static readonly Ability[] Unlockable = { Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle };
 
         public static string Name(Ability a)
         {

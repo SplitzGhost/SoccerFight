@@ -119,7 +119,7 @@ namespace SoccerFight
                 (s, n) => { s.ShieldCharges = 1; s.ShieldRecharge = 16f - 4f * (n - 1); });
             U("adrenaline", "ADRENALIN", R, UpIcon.Adrenaline, 2, n => "Nach jedem Sieg: +" + P(0.2f) + " Tempo und Schussrate für " + N(2.5f * n) + " s.",
                 (s, n) => s.AdrenalineTime = 2.5f * n);
-            U("air_acrobat", "LUFTAKROBAT", R, UpIcon.AirKick, 2, n => V("+1") + " Luft-Rückstoß pro Sprung.", (s, n) => s.AirBoosts += n, ab: Ability.AirKick);
+            U("air_acrobat", "LUFTAKROBAT", R, UpIcon.AirKick, 2, n => V("+1") + " Luft-Rückstoß pro Sprung.", (s, n) => s.AirBoosts += n);
             U("sharpshooter", "SCHARFSCHÜTZE", R, UpIcon.CritDamage, 2, n => "Kritische Treffer machen +" + P(0.6f) + " Schaden und schleudern Gegner weg.",
                 (s, n) => s.SharpshooterBonus += 0.6f * n);
             U("afterburner", "NACHBRENNER", R, UpIcon.Dash, 2, n => "Übersteiger-Dash +" + P(0.4f) + " Weite und trifft durchquerte Gegner (" + P(0.8f * n) + " Schaden).",

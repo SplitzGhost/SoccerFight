@@ -17,6 +17,8 @@ namespace SoccerFight
         public readonly Dictionary<string, int> Owned = new Dictionary<string, int>();
         public readonly List<string> PickOrder = new List<string>();
         public readonly HashSet<Ability> Unlocked = new HashSet<Ability>();
+        /// <summary>Unlocked abilities in the order they were gained (the skill bar grows leftwards in this order).</summary>
+        public readonly List<Ability> UnlockOrder = new List<Ability>();
         public readonly PlayerStats Stats = new PlayerStats();
 
         public StageTheme Theme => StageThemes.For(Stage);
@@ -35,9 +37,9 @@ namespace SoccerFight
             Stage = 1; Wave = 0; Kills = 0; Time = 0f; Rerolls = 1; OffersSinceEpic = 0; RevivesUsed = 0;
             Owned.Clear(); PickOrder.Clear();
             Unlocked.Clear();
-            Unlocked.Add(Ability.Shot);
-            Unlocked.Add(Ability.Power);
-            Rebuild();
+            UnlockOrder.Clear();
+            Unlock(Ability.Shot);
+            Unlock(Ability.Power);
         }
 
         public bool Has(Ability a) => a == Ability.None || Unlocked.Contains(a);
@@ -60,7 +62,7 @@ namespace SoccerFight
 
         public void Unlock(Ability a)
         {
-            Unlocked.Add(a);
+            if (Unlocked.Add(a)) UnlockOrder.Add(a);
             Rebuild();
         }
 

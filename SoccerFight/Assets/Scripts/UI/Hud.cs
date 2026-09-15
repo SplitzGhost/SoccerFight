@@ -30,6 +30,7 @@ namespace SoccerFight
             public Image badge, badgeRim, mouseIcon;
             public TextMeshProUGUI keyText;
             public Vector2 home;
+            public bool placed;
         }
 
         sealed class Number
@@ -79,7 +80,8 @@ namespace SoccerFight
         RectTransform buildRoot;
         readonly List<BuildIcon> buildIcons = new List<BuildIcon>();
 
-        Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot, airSlot;
+        Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
+        const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
 
         RectTransform cross;
@@ -242,15 +244,16 @@ namespace SoccerFight
 
             BuildTags();
             BuildHealth();
-            // skill bar, right to left: rainbow flick (the big one), shot, power shot, step-over, bicycle kick, keep-ups, air kick
-            flickSlot = BuildSlot("Flick", new Vector2(-82f, 92f), 104f, UiArt.IconFlick, UiArt.RingRainbow, Color.white, GameAction.Flick, Ability.Flick);
-            shotSlot = BuildSlot("Shot", new Vector2(-198f, 84f), 84f, UiArt.IconShot, UiArt.RingThick, Palette.ShotCyan, GameAction.Shoot, Ability.Shot);
-            powerSlot = BuildSlot("Power", new Vector2(-296f, 82f), 78f, UiArt.IconPower, UiArt.RingThick, Palette.PowerGold, GameAction.PowerShot, Ability.Power);
-            stepSlot = BuildSlot("StepOver", new Vector2(-388f, 82f), 78f, UiArt.IconStepOver, UiArt.RingThick, Palette.DashMint, GameAction.StepOver, Ability.StepOver);
-            bikeSlot = BuildSlot("Bicycle", new Vector2(-480f, 82f), 78f, UiArt.IconBicycle, UiArt.RingThick, Palette.BlastOrange, GameAction.Bicycle, Ability.Bicycle);
-            jugSlot = BuildSlot("Juggle", new Vector2(-566f, 78f), 66f, UiArt.IconJuggle, UiArt.RingThick, Palette.Heal, GameAction.Juggle, Ability.Juggle);
-            airSlot = BuildSlot("AirKick", new Vector2(-644f, 78f), 66f, UiArt.IconAirKick, UiArt.RingThick, Palette.ShotCyan, GameAction.Shoot, Ability.AirKick, "LUFT");
-            slots = new[] { shotSlot, powerSlot, stepSlot, bikeSlot, flickSlot, jugSlot, airSlot };
+            // skill bar: the normal shot (a little bigger) always far right, every other ability the same
+            // size, shown only once unlocked and lined up leftwards in the order they were gained (LayoutSlots)
+            shotSlot = BuildSlot("Shot", Vector2.zero, ShotSlotSize, UiArt.IconShot, UiArt.RingThick, Palette.ShotCyan, GameAction.Shoot, Ability.Shot);
+            powerSlot = BuildSlot("Power", Vector2.zero, SkillSlotSize, UiArt.IconPower, UiArt.RingThick, Palette.PowerGold, GameAction.PowerShot, Ability.Power);
+            flickSlot = BuildSlot("Flick", Vector2.zero, SkillSlotSize, UiArt.IconFlick, UiArt.RingRainbow, Color.white, GameAction.Flick, Ability.Flick);
+            stepSlot = BuildSlot("StepOver", Vector2.zero, SkillSlotSize, UiArt.IconStepOver, UiArt.RingThick, Palette.DashMint, GameAction.StepOver, Ability.StepOver);
+            bikeSlot = BuildSlot("Bicycle", Vector2.zero, SkillSlotSize, UiArt.IconBicycle, UiArt.RingThick, Palette.BlastOrange, GameAction.Bicycle, Ability.Bicycle);
+            jugSlot = BuildSlot("Juggle", Vector2.zero, SkillSlotSize, UiArt.IconJuggle, UiArt.RingThick, Palette.Heal, GameAction.Juggle, Ability.Juggle);
+            slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot };
+            foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
             BuildBoss();
@@ -775,13 +778,13 @@ namespace SoccerFight
             UpdateHealth(dt);
             bool juggling = player.CurrentAction == Player.Action.Juggle;
             bool withBall = player.Ball.IsHeld && !player.Dead && !juggling;
+            LayoutSlots(run, dt);
             UpdateSlot(shotSlot, player.ShotCd, player.ShotCooldownTotal, withBall, dt, false, true);
             UpdateSlot(powerSlot, player.PowerCd, player.PowerCooldownTotal, withBall && player.Grounded, dt, false, true);
             UpdateSlot(stepSlot, player.StepOverCd, player.StepOverCooldownTotal, player.Grounded && !player.Dead && !juggling, dt, false, run.Has(Ability.StepOver));
             UpdateSlot(bikeSlot, player.BicycleCd, player.BicycleCooldownTotal, withBall && !player.Grounded, dt, false, run.Has(Ability.Bicycle));
             UpdateSlot(flickSlot, player.FlickCd, player.FlickCooldownTotal, withBall && player.Grounded, dt, true, run.Has(Ability.Flick));
             UpdateSlot(jugSlot, 0f, 1f, player.Ball.IsHeldFree && player.Grounded && !player.Dead, dt, false, run.Has(Ability.Juggle));
-            UpdateSlot(airSlot, 0f, 1f, !player.Grounded && !player.Dead, dt, false, run.Has(Ability.AirKick));
             UpdateCrosshair(dt);
             UpdateWave(dt, run);
             UpdateBoss(dt);
@@ -844,8 +847,46 @@ namespace SoccerFight
             }
         }
 
+        Slot SlotFor(Ability a)
+        {
+            foreach (var s in slots) if (s.ability == a) return s;
+            return null;
+        }
+
+        /// <summary>
+        /// Shot far right, then every unlocked ability leftwards in unlock order; locked ones are hidden.
+        /// Slots glide to a new place instead of jumping; a freshly unlocked one appears in place.
+        /// </summary>
+        void LayoutSlots(RunState run, float dt)
+        {
+            float x = -SlotRight;
+            Place(shotSlot, ref x, dt);
+            foreach (var a in run.UnlockOrder)
+            {
+                if (a == Ability.Shot) continue;
+                var s = SlotFor(a);
+                if (s != null) Place(s, ref x, dt);
+            }
+            foreach (var s in slots)
+            {
+                bool show = run.Has(s.ability);
+                if (s.root.gameObject.activeSelf != show) s.root.gameObject.SetActive(show);
+                if (!show) s.placed = false;
+            }
+        }
+
+        void Place(Slot s, ref float x, float dt)
+        {
+            x -= s.size * 0.5f;
+            var target = new Vector2(x, SlotBottom + s.size * 0.5f);   // bottoms line up, the shot rises a little higher
+            s.home = s.placed ? Vector2.Lerp(s.home, target, 1f - Mathf.Exp(-14f * dt)) : target;
+            s.placed = true;
+            x -= s.size * 0.5f + SlotGap;
+        }
+
         void UpdateSlot(Slot s, float remaining, float total, bool available, float dt, bool rainbow, bool unlocked)
         {
+            if (!s.root.gameObject.activeSelf) return;
             float frac = unlocked ? Mathf.Clamp01(remaining / Mathf.Max(0.01f, total)) : 1f;
             s.overlay.fillAmount = unlocked ? frac : 0f;
             s.ring.fillAmount = unlocked ? 1f - frac : 0f;
