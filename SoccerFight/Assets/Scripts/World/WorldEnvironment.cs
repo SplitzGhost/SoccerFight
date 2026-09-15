@@ -16,7 +16,6 @@ namespace SoccerFight
         struct Fog { public SpriteRenderer sr; public float speed, offset, baseX; }
         struct Firefly { public SpriteRenderer sr; public Vector2 home; public float phase, fx, fy, ax, ay, parallax; }
         struct Blink { public SpriteRenderer sr; public Color color; public float baseA, phase, speed; }
-        struct Pebble { public Transform t; public Vector2 home; public float phase, amp, speed, spin; }
         struct Puddle { public SpriteRenderer shine; public float x, y, halfW, phase, stir; }
 
         readonly List<Layer> layers = new List<Layer>();
@@ -26,17 +25,16 @@ namespace SoccerFight
         readonly List<float> rayBaseAlpha = new List<float>();
         readonly List<float> rayBaseRot = new List<float>();
         readonly List<Blink> blinks = new List<Blink>();
-        readonly List<Pebble> pebbles = new List<Pebble>();
         readonly List<Puddle> puddles = new List<Puddle>();
-        readonly List<Vector2> crystals = new List<Vector2>();
         readonly Ambient ambient = new Ambient();
 
         Transform root;
         CameraRig cam;
         System.Random rng;
-        float moteTimer, crystalTimer, splashTimer;
+        float moteTimer, splashTimer;
 
         public Transform Root => root;
+        public PlatformViews Platforms { get; private set; }
         public Transform LeftPortal { get; private set; }
         public Transform RightPortal { get; private set; }
         public float Wind { get; private set; }
@@ -432,67 +430,12 @@ namespace SoccerFight
             return portal;
         }
 
-        // ------------------------------------------------------------------ platforms (world locked, walkable)
+        // ------------------------------------------------------------------ platforms (world locked, walkable; rebuilt per stage)
 
         void BuildPlatforms()
         {
-            var group = Group("Platforms");
-            var backGrass = new FoliageLayer();     // behind the feet, bends around whoever walks through
-            var lipGrass = new FoliageLayer();      // front edge tufts
-            var hanging = new FoliageLayer();       // roots, ivy and moss dangling from the underside
-            foreach (var art in DepthArt.Platforms)
-            {
-                var p = art.P;
-                bool rock = p.Kind == Level.Style.Rock;
-                if (art.Support != null)
-                    Art.MakeSprite("Support", group, art.Support, -97).transform.localPosition = art.SupportCenter;
-                Art.MakeSprite(p.Kind + " Platform", group, art.Body, -82).transform.localPosition = art.BodyCenter;
-
-                for (float x = p.X0 + 0.05f; x < p.X1 - 0.05f; x += Range(rock ? 0.08f : 0.14f, rock ? 0.2f : 0.4f))
-                {
-                    float roll = R();
-                    var v = roll < 0.82f ? Pick(FoliageArt.Grass) : roll < 0.92f ? Pick(FoliageArt.Clover) : rock ? Pick(FoliageArt.Flowers) : Pick(FoliageArt.Ferns);
-                    backGrass.Add(v, new Vector2(x, p.Y + Range(0.05f, 0.12f)), Range(0.42f, 0.8f), Color.white, 1f, 1f, R() > 0.5f);
-                }
-                if (rock)
-                    for (int i = 0; i < 2; i++)
-                        backGrass.Add(Pick(FoliageArt.Mushrooms), new Vector2(Range(p.X0 + 0.3f, p.X1 - 0.3f), p.Y + 0.1f), Range(0.5f, 0.72f), Color.white, 1f, 0.6f, R() > 0.5f);
-                for (float x = p.X0; x < p.X1; x += Range(0.18f, 0.42f))
-                    lipGrass.Add(R() > 0.85f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Grass), new Vector2(x, p.Y - Range(0.1f, 0.15f)), Range(0.3f, 0.5f),
-                        new Color(0.95f, 1f, 1f, 1f), 1f, 0.7f, R() > 0.5f);
-                foreach (var h in art.Hangs)
-                {
-                    var v = rock ? (R() > 0.3f ? Pick(FoliageArt.Roots) : Pick(FoliageArt.Moss)) : (R() > 0.45f ? Pick(FoliageArt.Ivy) : Pick(FoliageArt.Moss));
-                    hanging.Add(v, h, rock ? Range(0.75f, 1.15f) : Range(0.5f, 0.85f), Color.white, 1f, 0.5f, R() > 0.5f);
-                }
-                if (art.HasLantern) ambient.AddLantern(group, art.Lantern, -81, 0.3f, R() * 50f);
-
-                if (!rock) continue;
-                // crystal glow under the rock, a soft pool of light and a few pebbles floating in it
-                var pool = Art.MakeSprite("Rock Light", group, Art.SoftGlow, -84, Art.SpriteAddMat, Palette.Crystal.WithAlpha(0.07f));
-                pool.transform.localPosition = new Vector3(p.Center, p.Y - 1f, 0f);
-                pool.transform.localScale = new Vector3(p.Width * 1.3f, 2.2f, 1f);
-                foreach (var c in art.Crystals)
-                {
-                    AddBlink(group, c, 0.42f, Palette.Crystal, 0.32f, -81);
-                    crystals.Add(c);
-                }
-                for (int i = 0; i < 3; i++)
-                {
-                    var peb = Art.MakeSprite("Floating Pebble", group, DepthArt.Pebbles[i], -84);
-                    float s = Range(0.6f, 1f);
-                    peb.transform.localScale = new Vector3(s, s, 1f);
-                    pebbles.Add(new Pebble
-                    {
-                        t = peb.transform, home = new Vector2(Mathf.Lerp(p.X0 + 0.4f, p.X1 - 0.4f, (i + 0.5f) / 3f) + Range(-0.2f, 0.2f), p.Y - Range(1.45f, 1.9f)),
-                        phase = R() * 10f, amp = Range(0.05f, 0.1f), speed = Range(0.7f, 1.2f), spin = Range(-14f, 14f)
-                    });
-                }
-            }
-            hanging.Build(group, "Platform Hangings", -83, FoliageLayer.MakeMaterial("SF Foliage Hangings", 0f, 0.8f));
-            backGrass.Build(group, "Platform Grass", -80, FoliageLayer.MakeMaterial("SF Foliage Platform", 0f, 1f),
-                FoliageLayer.MakeMaterial("SF Foliage Platform Glow", 0f, 1f, true, 0.8f), -79);
-            lipGrass.Build(group, "Platform Lip Grass", 50, FoliageLayer.MakeMaterial("SF Foliage Platform Lip", 0f, 1f));
+            Platforms = new PlatformViews();
+            Platforms.Build(root);
         }
 
         // ------------------------------------------------------------------ foreground
@@ -620,13 +563,7 @@ namespace SoccerFight
                 b.sr.color = b.color.WithAlpha(b.baseA * f);
             }
 
-            for (int i = 0; i < pebbles.Count; i++)
-            {
-                var p = pebbles[i];
-                float t = time * p.speed + p.phase;
-                p.t.localPosition = p.home + new Vector2(Mathf.Sin(t * 0.7f) * 0.05f, Mathf.Sin(t) * p.amp);
-                p.t.localRotation = Quaternion.Euler(0f, 0f, time * p.spin + p.phase * 30f);
-            }
+            Platforms.Update(dt, time, Wind);
 
             for (int i = 0; i < fireflies.Count; i++)
             {
@@ -654,17 +591,6 @@ namespace SoccerFight
                 fx.Spawn(Random.value > 0.8f ? FxLayer.Front : FxLayer.Back, true, Art.CellDot, p,
                     new Vector2(Wind * 0.25f + (Random.value - 0.5f) * 0.12f, 0.05f + Random.value * 0.1f),
                     Random.Range(5f, 9f), Random.Range(0.025f, 0.05f), Random.Range(0.02f, 0.04f), mc, mc, 1.8f, 0f, -0.01f, 0f, 0f, false, true);
-            }
-
-            // specks of light drifting off the crystals under the floating rocks
-            crystalTimer -= dt;
-            while (crystalTimer <= 0f && fx != null && crystals.Count > 0)
-            {
-                crystalTimer += 0.22f;
-                Vector2 at = crystals[Random.Range(0, crystals.Count)] + Random.insideUnitCircle * 0.12f;
-                Color cc = Palette.Crystal.WithAlpha(0.8f);
-                fx.Spawn(FxLayer.Back, true, Art.CellDot, at, new Vector2((Random.value - 0.5f) * 0.2f, -0.15f - Random.value * 0.25f),
-                    Random.Range(1.4f, 2.4f), Random.Range(0.035f, 0.06f), 0.01f, cc, cc, 2.2f, 0.4f, 0f, 0f, 0f, false, true);
             }
 
             ambient.Update(dt, time, c, Wind);

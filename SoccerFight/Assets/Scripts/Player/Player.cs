@@ -139,6 +139,7 @@ namespace SoccerFight
         float chargeFxTimer;
         float dropTimer;
         int dropIgnore = Level.None;
+        int platformVersion;
         bool released;
         float ghostTimer;
         int ghostIndex;
@@ -261,6 +262,14 @@ namespace SoccerFight
 
             var s = S;
             var run = Run;
+
+            // a moving platform carries whoever stands on it (a new layout invalidates the old index)
+            if (Grounded && OnPlatform != Level.None)
+            {
+                if (platformVersion == Level.Version) Pos += Level.DeltaOf(OnPlatform);
+                else { OnPlatform = Level.None; Grounded = false; }
+            }
+
             if (!Dead)
             {
                 // regeneration ticks in whole points so the number doesn't flicker
@@ -405,6 +414,7 @@ namespace SoccerFight
                 Vel.y = 0f;
                 Grounded = true;
                 OnPlatform = floorIndex;
+                platformVersion = Level.Version;
                 airBoosts = s.AirBoosts;
                 boostRise = false;
             }
@@ -580,7 +590,7 @@ namespace SoccerFight
             if (Grounded && OnPlatform == Level.None && dir.y < -0.3f) dir = new Vector2(dir.x, -0.3f).normalized;
             KickAimLocal = new Vector2(dir.x * Facing, dir.y);
             var s = S;
-            Ball.Pierce(dir * PowerSpeed * s.BallSpeedMul, Grounded ? OnPlatform : Level.None);
+            Ball.Pierce(dir * PowerSpeed * s.BallSpeedMul, Grounded ? OnPlatform : Level.None, GameInput.AimWorld);
             if (s.Trident)
                 for (int i = -1; i <= 1; i += 2)
                     EchoBalls.I.Fire(from, MathUtil.Rotate(dir, 11f * i), PowerSpeed * s.BallSpeedMul, PowerDamage, Src.Power, Palette.PowerGold, true);

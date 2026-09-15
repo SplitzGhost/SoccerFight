@@ -50,18 +50,20 @@ namespace SoccerFight
 
         public void SetTheme(StageTheme theme) => portalColor = theme.Glow;
 
-        Monster Get(Monster.Kind kind)
+        /// <summary>A pooled monster built for this body (every body has its own set of parts).</summary>
+        Monster Get(in Monster.SpawnSpec spec)
         {
-            foreach (var m in monsters) if (!m.Alive && m.K == kind) return m;
+            var look = Monster.LookFor(spec);
+            foreach (var m in monsters) if (!m.Alive && m.BuiltLook == look) return m;
             var nm = new Monster();
-            nm.Build(parent, kind);
+            nm.Build(parent, MonsterArt.Get(spec.Theme ?? StageThemes.All[0], look));
             monsters.Add(nm);
             return nm;
         }
 
         public Monster Spawn(in Monster.SpawnSpec spec)
         {
-            var m = Get(EnemyDef.Get(spec.Type).Body);
+            var m = Get(spec);
             m.Spawn(spec);
             AliveCount++;
             if (spec.Rank == Rank.Boss) Boss = m;

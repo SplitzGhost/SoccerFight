@@ -164,7 +164,7 @@ namespace SoccerFight
                 (s, n) => s.TwinSun = true);
             U("phoenix", "PHÖNIX", L, UpIcon.Phoenix, 1, n => "Einmal pro Lauf: Tödlicher Schaden belebt dich mit " + P(0.5f) + " Leben in einer Feuerexplosion wieder.",
                 (s, n) => s.Revives += 1);
-            U("singularity", "SINGULARITÄT", L, UpIcon.BlackHole, 1, n => "Der Power-Schuss hinterlässt ein schwarzes Loch, das Gegner " + N(2.5f) + " s einsaugt und dann implodiert.",
+            U("singularity", "SINGULARITÄT", L, UpIcon.BlackHole, 1, n => "Der Power-Schuss öffnet dort, wohin du zielst, ein schwarzes Loch, das Gegner " + N(2.5f) + " s einsaugt und dann implodiert.",
                 (s, n) => s.Singularity = true);
             U("perpetual", "PERPETUUM MOBILE", L, UpIcon.Infinity, 1, n => "Jeder Sieg verkürzt alle Abklingzeiten um " + N(0.5f) + " s, jeder Krit um " + N(0.2f) + " s.",
                 (s, n) => s.Perpetual = true);
@@ -177,7 +177,7 @@ namespace SoccerFight
 
     /// <summary>
     /// Offers three cards. Rarity weights climb with the stage and with luck; boss rewards skip commons;
-    /// after four offers without an epic or better, one card is guaranteed epic+ (pity). Cards whose
+    /// after three offers without an epic or better, one card is guaranteed epic+ (pity). Cards whose
     /// synergy partners are owned, and upgrades the build already uses, are weighted up so builds form.
     /// </summary>
     public static class UpgradeRoller
@@ -188,13 +188,14 @@ namespace SoccerFight
         {
             int s = run.Stage - 1;
             float luck = run.Stats.Luck;
-            if (boss) { c = 0f; r = 55f; e = 33f; l = 12f; }
+            // choices only come every second round, so each one leans a little richer
+            if (boss) { c = 0f; r = 52f; e = 35f; l = 13f; }
             else
             {
-                c = Mathf.Max(30f, 62f - 3f * s);
-                r = Mathf.Min(38f, 27f + 1.5f * s);
-                e = Mathf.Min(22f, 9f + 1.1f * s);
-                l = Mathf.Min(8f, 2f + 0.35f * s);
+                c = Mathf.Max(24f, 52f - 3f * s);
+                r = Mathf.Min(40f, 31f + 1.5f * s);
+                e = Mathf.Min(24f, 12f + 1.1f * s);
+                l = Mathf.Min(9f, 3f + 0.35f * s);
             }
             c = Mathf.Max(0f, c - 6f * luck);
             r += 2.5f * luck; e += 2.5f * luck; l += 1f * luck;
@@ -245,7 +246,7 @@ namespace SoccerFight
         {
             Weights(run, boss, out float c, out float r, out float e, out float l);
             var offer = new List<UpgradeDef>();
-            bool pity = run.OffersSinceEpic >= 4;
+            bool pity = run.OffersSinceEpic >= 3;
             for (int i = 0; i < count; i++)
             {
                 Rarity rarity = pity && i == 0 ? (UnityEngine.Random.value < 0.85f ? Rarity.Epic : Rarity.Legendary) : Roll(c, r, e, l);

@@ -17,7 +17,9 @@ try {
     $log = Join-Path $Out 'unity.log'
     $unityArgs = "-batchmode -projectPath `"$mirror`" -buildTarget WebGL -executeMethod SoccerFight.EditorTools.CaptureRunner.Run " +
                  "-sfCapture $Scenario -sfOut `"$Out`" -logFile `"$log`""
-    $p = Start-Process $unity -ArgumentList $unityArgs -Wait -PassThru -WindowStyle Hidden
+    # WaitForExit statt -Wait: -Wait wartet auch auf den Compiler-Server, den Unity zurücklässt (~10 min)
+    $p = Start-Process $unity -ArgumentList $unityArgs -PassThru -WindowStyle Hidden
+    $p.WaitForExit()
     Select-String $log -Pattern 'error CS|Shader error|\[Capture\] (finished|timeout)|Exception' | Select-Object -First 20 | ForEach-Object { $_.Line.Trim() }
     "exit $($p.ExitCode), $((Get-ChildItem $Out -Filter *.png).Count) Bilder"
 }

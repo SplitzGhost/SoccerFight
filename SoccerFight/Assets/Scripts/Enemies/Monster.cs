@@ -4,13 +4,18 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// Every enemy: two bodies (hopping blob, floating wisp) carrying nine behaviour archetypes, elite
-    /// affixes, mini-boss specials and stage bosses. All motion is spring-based squash & stretch; hits
-    /// flash white, knock back and pop a damage number. Stats come from the difficulty level at spawn.
+    /// Every enemy: two ways to move (hopping blob, floating wisp) carrying nine behaviour archetypes,
+    /// elite affixes, mini-boss specials and stage bosses — and a body of its own for each archetype
+    /// and boss (see <see cref="MonsterArt"/>): parts that sway, flap, swing and glow, eyes that blink
+    /// and follow the player, chains that trail behind. All motion is spring-based squash & stretch;
+    /// hits flash white, knock back and pop a damage number. Stats come from the difficulty level.
     /// </summary>
     public sealed class Monster
     {
         public enum Kind { Blob, Wisp }
+
+        /// <summary>The body a spawn will wear.</summary>
+        public static Look LookFor(in SpawnSpec s) => s.Rank == Rank.Boss && s.Boss != null ? s.Boss.Look : MonsterArt.LookOf(s.Type);
 
         public struct SpawnSpec
         {
@@ -26,8 +31,10 @@ namespace SoccerFight
 
         static int nextId;
         static readonly List<EliteAffix> affixPool = new List<EliteAffix>();
+        /// <summary>Capture tool: monsters stay where they were placed and only animate.</summary>
+        public static bool Hold;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { nextId = 0; }
+        static void ResetStatics() { nextId = 0; Hold = false; }
 
         // ---- identity and stats
         public int Id { get; private set; }
@@ -59,18 +66,22 @@ namespace SoccerFight
         public Vector2 PullTo;
 
         // ---- rendering
+        sealed class PartRt { public PartDef D; public SpriteRenderer Sr; public Transform T; public float GlowK = 1f; }
+        sealed class EyeRt { public EyeDef D; public SpriteRenderer Sr, Pupil; public Transform T; }
+        sealed class ChainRt { public ChainDef D; public SpriteRenderer[] Srs; public Vector2[] Pos; }
+
         Transform root, body;
-        SpriteRenderer bodySr, glow, shadow, hpBack, hpFill, aura, auraRing, crown;
-        SpriteRenderer[] eyes, pupils, extras, features;
-        Material[] extraMats;
-        Color[] extraColors;
-        Transform[] tail;
-        Vector2[] tailPos;
+        SpriteRenderer bodySr, glow, shadow, hpBack, hpFill, aura, auraRing;
+        PartRt[] parts;
+        EyeRt[] eyes;
+        ChainRt[] chains;
+        public Look BuiltLook { get; private set; }
+        LookDef look;
         StageTheme theme;
-        MonsterSkin skin;
-        float spawnT, scaleNow = 1f, flash, hpShow, hpDisplay = 1f, squash, squashVel, faceT = -1f, blinkTimer, blink, t;
+        float spawnT, scaleNow = 1f, flash, hpShow, hpDisplay = 1f, squash, squashVel, faceT = -1f, blinkTimer, blink, t, tilt;
         float sizeMul = 1f, speedMul = 1f, fade = 1f;
         Color auraColor;
+        int standVersion;
 
         // ---- behaviour
         float hopTimer;
@@ -94,67 +105,51 @@ namespace SoccerFight
         bool moveActive;
         int lastPhase;
 
-        public void Build(Transform parent, Kind kind)
+        /// <summary>Creates the renderers for one body (parts, eyes, chains). The monster is then pooled for that body.</summary>
+        public void Build(Transform parent, LookDef def)
         {
-            K = kind;
-            root = new GameObject(kind.ToString()).transform;
+            BuiltLook = def.Look;
+            K = def.Wisp ? Kind.Wisp : Kind.Blob;
+            root = new GameObject(def.Look.ToString()).transform;
             root.SetParent(parent, false);
+            // each monster sorts as one piece, so overlapping monsters never interleave their parts
+            root.gameObject.AddComponent<UnityEngine.Rendering.SortingGroup>().sortingOrder = 60;
             body = new GameObject("Body").transform;
             body.SetParent(root, false);
-            shadow = Art.MakeSprite("Shadow", root, Art.Shadow, -43, Art.SpriteMat, new Color(0, 0, 0, 0.4f));
-            aura = Art.MakeSprite("Aura", body, Art.SoftGlow, 56, Art.SpriteGlowMat, Color.clear);
-            auraRing = Art.MakeSprite("AuraRing", body, Art.Ring, 57, Art.SpriteGlowMat, Color.clear);
+            // the shadow lies on the ground under everything, outside the sorting group
+            shadow = Art.MakeSprite("Shadow", parent, Art.Shadow, -43, Art.SpriteMat, new Color(0, 0, 0, 0.4f));
+            aura = Art.MakeSprite("Aura", body, Art.SoftGlow, 55, Art.SpriteGlowMat, Color.clear);
+            auraRing = Art.MakeSprite("AuraRing", body, Art.Ring, 56, Art.SpriteGlowMat, Color.clear);
+            glow = Art.MakeSprite("Glow", body, Art.SoftGlow, 57, Art.SpriteGlowMat, Color.clear);
+            bodySr = Art.MakeSprite("Body", body, def.Body, 60);
 
-            if (kind == Kind.Blob)
+            parts = new PartRt[def.Parts.Count];
+            for (int i = 0; i < parts.Length; i++)
             {
-                glow = Art.MakeSprite("Glow", body, Art.SoftGlow, 58, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0.18f));
-                glow.transform.localPosition = new Vector3(0f, 0.35f, 0f);
-                glow.transform.localScale = Vector3.one * 1.9f;
-                var footL = Art.MakeSprite("FootL", body, MonsterArt.BlobFoot, 59);
-                footL.transform.localPosition = new Vector3(-0.2f, 0.03f, 0f);
-                var footR = Art.MakeSprite("FootR", body, MonsterArt.BlobFoot, 59);
-                footR.transform.localPosition = new Vector3(0.22f, 0.03f, 0f);
-                var hornL = Art.MakeSprite("FeatureL", body, MonsterArt.BlobHorn, 59);
-                hornL.transform.localPosition = new Vector3(-0.2f, 0.66f, 0f);
-                var hornR = Art.MakeSprite("FeatureR", body, MonsterArt.BlobHorn, 59);
-                hornR.transform.localPosition = new Vector3(0.18f, 0.68f, 0f);
-                hornR.transform.localScale = new Vector3(-1f, 1f, 1f);
-                bodySr = Art.MakeSprite("Body", body, MonsterArt.BlobBody, 60);
-                eyes = new SpriteRenderer[2];
-                pupils = new SpriteRenderer[2];
-                for (int i = 0; i < 2; i++)
-                {
-                    eyes[i] = Art.MakeSprite("Eye", body, MonsterArt.Eye, 62, Art.SpriteEmissiveMat, Palette.MonsterEye);
-                    eyes[i].transform.localPosition = new Vector3(i == 0 ? 0.02f : 0.22f, 0.44f, 0f);
-                    pupils[i] = Art.MakeSprite("Pupil", eyes[i].transform, MonsterArt.Pupil, 63);
-                }
-                extras = new[] { footL, footR, hornL, hornR };
-                features = new[] { hornL, hornR };
+                var d = def.Parts[i];
+                Transform at = d.Parent >= 0 && d.Parent < i ? parts[d.Parent].T : body;
+                var sr = Art.MakeSprite(d.Name, at, d.Sprite, d.Order);
+                parts[i] = new PartRt { D = d, Sr = sr, T = sr.transform };
             }
-            else
+            eyes = new EyeRt[def.Eyes.Count];
+            for (int i = 0; i < eyes.Length; i++)
             {
-                glow = Art.MakeSprite("Glow", body, Art.SoftGlow, 58, Art.SpriteGlowMat, Palette.WispGlow.WithAlpha(0.35f));
-                glow.transform.localScale = Vector3.one * 1.7f;
-                tail = new Transform[3];
-                tailPos = new Vector2[3];
-                var tailSrs = new SpriteRenderer[3];
-                for (int i = 0; i < 3; i++)
-                {
-                    tailSrs[i] = Art.MakeSprite("Tail" + i, root, MonsterArt.WispTail, 57 - i);
-                    tail[i] = tailSrs[i].transform;
-                }
-                bodySr = Art.MakeSprite("Body", body, MonsterArt.WispBody, 60);
-                eyes = new SpriteRenderer[1];
-                pupils = new SpriteRenderer[0];
-                eyes[0] = Art.MakeSprite("Eye", body, MonsterArt.WispEye, 62, Art.SpriteEmissiveMat, Color.white);
-                eyes[0].transform.localPosition = new Vector3(0.06f, 0.04f, 0f);
-                extras = tailSrs;
-                features = new SpriteRenderer[0];
+                var d = def.Eyes[i];
+                Transform at = d.Parent >= 0 ? parts[d.Parent].T : body;
+                int order = Mathf.Max(62, d.Parent >= 0 ? def.Parts[d.Parent].Order + 1 : 62);
+                var sr = Art.MakeSprite("Eye", at, d.Wide ? MonsterArt.WispEye : MonsterArt.Eye, order, Art.SpriteEmissiveMat, Color.white);
+                var e = new EyeRt { D = d, Sr = sr, T = sr.transform };
+                if (!d.Wide) { e.Pupil = Art.MakeSprite("Pupil", sr.transform, MonsterArt.Pupil, order + 1); }
+                eyes[i] = e;
             }
-            crown = Art.MakeSprite("Crown", body, MonsterArt.Crown, 64, Art.SpriteEmissiveMat, Color.white);
-            crown.enabled = false;
-            extraColors = new Color[extras.Length];
-            extraMats = new Material[extras.Length];
+            chains = new ChainRt[def.Chains.Count];
+            for (int i = 0; i < chains.Length; i++)
+            {
+                var d = def.Chains[i];
+                var c = new ChainRt { D = d, Srs = new SpriteRenderer[d.Count], Pos = new Vector2[d.Count] };
+                for (int k = 0; k < d.Count; k++) c.Srs[k] = Art.MakeSprite(def.Look + " Chain" + i + "." + k, root, d.Sprite, d.Order - k);
+                chains[i] = c;
+            }
 
             hpBack = Art.MakeSprite("HpBack", root, Art.Pill, 70, Art.SpriteMat, new Color(0.02f, 0.03f, 0.08f, 0f));
             hpBack.drawMode = SpriteDrawMode.Sliced;
@@ -162,7 +157,7 @@ namespace SoccerFight
             hpFill = Art.MakeSprite("HpFill", root, Art.Pill, 71, Art.SpriteMat, Palette.HpA.WithAlpha(0f));
             hpFill.drawMode = SpriteDrawMode.Sliced;
             hpFill.size = new Vector2(0.66f, 0.07f);
-            root.gameObject.SetActive(false);
+            Show(false);
         }
 
         // ------------------------------------------------------------------ spawn
@@ -175,10 +170,11 @@ namespace SoccerFight
             Boss = s.Boss;
             DifficultyLevel = s.Level;
             theme = s.Theme ?? StageThemes.All[0];
-            skin = MonsterArt.Skin(theme);
+            look = MonsterArt.Get(theme, LookFor(s));
             Pos = s.At;
             Vel = s.Vel;
             var def = EnemyDef.Get(Type);
+            K = def.Body;
 
             float rankHp = 1f, rankDmg = 1f, rankSize = 1f;
             Affixes.Clear();
@@ -201,7 +197,7 @@ namespace SoccerFight
             Alive = true;
             spawnT = 0f; flash = 0f; hpShow = 0f; hpDisplay = 1f; fade = 1f;
             squash = squashVel = 0f;
-            grounded = false; standing = Level.None; leapPlanned = false;
+            grounded = false; standing = Level.None; leapPlanned = false; tilt = 0f;
             hopTimer = Random.Range(0.2f, 0.5f);
             diveTimer = Random.Range(2.5f, 4.5f);
             windup = diveTime = 0f;
@@ -211,10 +207,15 @@ namespace SoccerFight
             moveIndex = 0; moveT = 0f; moveCd = 2.2f; moveActive = false; lastPhase = 0;
             t = Random.value * 10f;
             faceT = s.Vel.x >= 0f ? 1f : -1f;
-            if (tailPos != null) for (int i = 0; i < tailPos.Length; i++) tailPos[i] = s.At;
-            ApplySkin();
-            root.gameObject.SetActive(true);
+            ApplyLook();
+            ResetChains();
+            Show(true);
             SetBodyMaterial(false);
+        }
+
+        void ResetChains()
+        {
+            foreach (var c in chains) for (int k = 0; k < c.Pos.Length; k++) c.Pos[k] = Pos;
         }
 
         void RollAffixes(int count)
@@ -230,60 +231,76 @@ namespace SoccerFight
             }
         }
 
-        void ApplySkin()
-        {
-            if (K == Kind.Blob)
-            {
-                bodySr.sprite = skin.BlobBody;
-                extras[0].sprite = extras[1].sprite = skin.BlobFoot;
-                float tilt = skin.FeatureTilt;
-                for (int i = 0; i < features.Length; i++)
-                {
-                    features[i].sprite = skin.BlobFeature;
-                    features[i].transform.localRotation = Quaternion.Euler(0f, 0f, (i == 0 ? 22f : 16f) * tilt);
-                }
-                glow.color = skin.Glow.WithAlpha(0.18f);
-                foreach (var e in eyes) e.color = skin.Eye;
-            }
-            else
-            {
-                bodySr.sprite = skin.WispBody;
-                foreach (var e in extras) e.sprite = skin.WispTail;
-            }
-            for (int i = 0; i < extras.Length; i++)
-            {
-                bool emissive = System.Array.IndexOf(features, extras[i]) >= 0 && skin.EmissiveFeature;
-                extraMats[i] = emissive ? Art.SpriteEmissiveMat : Art.SpriteMat;
-                extraColors[i] = Color.white;
-            }
+        static Material MatOf(PartMat m) => m == PartMat.Glow ? Art.SpriteGlowMat : m == PartMat.Emissive ? Art.SpriteEmissiveMat : Art.SpriteMat;
 
-            // rank dressing: affix aura for elites and mini-bosses, crown for the boss
-            auraColor = Affixes.Count > 0 && Rank != Rank.Boss ? EnemyDef.AffixColor(Affixes[0]) : Rank != Rank.Normal ? theme.Accent : Color.clear;
-            crown.enabled = Rank == Rank.Boss;
-            if (crown.enabled)
+        /// <summary>Put on the body in this stage's colours (the renderers were built for the same body).</summary>
+        void ApplyLook()
+        {
+            bodySr.sprite = look.Body;
+            for (int i = 0; i < parts.Length; i++)
             {
-                crown.color = Color.Lerp(Color.white, theme.Accent, 0.25f) * 1.2f;
-                crown.transform.localPosition = K == Kind.Blob ? new Vector3(0.02f, 0.72f, 0f) : new Vector3(0f, 0.28f, 0f);
-                crown.transform.localScale = Vector3.one * (K == Kind.Blob ? 0.9f : 0.75f);
+                var p = parts[i];
+                p.D = look.Parts[i];
+                p.Sr.sprite = p.D.Sprite;
+                p.Sr.sortingOrder = p.D.Order;
+                p.T.localPosition = p.D.Pos;
+                p.T.localRotation = Quaternion.Euler(0f, 0f, p.D.Rot);
+                p.T.localScale = new Vector3(p.D.Scale.x, p.D.Scale.y, 1f);
+                p.GlowK = 1f;
             }
-            aura.transform.localPosition = K == Kind.Blob ? new Vector3(0f, 0.38f, 0f) : Vector3.zero;
-            auraRing.transform.localPosition = aura.transform.localPosition;
+            for (int i = 0; i < eyes.Length; i++)
+            {
+                var e = eyes[i];
+                e.D = look.Eyes[i];
+                e.T.localPosition = e.D.Pos;
+                e.Sr.color = e.D.Wide ? Color.white : e.D.Color ?? look.Eye;
+                if (e.Pupil != null) e.Pupil.enabled = e.D.Pupil;
+            }
+            for (int i = 0; i < chains.Length; i++)
+            {
+                var c = chains[i];
+                c.D = look.Chains[i];
+                foreach (var sr in c.Srs) sr.sprite = c.D.Sprite;
+            }
+            glow.transform.localPosition = look.GlowPos;
+            glow.transform.localScale = Vector3.one * look.GlowSize;
+
+            // rank dressing: affix aura for elites and mini-bosses (bosses wear their own body instead)
+            auraColor = Affixes.Count > 0 && Rank != Rank.Boss ? EnemyDef.AffixColor(Affixes[0]) : Rank != Rank.Normal ? theme.Accent : Color.clear;
+            aura.transform.localPosition = look.AuraPos;
+            auraRing.transform.localPosition = look.AuraPos;
+        }
+
+        void Show(bool on)
+        {
+            root.gameObject.SetActive(on);
+            shadow.gameObject.SetActive(on);
         }
 
         public void Deactivate()
         {
             Alive = false;
-            root.gameObject.SetActive(false);
+            Show(false);
         }
 
         void SetBodyMaterial(bool white)
         {
             bodySr.sharedMaterial = white ? Art.SpriteSolidMat : Art.SpriteMat;
             bodySr.color = Color.white;
-            for (int i = 0; i < extras.Length; i++)
+            foreach (var p in parts)
             {
-                extras[i].sharedMaterial = white ? Art.SpriteSolidMat : extraMats[i];
-                extras[i].color = white ? Color.white : extraColors[i];
+                bool glowing = p.D.Mat == PartMat.Glow;
+                p.Sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(p.D.Mat);
+                if (white && !glowing) p.Sr.color = Color.white;
+            }
+            foreach (var c in chains)
+            {
+                bool glowing = c.D.Mat == PartMat.Glow;
+                foreach (var sr in c.Srs)
+                {
+                    sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(c.D.Mat);
+                    if (white && !glowing) sr.color = Color.white;
+                }
             }
         }
 
@@ -307,7 +324,7 @@ namespace SoccerFight
             var fx = FxSystem.I;
             Vector2 c = Center;
             fx.Flash(c, (big ? 2.2f : 1.4f) * Mathf.Sqrt(sizeMul), Color.white, 0.12f, 2.6f);
-            Color spark = K == Kind.Blob ? skin.Glow : skin.WispGlow;
+            Color spark = look.Glow;
             fx.Sparks(c, dir, 110f, big ? 14 : 8, 5f, 12f, spark, 2.6f, 0.05f, 0.25f, 2f);
             Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big, crit);
             if (Hp <= 0f) { Die(dir); return true; }
@@ -341,10 +358,10 @@ namespace SoccerFight
             Alive = false;
             var fx = FxSystem.I;
             Vector2 c = Center;
-            Color top = K == Kind.Blob ? theme.BlobTop : theme.WispTop;
-            Color g = K == Kind.Blob ? skin.Glow : skin.WispGlow;
+            Color top = look.Top;
+            Color g = look.Glow;
             fx.Burst(c, top, g, K == Kind.Blob ? sizeMul : 0.85f * sizeMul);
-            fx.Motes(c, Vector2.up * 2f, skin.Eye, 6, 0.3f);
+            fx.Motes(c, Vector2.up * 2f, look.Eye, 6, 0.3f);
             if (Named)
             {
                 fx.Ring(FxLayer.Front, c, 0.2f, 2.6f * Mathf.Sqrt(sizeMul), 0.3f, 0.02f, 0.5f, Color.white, auraColor.WithAlpha(0f), 2.4f);
@@ -355,7 +372,7 @@ namespace SoccerFight
             game.Post.Impact(Rank == Rank.Boss ? 1f : 0.3f);
             TimeFx.HitStop(Rank == Rank.Boss ? 0.14f : 0.06f, 0.05f);
             if (Rank == Rank.Boss) TimeFx.SlowMo(0.25f, 0.5f, 0.8f);
-            root.gameObject.SetActive(false);
+            Show(false);
             game.Waves.OnDied(this);
         }
 
@@ -386,6 +403,20 @@ namespace SoccerFight
 
             UpdateStatus(dt);
             if (!Alive) return;
+            if (Hold)
+            {
+                grounded = K == Kind.Blob;
+                faceT = Mathf.MoveTowards(faceT, targetFace, dt / 0.12f);
+                UpdateVisuals(dt, toPlayer);
+                return;
+            }
+
+            // riding a moving platform (a new layout drops the old index)
+            if (K == Kind.Blob && grounded && standing != Level.None)
+            {
+                if (standVersion == Level.Version) Pos += Level.DeltaOf(standing);
+                else { grounded = false; standing = Level.None; }
+            }
 
             float slow = FreezeTime > 0f ? 0f : 1f - SlowAmount * (SlowTime > 0f ? 1f : 0f);
             float spd = speedMul * slow * StageMechanics.EnemySpeedBoost;
@@ -511,6 +542,7 @@ namespace SoccerFight
                     Vel.y = 0f;
                     grounded = true;
                     standing = index;
+                    standVersion = Level.Version;
                     OnLanded(floor, impact);
                 }
             }
@@ -571,12 +603,12 @@ namespace SoccerFight
             {
                 attackWind = 0f;
                 Vector2 from = Center + new Vector2(faceT * Radius * 0.6f, Radius * 0.5f);
-                EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(Random.Range(-0.4f, 0.4f), 0.2f), ContactDamage * 0.85f, skin.Glow);
+                EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(Random.Range(-0.4f, 0.4f), 0.2f), ContactDamage * 0.85f, look.Glow);
                 squashVel += 16f;
                 if (Rank != Rank.Normal)
                 {
-                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(-1.6f, 0.2f), ContactDamage * 0.85f, skin.Glow);
-                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(1.6f, 0.2f), ContactDamage * 0.85f, skin.Glow);
+                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(-1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
+                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
                 }
             }
         }
@@ -721,10 +753,10 @@ namespace SoccerFight
                 Vel *= Mathf.Exp(-8f * dt);
                 if (teleportT >= 0.3f && teleportT - dt < 0.3f)
                 {
-                    FxSystem.I.Burst(Center, theme.WispTop, skin.WispGlow, 0.5f);
+                    FxSystem.I.Burst(Center, look.Top, look.Glow, 0.5f);
                     Pos = player.Pos + new Vector2(-player.Facing * 2.4f, 2.2f);
-                    for (int i = 0; tailPos != null && i < tailPos.Length; i++) tailPos[i] = Pos;
-                    FxSystem.I.Ring(FxLayer.Front, Pos, 0.1f, 1.2f, 0.12f, 0.01f, 0.25f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2.2f);
+                    ResetChains();
+                    FxSystem.I.Ring(FxLayer.Front, Pos, 0.1f, 1.2f, 0.12f, 0.01f, 0.25f, look.Glow, look.Glow.WithAlpha(0f), 2.2f);
                 }
                 if (teleportT >= 0.7f) { teleportT = -1f; fade = 1f; windup = 0.0001f; }
             }
@@ -739,7 +771,7 @@ namespace SoccerFight
                 diveTime -= dt;
                 Vel = MathUtil.Damp(Vel, Vel.normalized * 10.5f * spd, 2f, dt);
                 if (Random.value < dt * 30f)
-                    FxSystem.I.Spawn(FxLayer.Back, true, Art.CellGlow, Pos, -Vel * 0.05f, 0.35f, 0.3f, 0f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2f);
+                    FxSystem.I.Spawn(FxLayer.Back, true, Art.CellGlow, Pos, -Vel * 0.05f, 0.35f, 0.3f, 0f, look.Glow, look.Glow.WithAlpha(0f), 2f);
             }
             else if (attackWind > 0f)
             {
@@ -754,7 +786,7 @@ namespace SoccerFight
                         burst--;
                         burstTimer = 0.14f;
                         Vector2 dir = (player.Pos + new Vector2(0f, 0.8f) - Center).normalized;
-                        EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 9f * Mathf.Min(spd, 1.3f), ContactDamage * 0.8f, skin.WispGlow);
+                        EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 9f * Mathf.Min(spd, 1.3f), ContactDamage * 0.8f, look.Glow);
                         squashVel += 6f;
                     }
                     if (burst <= 0) attackWind = 0f;
@@ -789,9 +821,9 @@ namespace SoccerFight
             for (int i = 0; i < count; i++)
             {
                 Vector2 dir = MathUtil.Dir(off + i * 360f / count);
-                EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 7f, damage, skin.WispGlow);
+                EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 7f, damage, look.Glow);
             }
-            FxSystem.I.Ring(FxLayer.Front, Center, 0.2f, Radius * 3f, 0.2f, 0.01f, 0.3f, Color.white, skin.WispGlow.WithAlpha(0f), 2.4f);
+            FxSystem.I.Ring(FxLayer.Front, Center, 0.2f, Radius * 3f, 0.2f, 0.01f, 0.3f, Color.white, look.Glow.WithAlpha(0f), 2.4f);
             squashVel += 14f;
         }
 
@@ -910,11 +942,11 @@ namespace SoccerFight
                             burstTimer = K == Kind.Blob ? 0.12f : 0.1f;
                             float spread = (burst - (total - 1) * 0.5f) * 0.9f;
                             Vector2 from = Center + new Vector2(0f, Radius * 0.6f);
-                            if (K == Kind.Blob) ep.Lob(from, player.Pos + new Vector2(spread, 0.2f), ContactDamage * 0.55f, skin.Glow);
+                            if (K == Kind.Blob) ep.Lob(from, player.Pos + new Vector2(spread, 0.2f), ContactDamage * 0.55f, look.Glow);
                             else
                             {
                                 Vector2 dir = MathUtil.Rotate((player.Pos + new Vector2(0f, 0.8f) - from).normalized, spread * 7f);
-                                ep.Bolt(from, dir, 9.5f, ContactDamage * 0.5f, skin.WispGlow);
+                                ep.Bolt(from, dir, 9.5f, ContactDamage * 0.5f, look.Glow);
                             }
                             burst++;
                             squashVel += 5f;
@@ -941,10 +973,10 @@ namespace SoccerFight
                     if (burst == 0 && moveT > 0.3f)
                     {
                         burst = 1;
-                        FxSystem.I.Burst(Center, theme.WispTop, skin.WispGlow, 1.2f);
+                        FxSystem.I.Burst(Center, look.Top, look.Glow, 1.2f);
                         Pos = new Vector2(Mathf.Clamp(player.Pos.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
-                        for (int i = 0; tailPos != null && i < tailPos.Length; i++) tailPos[i] = Pos;
-                        FxSystem.I.Ring(FxLayer.Front, Pos, 0.2f, 2.4f, 0.2f, 0.01f, 0.35f, skin.WispGlow, skin.WispGlow.WithAlpha(0f), 2.4f);
+                        ResetChains();
+                        FxSystem.I.Ring(FxLayer.Front, Pos, 0.2f, 2.4f, 0.2f, 0.01f, 0.35f, look.Glow, look.Glow.WithAlpha(0f), 2.4f);
                     }
                     fade = moveT < 0.3f ? 1f - moveT / 0.3f : Mathf.Clamp01((moveT - 0.3f) / 0.25f);
                     if (moveT > 0.8f) { fade = 1f; move = BossMove.Volley; moveT = tell; burst = 0; }
@@ -974,23 +1006,38 @@ namespace SoccerFight
             MathUtil.Spring(ref squash, ref squashVel, 0f, 3.2f, 0.32f, dt);
             float sq = Mathf.Clamp(squash * 0.05f, -0.35f, 0.35f);
             float flipScale = Mathf.Sin(faceT * Mathf.PI * 0.5f);
+            float side = flipScale >= 0f ? 1f : -1f;
             float shiver = primeTime > 0f ? 1f + 0.05f * Mathf.Sin(t * 70f) : 1f;
             body.localScale = new Vector3(flipScale * (1f - sq) * scaleNow * shiver, (1f + sq) * scaleNow * shiver, 1f);
+            // flyers lean into their flight (nose up when rising, down when diving)
+            float lean = look.Tilt > 0f ? Mathf.Clamp(Mathf.Atan2(Vel.y, Mathf.Abs(Vel.x) + 0.6f) * Mathf.Rad2Deg, -55f, 55f) * look.Tilt * side : 0f;
+            tilt = MathUtil.Damp(tilt, lean, 7f, dt);
+            body.localRotation = Quaternion.Euler(0f, 0f, tilt);
             root.position = new Vector3(Pos.x, Pos.y, 0f);
+
+            // what the body is doing: winding up, lunging, airborne, fuse lit
+            float charge = Mathf.Clamp01(Mathf.Max(windup * 2f, attackWind > 0f ? 1f : 0f, moveActive && moveT < 0.7f ? 1f : 0f));
+            float lunge = diveTime > 0f || chargeTime > 0f || (moveActive && moveT >= 0.7f && (move == BossMove.Charge || move == BossMove.LeapSlam)) ? 1f : 0f;
+            float primed = primeTime > 0f ? 1f : 0f;
+            float speed01 = Mathf.Clamp01(Vel.magnitude / 8f);
+            float faceVx = Vel.x * side;
+            bool air = K == Kind.Blob && !grounded;
+            foreach (var p in parts) AnimatePart(p, charge, lunge, speed01, faceVx, air, primed);
 
             // eyes: look at the player, blink now and then
             blinkTimer -= dt;
             if (blinkTimer <= 0f) { blinkTimer = Random.Range(1.8f, 4.5f); blink = 1f; }
             blink = Mathf.Max(0f, blink - dt / 0.12f);
             float eyeY = 1f - MathUtil.Bump(1f - blink) * 0.9f;
-            Vector2 look = toPlayer.normalized;
-            for (int i = 0; i < eyes.Length; i++)
+            Vector2 dir = toPlayer.normalized;
+            foreach (var e in eyes)
             {
-                float baseScale = K == Kind.Blob ? (i == 0 ? 0.9f : 1f) : 1f;
-                eyes[i].transform.localScale = new Vector3(baseScale, baseScale * Mathf.Max(0.1f, eyeY), 1f);
+                Vector2 st = e.D.Stretch * e.D.Size;
+                e.T.localScale = new Vector3(st.x, st.y * Mathf.Max(0.1f, eyeY), 1f);
+                if (e.Pupil != null && e.Pupil.enabled)
+                    e.Pupil.transform.localPosition = new Vector3(Mathf.Abs(dir.x) * 0.018f + 0.004f, dir.y * 0.022f, 0f);
+                Color ec = e.Sr.color; ec.a = fade; e.Sr.color = ec;
             }
-            for (int i = 0; i < pupils.Length; i++)
-                pupils[i].transform.localPosition = new Vector3(Mathf.Abs(look.x) * 0.018f + 0.004f, look.y * 0.022f, 0f);
 
             // flash, frost tint and fade (shade blink)
             if (flash > 0f)
@@ -998,32 +1045,32 @@ namespace SoccerFight
                 flash -= Time.unscaledDeltaTime;
                 SetBodyMaterial(flash > 0f);
             }
-            if (flash <= 0f)
+            Color tint = Color.white;
+            if (FreezeTime > 0f) tint = new Color(0.62f, 0.85f, 1f);
+            else if (SlowTime > 0f) tint = Color.Lerp(Color.white, new Color(0.7f, 0.88f, 1f), 0.6f);
+            else if (BurnTime > 0f) tint = Color.Lerp(Color.white, new Color(1f, 0.72f, 0.55f), 0.35f + 0.15f * Mathf.Sin(t * 20f));
+            bool white = flash > 0f;
+            if (!white) bodySr.color = tint.WithAlpha(fade);
+            foreach (var p in parts)
             {
-                Color tint = Color.white;
-                if (FreezeTime > 0f) tint = new Color(0.62f, 0.85f, 1f);
-                else if (SlowTime > 0f) tint = Color.Lerp(Color.white, new Color(0.7f, 0.88f, 1f), 0.6f);
-                else if (BurnTime > 0f) tint = Color.Lerp(Color.white, new Color(1f, 0.72f, 0.55f), 0.35f + 0.15f * Mathf.Sin(t * 20f));
-                tint.a = fade;
-                bodySr.color = tint;
-                for (int i = 0; i < extras.Length; i++) extras[i].color = extraColors[i] * tint;
+                if (p.D.Mat == PartMat.Glow) p.Sr.color = p.D.Tint.WithAlpha(Mathf.Clamp01(0.7f * p.GlowK) * fade);
+                else if (!white) p.Sr.color = (p.D.Tint * tint).WithAlpha(fade * p.D.Tint.a);
             }
-            foreach (var e in eyes) { Color ec = e.color; ec.a = fade; e.color = ec; }
+            UpdateChains(dt, flipScale, side, white ? Color.white : tint, white);
 
             float pulse = 0.5f + 0.5f * Mathf.Sin(t * 3.4f);
-            Color gc = K == Kind.Blob ? skin.Glow : skin.WispGlow;
-            float windGlow = Mathf.Max(windup, attackWind > 0f ? 1f : 0f, primeTime > 0f ? 1f : 0f, moveActive && moveT < 0.7f ? 1f : 0f);
-            float ga = (K == Kind.Blob ? 0.14f + 0.08f * pulse : 0.28f + 0.1f * pulse) + windGlow * 0.5f;
-            glow.color = gc.WithAlpha(ga * fade);
+            float ga = look.GlowAlpha + (look.Wisp ? 0.1f : 0.08f) * pulse + Mathf.Max(charge, primed) * 0.5f;
+            glow.color = look.Glow.WithAlpha(ga * fade);
 
-            // elite / boss aura
+            // elite / mini-boss aura; bosses are recognisable by their own bodies (no ring around them)
             if (Named)
             {
                 float ap = 0.5f + 0.5f * Mathf.Sin(t * 4f);
-                aura.color = auraColor.WithAlpha((Rank == Rank.Boss ? 0.28f : 0.22f + 0.08f * ap) * fade);
-                aura.transform.localScale = Vector3.one * (K == Kind.Blob ? 2.4f : 2.1f) * (1f + 0.06f * ap);
-                auraRing.color = auraColor.WithAlpha(0.35f * fade);
-                auraRing.transform.localScale = Vector3.one * (K == Kind.Blob ? 1.35f : 1.1f) * (1f + 0.08f * Mathf.Sin(t * 2.3f));
+                aura.color = auraColor.WithAlpha((Rank == Rank.Boss ? 0.2f : 0.22f + 0.08f * ap) * fade);
+                aura.transform.localScale = Vector3.one * look.AuraSize * (look.Wisp ? 0.9f : 1f) * (1f + 0.06f * ap);
+                bool ring = Rank == Rank.Elite;
+                auraRing.color = ring ? auraColor.WithAlpha(0.35f * fade) : Color.clear;
+                auraRing.transform.localScale = Vector3.one * (look.Wisp ? 1.1f : 1.35f) * (1f + 0.08f * Mathf.Sin(t * 2.3f));
                 auraRing.transform.localRotation = Quaternion.Euler(0f, 0f, t * 40f);
             }
             else { aura.color = Color.clear; auraRing.color = Color.clear; }
@@ -1036,28 +1083,13 @@ namespace SoccerFight
             shadow.transform.localScale = new Vector3(s, s, 1f);
             shadow.color = new Color(0, 0, 0, Mathf.Lerp(0.42f, 0.08f, Mathf.Clamp01(h / 4f)) * fade);
 
-            // wisp tail: each segment chases the previous one (smooth trailing motion)
-            if (tail != null)
-            {
-                Vector2 anchor = Pos + new Vector2(-Mathf.Sign(faceT) * 0.18f, -0.12f) * sizeMul;
-                for (int i = 0; i < tail.Length; i++)
-                {
-                    Vector2 target = i == 0 ? anchor : tailPos[i - 1] + new Vector2(0f, -0.06f * sizeMul);
-                    tailPos[i] = MathUtil.Damp(tailPos[i], target, 14f - i * 3f, dt);
-                    Vector2 d = tailPos[i] - target;
-                    float maxD = (0.16f + i * 0.02f) * sizeMul;
-                    if (d.magnitude > maxD) tailPos[i] = target + d.normalized * maxD;
-                    tail[i].position = new Vector3(tailPos[i].x, tailPos[i].y + Mathf.Sin(t * 5f + i) * 0.02f, 0f);
-                    tail[i].localScale = Vector3.one * (0.9f - i * 0.22f) * scaleNow;
-                }
-            }
+            BodyEffects(dt);
 
             // small health bar after damage (named enemies use the HUD instead)
             hpShow = Mathf.Max(0f, hpShow - dt);
             hpDisplay = MathUtil.Damp(hpDisplay, Mathf.Clamp01(Hp / MaxHp), 10f, dt);
             float ha = Rank == Rank.Boss ? 0f : Mathf.Clamp01(hpShow * 3f) * fade;
-            float topY = (K == Kind.Blob ? 1.0f : 0.62f) * scaleNow;
-            Vector2 hp = new Vector2(0f, topY);
+            Vector2 hp = new Vector2(0f, look.HpY * scaleNow);
             float barW = Rank == Rank.MiniBoss ? 1.2f : Rank == Rank.Elite ? 0.9f : 0.66f;
             hpBack.transform.localPosition = hp;
             hpBack.size = new Vector2(barW + 0.04f, 0.1f);
@@ -1066,6 +1098,141 @@ namespace SoccerFight
             hpFill.size = new Vector2(w, 0.07f);
             hpFill.transform.localPosition = hp + new Vector2(-(barW - w) * 0.5f, 0f);
             hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
+        }
+
+        /// <summary>One part's little life: breathing, swaying, flapping, swinging its fists, gaping, orbiting.</summary>
+        void AnimatePart(PartRt p, float charge, float lunge, float speed01, float faceVx, bool air, float primed)
+        {
+            var d = p.D;
+            Vector2 pos = d.Pos;
+            float rot = d.Rot;
+            Vector2 sc = d.Scale;
+            float glowK = 1f;
+            float ph = t * d.Freq + d.Phase;
+            switch (d.Anim)
+            {
+                case PartAnim.Bob:
+                    pos.y += d.Amp * Mathf.Sin(ph) + d.Charge * charge;
+                    break;
+                case PartAnim.Sway:
+                    rot += d.Amp * Mathf.Sin(ph) + d.Charge * charge - Mathf.Clamp(faceVx * 2f, -10f, 10f) * Mathf.Min(1f, d.Amp / 8f);
+                    break;
+                case PartAnim.Flap:
+                {
+                    // faster wing beats when flying fast, folded back while winding up or diving
+                    float beat = d.Amp * Mathf.Sin(t * d.Freq * (1f + 0.6f * speed01) + d.Phase);
+                    rot += Mathf.Lerp(beat, d.Charge, Mathf.Max(charge, lunge));
+                    break;
+                }
+                case PartAnim.Swing:
+                    // fists trail behind the motion, rear back on the wind-up and thrust forward on the lunge
+                    rot += Mathf.Clamp(faceVx * 4f, -d.Amp, d.Amp) + Mathf.Sin(ph) * d.Amp * 0.25f + d.Charge * charge - d.Charge * 1.2f * lunge;
+                    break;
+                case PartAnim.Pulse:
+                    sc *= 1f + d.Amp * Mathf.Sin(ph) + d.Charge * charge;
+                    break;
+                case PartAnim.Foot:
+                    if (air) { pos.y += 0.035f; rot += Mathf.Clamp(Vel.y * 2.5f, -20f, 20f); }
+                    break;
+                case PartAnim.Orbit:
+                {
+                    float s = Mathf.Sin(ph), c = Mathf.Cos(ph);
+                    pos += new Vector2(c * d.Amp, s * d.Amp * 0.38f);
+                    p.Sr.sortingOrder = s > 0f ? d.Order - 7 : d.Order;   // passes behind on the far half
+                    rot += t * 90f;
+                    break;
+                }
+                case PartAnim.Flicker:
+                    glowK = 0.7f + 0.3f * Mathf.PerlinNoise(t * d.Freq, d.Phase * 3f) + primed * 0.8f;
+                    sc *= 0.85f + 0.3f * Mathf.PerlinNoise(t * d.Freq * 0.7f, 5f) + primed * 0.5f;
+                    break;
+                case PartAnim.Breathe:
+                {
+                    float boost = Mathf.Max(charge, primed);
+                    glowK = 1f - d.Amp + d.Amp * (0.5f + 0.5f * Mathf.Sin(ph)) + d.Charge * boost;
+                    sc *= 1f + 0.12f * boost;
+                    break;
+                }
+                case PartAnim.Jaw:
+                    rot += d.Amp * Mathf.Abs(Mathf.Sin(ph)) + d.Charge * Mathf.Max(charge, lunge);
+                    break;
+            }
+            p.T.localPosition = pos;
+            p.T.localRotation = Quaternion.Euler(0f, 0f, rot);
+            p.T.localScale = new Vector3(sc.x, sc.y, 1f);
+            p.GlowK = glowK;
+        }
+
+        /// <summary>Tails, tentacles, tendrils and the wyrm's body: each segment chases the one before it.</summary>
+        void UpdateChains(float dt, float flipScale, float side, Color tint, bool white)
+        {
+            foreach (var c in chains)
+            {
+                var d = c.D;
+                Vector2 anchor = body.TransformPoint(d.Anchor);
+                Vector2 hang = new Vector2(d.Hang.x * side, d.Hang.y) * scaleNow;
+                bool glowing = d.Mat == PartMat.Glow;
+                for (int k = 0; k < d.Count; k++)
+                {
+                    Vector2 from = k == 0 ? anchor : c.Pos[k - 1];
+                    Vector2 target = from + (k == 0 ? hang * 0.5f : hang);
+                    c.Pos[k] = MathUtil.Damp(c.Pos[k], target, Mathf.Max(3f, d.Stiff * (1f - 0.1f * k)), dt);
+                    Vector2 delta = c.Pos[k] - from;
+                    float maxD = d.Spacing * scaleNow;
+                    if (delta.sqrMagnitude > maxD * maxD) c.Pos[k] = from + delta.normalized * maxD;
+                    delta = c.Pos[k] - from;
+                    Vector2 along = delta.sqrMagnitude > 1e-6f ? delta.normalized : Vector2.down;
+                    // a travelling wave along the chain, growing towards the tip
+                    float wave = Mathf.Sin(t * d.WaveFreq - k * 0.9f + d.Phase) * d.Wave * scaleNow * (k + 1f) / d.Count;
+                    Vector2 draw = c.Pos[k] + new Vector2(-along.y, along.x) * wave;
+                    var sr = c.Srs[k];
+                    sr.transform.position = new Vector3(draw.x, draw.y, 0f);
+                    float s = Mathf.Lerp(d.Scale0, d.Scale1, d.Count > 1 ? k / (d.Count - 1f) : 0f) * scaleNow;
+                    if (d.Align)
+                    {
+                        sr.transform.rotation = Quaternion.Euler(0f, 0f, MathUtil.DownAngle(along));
+                        sr.transform.localScale = new Vector3(s * flipScale, s, 1f);
+                    }
+                    else
+                    {
+                        sr.transform.rotation = Quaternion.identity;
+                        sr.transform.localScale = new Vector3(s, s, 1f);
+                    }
+                    if (glowing) sr.color = d.Tint.WithAlpha(0.55f * fade * (1f - 0.5f * k / d.Count));
+                    else if (!white) sr.color = (d.Tint * tint).WithAlpha(fade);
+                }
+            }
+        }
+
+        /// <summary>A few bodies give off something of their own: storm arcs, lava embers, void motes.</summary>
+        void BodyEffects(float dt)
+        {
+            var fx = FxSystem.I;
+            if (fx == null || fade < 0.5f) return;
+            switch (look.Look)
+            {
+                case Look.StormLantern:
+                    if (Random.value < dt * 3f)
+                    {
+                        Vector2 a = Center + Random.insideUnitCircle * 0.3f * sizeMul, b = Center + Random.insideUnitCircle * 0.45f * sizeMul;
+                        Lightning.I.Bolt(a, b, look.Glow, 0.03f, 0.1f, 0.12f);
+                    }
+                    break;
+                case Look.MagmaColossus:
+                    if (Random.value < dt * 14f)
+                    {
+                        Vector2 vent = body.TransformPoint(Random.value < 0.5f ? new Vector2(-0.3f, 0.9f) : new Vector2(0.05f, 0.96f));
+                        Color ec = Color.Lerp(look.Glow, Palette.Gold, Random.value * 0.5f);
+                        fx.Spawn(FxLayer.Back, true, Art.CellDot, vent, new Vector2(Random.Range(-0.4f, 0.4f), Random.Range(1.2f, 2.4f)),
+                            Random.Range(0.8f, 1.4f), Random.Range(0.05f, 0.09f), 0.01f, ec, ec.WithAlpha(0f), 2.8f, 0.4f, -0.3f);
+                    }
+                    break;
+                case Look.CometOracle:
+                case Look.VoidLord:
+                    if (Random.value < dt * 6f)
+                        fx.Motes(Center + Random.insideUnitCircle * Radius, Vector2.up * 0.4f, look.Glow, 1, 0.1f);
+                    break;
+            }
         }
 
         /// <summary>Volatile elites burst when they die (the fight-ending pop you have to respect).</summary>

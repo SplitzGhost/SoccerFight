@@ -10,9 +10,16 @@ namespace SoccerFight
         public int Wave;                 // 1..WavesInStage, WavesInStage + 1 = boss
         public int Kills;
         public float Time;
-        public int Rerolls;
+        /// <summary>Waves and boss fights won this run — every second one ends in an upgrade choice.</summary>
+        public int RoundsCleared;
         public int OffersSinceEpic;
         public int RevivesUsed;
+        /// <summary>Rolls the platform layouts of this run's stages.</summary>
+        public int Seed;
+
+        public const int RoundsPerUpgrade = 2;
+        public bool UpgradeDue => RoundsCleared > 0 && RoundsCleared % RoundsPerUpgrade == 0;
+        public int RoundsToUpgrade => RoundsPerUpgrade - RoundsCleared % RoundsPerUpgrade;
 
         public readonly Dictionary<string, int> Owned = new Dictionary<string, int>();
         public readonly List<string> PickOrder = new List<string>();
@@ -34,7 +41,8 @@ namespace SoccerFight
 
         public void Reset()
         {
-            Stage = 1; Wave = 0; Kills = 0; Time = 0f; Rerolls = 1; OffersSinceEpic = 0; RevivesUsed = 0;
+            Stage = 1; Wave = 0; Kills = 0; Time = 0f; RoundsCleared = 0; OffersSinceEpic = 0; RevivesUsed = 0;
+            Seed = Random.Range(1, 1 << 20);
             Owned.Clear(); PickOrder.Clear();
             Unlocked.Clear();
             UnlockOrder.Clear();

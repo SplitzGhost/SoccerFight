@@ -4,31 +4,18 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// The deep backdrop and the play-plane structures, generated on worker threads next to
+    /// The deep backdrop and the play-plane props, generated on worker threads next to
     /// EnvironmentArt: a far range of snowy peaks with a castle, a forest hill with a ruined stadium
-    /// and its floodlight masts, a broken aqueduct, near columns and a giant trunk, the one-way
-    /// platforms (terraces, column capitals, floating rocks) and the chalk markings of the pitch.
+    /// and its floodlight masts, a broken aqueduct, near columns and a giant trunk and the chalk
+    /// markings of the pitch (the platforms live in PlatformArt, generated per stage).
     /// Backdrop colours are authored at full brightness — WorldEnvironment darkens every layer by
     /// its depth, so the scene gets darker the further back it goes.
     /// </summary>
     public static class DepthArt
     {
-        public sealed class PlatformArt
-        {
-            public Level.Platform P;
-            public Sprite Body, Support;
-            public Vector2 BodyCenter, SupportCenter;
-            public readonly List<Vector2> Hangs = new List<Vector2>();      // anchors along the underside (world)
-            public readonly List<Vector2> Crystals = new List<Vector2>();   // glowing crystal spots (world)
-            public Vector2 Lantern = new Vector2(float.NaN, 0f);            // lantern hook (world)
-            public bool HasLantern => !float.IsNaN(Lantern.x);
-            internal ArtJobs.Job BodyJob, SupportJob;
-        }
-
         public static Sprite Peaks, FarForest, Aqueduct, ColumnTall, ColumnBroken, Trunk;
         public static Sprite MarkCenter, MarkLeft, MarkRight, Puddle, GroundStrip;
         public static Sprite[] Pebbles;
-        public static PlatformArt[] Platforms;
 
         public static readonly List<Vector2> PeakLights = new List<Vector2>();     // castle windows (layer space)
         public static readonly List<Vector3> ForestLights = new List<Vector3>();   // x, y, size (layer space)
@@ -46,7 +33,6 @@ namespace SoccerFight
         const float AqY0 = -1.6f, AqY1 = 5.4f;
         const float AqP1 = 2.5f, AqR1 = 0.88f, AqSpring1 = 1.95f, AqTop1 = 3.1f;
         const float AqP2 = 1.25f, AqR2 = 0.36f, AqSpring2 = 3.62f, AqTop2 = 4.3f, AqTop3 = 4.95f;
-        const float TopFront = 0.12f, TopBack = 0.14f;    // walkable strip: front edge / back edge around the standing line
 
         static ArtJobs jobs;
         static ArtJobs.Job jPeaks, jForest, jAqueduct, jColTall, jColBroken, jTrunk, jMarkC, jMarkL, jMarkR, jPuddle, jStrip;
@@ -71,21 +57,6 @@ namespace SoccerFight
             jStrip = jobs.Add("Ground Strip", BuildStrip, Vector2.zero, false);
             jPebbles = new ArtJobs.Job[3];
             for (int i = 0; i < jPebbles.Length; i++) { int k = i; jPebbles[i] = jobs.Add("Pebble" + k, () => BuildPebble(k), Vector2.zero, false); }
-
-            var plats = Level.Platforms;
-            Platforms = new PlatformArt[plats.Length];
-            for (int i = 0; i < plats.Length; i++)
-            {
-                var art = new PlatformArt { P = plats[i] };
-                Platforms[i] = art;
-                art.BodyCenter = BodyRect(plats[i]).center;
-                art.BodyJob = jobs.Add("Platform" + i, () => BuildPlatformBody(art), art.BodyCenter);
-                if (plats[i].Kind != Level.Style.Rock)
-                {
-                    art.SupportCenter = SupportRect(plats[i]).center;
-                    art.SupportJob = jobs.Add("Support" + i, () => BuildSupport(art), art.SupportCenter);
-                }
-            }
             jobs.Start();
         }
 
@@ -98,12 +69,6 @@ namespace SoccerFight
             Puddle = jPuddle.Sprite; GroundStrip = jStrip.Sprite;
             Pebbles = new Sprite[jPebbles.Length];
             for (int i = 0; i < Pebbles.Length; i++) Pebbles[i] = jPebbles[i].Sprite;
-            foreach (var a in Platforms)
-            {
-                a.Body = a.BodyJob.Sprite;
-                a.Support = a.SupportJob?.Sprite;
-                a.BodyJob = a.SupportJob = null;
-            }
             jobs = null;
         }
 
@@ -666,358 +631,6 @@ namespace SoccerFight
             TrunkMoss.Add(Vector2.Lerp(bm, be, 0.45f) + new Vector2(0f, -0.06f));
             TrunkMoss.Add(Vector2.Lerp(bm, be, 0.85f) + new Vector2(0f, -0.04f));
             TrunkMoss.Add(se + new Vector2(-0.05f, -0.08f));
-            return c;
-        }
-
-        // ---------------------------------------------------------------- platforms
-
-        static Rect BodyRect(in Level.Platform p)
-        {
-            switch (p.Kind)
-            {
-                case Level.Style.Rock: return new Rect(p.X0 - 0.45f, p.Y - 1.75f, p.Width + 0.9f, 2.1f);
-                case Level.Style.Terrace: return new Rect(p.X0 - 0.45f, p.Y - 0.95f, p.Width + 0.9f, 1.75f);
-                default: return new Rect(p.X0 - 0.4f, p.Y - 1.0f, p.Width + 0.8f, 1.35f);
-            }
-        }
-
-        static Rect SupportRect(in Level.Platform p) => new Rect(p.X0 - 0.3f, 0.1f, p.Width + 0.6f, p.Y - 0.45f);
-
-        static SdfCanvas BuildPlatformBody(PlatformArt art)
-        {
-            switch (art.P.Kind)
-            {
-                case Level.Style.Terrace: return BuildTerrace(art);
-                case Level.Style.Capital: return BuildCapital(art);
-                default: return BuildRock(art);
-            }
-        }
-
-        /// <summary>
-        /// The walkable top in slight perspective: v = 0 at the front edge, 1 at the back edge. Stone
-        /// platforms show worn flagstones through the moss; rocks are grown over with turf.
-        /// </summary>
-        static Color TopColor(Vector2 p, float top, bool stone, float seed)
-        {
-            float v = Mathf.Clamp01((p.y - (top - TopFront)) / (TopFront + TopBack));
-            Color turf = Color.Lerp(new Color(0.2f, 0.52f, 0.42f), new Color(0.12f, 0.34f, 0.3f), v);
-            float grain = Noise.Perlin(p.x * 30f + seed, p.y * 9f);
-            float patch = Noise.Perlin(p.x * 2.1f + seed * 3f, p.y * 4f);
-            Color col = turf;
-            if (stone)
-            {
-                float slant = p.x + (v - 0.5f) * 0.35f;
-                float jx = Mathf.Abs(Mathf.Repeat(slant, 0.55f) - 0.275f);
-                Color flag = Color.Lerp(new Color(0.2f, 0.33f, 0.36f), new Color(0.31f, 0.46f, 0.49f), Hash01((int)Mathf.Floor(slant / 0.55f) * 31 + (int)seed));
-                if (jx > 0.262f || Mathf.Abs(v - 0.5f) < 0.03f) flag = Mul(flag, 0.62f);
-                col = Color.Lerp(flag, turf, S01((patch - 0.45f) / 0.15f));
-            }
-            col = Mul(col, 0.88f + 0.22f * grain);
-            // the front lip catches the moonlight, the back edge falls into shade
-            col = Color.Lerp(col, new Color(0.56f, 0.86f, 0.74f), S01((0.2f - v) / 0.2f) * 0.45f);
-            col = Mul(col, 1f - 0.25f * S01((v - 0.6f) / 0.4f));
-            col.a = 1f;
-            return col;
-        }
-
-        /// <summary>Hanging grass tips along the front edge of a walkable top.</summary>
-        static void Fringe(SdfCanvas c, float x0, float x1, float edgeY, System.Random r, float density)
-        {
-            for (float x = x0; x < x1; x += (0.05f + (float)r.NextDouble() * 0.14f) / density)
-            {
-                float h = 0.025f + (float)(r.NextDouble() * r.NextDouble()) * 0.1f;
-                float lean = ((float)r.NextDouble() - 0.5f) * 0.05f;
-                Vector2 gb = new Vector2(x, edgeY + 0.02f), gt = new Vector2(x + lean, edgeY - h);
-                Color gc = Color.Lerp(Palette.PitchA, Palette.GrassEdge, 0.25f + (float)r.NextDouble() * 0.35f);
-                c.Fill(q => Sdf.Tapered(q, gb, 0.012f, gt, 0.002f), gc, 0f, Around(gb, gt, 0.03f));
-            }
-        }
-
-        static Color FaceStone(Vector2 p, float light) =>
-            Color.Lerp(new Color(0.15f, 0.26f, 0.3f), new Color(0.33f, 0.49f, 0.53f), Mathf.Clamp01(light)).WithAlpha(1f);
-
-        /// <summary>Sparse hairline cracks: noise contour lines, but only inside a few weathered patches.</summary>
-        static bool Crack(Vector2 p, float seed) =>
-            Mathf.Abs(Noise.Perlin(p.x * 3.3f + seed, p.y * 3.3f) - 0.5f) < 0.008f && Noise.Perlin(p.x * 0.9f + seed, p.y * 0.9f + 3f) > 0.58f;
-
-        static SdfCanvas BuildTerrace(PlatformArt art)
-        {
-            var pl = art.P;
-            float T = pl.Y, x0 = pl.X0, x1 = pl.X1, seed = pl.Seed;
-            const float faceBottom = 0.6f;
-            var c = new SdfCanvas(BodyRect(pl), 110f);
-            var r = new System.Random(pl.Seed);
-            float R() => (float)r.NextDouble();
-
-            // broken balustrade along the back edge (drawn behind whoever stands on the terrace)
-            float railGap = x0 + (x1 - x0) * (0.3f + R() * 0.4f);
-            SdfCanvas.SdfFn balustrade = q =>
-            {
-                float d = Sdf.Box(q, new Vector2(pl.Center, T + 0.13f), new Vector2(pl.Width * 0.5f - 0.05f, 0.03f));
-                float k = Mathf.Round((q.x - x0) / 0.2f);
-                float bx = x0 + k * 0.2f;
-                bool missing = MathUtil.Hash((int)k * 17 + pl.Seed) > 0.5f || bx < x0 + 0.2f || bx > x1 - 0.2f;
-                if (!missing)
-                {
-                    float vase = Mathf.Min(Sdf.Ellipse(q, new Vector2(bx, T + 0.27f), new Vector2(0.058f, 0.1f)), Sdf.Box(q, new Vector2(bx, T + 0.4f), new Vector2(0.024f, 0.08f)));
-                    d = Mathf.Min(d, Mathf.Min(vase, Sdf.Box(q, new Vector2(bx, T + 0.18f), new Vector2(0.045f, 0.03f))));
-                }
-                float rail = Sdf.Box(q, new Vector2(pl.Center, T + 0.52f), new Vector2(pl.Width * 0.5f - 0.05f, 0.045f), 0.01f);
-                rail = Mathf.Max(rail, 0.35f - Mathf.Abs(q.x - railGap) + 0.05f * Noise.Perlin(q.y * 20f, seed));
-                d = Mathf.Min(d, rail);
-                d = Mathf.Min(d, Sdf.Box(q, new Vector2(x0 + 0.12f, T + 0.33f), new Vector2(0.07f, 0.27f), 0.01f));
-                d = Mathf.Min(d, Sdf.Box(q, new Vector2(x1 - 0.12f, T + 0.33f), new Vector2(0.07f, 0.27f), 0.01f));
-                return d;
-            };
-            c.Fill(balustrade, q => Mul(FaceStone(q, 0.25f + 0.35f * S01((q.x - x0) / pl.Width)), 0.78f + 0.15f * Noise.Perlin(q.x * 9f, q.y * 9f)),
-                0f, new Rect(x0 - 0.1f, T + 0.05f, pl.Width + 0.2f, 0.7f));
-
-            // the slab: walkable top + carved cornice face, crumbling at both ends
-            SdfCanvas.SdfFn slab = q =>
-            {
-                float n = 0.07f * Noise.Perlin(q.y * 11f, seed) + 0.05f * Noise.Perlin(q.y * 29f, seed + 5f);
-                float ends = Mathf.Max(x0 - 0.1f + n - q.x, q.x - (x1 + 0.1f - n));
-                return Mathf.Max(ends, Mathf.Max(T - faceBottom - q.y, q.y - (T + TopBack)));
-            };
-            c.Fill(slab, q =>
-            {
-                if (q.y > T - TopFront) return TopColor(q, T, true, seed);
-                float f = (T - TopFront) - q.y;
-                float lit = 0.35f + 0.25f * S01((q.x - x0) / pl.Width);
-                Color col;
-                if (f < 0.05f) col = FaceStone(q, lit + 0.35f);                                         // fillet
-                else if (f < 0.19f) col = FaceStone(q, lit + 0.3f * Mathf.Cos((f - 0.05f) / 0.14f * Mathf.PI));   // cyma
-                else if (f < 0.29f)
-                {
-                    bool gap = Mathf.Repeat(q.x - x0, 0.12f) > 0.075f;                                  // dentils
-                    col = FaceStone(q, gap ? lit - 0.45f : lit + 0.1f);
-                }
-                else if (f < 0.44f)
-                {
-                    col = FaceStone(q, lit);                                                            // fascia blocks
-                    if (Mathf.Repeat(q.x - x0 + MathUtil.Hash((int)seed) * 0.4f, 0.8f) < 0.014f) col = Mul(col, 0.62f);
-                }
-                else col = FaceStone(q, lit - 0.4f);                                                    // chamfer
-                col = Mul(col, 0.9f + 0.18f * Noise.Perlin(q.x * 13f, q.y * 13f));
-                float stain = Noise.Perlin(q.x * 4.3f, seed);
-                col = Mul(col, 1f - Mathf.Max(0f, stain - 0.5f) * 0.6f * S01(f / 0.3f));
-                if (Crack(q, seed)) col = Mul(col, 0.62f);
-                col.a = 1f;
-                return col;
-            }, 0f, new Rect(x0 - 0.3f, T - faceBottom - 0.1f, pl.Width + 0.6f, faceBottom + 0.35f));
-
-            // moss spilling over the fillet
-            for (float x = x0 + 0.1f; x < x1 - 0.1f; x += 0.25f + R() * 0.6f)
-            {
-                if (R() < 0.35f) continue;
-                Vector2 mc = new Vector2(x, T - TopFront - 0.03f);
-                Vector2 mr = new Vector2(0.12f + R() * 0.2f, 0.04f + R() * 0.05f);
-                c.Paint(q => Sdf.Ellipse(q, mc, mr) + 0.02f * Noise.Perlin(q.x * 40f, q.y * 40f), Palette.Moss.WithAlpha(0.8f), 0.01f, new Rect(mc.x - 0.4f, mc.y - 0.2f, 0.8f, 0.4f));
-            }
-            Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 0.6f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.62f, 0.9f, 0.9f), 0.45f);
-
-            for (float x = x0 + 0.25f; x < x1 - 0.25f; x += 0.3f + R() * 0.55f) art.Hangs.Add(new Vector2(x, T - faceBottom + 0.03f));
-            art.Lantern = new Vector2(pl.Center < 0f ? x1 - 0.45f : x0 + 0.45f, T - faceBottom + 0.02f);
-            return c;
-        }
-
-        static SdfCanvas BuildCapital(PlatformArt art)
-        {
-            var pl = art.P;
-            float T = pl.Y, x0 = pl.X0, x1 = pl.X1, seed = pl.Seed, cx = pl.Center;
-            const float abacusBottom = 0.36f, echinusBottom = 0.72f;
-            var c = new SdfCanvas(BodyRect(pl), 110f);
-            var r = new System.Random(pl.Seed);
-            float R() => (float)r.NextDouble();
-            float hwTop = pl.Width * 0.44f, hwBottom = 0.45f;
-
-            // echinus: a cushion that swells out under the slab, then three annulets
-            c.Fill(q =>
-            {
-                float t = Mathf.Clamp01(((T - abacusBottom) - q.y) / (echinusBottom - abacusBottom));
-                float hw = hwBottom + (hwTop - hwBottom) * Mathf.Sqrt(Mathf.Max(0f, 1f - t * t));
-                return Mathf.Max(Mathf.Abs(q.x - cx) - hw, Mathf.Max((T - echinusBottom) - q.y, q.y - (T - abacusBottom + 0.02f)));
-            }, q =>
-            {
-                float t = Mathf.Clamp01(((T - abacusBottom) - q.y) / (echinusBottom - abacusBottom));
-                float sx = Mathf.Clamp((q.x - cx) / hwTop, -1f, 1f);
-                return Mul(FaceStone(q, 0.45f + 0.35f * sx - 0.35f * t), 0.92f + 0.12f * Noise.Perlin(q.x * 11f, q.y * 11f));
-            }, 0f, new Rect(cx - hwTop - 0.1f, T - echinusBottom - 0.1f, hwTop * 2f + 0.2f, 0.5f));
-            for (int k = 0; k < 3; k++)
-            {
-                float y = T - echinusBottom - 0.025f - k * 0.05f;
-                c.Fill(q => Sdf.Box(q, new Vector2(cx, y), new Vector2(0.46f - k * 0.01f, 0.018f), 0.01f),
-                    q => FaceStone(q, 0.35f + 0.3f * Mathf.Clamp((q.x - cx) / 0.45f, -1f, 1f)), 0f, new Rect(cx - 0.6f, y - 0.1f, 1.2f, 0.2f));
-            }
-
-            // abacus: the heavy square slab that is the walkable surface
-            SdfCanvas.SdfFn slab = q =>
-            {
-                float n = 0.06f * Noise.Perlin(q.y * 12f, seed) + 0.04f * Noise.Perlin(q.y * 31f, seed + 2f);
-                float ends = Mathf.Max(x0 - 0.08f + n - q.x, q.x - (x1 + 0.08f - n));
-                return Mathf.Max(ends, Mathf.Max(T - abacusBottom - q.y, q.y - (T + TopBack)));
-            };
-            c.Fill(slab, q =>
-            {
-                if (q.y > T - TopFront) return TopColor(q, T, true, seed);
-                float f = (T - TopFront) - q.y;
-                float lit = 0.35f + 0.3f * S01((q.x - x0) / pl.Width);
-                Color col = FaceStone(q, f < 0.04f ? lit + 0.35f : f > abacusBottom - TopFront - 0.04f ? lit - 0.4f : lit);
-                if (Mathf.Abs(f - 0.11f) < 0.01f) col = Mul(col, 0.7f);
-                col = Mul(col, 0.9f + 0.18f * Noise.Perlin(q.x * 13f, q.y * 13f));
-                if (Crack(q, seed)) col = Mul(col, 0.62f);
-                col.a = 1f;
-                return col;
-            }, 0f, new Rect(x0 - 0.3f, T - abacusBottom - 0.1f, pl.Width + 0.6f, abacusBottom + 0.35f));
-            for (float x = x0 + 0.1f; x < x1 - 0.1f; x += 0.3f + R() * 0.5f)
-            {
-                if (R() < 0.4f) continue;
-                Vector2 mc = new Vector2(x, T - TopFront - 0.025f);
-                Vector2 mr = new Vector2(0.1f + R() * 0.16f, 0.035f + R() * 0.04f);
-                c.Paint(q => Sdf.Ellipse(q, mc, mr) + 0.02f * Noise.Perlin(q.x * 40f, q.y * 40f), Palette.Moss.WithAlpha(0.8f), 0.01f, new Rect(mc.x - 0.4f, mc.y - 0.2f, 0.8f, 0.4f));
-            }
-            Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 0.7f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.62f, 0.9f, 0.9f), 0.45f);
-
-            art.Hangs.Add(new Vector2(x0 + 0.12f + R() * 0.15f, T - abacusBottom + 0.03f));
-            art.Hangs.Add(new Vector2(x1 - 0.12f - R() * 0.15f, T - abacusBottom + 0.03f));
-            art.Hangs.Add(new Vector2(cx + (R() - 0.5f) * 0.5f, T - echinusBottom - 0.12f));
-            if (MathUtil.Hash(pl.Seed) > -0.2f) art.Lantern = new Vector2(pl.Center < 0f ? x0 + 0.22f : x1 - 0.22f, T - abacusBottom + 0.02f);
-            return c;
-        }
-
-        static SdfCanvas BuildRock(PlatformArt art)
-        {
-            var pl = art.P;
-            float T = pl.Y, x0 = pl.X0, x1 = pl.X1, seed = pl.Seed;
-            Rect rect = BodyRect(pl);
-            var c = new SdfCanvas(rect, 110f);
-            int W = c.Width;
-            float left = rect.xMin, ppu = c.Ppu;
-            var r = new System.Random(pl.Seed);
-            float R() => (float)r.NextDouble();
-
-            // underside: a lumpy inverted cone with a few hanging lobes
-            var bottom = new float[W];
-            float depth = 0.95f + 0.3f * Hash01(pl.Seed);
-            float lobePhase = R() * 6f;
-            for (int x = 0; x < W; x++)
-            {
-                float ux = left + (x + 0.5f) / ppu;
-                float u = (ux - (x0 - 0.05f)) / (pl.Width + 0.1f);
-                if (u <= 0f || u >= 1f) { bottom[x] = T + 1f; continue; }
-                float shape = Mathf.Pow(Mathf.Sin(u * Mathf.PI), 0.7f);
-                float lobes = 0.3f * Mathf.Pow(Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2.5f + lobePhase)), 3f);
-                bottom[x] = T - 0.2f - depth * shape * (0.72f + lobes) - 0.12f * Fbm(ux * 2.5f, seed) * shape;
-            }
-
-            c.Field(p =>
-            {
-                int x = Mathf.Clamp((int)((p.x - left) * ppu), 0, W - 1);
-                float n = 0.06f * Noise.Perlin(p.y * 8f, seed);
-                float side = Mathf.Max(x0 - 0.05f + n - p.x, p.x - (x1 + 0.05f - n));
-                float d = Mathf.Max(side, Mathf.Max(bottom[x] - p.y, p.y - (T + TopBack)));
-                float a = Mathf.Clamp01(0.5f - d * ppu);
-                if (a <= 0f) return Clear;
-                Color col;
-                if (p.y > T - TopFront) col = TopColor(p, T, false, seed);
-                else
-                {
-                    float below = (T - TopFront) - p.y;
-                    // layered sediment, a touch warmer than the teal ruins so the rock separates from them
-                    float strata = 0.5f + 0.5f * Mathf.Sin(p.y * 22f + Noise.Perlin(p.x * 1.6f, seed) * 5f);
-                    float grain = Noise.Perlin(p.x * 6f, p.y * 6f);
-                    Color rock = Color.Lerp(new Color(0.15f, 0.19f, 0.2f), new Color(0.31f, 0.36f, 0.34f), strata * 0.55f + 0.3f * grain);
-                    rock = Mul(rock, 0.78f + 0.4f * Mathf.Clamp01((p.x - x0) / pl.Width));
-                    rock = Mul(rock, 1f - 0.6f * S01((below - 0.2f) / 0.85f));
-                    col = Color.Lerp(new Color(0.1f, 0.17f, 0.17f), rock, S01((below - 0.07f) / 0.14f));
-                    if (Crack(p, seed)) col = Mul(col, 0.55f);
-                    float moss = S01((Noise.Perlin(p.x * 2.4f, p.y * 2.4f + seed) - 0.5f) / 0.12f) * S01((0.5f - below) / 0.3f);
-                    col = Color.Lerp(col, new Color(0.17f, 0.42f, 0.35f), moss * 0.7f);
-                }
-                col.a = a;
-                return col;
-            });
-
-            // crystals growing out of the underside — the glow that keeps the rock aloft
-            float[] spots = { 0.3f + R() * 0.1f, 0.52f + R() * 0.08f, 0.7f + R() * 0.1f };
-            foreach (float u in spots)
-            {
-                float sx = x0 + u * pl.Width;
-                float sy = bottom[Col(c, sx)] + 0.08f;
-                for (int k = 0; k < 3; k++)
-                {
-                    float ang = -90f + (k - 1) * 28f + (R() - 0.5f) * 14f;
-                    float len = 0.12f + R() * 0.12f;
-                    Vector2 a = new Vector2(sx + (k - 1) * 0.04f, sy + 0.03f), b = a + MathUtil.Dir(ang) * len;
-                    c.Fill(q => Sdf.Tapered(q, a, 0.035f, b, 0.004f), q => Color.Lerp(new Color(0.45f, 0.9f, 1f), new Color(0.85f, 1f, 1f), S01(((q - a).magnitude) / len)).WithAlpha(1f),
-                        0f, Around(a, b, 0.06f));
-                }
-                art.Crystals.Add(new Vector2(sx, sy - 0.08f));
-            }
-            Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 1f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.55f, 0.85f, 0.82f), 0.5f);
-
-            for (float x = x0 + 0.2f; x < x1 - 0.2f; x += 0.22f + R() * 0.4f) art.Hangs.Add(new Vector2(x, bottom[Col(c, x)] + 0.06f));
-            return c;
-        }
-
-        static SdfCanvas BuildSupport(PlatformArt art)
-        {
-            var pl = art.P;
-            float T = pl.Y;
-            bool terrace = pl.Kind == Level.Style.Terrace;
-            float top = terrace ? T - 0.55f : T - 0.78f;
-            const float baseY = 0.22f;          // standing on the far edge of the pitch
-            var c = new SdfCanvas(SupportRect(pl), 90f);
-            Color dark = new Color(0.14f, 0.23f, 0.28f), lightC = new Color(0.25f, 0.37f, 0.42f);
-            SdfCanvas.ColorFn shade = q =>
-            {
-                Color col = EnvironmentArt.BrickColor(q, 0.24f, 0.5f, pl.Seed);
-                col = Color.Lerp(Mul(col, 0.62f), dark, 0.35f);
-                col = Mul(col, 1f - 0.35f * S01((q.y - (top - 0.6f)) / 0.6f));   // shade under the slab
-                col.a = 1f;
-                return col;
-            };
-
-            if (terrace)
-            {
-                // a loggia: three square piers carrying low arches
-                float[] piers = { pl.X0 + 0.55f, pl.Center, pl.X1 - 0.55f };
-                SdfCanvas.SdfFn loggia = q =>
-                {
-                    float d = 9f;
-                    foreach (float px in piers)
-                    {
-                        d = Mathf.Min(d, Sdf.Box(q, new Vector2(px, (baseY + top) * 0.5f), new Vector2(0.19f, (top - baseY) * 0.5f)));
-                        d = Mathf.Min(d, Sdf.Box(q, new Vector2(px, baseY + 0.1f), new Vector2(0.26f, 0.1f)));
-                    }
-                    float band = Mathf.Max(Mathf.Abs(q.x - pl.Center) - (pl.Width * 0.5f - 0.4f), Mathf.Max(top - 0.42f - q.y, q.y - top - 0.05f));
-                    float span = (piers[1] - piers[0]) * 0.5f;
-                    float ac = q.x < pl.Center ? (piers[0] + piers[1]) * 0.5f : (piers[1] + piers[2]) * 0.5f;
-                    band = Mathf.Max(band, -Sdf.Ellipse(q, new Vector2(ac, top - 0.42f), new Vector2(span - 0.17f, 0.28f)));
-                    return Mathf.Min(d, band);
-                };
-                c.Fill(loggia, shade);
-            }
-            else
-            {
-                // one fluted column shaft under the capital
-                c.Fill(q => Mathf.Max(Mathf.Abs(q.x - pl.Center) - (0.4f - 0.03f * (q.y - baseY) / (top - baseY)), Mathf.Max(baseY + 0.3f - q.y, q.y - top - 0.05f)), q =>
-                {
-                    float sx = Mathf.Clamp((q.x - pl.Center) / 0.4f, -1f, 1f);
-                    float flute = 0.5f + 0.5f * Mathf.Cos((q.x - pl.Center) * MathUtil.Tau / 0.11f);
-                    Color col = Color.Lerp(dark, lightC, 0.35f + 0.45f * sx) * (0.9f + 0.12f * flute);
-                    if (Mathf.Abs(Mathf.Repeat(q.y, 0.66f) - 0.33f) > 0.318f) col = Mul(col, 0.72f);
-                    col = Mul(col, 1f - 0.3f * S01((q.y - (top - 0.5f)) / 0.5f));
-                    col.a = 1f;
-                    return col;
-                });
-                c.Fill(q => Sdf.Box(q, new Vector2(pl.Center, baseY + 0.15f), new Vector2(0.55f, 0.15f), 0.02f), q => Color.Lerp(dark, lightC, 0.5f + 0.3f * Mathf.Clamp((q.x - pl.Center) / 0.5f, -1f, 1f)).WithAlpha(1f));
-            }
-            c.RimLight(new Vector2(0.03f, 0.02f), new Color(0.3f, 0.52f, 0.58f), 0.4f);
-            c.EdgeBand(Vector2.up, 0.06f, Mul(Palette.Moss, 0.7f).WithAlpha(1f), p => S01((Noise.Perlin(p.x * 2.4f, p.y * 2.4f) - 0.35f) / 0.2f));
             return c;
         }
 

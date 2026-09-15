@@ -5,8 +5,9 @@ namespace SoccerFight
 {
     /// <summary>
     /// The run's state machine: stage intro → waves (budget-planned spawns, elites, mini-bosses) →
-    /// upgrade card after each wave → boss → boss reward → ability choice → next stage in a new theme.
-    /// Reward screens freeze the game; everything else plays out live.
+    /// an upgrade choice after every second round (waves and boss fights count) → boss → ability
+    /// choice → next stage in a new theme with a new platform layout. Reward screens freeze the
+    /// game; everything else plays out live.
     /// </summary>
     public sealed class RunDirector
     {
@@ -64,9 +65,10 @@ namespace SoccerFight
         void BeginStage(bool instant)
         {
             run.Wave = 0;
-            run.Rerolls = Mathf.Max(run.Rerolls, 1);
             run.Rebuild();                         // stage mechanic stats (ice, low gravity)
             player.ApplyStats(false);
+            // usually the arena was already rebuilt behind the ability choice; if not, now
+            if (StageArt.Apply(run.Stage, run.Seed) && !instant) Game.I.Environment.Platforms.Flourish();
             var theme = run.Theme;
             waves.SetTheme(theme);
             StageMechanics.I.Begin(theme);
@@ -184,7 +186,11 @@ namespace SoccerFight
                     break;
 
                 case Phase.WaveCleared:
-                    if (t > 1.5f) OpenReward(false);
+                    if (t > 1.5f)
+                    {
+                        if (run.UpgradeDue) OpenReward(false);
+                        else StartWave(run.Wave + 1);   // past the last regular wave this becomes the boss
+                    }
                     break;
 
                 case Phase.BossIntro:
@@ -199,7 +205,11 @@ namespace SoccerFight
                         float heal = player.MaxHp * 0.5f;
                         player.Heal(heal, true);
                     }
-                    if (t > 2.8f) OpenReward(true);
+                    if (t > 2.8f)
+                    {
+                        if (run.UpgradeDue) OpenReward(true);
+                        else AfterReward(true);
+                    }
                     break;
             }
         }
@@ -255,7 +265,8 @@ namespace SoccerFight
             var s = run.Stats;
             float heal = player.MaxHp * 0.15f + s.HealOnWave;
             player.Heal(heal, true);
-            Game.I.Hud.OnWaveCleared(run.Wave, run.WavesInStage);
+            run.RoundsCleared++;
+            Game.I.Hud.OnWaveCleared(run.Wave, run.WavesInStage, run.UpgradeDue);
             Enter(Phase.WaveCleared);
         }
 
@@ -312,7 +323,10 @@ namespace SoccerFight
                 m.Deactivate();
             }
             if (!DevMode.UsedThisRun && run.Stage + 1 > RunState.BestStage) RunState.BestStage = run.Stage + 1;
+            run.RoundsCleared++;
             Game.I.Hud.OnStageCleared(run.Stage, run.Theme);
+            // start drawing the next arena and its monsters now (threads) or behind the reward screens (WebGL)
+            StageArt.Prepare(run.Stage + 1, run.Seed);
             Enter(Phase.StageCleared);
         }
 
@@ -332,8 +346,11 @@ namespace SoccerFight
                 Game.I.Hud.OnUpgradeTaken(u);
                 if (bonus) NextStage();
                 else AfterReward(boss);
-            });
+            }, bonus ? RebuildArena : (System.Action)null);
         }
+
+        /// <summary>The next stage's arena appears while a reward screen covers the pitch.</summary>
+        void RebuildArena() => StageArt.Apply(run.Stage + 1, run.Seed);
 
         void AfterReward(bool boss)
         {
@@ -363,13 +380,12 @@ namespace SoccerFight
                 player.ApplyStats(false);
                 Game.I.Hud.OnAbilityUnlocked(a);
                 NextStage();
-            });
+            }, RebuildArena);
         }
 
         void NextStage()
         {
             run.Stage++;
-            run.Rerolls++;
             BeginStage(false);
         }
 

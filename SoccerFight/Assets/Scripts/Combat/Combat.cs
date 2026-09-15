@@ -263,11 +263,16 @@ namespace SoccerFight
             }
         }
 
-        /// <summary>End of a power shot: with Singularity the ball leaves a black hole behind.</summary>
-        public static void OnPierceEnd(Vector2 at)
+        /// <summary>
+        /// The power shot reached the point the player aimed at: with Singularity a black hole opens
+        /// exactly there (kept inside the arena and above the ground so it can swallow something).
+        /// </summary>
+        public static void OnPierceTarget(Vector2 at)
         {
             var s = S;
             if (!s.Singularity) return;
+            at.x = Mathf.Clamp(at.x, -Player.ArenaHalf, Player.ArenaHalf);
+            at.y = Mathf.Clamp(at.y, Level.FloorBelow(at.x, at.y + 0.5f) + 0.7f, 9f);
             // base numbers: Combat applies the global damage multiplier to vortex hits
             float power = Player.PowerDamage * s.PowerDamageMul;
             Vortices.I.Spawn(at, 3.4f * s.AreaMul, 2.5f, power * 2f, power * 6f, true, new Color(0.7f, 0.45f, 1f));

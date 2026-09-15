@@ -69,8 +69,10 @@ namespace SoccerFight
             Run = new RunState();
             Run.Reset();
 
-            // The backdrop generates on worker threads while the main thread builds everything else.
+            // The backdrop, the first arena and its monsters generate on worker threads while the main
+            // thread builds everything else.
             EnvironmentArt.Begin();
+            StageArt.Prepare(1, Run.Seed);
             Art.Build();
             UiArt.Build();
 
@@ -85,6 +87,8 @@ namespace SoccerFight
             BuildTimer.Mark("wait for backdrop");
             Environment = new WorldEnvironment();
             Environment.Build(transform, Cam);
+            StageArt.Apply(1, Run.Seed);
+            BuildTimer.Mark("arena");
             Grade = new ThemeGrade();
             Grade.Build(Environment, Cam, transform);
             BuildTimer.Mark("env objects");
@@ -208,6 +212,8 @@ namespace SoccerFight
 
             if (paused)
             {
+                // a reward screen has the game frozen: the next stage's art can generate meanwhile
+                if (Rewards.Settled) ArtQueue.Pump(12f);
                 if (GameInput.Scripted) GameInput.ClearEdges();
                 return;
             }
@@ -219,6 +225,7 @@ namespace SoccerFight
                 if (GameInput.RestartPressed && Player.DeadTime > 0.9f) Restart();
             }
 
+            Level.Update(dt);
             Player.Update(dt);
             Player.Rig.Update(dt);
             Ball.Update(dt, Player);

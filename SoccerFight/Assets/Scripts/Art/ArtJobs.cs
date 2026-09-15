@@ -100,6 +100,114 @@ namespace SoccerFight
     }
 
     /// <summary>
+    /// Art generated while the game runs (a new stage's monsters and platforms). With worker threads
+    /// Kick() starts everything in the background; without them (WebGL) Pump() works through the
+    /// queue a little per frame while a reward screen has the game frozen. Flush() finishes whatever
+    /// is left right before the art is needed. Uploads always happen on the main thread.
+    /// </summary>
+    public static class ArtQueue
+    {
+        sealed class Item
+        {
+            public string Name;
+            public Func<SdfCanvas> Build;
+            public Vector2 Pivot;
+            public bool Linear, Dither;
+            public Action<Sprite> Done;
+            public SdfCanvas Canvas;
+            public Color32[] Data;
+            public Task Task;
+        }
+
+        static readonly List<Item> waiting = new List<Item>();     // not started yet
+        static readonly List<Item> started = new List<Item>();     // computing on a thread, or computed and waiting for upload
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { waiting.Clear(); started.Clear(); }
+
+        public static int Count => waiting.Count + started.Count;
+
+        /// <summary>build runs off the main thread (pure math only); done receives the sprite on the main thread.</summary>
+        public static void Add(string name, Func<SdfCanvas> build, Vector2 pivot, Action<Sprite> done, bool linear = true, bool dither = false)
+            => waiting.Add(new Item { Name = name, Build = build, Pivot = pivot, Done = done, Linear = linear, Dither = dither });
+
+        static void Compute(Item it)
+        {
+            it.Canvas = it.Build();
+            it.Data = it.Canvas.Encode(it.Linear, it.Dither, true);
+        }
+
+        /// <summary>Worker threads: start every waiting job now (no-op on WebGL).</summary>
+        public static void Kick()
+        {
+            if (!Par.Threads) return;
+            foreach (var it in waiting)
+            {
+                var item = it;
+                item.Task = Task.Run(() => Compute(item));
+                started.Add(item);
+            }
+            waiting.Clear();
+        }
+
+        static void Upload(Item it)
+        {
+            if (it.Task != null)
+            {
+                try { it.Task.Wait(); }
+                catch (AggregateException e) { foreach (var ex in e.InnerExceptions) Debug.LogException(ex); }
+            }
+            if (it.Data == null || it.Canvas == null) { it.Done?.Invoke(null); return; }
+            var tex = SdfCanvas.CreateTexture(it.Name, it.Canvas.Width, it.Canvas.Height, it.Data, it.Linear, true, TextureWrapMode.Clamp);
+            var sprite = it.Canvas.CreateSprite(tex, it.Name, it.Pivot);
+            it.Data = null;
+            it.Canvas = null;
+            it.Done?.Invoke(sprite);
+        }
+
+        /// <summary>A slice of work: uploads finished thread results, and without threads computes jobs until the budget is used up.</summary>
+        public static void Pump(float budgetMs)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < started.Count; i++)
+            {
+                var it = started[i];
+                if (it.Task != null && !it.Task.IsCompleted) continue;
+                started.RemoveAt(i--);
+                Upload(it);
+                if (sw.Elapsed.TotalMilliseconds > budgetMs) return;
+            }
+            while (waiting.Count > 0 && sw.Elapsed.TotalMilliseconds < budgetMs)
+            {
+                var it = waiting[0];
+                waiting.RemoveAt(0);
+                if (Par.Threads) { it.Task = Task.Run(() => Compute(it)); started.Add(it); continue; }
+                try { Compute(it); } catch (Exception e) { Debug.LogException(e); }
+                Upload(it);
+            }
+        }
+
+        /// <summary>Finish everything now (blocks until the threads are done).</summary>
+        public static void Flush()
+        {
+            Kick();
+            while (waiting.Count > 0)
+            {
+                var it = waiting[0];
+                waiting.RemoveAt(0);
+                try { Compute(it); } catch (Exception e) { Debug.LogException(e); }
+                Upload(it);
+            }
+            while (started.Count > 0)
+            {
+                var it = started[0];
+                started.RemoveAt(0);
+                Upload(it);
+            }
+        }
+    }
+
+    /// <summary>
     /// Packs many small canvases (generated in parallel) into one texture atlas with shelf packing.
     /// Every entry keeps its pixel rect, uv rect and its size/origin in world units.
     /// </summary>

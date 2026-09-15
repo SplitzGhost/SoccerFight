@@ -24,6 +24,10 @@ namespace SoccerFight
         readonly List<Vortex> pool = new List<Vortex>();
         Transform parent;
 
+        /// <summary>Where the last field opened and how many have opened (capture checks).</summary>
+        public Vector2 LastPos { get; private set; }
+        public int Spawned { get; private set; }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { I = null; }
 
@@ -52,6 +56,8 @@ namespace SoccerFight
         public void Spawn(Vector2 at, float radius, float life, float dps, float implodeDmg, bool implode, Color c)
         {
             var v = Get();
+            LastPos = at;
+            Spawned++;
             v.pos = at; v.radius = radius; v.life = life; v.age = 0f; v.dps = dps; v.implodeDmg = implodeDmg;
             v.implode = implode; v.color = c; v.tick = 0f; v.active = true;
             v.root.gameObject.SetActive(true);

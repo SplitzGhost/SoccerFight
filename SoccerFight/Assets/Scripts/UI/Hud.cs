@@ -590,12 +590,12 @@ namespace SoccerFight
             bannerSub.text = wave == total ? "LETZTE WELLE VOR DEM BOSS" : wave == 1 ? "DIE MONSTER KOMMEN" : "SIE WERDEN STÄRKER";
         }
 
-        public void OnWaveCleared(int wave, int total)
+        public void OnWaveCleared(int wave, int total, bool upgrade)
         {
             bannerT = 0f;
             bannerText.text = "GESCHAFFT";
             bannerText.color = Color.white;
-            bannerSub.text = "WELLE " + wave + " VON " + total + " ÜBERSTANDEN";
+            bannerSub.text = "WELLE " + wave + " VON " + total + " ÜBERSTANDEN  ·  " + (upgrade ? "ZEIT FÜR EIN UPGRADE" : "UPGRADE NACH DER NÄCHSTEN RUNDE");
         }
 
         public void OnStageCleared(int stage, StageTheme theme)

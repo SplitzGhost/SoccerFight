@@ -175,14 +175,32 @@ namespace SoccerFight
             squashVel += 6f;
         }
 
-        /// <summary>Power shot: dead straight and fast, passes through monsters (each is hit once).</summary>
-        public void Pierce(Vector2 velocity, int fromPlatform = Level.None)
+        /// <summary>
+        /// Power shot: dead straight and fast, passes through monsters (each is hit once). target is
+        /// where the player aimed — the singularity opens there once the ball arrives (or the shot ends).
+        /// </summary>
+        public void Pierce(Vector2 velocity, int fromPlatform, Vector2 target)
         {
             Kick(velocity, fromPlatform);
             Enter(State.Pierce);
             heavyTrail.colorGradient = pierceGradient;
             heavyTrail.Clear();
             squashVel += 4f;
+            pierceTarget = target;
+            pierceTargetDist = (target - Pos).magnitude;
+            pierceTravel = 0f;
+            pierceMarked = false;
+        }
+
+        Vector2 pierceTarget;
+        float pierceTargetDist, pierceTravel;
+        bool pierceMarked;
+
+        void MarkPierceTarget()
+        {
+            if (pierceMarked) return;
+            pierceMarked = true;
+            Combat.OnPierceTarget(pierceTarget);
         }
 
         /// <summary>Bicycle kick: a heavy shot that explodes on the first surface or monster it meets.</summary>
@@ -381,8 +399,10 @@ namespace SoccerFight
                 {
                     // no gravity and no bounce off monsters; floors deflect it, the arena wall ends it
                     Pos += Vel * dt;
+                    pierceTravel += Vel.magnitude * dt;
+                    if (pierceTravel >= pierceTargetDist) MarkPierceTarget();
                     CollideWorld(0.85f);
-                    if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) { Combat.OnPierceEnd(Pos); StartReturn(); }
+                    if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) { MarkPierceTarget(); StartReturn(); }
                     break;
                 }
                 case State.Blast:
@@ -438,10 +458,11 @@ namespace SoccerFight
         void CollideWorld(float restitution)
         {
             // one-way platforms: only a ball that was above a surface last step can land on it
-            float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f, 0f, passTimer > 0f ? passPlatform : Level.None, out _);
+            float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f, 0f, passTimer > 0f ? passPlatform : Level.None, out int under);
             if (Pos.y < floor + R)
             {
                 Pos.y = floor + R;
+                Pos.x += Level.DeltaOf(under).x;   // resting on a gliding platform: ride along
                 if (Vel.y < -2f)
                 {
                     FxSystem.I.Dust(new Vector2(Pos.x, floor), new Vector2(Vel.x * 0.1f, 0f), 2, 1.2f, 0.25f, 0.25f);

@@ -67,7 +67,9 @@ try {
             Remove-Item $out, $built -Recurse -Force -ErrorAction SilentlyContinue
             $unityArgs = "-batchmode -quit -projectPath `"$mirror`" -buildTarget WebGL " +
                          "-executeMethod SoccerFight.EditorTools.WebGLBuilder.Build -sfOut `"$out`" -logFile `"$work\unity-build.log`""
-            $p = Start-Process $unity -ArgumentList $unityArgs -Wait -PassThru -WindowStyle Hidden
+            # WaitForExit statt -Wait: -Wait wartet auch auf den Compiler-Server, den Unity zurücklässt (~10 min)
+            $p = Start-Process $unity -ArgumentList $unityArgs -PassThru -WindowStyle Hidden
+            $p.WaitForExit()
             if ($p.ExitCode -ne 0 -or -not (Test-Path (Join-Path $out 'index.html'))) {
                 Log "build FAILED (exit $($p.ExitCode)), siehe .build\unity-build.log"
                 break

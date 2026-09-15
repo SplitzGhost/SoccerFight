@@ -8,9 +8,9 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Between waves: three upgrade cards flip in (rarity colour, icon, values, stack level) and the
-    /// player takes exactly one — click or 1/2/3, R rerolls once per stage. After a boss: two big
-    /// ability cards. The game is frozen while this is open; everything animates on unscaled time.
+    /// Every second round: three upgrade cards flip in (rarity colour, icon, values, stack level) and
+    /// the player takes exactly one — click or 1/2/3. After a boss: two big ability cards. The game
+    /// is frozen while this is open; everything animates on unscaled time.
     /// </summary>
     public sealed class RewardScreen
     {
@@ -31,11 +31,11 @@ namespace SoccerFight
         Image dim, aura;
         TextMeshProUGUI kicker, title, sub, hint;
         RectTransform lineL, lineR;
-        Button reroll;
-        TextMeshProUGUI rerollLabel;
         readonly List<Card> cards = new List<Card>();
 
         public bool IsOpen { get; private set; }
+        /// <summary>The cards have landed: a good moment for background work (the game is frozen anyway).</summary>
+        public bool Settled => IsOpen && !closing && openT > 1.1f;
         bool abilityMode, boss, closing;
         float openT, closeT, pickT;
         int chosen = -1;
@@ -44,6 +44,7 @@ namespace SoccerFight
         List<Ability> abilities;
         Action<UpgradeDef> onUpgrade;
         Action<Ability> onAbility;
+        Action onShown;
         Color accent = Palette.ShotCyan;
 
         // ------------------------------------------------------------------ build
@@ -87,15 +88,14 @@ namespace SoccerFight
             lineR = UiKit.Img("LineR", root, UiArt.LineFade, Color.white.WithAlpha(0.35f), new Vector2(300f, 408f), new Vector2(200f, 2f)).rectTransform;
             cardRoot = UiKit.Node("Cards", root, new Vector2(0f, -10f), Vector2.zero);
             hint = UiKit.Label("Hint", root, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -372f), new Vector2(1400f, 24f), true, 5f);
-            reroll = UiKit.MakeButton(root, "NEU MISCHEN", new Vector2(0f, -424f), new Vector2(300f, 52f), Reroll, false, 16f);
-            rerollLabel = reroll.GetComponentInChildren<TextMeshProUGUI>();
 
             canvas.gameObject.SetActive(false);
         }
 
         // ------------------------------------------------------------------ open
 
-        public void ShowUpgrades(List<UpgradeDef> cardsOffered, bool bossReward, RunState state, Action<UpgradeDef> pick)
+        /// <summary>shown: called once the screen has faded in and covers the arena.</summary>
+        public void ShowUpgrades(List<UpgradeDef> cardsOffered, bool bossReward, RunState state, Action<UpgradeDef> pick, Action shown = null)
         {
             run = state;
             offer = cardsOffered;
@@ -110,10 +110,10 @@ namespace SoccerFight
             sub.text = boss ? "Nur seltene Karten oder besser – dein Build nimmt Form an."
                             : "STAGE " + run.Stage + "  ·  " + StageThemes.Title(run.Stage) + "  ·  als Nächstes: " + (run.Wave >= run.WavesInStage ? "BOSS" : "WELLE " + (run.Wave + 1));
             BuildUpgradeCards();
-            Open();
+            Open(shown);
         }
 
-        public void ShowAbilities(List<Ability> choice, int stage, Action<Ability> pick)
+        public void ShowAbilities(List<Ability> choice, int stage, Action<Ability> pick, Action shown = null)
         {
             abilities = choice;
             onAbility = pick;
@@ -124,43 +124,23 @@ namespace SoccerFight
             title.text = "NEUE FÄHIGKEIT";
             sub.text = "Wähle eine für den Rest des Laufs – die andere kehrt in den Pool zurück.";
             BuildAbilityCards();
-            Open();
+            Open(shown);
         }
 
-        void Open()
+        void Open(Action shown)
         {
             IsOpen = true;
             closing = false;
             chosen = -1;
             openT = 0f;
             closeT = 0f;
+            onShown = shown;
             canvas.gameObject.SetActive(true);
             rootGroup.alpha = 0f;
             rootGroup.interactable = true;
             aura.color = accent.WithAlpha(0.07f);
             kicker.color = accent;
-            RefreshReroll();
-        }
-
-        void RefreshReroll()
-        {
-            bool can = !abilityMode && run != null && run.Rerolls > 0;
-            // the button (and its glow and rim siblings) only shows while a reroll is left
-            foreach (Transform t in root)
-                if (t.name.StartsWith("NEU MISCHEN")) t.gameObject.SetActive(can);
-            if (rerollLabel != null) rerollLabel.text = "NEU MISCHEN  ·  " + (run != null ? run.Rerolls : 0) + "×";
-            string keys = abilityMode ? "[ 1 ]  [ 2 ]  ODER KLICKEN" : "[ 1 ]  [ 2 ]  [ 3 ]  ODER KLICKEN";
-            hint.text = keys + (can ? "      ·      [ R ]  NEU MISCHEN" : "");
-        }
-
-        void Reroll()
-        {
-            if (abilityMode || closing || run == null || run.Rerolls <= 0) return;
-            run.Rerolls--;
-            offer = UpgradeRoller.Offer(run, 3, boss);
-            BuildUpgradeCards();
-            openT = Mathf.Min(openT, 0.3f);
-            RefreshReroll();
+            hint.text = abilityMode ? "[ 1 ]  [ 2 ]  ODER KLICKEN" : "[ 1 ]  [ 2 ]  [ 3 ]  ODER KLICKEN";
         }
 
         // ------------------------------------------------------------------ cards
@@ -316,6 +296,7 @@ namespace SoccerFight
             closing = false;
             onUpgrade = null;
             onAbility = null;
+            onShown = null;
             canvas.gameObject.SetActive(false);
             ClearCards();
         }
@@ -325,6 +306,7 @@ namespace SoccerFight
             IsOpen = false;
             canvas.gameObject.SetActive(false);
             ClearCards();
+            if (onShown != null) { var shown = onShown; onShown = null; shown(); }
             int idx = chosen;
             if (abilityMode) { var cb = onAbility; onAbility = null; cb?.Invoke(abilities[idx]); }
             else { var cb = onUpgrade; onUpgrade = null; cb?.Invoke(offer[idx]); }
@@ -345,8 +327,15 @@ namespace SoccerFight
                     if (kb.digit1Key.wasPressedThisFrame || kb.numpad1Key.wasPressedThisFrame) Pick(0);
                     else if (kb.digit2Key.wasPressedThisFrame || kb.numpad2Key.wasPressedThisFrame) Pick(1);
                     else if (kb.digit3Key.wasPressedThisFrame || kb.numpad3Key.wasPressedThisFrame) Pick(2);
-                    else if (kb.rKey.wasPressedThisFrame) Reroll();
                 }
+            }
+
+            // fully faded in: whatever should happen behind the screen (a new arena) happens now
+            if (onShown != null && openT > 0.4f)
+            {
+                var cb = onShown;
+                onShown = null;
+                cb();
             }
 
             float fadeIn = MathUtil.EaseOutCubic(openT / 0.35f);

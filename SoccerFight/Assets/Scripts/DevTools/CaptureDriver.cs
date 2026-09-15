@@ -87,6 +87,9 @@ namespace SoccerFight
             else if (scenario == "portrait") yield return Portrait();
             else if (scenario == "platforms") yield return Platforms();
             else if (scenario == "skills") yield return Skills();
+            else if (scenario == "bestiary") yield return Bestiary();
+            else if (scenario == "layouts") yield return Layouts();
+            else if (scenario == "blackhole") yield return BlackHole();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -616,6 +619,163 @@ namespace SoccerFight
             yield return Shot("s08_settings");
             G.Pause.Close();
             yield return Frames(20);
+        }
+
+        void PlaceAway()
+        {
+            P.Pos = new Vector2(-14.5f, 0f);
+            P.Vel = Vector2.zero;
+            P.DodgeTime = 999f;
+            G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+        }
+
+        void SpawnBoss(StageTheme th, Vector2 at)
+        {
+            var b = th.Boss;
+            G.Waves.Spawn(new Monster.SpawnSpec
+            {
+                Type = b.Body == Monster.Kind.Wisp ? EnemyType.Lantern : EnemyType.Brute, At = at, Level = G.Run.Level,
+                Rank = Rank.Boss, Theme = th, Name = b.Name, Boss = b,
+            });
+        }
+
+        /// <summary>Every monster body: the nine archetypes in four stage colour schemes, then the eight bosses.</summary>
+        IEnumerator Bestiary()
+        {
+            G.Hud.SetVisible(false);
+            Monster.Hold = true;
+            EnemyType[] ground = { EnemyType.Hopper, EnemyType.Spawnling, EnemyType.Splitter, EnemyType.Spitter, EnemyType.Brute, EnemyType.Bomber };
+            EnemyType[] air = { EnemyType.Diver, EnemyType.Shade, EnemyType.Lantern };
+            float[] gx = { -8.2f, -5.5f, -3.7f, -1f, 1.7f, 5.1f };
+            foreach (int stage in new[] { 1, 4, 5, 6 })
+            {
+                G.Director.DebugJump(stage, 1, 0, false);
+                yield return Frames(2);
+                FxSystem.I.Clear();
+                PlaceAway();
+                for (int i = 0; i < ground.Length; i++) SpawnSpec(ground[i], new Vector2(gx[i], 0f), Rank.Normal, 0, ground[i].ToString());
+                for (int i = 0; i < air.Length; i++) SpawnSpec(air[i], new Vector2(-5f + i * 5f, 3.6f), Rank.Normal, 0, air[i].ToString());
+                yield return Seconds(1.2f);
+                G.Cam.SetOverride(new Vector2(0f, 2.2f), 5f);
+                yield return Frames(3);
+                yield return Shot("b" + stage + "_lineup");
+                G.Cam.SetOverride(new Vector2(-6.85f, 0.6f), 1.5f); yield return Frames(3); yield return Shot("b" + stage + "_close_a");
+                G.Cam.SetOverride(new Vector2(-2.35f, 0.65f), 1.5f); yield return Frames(3); yield return Shot("b" + stage + "_close_b");
+                G.Cam.SetOverride(new Vector2(3.4f, 0.85f), 1.75f); yield return Frames(3); yield return Shot("b" + stage + "_close_c");
+                G.Cam.SetOverride(new Vector2(0f, 3.6f), 3.2f); yield return Frames(3); yield return Shot("b" + stage + "_close_air");
+                G.Cam.ClearOverride();
+                G.Waves.Restart();
+            }
+
+            // the eight bosses, each in its own stage's colours
+            G.Director.DebugJump(1, 1, 0, false);
+            yield return Frames(2);
+            FxSystem.I.Clear();
+            PlaceAway();
+            var blobs = new System.Collections.Generic.List<StageTheme>();
+            var wisps = new System.Collections.Generic.List<StageTheme>();
+            foreach (var th in StageThemes.All) (th.Boss.Body == Monster.Kind.Wisp ? wisps : blobs).Add(th);
+            var at = new System.Collections.Generic.List<Vector2>();
+            for (int i = 0; i < blobs.Count; i++) { var p = new Vector2(-8f + i * 4f, 0f); SpawnBoss(blobs[i], p); at.Add(p + new Vector2(0f, 1f)); }
+            for (int i = 0; i < wisps.Count; i++) { var p = new Vector2(-6f + i * 6f, 5.4f); SpawnBoss(wisps[i], p); at.Add(p); }
+            yield return Seconds(1.6f);
+            G.Cam.SetOverride(new Vector2(0f, 3.1f), 6.3f);
+            yield return Frames(3);
+            yield return Shot("b9_bosses");
+            for (int i = 0; i < at.Count; i++)
+            {
+                G.Cam.SetOverride(at[i], 2.1f);
+                yield return Frames(3);
+                yield return Shot("b9_boss_" + i);
+            }
+            G.Cam.ClearOverride();
+            Monster.Hold = false;
+            G.Waves.Restart();
+            G.Hud.SetVisible(true);
+        }
+
+        static string Describe(Level.Platform p) =>
+            $"{p.Kind}@({p.BaseX0:F1}..{p.BaseX1:F1}, {p.BaseY:F2}){(p.Moving ? " " + p.Move + " ±" + p.Amp.ToString("F1") : "")}";
+
+        /// <summary>Every stage's generated arena from afar and one detail each, then a ride on a gliding platform.</summary>
+        IEnumerator Layouts()
+        {
+            G.Hud.SetVisible(false);
+            for (int stage = 1; stage <= 8; stage++)
+            {
+                G.Director.DebugJump(stage, 1, 0, false);
+                FxSystem.I.Clear();
+                P.Pos = new Vector2(0f, 0f); P.Vel = Vector2.zero;
+                G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+                yield return Seconds(0.6f);
+                var plats = Level.Platforms;
+                Debug.Log($"[Capture] stage {stage} layout ({plats.Length}): " + string.Join(" | ", System.Array.ConvertAll(plats, Describe)));
+                G.Cam.SetOverride(new Vector2(0f, 3.4f), 8.6f);
+                yield return Frames(3);
+                yield return Shot("l" + stage + "_overview");
+                Level.Platform pick = plats.Length > 0 ? plats[0] : null;
+                foreach (var p in plats) if (p.Moving || (p.Kind != Level.Style.Terrace && p.Kind != Level.Style.Capital && p.Kind != Level.Style.Rock)) { pick = p; break; }
+                if (pick != null)
+                {
+                    G.Cam.SetOverride(new Vector2(pick.Center, pick.Y - 0.35f), 2.4f);
+                    yield return Frames(3);
+                    yield return Shot("l" + stage + "_detail");
+                }
+                G.Cam.ClearOverride();
+            }
+
+            // ride a gliding platform: the player must stay put on it
+            int idx = -1;
+            for (int tries = 0; tries < 20 && idx < 0; tries++)
+            {
+                G.Director.DebugJump(2 + tries % 7, 1, 0, false);
+                var plats = Level.Platforms;
+                for (int i = 0; i < plats.Length; i++) if (plats[i].Move == Level.Motion.Horizontal) { idx = i; break; }
+            }
+            if (idx >= 0)
+            {
+                var p = Level.Platforms[idx];
+                PlaceOn(idx);
+                yield return Seconds(0.3f);
+                float rel0 = P.Pos.x - p.Center, off0 = p.Offset.x;
+                G.Hud.SetVisible(true);
+                yield return Seconds(2.4f);
+                LogPlayer("riding");
+                Debug.Log($"[Capture] ride: platform moved {p.Offset.x - off0:F2}, player offset on it {rel0:F2} -> {P.Pos.x - p.Center:F2}, grounded={P.Grounded} on={P.OnPlatform} ({Describe(p)})");
+                yield return Shot("l9_riding");
+            }
+            else Debug.Log("[Capture] ride: no gliding platform found");
+            G.Hud.SetVisible(true);
+        }
+
+        /// <summary>Singularity: the black hole must open where the cursor was when the power shot left.</summary>
+        IEnumerator BlackHole()
+        {
+            var sing = UpgradeDb.All.Find(u => u.Id == "singularity");
+            G.Run.Take(sing, P);
+            P.ApplyStats(false);
+            P.Pos = new Vector2(-4f, 0f); P.Vel = Vector2.zero; P.Facing = 1;
+            G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+            yield return Seconds(0.8f);
+            Vector2[] targets = { new Vector2(3f, 2.8f), new Vector2(6.5f, 1.2f), new Vector2(1.5f, 5.2f) };
+            for (int k = 0; k < targets.Length; k++)
+            {
+                Vector2 target = targets[k];
+                G.Waves.SpawnAt(Monster.Kind.Blob, target + new Vector2(1.2f, -target.y));
+                G.Waves.SpawnAt(Monster.Kind.Wisp, target + new Vector2(-1f, 0.6f));
+                yield return WaitBallHome();
+                P.PowerCd = 0f;
+                GameInput.AimWorld = target;
+                int before = Vortices.I.Spawned;
+                GameInput.PowerPressed = true;
+                // the cursor wanders off right after the shot: the hole must still open at the aim point
+                for (int i = 0; i < 120 && Vortices.I.Spawned == before; i++) { if (i > 30) GameInput.AimWorld = P.Pos + new Vector2(-3f, 1f); yield return null; }
+                Debug.Log($"[Capture] singularity {k}: aimed at {target} opened at {Vortices.I.LastPos} (spawned={Vortices.I.Spawned > before})");
+                yield return Frames(20);
+                yield return Shot("h" + k + "_singularity");
+                yield return Seconds(2.6f);
+                G.Waves.Restart();
+            }
         }
 
         IEnumerator All()

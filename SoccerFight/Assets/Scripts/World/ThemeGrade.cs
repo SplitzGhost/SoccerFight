@@ -29,16 +29,24 @@ namespace SoccerFight
         {
             cam = cameraRig;
             Shader.SetGlobalMatrix(GradeId, Matrix4x4.identity);
-            var skip = new HashSet<Transform> { env.LeftPortal, env.RightPortal };
-            foreach (var r in env.Root.GetComponentsInChildren<Renderer>(true))
+            Adopt(env.Root, new HashSet<Transform> { env.LeftPortal, env.RightPortal });
+
+            ballLight = Art.MakeSprite("Ball Light", parent, Art.SoftGlow, -40, Art.SpriteGlowMat, Color.clear);
+            ballLight.transform.localScale = Vector3.one * 7f;
+        }
+
+        /// <summary>Switch every environment renderer under root to its graded material (new platforms after a stage change).</summary>
+        public void Adopt(Transform root, HashSet<Transform> skip = null)
+        {
+            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                if (UnderAny(r.transform, skip)) continue;
+                if (skip != null && UnderAny(r.transform, skip)) continue;
                 var mats = r.sharedMaterials;
                 bool changed = false;
                 for (int i = 0; i < mats.Length; i++)
                 {
                     var m = mats[i];
-                    if (m == null || !m.HasProperty(GradedId)) continue;
+                    if (m == null || !m.HasProperty(GradedId) || clones.ContainsValue(m)) continue;
                     if (!clones.TryGetValue(m, out var c))
                     {
                         c = new Material(m) { name = m.name + " (Graded)" };
@@ -50,9 +58,6 @@ namespace SoccerFight
                 }
                 if (changed) r.sharedMaterials = mats;
             }
-
-            ballLight = Art.MakeSprite("Ball Light", parent, Art.SoftGlow, -40, Art.SpriteGlowMat, Color.clear);
-            ballLight.transform.localScale = Vector3.one * 7f;
         }
 
         static bool UnderAny(Transform t, HashSet<Transform> set)
