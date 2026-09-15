@@ -19,8 +19,12 @@ namespace SoccerFight.EditorTools
             PlayerSettings.WebGL.template = "PROJECT:SoccerFight";
             PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Gzip;
             PlayerSettings.WebGL.decompressionFallback = true;
-            PlayerSettings.WebGL.nameFilesAsHashes = false;
-            PlayerSettings.WebGL.dataCaching = true;
+            // Every build gets its own file names (content hashes). GitHub Pages lets browsers cache
+            // files for 10 minutes; with fixed names a reload right after a deploy could mix old code
+            // with new data and crash while loading. Hashed names can be cached forever instead,
+            // so Unity's own IndexedDB cache isn't needed.
+            PlayerSettings.WebGL.nameFilesAsHashes = true;
+            PlayerSettings.WebGL.dataCaching = false;
             PlayerSettings.WebGL.showDiagnostics = false;
             PlayerSettings.WebGL.powerPreference = WebGLPowerPreference.HighPerformance;
             PlayerSettings.SplashScreen.show = false;   // optional for Personal since Unity 6

@@ -77,10 +77,26 @@ try {
         }
         $Force = $false
 
-        # 5) Auf gh-pages veröffentlichen, immer als einzelner Commit, damit das Repo klein bleibt
+        # 5) Auf gh-pages veröffentlichen, immer als einzelner Commit, damit das Repo klein bleibt.
+        #    Die Dateien des vorigen Builds bleiben eine Runde erhalten: Ein Browser, der noch die alte
+        #    index.html im Cache hat (Pages: 10 Minuten), lädt so weiter einen vollständigen alten Stand
+        #    statt einer Mischung aus alt und neu.
         $url = git remote get-url origin
+        $keep = Join-Path $work 'prev-build'
+        Remove-Item $keep -Recurse -Force -ErrorAction SilentlyContinue
+        $prevIndex = Join-Path $site 'index.html'
+        if (Test-Path $prevIndex) {
+            $html = Get-Content $prevIndex -Raw
+            New-Item -ItemType Directory -Force $keep | Out-Null
+            Get-ChildItem (Join-Path $site 'Build') -File -ErrorAction SilentlyContinue |
+                Where-Object { $html.Contains($_.Name) } | Copy-Item -Destination $keep
+        }
         Remove-Item $site -Recurse -Force -ErrorAction SilentlyContinue
         robocopy $out $site /E /NFL /NDL /NJH /NJS /NP | Out-Null
+        if (Test-Path $keep) {
+            Get-ChildItem $keep -File | Where-Object { -not (Test-Path (Join-Path $site "Build\$($_.Name)")) } |
+                Copy-Item -Destination (Join-Path $site 'Build')
+        }
         New-Item -ItemType File -Force (Join-Path $site '.nojekyll') | Out-Null
         git -C $site init -q
         git -C $site config core.autocrlf false
