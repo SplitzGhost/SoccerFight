@@ -38,8 +38,29 @@ namespace SoccerFight.EditorTools
             });
 
             var s = report.summary;
+            if (s.result == BuildResult.Succeeded) WriteManifest(outDir);
             Debug.Log($"[WebGLBuilder] {s.result}: {s.totalSize / 1048576f:0.0} MB, {s.totalTime.TotalSeconds:0} s, {s.totalErrors} errors -> {outDir}");
             EditorApplication.Exit(s.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>
+        /// build.json names this build's (hashed) files. index.html fetches it fresh on every visit, so a
+        /// page served from the browser cache still loads the newest build.
+        /// </summary>
+        static void WriteManifest(string outDir)
+        {
+            string dir = System.IO.Path.Combine(outDir, "Build");
+            string Find(string pattern)
+            {
+                var hits = System.IO.Directory.GetFiles(dir, pattern);
+                return hits.Length > 0 ? "Build/" + System.IO.Path.GetFileName(hits[0]) : "";
+            }
+            string json = "{\n" +
+                "  \"loader\": \"" + Find("*.loader.js") + "\",\n" +
+                "  \"data\": \"" + Find("*.data*") + "\",\n" +
+                "  \"framework\": \"" + Find("*.framework.js*") + "\",\n" +
+                "  \"code\": \"" + Find("*.wasm*") + "\"\n}\n";
+            System.IO.File.WriteAllText(System.IO.Path.Combine(outDir, "build.json"), json);
         }
 
         static string Arg(string name)

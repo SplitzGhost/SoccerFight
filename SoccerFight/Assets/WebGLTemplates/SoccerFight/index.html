@@ -29,9 +29,8 @@
       <div id="title">{{{ PRODUCT_NAME }}}</div>
       <div id="bar"><div id="fill"></div></div>
       <div id="status">Lädt …</div>
-      <div id="hint">A/D laufen · Leertaste springen · Linksklick schießen · Rechtsklick Power-Schuss · E Übersteiger · Q Fallrückzieher · R Rainbow Flick · Shift hochhalten · Esc Menü</div>
+      <div id="hint">A/D laufen · Leertaste springen · Linksklick schießen (in der Luft: Rückstoß) · Rechtsklick Power-Schuss · weitere Fähigkeiten nach jedem Boss · Esc Menü · F3 Developer</div>
     </div>
-    <script src="Build/{{{ LOADER_FILENAME }}}"></script>
     <script>
       (function () {
         var canvas = document.querySelector("#unity-canvas");
@@ -40,34 +39,46 @@
         var statusText = document.querySelector("#status");
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
-        createUnityInstance(canvas, {
-          arguments: [],
-#if PROGRESSIVE_ASSET_LOADING
-          primaryDataUrls: {{{ JSON.stringify(PRIMARY_DATA_FILES) }}},
-          secondaryDataUrls: {{{ JSON.stringify(SECONDARY_DATA_FILES) }}},
-#else
-          dataUrl: "Build/{{{ DATA_FILENAME }}}",
-#endif
-          frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
-#if USE_WASM
-          codeUrl: "Build/{{{ CODE_FILENAME }}}",
-#endif
-#if SYMBOLS_FILENAME
-          symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
-#endif
-          streamingAssetsUrl: "StreamingAssets",
-          companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
-          productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
-          productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
-        }, function (progress) {
-          fill.style.width = (100 * progress) + "%";
-          statusText.textContent = progress < 1 ? "Lädt … " + Math.round(100 * progress) + " %" : "Welt wird erzeugt …";
-        }).then(function () {
-          loader.classList.add("done");
-          canvas.focus();
-        }).catch(function (message) {
-          statusText.textContent = "Fehler: " + message;
-        });
+        // The build's file names are baked in here, but build.json — fetched fresh on every visit,
+        // never from a cache — wins. So even a cached copy of this page always boots the newest build.
+        var files = {
+          loader: "Build/{{{ LOADER_FILENAME }}}",
+          data: "Build/{{{ DATA_FILENAME }}}",
+          framework: "Build/{{{ FRAMEWORK_FILENAME }}}",
+          code: "Build/{{{ CODE_FILENAME }}}"
+        };
+
+        function start() {
+          var script = document.createElement("script");
+          script.src = files.loader;
+          script.onerror = function () { statusText.textContent = "Fehler: Spiel konnte nicht geladen werden – bitte neu laden."; };
+          script.onload = function () {
+            createUnityInstance(canvas, {
+              arguments: [],
+              dataUrl: files.data,
+              frameworkUrl: files.framework,
+              codeUrl: files.code,
+              streamingAssetsUrl: "StreamingAssets",
+              companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+              productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+              productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+            }, function (progress) {
+              fill.style.width = (100 * progress) + "%";
+              statusText.textContent = progress < 1 ? "Lädt … " + Math.round(100 * progress) + " %" : "Welt wird erzeugt …";
+            }).then(function () {
+              loader.classList.add("done");
+              canvas.focus();
+            }).catch(function (message) {
+              statusText.textContent = "Fehler: " + message;
+            });
+          };
+          document.body.appendChild(script);
+        }
+
+        fetch("build.json?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && j.loader && j.data && j.framework && j.code) files = j; }, function () {})
+          .then(start, start);
       })();
     </script>
   </body>
