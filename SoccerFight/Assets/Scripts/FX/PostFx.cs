@@ -101,7 +101,7 @@ namespace SoccerFight
             float red = Mathf.Max(hurt, lowHealth * (0.35f + 0.25f * pulse));
             Color baseVig = Color.Lerp(new Color(0.01f, 0.02f, 0.05f), new Color(0.2f, 0f, 0.04f), eclipse);
             vignette.color.value = Color.Lerp(baseVig, new Color(0.55f, 0.02f, 0.08f), red);
-            vignette.intensity.value = BaseVignette + themeVignetteShown + red * 0.18f + eclipse * 0.16f + darkness * 0.13f;
+            vignette.intensity.value = BaseVignette + themeVignetteShown + red * 0.18f + eclipse * 0.16f + darkness * 0.05f;
             vignette.center.value = Vector2.Lerp(new Vector2(0.5f, 0.5f), darkCenter, darkness);
             vignette.smoothness.value = Mathf.Lerp(0.5f, 0.62f, darkness);
             vignette.rounded.value = darkness > 0.5f;

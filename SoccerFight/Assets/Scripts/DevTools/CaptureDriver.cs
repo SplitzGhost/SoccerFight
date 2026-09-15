@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -81,6 +81,7 @@ namespace SoccerFight
             if (scenario == "quick") yield return Quick();
             else if (scenario == "run") yield return RunTour();
             else if (scenario == "sim") yield return Simulate();
+            else if (scenario == "themes") { G.Waves.Enabled = true; G.Restart(); yield return ThemeTour(); }
             else if (scenario == "moves") yield return Moves();
             else if (scenario == "portrait") yield return Portrait();
             else if (scenario == "platforms") yield return Platforms();
@@ -165,6 +166,29 @@ namespace SoccerFight
             G.Waves.Spawn(new Monster.SpawnSpec { Type = type, At = at, Level = run.Level, Rank = rank, Affixes = affixes, Theme = run.Theme, Name = name });
         }
 
+        /// <summary>Every stage theme with a few of its monsters (the player is untouchable for the pictures).</summary>
+        IEnumerator ThemeTour()
+        {
+            // every theme with a few of its monsters
+            for (int s = 1; s <= StageThemes.All.Length; s++)
+            {
+                G.Director.DebugJump(s, 2, 0, false);
+                FxSystem.I.Clear();
+                var th = G.Run.Theme;
+                P.Pos = new Vector2(-2f, 0f); P.Vel = Vector2.zero;
+                G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
+                G.Cam.Snap(P.Pos);
+                SpawnSpec(th.Roster[0].Type, new Vector2(3.5f, 0.5f), Rank.Normal, 0, th.Roster[0].Name);
+                SpawnSpec(th.Roster[1].Type, new Vector2(5.5f, 2.2f), Rank.Normal, 0, th.Roster[1].Name);
+                SpawnSpec(th.Roster[2].Type, new Vector2(-6f, 0.5f), Rank.Elite, 1, th.Roster[2].Name);
+                if (s >= 3) G.Mechanics.SetRunning(true);
+                for (int i = 0; i < 230; i++) { P.Hp = P.MaxHp; P.DodgeTime = 0.5f; yield return null; }
+                yield return Shot("t" + s + "_" + th.Name.ToLowerInvariant());
+                G.Mechanics.SetRunning(false);
+            }
+
+        }
+
         /// <summary>The roguelite loop: stage card, a wave, reward cards, ability pick, a boss, all eight themes, the run summary.</summary>
         IEnumerator RunTour()
         {
@@ -212,23 +236,7 @@ namespace SoccerFight
             yield return AutoFight(4f);
             yield return Shot("r10_boss_fight");
 
-            // every theme with a few of its monsters
-            for (int s = 1; s <= StageThemes.All.Length; s++)
-            {
-                G.Director.DebugJump(s, 2, 0, false);
-                FxSystem.I.Clear();
-                var th = G.Run.Theme;
-                P.Pos = new Vector2(-2f, 0f); P.Vel = Vector2.zero;
-                G.Ball.ResetTo(P.Pos + new Vector2(0.5f, Art.BallRadius));
-                G.Cam.Snap(P.Pos);
-                SpawnSpec(th.Roster[0].Type, new Vector2(2.5f, 0.5f), Rank.Normal, 0, th.Roster[0].Name);
-                SpawnSpec(th.Roster[1].Type, new Vector2(4.5f, 1.2f), Rank.Normal, 0, th.Roster[1].Name);
-                SpawnSpec(th.Roster[2].Type, new Vector2(-6f, 0.5f), Rank.Elite, 1, th.Roster[2].Name);
-                if (s >= 3) G.Mechanics.SetRunning(true);
-                for (int i = 0; i < 230; i++) { P.Hp = P.MaxHp; yield return null; }
-                yield return Shot("t" + s + "_" + th.Name.ToLowerInvariant());
-                G.Mechanics.SetRunning(false);
-            }
+            yield return ThemeTour();
 
             // the run summary
             G.Director.DebugJump(4, 2, 10, false);
