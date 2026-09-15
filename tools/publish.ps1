@@ -14,6 +14,8 @@ $pending = Join-Path $work 'pending'
 $stamp   = Join-Path $work 'deployed.txt'
 $built   = Join-Path $work 'built.txt'
 $unity   = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe'
+# Pushes melden sich über die GitHub-CLI an (gh auth login), ohne die globale Git-Konfiguration zu ändern
+$cred    = @('-c', 'credential.helper=', '-c', "credential.helper=!'C:/Program Files/GitHub CLI/gh.exe' auth git-credential")
 
 New-Item -ItemType Directory -Force $work | Out-Null
 function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Add-Content $log -Encoding utf8 }
@@ -38,7 +40,7 @@ try {
             Log "commit: $names"
         }
         if ([int](git rev-list --count '@{u}..HEAD') -gt 0) {
-            $res = git push -q origin HEAD 2>&1
+            $res = git @cred push -q origin HEAD 2>&1
             if ($LASTEXITCODE -ne 0) { Log "push FAILED: $res"; break }
             Log 'push ok'
         }
@@ -78,7 +80,7 @@ try {
         git -C $site init -q
         git -C $site add -A
         git -C $site commit -q -m "Deploy $sha"
-        $res = git -C $site push -q -f $url HEAD:gh-pages 2>&1
+        $res = git -C $site @cred push -q -f $url HEAD:gh-pages 2>&1
         if ($LASTEXITCODE -ne 0) { Log "deploy FAILED: $res"; break }
         Set-Content $stamp $tree
         Log "deployed $sha"

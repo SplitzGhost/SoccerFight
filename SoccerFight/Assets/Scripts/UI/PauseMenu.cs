@@ -90,7 +90,9 @@ namespace SoccerFight
             firstMain = UiKit.MakeButton(mainPanel, "WEITER", new Vector2(0f, 64f), size, Close, true);
             UiKit.MakeButton(mainPanel, "EINSTELLUNGEN", new Vector2(0f, -8f), size, () => ShowSettings(true));
             UiKit.MakeButton(mainPanel, "NEU STARTEN", new Vector2(0f, -80f), size, () => RestartRequested?.Invoke());
-            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, -152f), size, Quit);
+#if !UNITY_WEBGL || UNITY_EDITOR
+            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, -152f), size, Quit);   // a browser tab can't be quit
+#endif
             UiKit.Label("Hint", mainPanel, "ESC  ZURÜCK ZUM SPIEL", 12f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -232f), new Vector2(440f, 20f), true, 5f);
         }
 

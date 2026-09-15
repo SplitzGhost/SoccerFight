@@ -14,6 +14,13 @@ namespace SoccerFight
 
         static bool loaded;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // The page already fills the browser window, and browser fullscreen would swallow the first Esc.
+        const int FullscreenDefault = 0;
+#else
+        const int FullscreenDefault = 1;
+#endif
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { loaded = false; }
 
@@ -21,7 +28,7 @@ namespace SoccerFight
         {
             if (loaded) return;
             loaded = true;
-            Fullscreen = PlayerPrefs.GetInt("sf_fullscreen", 1) == 1;
+            Fullscreen = PlayerPrefs.GetInt("sf_fullscreen", FullscreenDefault) == 1;
             VSync = PlayerPrefs.GetInt("sf_vsync", 1) == 1;
             ShowFps = PlayerPrefs.GetInt("sf_fps", 1) == 1;
             ChromaticAberration = PlayerPrefs.GetInt("sf_chroma", 1) == 1;
