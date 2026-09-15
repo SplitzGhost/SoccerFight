@@ -25,7 +25,7 @@ namespace SoccerFight
         public static readonly List<Vector3> Canopies = new List<Vector3>();
         public static readonly List<Vector2> MossAnchors = new List<Vector2>();
 
-        public const float FarW = 34f, FarH = 8f;
+        public const float FarW = 34f, FarH = 3.8f;
         public const float MidW = 36f, MidH = 12f;
         public const float RuinW = 40f, RuinH = 7.2f;
         public const float BushW = 44f, BushH = 2.4f;
@@ -69,6 +69,7 @@ namespace SoccerFight
             jLeaves = new ArtJobs.Job[2];
             for (int i = 0; i < 2; i++) { int k = i; jLeaves[i] = jobs.Add("Leaf" + k, () => BuildLeaf(k), Vector2.zero, false); }
             jobs.Start();
+            DepthArt.Begin();
             FoliageArt.Begin();
         }
 
@@ -76,6 +77,7 @@ namespace SoccerFight
         public static void End()
         {
             jobs.Complete();
+            DepthArt.End();
             FoliageArt.End();
             Sky = jSky.Sprite; Stars = jStars.Sprite; Moon = jMoon.Sprite; Far = jFar.Sprite; Mid = jMid.Sprite;
             Ruins = jRuins.Sprite; Bushes = jBushes.Sprite; PitchTile = jPitch.Sprite; EarthTile = jEarth.Sprite;
@@ -92,7 +94,7 @@ namespace SoccerFight
 
         // ---------------------------------------------------------------- noise helpers (thread-safe)
 
-        static float Fbm(float x, float seed, int octaves = 4)
+        internal static float Fbm(float x, float seed, int octaves = 4)
         {
             float sum = 0f, amp = 0.5f, freq = 1f;
             for (int i = 0; i < octaves; i++)
@@ -104,7 +106,7 @@ namespace SoccerFight
             return sum;
         }
 
-        static float Fbm2(Vector2 p, float seed, int octaves = 4)
+        internal static float Fbm2(Vector2 p, float seed, int octaves = 4)
         {
             float sum = 0f, amp = 0.5f, freq = 1f;
             for (int i = 0; i < octaves; i++)
@@ -117,15 +119,15 @@ namespace SoccerFight
         }
 
         /// <summary>Noise that tiles seamlessly in x over [0, period].</summary>
-        static float PeriodicX(float x, float y, float period)
+        internal static float PeriodicX(float x, float y, float period)
             => Mathf.Lerp(Noise.Perlin(x, y), Noise.Perlin(x - period, y), MathUtil.Smooth01(x / period));
 
         static float PeriodicY(float x, float y, float period)
             => Mathf.Lerp(Noise.Perlin(x, y), Noise.Perlin(x, y - period), MathUtil.Smooth01(y / period));
 
-        static float EdgeFade(float x, float halfW, float fade = 1.5f) => MathUtil.Smooth01((halfW - Mathf.Abs(x)) / fade);
+        internal static float EdgeFade(float x, float halfW, float fade = 1.5f) => MathUtil.Smooth01((halfW - Mathf.Abs(x)) / fade);
 
-        static float Sq(float v) => v * v;
+        internal static float Sq(float v) => v * v;
 
         // ---------------------------------------------------------------- sky, stars, moon, clouds
 
@@ -244,7 +246,8 @@ namespace SoccerFight
 
         static SdfCanvas BuildFar()
         {
-            var c = new SdfCanvas(new Rect(-FarW * 0.5f, 0f, FarW, FarH), 50f);
+            // two ranges standing on the horizon (local y = 0 sits at eye level in the scene)
+            var c = new SdfCanvas(new Rect(-FarW * 0.5f, 0f, FarW, FarH), 60f);
             float aa = 1f / c.Ppu;
             int W = c.Width;
             float left = c.UnitRect.xMin, ppu = c.Ppu;
@@ -254,8 +257,8 @@ namespace SoccerFight
             for (int x = 0; x < W; x++)
             {
                 float ux = left + (x + 0.5f) / ppu;
-                back[x] = 4.4f + 2.2f * Fbm(ux * 0.06f, 11f) + 0.7f * Mathf.Abs(Fbm(ux * 0.23f, 12f));
-                front[x] = 2.6f + 1.9f * Fbm(ux * 0.09f, 1.3f) + 0.65f * Mathf.Abs(Fbm(ux * 0.36f, 4.1f)) + 1.5f * Mathf.Exp(-Sq((ux - WaterfallX) / 1.5f));
+                back[x] = 1.9f + 1f * Fbm(ux * 0.07f, 11f) + 0.45f * Mathf.Abs(Fbm(ux * 0.25f, 12f));
+                front[x] = 1.05f + 0.75f * Fbm(ux * 0.1f, 1.3f) + 0.35f * Mathf.Abs(Fbm(ux * 0.4f, 4.1f)) + 0.8f * Mathf.Exp(-Sq((ux - WaterfallX) / 1.3f));
             }
             for (int x = 0; x < W; x++)
                 slope[x] = (front[Mathf.Min(W - 1, x + 2)] - front[Mathf.Max(0, x - 2)]) / (4f / ppu);
@@ -274,7 +277,7 @@ namespace SoccerFight
                 float gully = Noise.Perlin(p.x * 5.5f, p.y * 0.9f);
                 float strata = Noise.Perlin(p.x * 0.8f, p.y * 4.5f);
                 Color f = Color.Lerp(frontLow, frontHigh, MathUtil.Smooth01(p.y / front[x]));
-                f *= 1f + lit * 0.32f * MathUtil.Smooth01((p.y - 0.4f) / 1.5f);
+                f *= 1f + lit * 0.32f * MathUtil.Smooth01((p.y - 0.15f) / 0.8f);
                 f *= 0.88f + 0.2f * gully;
                 f *= 0.94f + 0.1f * strata;
                 // moonlit snowless crests: a thin bright edge right under the ridge line
@@ -288,10 +291,10 @@ namespace SoccerFight
             var r = new System.Random(19);
             float R() => (float)r.NextDouble();
             Color pine = Color.Lerp(Palette.FarTop, new Color(0.05f, 0.16f, 0.21f), 0.45f);
-            for (int i = 0; i < 120; i++)
+            for (int i = 0; i < 170; i++)
             {
                 float x0 = -FarW * 0.5f + 0.6f + R() * (FarW - 1.2f);
-                float h = 0.35f + R() * 0.9f, w = h * 0.27f, by = 0.1f + R() * 0.3f;
+                float h = 0.16f + R() * 0.36f, w = h * 0.27f, by = 0.04f + R() * 0.16f;
                 SdfCanvas.ColorFn col = p =>
                 {
                     Color k = Color.Lerp(Color.Lerp(pine, Palette.Fog, 0.38f), pine, MathUtil.Smooth01((p.y - by) / (h * 0.8f)));
@@ -303,7 +306,7 @@ namespace SoccerFight
                         Sdf.Triangle(p, new Vector2(x0 - w * 0.72f, by + h * 0.38f), new Vector2(x0 + w * 0.72f, by + h * 0.38f), new Vector2(x0, by + h * 1.13f))),
                     col, 0f, new Rect(x0 - w - 0.05f, by - 0.05f, w * 2f + 0.1f, h * 1.2f + 0.1f));
             }
-            c.RimLight(new Vector2(0.04f, 0.05f), Color.Lerp(Palette.Fog, Color.white, 0.25f), 0.35f);
+            c.RimLight(new Vector2(0.04f, 0.05f), Color.Lerp(Palette.Fog, Color.white, 0.35f), 0.55f);
 
             int wi = Mathf.Clamp((int)((WaterfallX - left) * ppu), 0, W - 1);
             WaterfallTop = new Vector2(WaterfallX, front[wi] - 0.3f);
@@ -329,7 +332,7 @@ namespace SoccerFight
 
         // ---------------------------------------------------------------- trees (mid layer)
 
-        static Color BarkColor(Vector2 p)
+        internal static Color BarkColor(Vector2 p)
         {
             float n = Noise.Perlin(p.x * 9f, p.y * 1.1f);
             float n2 = Noise.Perlin(p.x * 23f + 5f, p.y * 3f);
@@ -427,7 +430,7 @@ namespace SoccerFight
         static float[] ruinTopCache, tierMaskCache, tierNoiseCache;
 
         static float RuinTopExact(float x) =>
-            4.25f - Mathf.Max(0f, Fbm(x * 0.16f, 5.5f) + 0.05f) * 3.6f + 0.12f * (Noise.Perlin(x * 2.7f, 9.1f) - 0.5f);
+            4.25f - Mathf.Max(0f, Fbm(x * 0.17f, 5.5f) + 0.22f) * 3.5f + 0.12f * (Noise.Perlin(x * 2.7f, 9.1f) - 0.5f);
 
         static void BuildRuinCache()
         {
@@ -505,7 +508,7 @@ namespace SoccerFight
             return Mathf.Min(d, TierSdf(p));
         }
 
-        static Color BrickColor(Vector2 p, float bh, float bw, int salt)
+        internal static Color BrickColor(Vector2 p, float bh, float bw, int salt)
         {
             float row = Mathf.Floor(p.y / bh);
             int ri = (int)row;

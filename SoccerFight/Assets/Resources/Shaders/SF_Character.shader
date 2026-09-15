@@ -22,6 +22,7 @@ Shader "SoccerFight/Character"
         _Ambient ("Ambient Tint", Color) = (0.8, 0.87, 0.95, 1)
         _GroundColor ("Ground Occlusion", Color) = (0.6, 0.7, 0.76, 1)
         _GroundHeight ("Occlusion Height", Float) = 0.5
+        _FloorY ("Floor Height (set per frame)", Float) = 0
         [HideInInspector] _Color ("Tint", Color) = (1,1,1,1)
         [HideInInspector] _RendererColor ("RendererColor", Color) = (1,1,1,1)
         [HideInInspector] _AlphaTex ("External Alpha", 2D) = "white" {}
@@ -73,6 +74,7 @@ Shader "SoccerFight/Character"
                 half4 _Ambient;
                 half4 _GroundColor;
                 float _GroundHeight;
+                float _FloorY;
             CBUFFER_END
 
             Varyings vert(Attributes input)
@@ -117,7 +119,7 @@ Shader "SoccerFight/Character"
 
                 // light, not paint: the surface colour is multiplied by ambient + moon + bounce, so the
                 // dark contour stays dark where the moon hits it instead of turning into a pale outline
-                half3 light = _Ambient.rgb * lerp(_GroundColor.rgb, half3(1, 1, 1), (half)smoothstep(0.0, _GroundHeight, i.worldXY.y));
+                half3 light = _Ambient.rgb * lerp(_GroundColor.rgb, half3(1, 1, 1), (half)smoothstep(_FloorY, _FloorY + _GroundHeight, i.worldXY.y));
                 light += _RimColor.rgb * (rim * (half)_RimStrength) + _BounceColor.rgb * (bounce * (half)_BounceStrength);
                 half3 lit = tex.rgb * light + _RimColor.rgb * (a * rim * (half)0.06);
 

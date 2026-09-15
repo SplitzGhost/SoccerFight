@@ -32,6 +32,10 @@ namespace SoccerFight
         int order = PlayerRig.BallOrderFront;
         float hueT;
 
+        // a shot fired downwards from a platform passes through that platform for a moment
+        int passPlatform = Level.None;
+        float passTimer;
+
         // rainbow path
         Vector2 b0, b1, b2, b3;
         readonly float[] arcTable = new float[65];
@@ -130,10 +134,13 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ commands
 
-        public void Kick(Vector2 velocity)
+        /// <summary>fromPlatform: the platform the kicker stands on (the shot may pass through it).</summary>
+        public void Kick(Vector2 velocity, int fromPlatform = Level.None)
         {
             Enter(State.Shot);
             Vel = velocity;
+            passPlatform = fromPlatform;
+            passTimer = fromPlatform != Level.None && velocity.y < 0f ? 0.3f : 0f;
             hitIds.Clear();
             FlightId++;
             squashVel += 6f;
@@ -148,14 +155,15 @@ namespace SoccerFight
 
         public void OnJuggleTouch(float spinDegPerSec) { spinVel = spinDegPerSec; squashVel -= 5f; }
 
-        public void StartRainbow(Vector2 from, Vector2 target, int facing)
+        /// <summary>groundY: the surface the player flicks from — the arc peaks the same height above it.</summary>
+        public void StartRainbow(Vector2 from, Vector2 target, int facing, float groundY)
         {
             Enter(State.Rainbow);
             hitIds.Clear();
             FlightId++;
             flickFacing = facing;
             float dist = Mathf.Abs(target.x - from.x);
-            float apex = 3.4f + dist * 0.13f;
+            float apex = groundY + 3.4f + dist * 0.13f;
             float ctrlY = (8f * apex - from.y - target.y) / 6f;
             b0 = from;
             b1 = new Vector2(from.x - facing * 0.75f, ctrlY);
@@ -219,6 +227,7 @@ namespace SoccerFight
         public void Update(float dt, Player player)
         {
             stateTime += dt;
+            passTimer = Mathf.Max(0f, passTimer - dt);
             prevPos = Pos;
             var rig = player.Rig;
 
@@ -228,7 +237,10 @@ namespace SoccerFight
                 {
                     Vector2 target = rig.BallHold;
                     MathUtil.Spring(ref Pos, ref Vel, target, 7.5f, 0.9f, dt);
-                    if (Pos.y < R) Pos.y = R;
+                    // never sink into the surface — but only surfaces at the player's feet or lower,
+                    // so the ball follows when the player drops through a platform
+                    float floor = Level.FloorBelow(Pos.x, Mathf.Min(Pos.y - R, player.Pos.y) + 0.02f);
+                    if (Pos.y < floor + R) Pos.y = floor + R;
                     break;
                 }
                 case State.Scripted:
@@ -289,12 +301,14 @@ namespace SoccerFight
 
         void CollideWorld(float restitution)
         {
-            if (Pos.y < R)
+            // one-way platforms: only a ball that was above a surface last step can land on it
+            float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f, 0f, passTimer > 0f ? passPlatform : Level.None, out _);
+            if (Pos.y < floor + R)
             {
-                Pos.y = R;
+                Pos.y = floor + R;
                 if (Vel.y < -2f)
                 {
-                    FxSystem.I.Dust(new Vector2(Pos.x, 0f), new Vector2(Vel.x * 0.1f, 0f), 2, 1.2f, 0.25f, 0.25f);
+                    FxSystem.I.Dust(new Vector2(Pos.x, floor), new Vector2(Vel.x * 0.1f, 0f), 2, 1.2f, 0.25f, 0.25f);
                     squashVel -= Mathf.Min(8f, -Vel.y * 0.5f);
                 }
                 Vel.y = -Vel.y * restitution;
@@ -310,7 +324,7 @@ namespace SoccerFight
         {
             var game = Game.I;
             var fx = FxSystem.I;
-            Vector2 p = new Vector2(Pos.x, R);
+            Vector2 p = new Vector2(Pos.x, b3.y);   // the target sits on the pitch or a platform
             Pos = p;
             game.Waves.RainbowImpact(p);
 
@@ -355,7 +369,8 @@ namespace SoccerFight
         {
             Vector2 delta = Pos - prevPos;
             float speed = dt > 0f ? delta.magnitude / dt : 0f;
-            bool onGround = Pos.y <= R + 0.02f;
+            float floor = Level.FloorBelow(Pos.x, Pos.y - R + 0.03f);
+            bool onGround = Pos.y <= floor + R + 0.02f;
 
             // spin: pure rolling on the ground, flicked spin in the air
             if (JuggleMode && St == State.Scripted) { spin += spinVel * dt; spinVel *= Mathf.Exp(-0.8f * dt); }
@@ -397,10 +412,10 @@ namespace SoccerFight
             // sorting: tuck between the legs while the flick rolls it up the calf
             SetOrder(St == State.Scripted && !JuggleMode ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront);
 
-            // ground shadow
-            float h = Mathf.Max(0f, Pos.y - R);
+            // shadow on the surface below
+            float h = Mathf.Max(0f, Pos.y - R - floor);
             float s = Mathf.Lerp(0.5f, 0.2f, Mathf.Clamp01(h / 4f));
-            shadow.transform.position = new Vector3(Pos.x, 0.02f, 0f);
+            shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
             shadow.transform.localScale = new Vector3(s, s * 0.9f, 1f);
             shadow.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.45f, 0.08f, Mathf.Clamp01(h / 4f)));
 

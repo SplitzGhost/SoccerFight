@@ -15,6 +15,9 @@ namespace SoccerFight
         const float JumpVel = 13.4f, RiseGravity = 36f, FallGravity = 60f, MaxFall = 22f;
         const float CoyoteTime = 0.1f, JumpBufferTime = 0.13f;
         public const float ArenaHalf = 15.5f;
+        /// <summary>Half the width of the stance: how far the feet can hang over a platform edge.</summary>
+        public const float FootHalf = 0.16f;
+        const float DropThroughTime = 0.18f;
 
         // action timing (seconds) — shared with the rig
         public const float KickWindup = 0.07f, KickContact = 0.1f, KickFollow = 0.22f, KickDuration = 0.4f;
@@ -48,6 +51,10 @@ namespace SoccerFight
         public Vector2 Vel;
         public int Facing = 1;
         public bool Grounded = true;
+        /// <summary>Platform index the player stands on (Level.None on the pitch or in the air).</summary>
+        public int OnPlatform = Level.None;
+        /// <summary>Height of the surface under the feet (the one the player stands on, or would land on).</summary>
+        public float GroundY => Grounded ? Pos.y : Level.FloorBelow(Pos.x, Pos.y + 0.02f, FootHalf);
         public float MaxHp = 100f;
         public float Hp = 100f;
         public float InvulnTimer;
@@ -82,6 +89,8 @@ namespace SoccerFight
         Afterimages ghosts;
 
         float coyote, jumpBuffer, shotBuffer, flickBuffer, juggleBuffer;
+        float dropTimer;
+        int dropIgnore = Level.None;
         bool released;
         float ghostTimer;
         int ghostIndex;
@@ -106,6 +115,9 @@ namespace SoccerFight
             Vel = Vector2.zero;
             Facing = 1;
             Grounded = true;
+            OnPlatform = Level.None;
+            dropTimer = 0f;
+            dropIgnore = Level.None;
             Hp = MaxHp;
             InvulnTimer = 0f;
             Dead = false;
@@ -181,9 +193,23 @@ namespace SoccerFight
             // --- facing
             if (CurrentAction == Action.None && Mathf.Abs(input) > 0.01f) Facing = input > 0f ? 1 : -1;
 
+            // --- drop through the platform underfoot (down, or down + jump)
+            bool canMove = CurrentAction != Action.Flick && CurrentAction != Action.Juggle && !Dead;
+            if (Grounded && OnPlatform != Level.None && canMove && (GameInput.DownPressed || (jumpBuffer > 0f && GameInput.DownHeld)))
+            {
+                dropIgnore = OnPlatform;
+                dropTimer = DropThroughTime;
+                OnPlatform = Level.None;
+                Grounded = false;
+                coyote = jumpBuffer = 0f;
+                Vel.y = -2.5f;
+                Rig.OnJump();
+                FxSystem.I.Dust(Pos, new Vector2(Vel.x * 0.1f, 0.3f), 4, 1.1f, 0.3f, 0.26f);
+            }
+
             // --- jump
             coyote = Grounded ? CoyoteTime : Mathf.Max(0f, coyote - dt);
-            if (jumpBuffer > 0f && coyote > 0f && CurrentAction != Action.Flick && CurrentAction != Action.Juggle && !Dead)
+            if (jumpBuffer > 0f && coyote > 0f && canMove)
             {
                 Vel.y = JumpVel;
                 Grounded = false;
@@ -202,26 +228,37 @@ namespace SoccerFight
                 Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall);
             }
 
+            float prevY = Pos.y;
             Pos += Vel * dt;
 
-            // --- ground
-            if (Pos.y <= 0f)
+            // --- ground and one-way platforms: a surface only catches feet that come down onto it.
+            // Holding down in the air falls through every platform, a drop skips the one it left.
+            dropTimer = Mathf.Max(0f, dropTimer - dt);
+            int ignore = !Grounded && GameInput.DownHeld && !Dead ? Level.All : dropTimer > 0f ? dropIgnore : Level.None;
+            float floor = Level.FloorBelow(Pos.x, prevY + 0.02f, FootHalf, ignore, out int floorIndex);
+            if (Vel.y <= 0f && Pos.y <= floor)
             {
                 if (!Grounded)
                 {
                     float impact = -Vel.y;
                     Rig.OnLand(impact);
-                    FxSystem.I.Dust(Pos, Vector2.right, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
-                    FxSystem.I.Dust(Pos, Vector2.left, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
+                    Vector2 at = new Vector2(Pos.x, floor);
+                    FxSystem.I.Dust(at, Vector2.right, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
+                    FxSystem.I.Dust(at, Vector2.left, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
                     if (impact > 12f) game.Cam.AddTrauma(0.08f);
                 }
-                Pos.y = 0f;
+                Pos.y = floor;
                 Vel.y = 0f;
                 Grounded = true;
+                OnPlatform = floorIndex;
                 airBoosts = 1;
                 boostRise = false;
             }
-            else if (Pos.y > 0.001f) Grounded = false;
+            else if (Pos.y > floor + 0.001f)
+            {
+                Grounded = false;   // jumped, or walked off an edge (coyote time still allows the jump)
+                OnPlatform = Level.None;
+            }
 
             // --- walls
             if (Pos.x < -ArenaHalf) { Pos.x = -ArenaHalf; Vel.x = Mathf.Max(0f, Vel.x); }
@@ -277,10 +314,12 @@ namespace SoccerFight
             Vector2 dir = GameInput.AimWorld - from;
             if (dir.sqrMagnitude < 0.01f) dir = new Vector2(Facing, 0.1f);
             dir.Normalize();
-            if (Grounded && dir.y < -0.35f) dir = new Vector2(dir.x, -0.35f).normalized;
+            // on the pitch a steep downward shot would only thump into the turf; from a platform
+            // it may go straight down through the ledge at the monsters below
+            if (Grounded && OnPlatform == Level.None && dir.y < -0.35f) dir = new Vector2(dir.x, -0.35f).normalized;
             KickAimLocal = new Vector2(dir.x * Facing, dir.y);
 
-            Ball.Kick(dir * ShotSpeed);
+            Ball.Kick(dir * ShotSpeed, Grounded ? OnPlatform : Level.None);
 
             fx.Flash(from, 1.1f, Palette.ShotCyan, 0.12f, 3f);
             fx.Ring(FxLayer.Front, from, 0.12f, 0.85f, 0.12f, 0.01f, 0.2f, Palette.ShotCore, Palette.ShotCyan.WithAlpha(0f), 2.4f);
@@ -335,7 +374,9 @@ namespace SoccerFight
             float dx = GameInput.AimWorld.x - Pos.x;
             if (Mathf.Abs(dx) > 0.3f) Facing = dx > 0f ? 1 : -1;
             float dist = Mathf.Clamp(Mathf.Abs(dx), 3.2f, 8.5f);
-            FlickTarget = new Vector2(Mathf.Clamp(Pos.x + Facing * dist, -ArenaHalf, ArenaHalf), Art.BallRadius);
+            float tx = Mathf.Clamp(Pos.x + Facing * dist, -ArenaHalf, ArenaHalf);
+            // lands on whatever surface is under the target at or below the player's level
+            FlickTarget = new Vector2(tx, Level.FloorBelow(tx, Pos.y + 0.02f) + Art.BallRadius);
             FlickBallStartLocal = ToLocal(Ball.Pos);
             CurrentAction = Action.Flick;
             ActionTime = 0f;
@@ -351,7 +392,7 @@ namespace SoccerFight
         void ReleaseFlick()
         {
             Vector2 at = Ball.Pos;
-            Ball.StartRainbow(at, FlickTarget, Facing);
+            Ball.StartRainbow(at, FlickTarget, Facing, Pos.y);
             // Release accent: small and crisp — the rainbow arc itself is the star of the move.
             var fx = FxSystem.I;
             fx.Flash(at, 0.85f, Color.white, 0.12f, 2f);
@@ -522,7 +563,14 @@ namespace SoccerFight
                 if (ActionTime < FlickRelease)
                 {
                     float g = MathUtil.Bump(ActionTime / FlickRelease) * 2.1f;
-                    Pos.x = Mathf.Clamp(Pos.x + Facing * g * dt, -ArenaHalf, ArenaHalf);
+                    float nx = Mathf.Clamp(Pos.x + Facing * g * dt, -ArenaHalf, ArenaHalf);
+                    // never glide off the platform in the middle of the move
+                    if (OnPlatform != Level.None)
+                    {
+                        var p = Level.Platforms[OnPlatform];
+                        if (nx < p.X0 || nx > p.X1) nx = Pos.x;
+                    }
+                    Pos.x = nx;
                 }
                 if (ActionTime > FlickSet * 0.6f && ActionTime < FlickRelease + 0.1f)
                 {

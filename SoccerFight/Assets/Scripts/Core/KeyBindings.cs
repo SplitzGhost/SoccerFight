@@ -4,7 +4,7 @@ using UnityEngine.InputSystem.Controls;
 
 namespace SoccerFight
 {
-    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle }
+    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -21,7 +21,7 @@ namespace SoccerFight
     /// <summary>Rebindable controls, persisted in PlayerPrefs. Binding an input that is already used swaps them.</summary>
     public static class KeyBindings
     {
-        public static readonly GameAction[] All = { GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Shoot, GameAction.Flick, GameAction.Juggle };
+        public static readonly GameAction[] All = { GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot, GameAction.Flick, GameAction.Juggle };
         static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
 
@@ -39,6 +39,7 @@ namespace SoccerFight
                 case GameAction.Jump: return "SPRINGEN";
                 case GameAction.Shoot: return "SCHUSS";
                 case GameAction.Flick: return "RAINBOW FLICK";
+                case GameAction.Down: return "DURCHFALLEN";
                 default: return "BALL HOCHHALTEN";
             }
         }
@@ -52,6 +53,7 @@ namespace SoccerFight
                 case GameAction.Jump: return Binding.K(Key.Space);
                 case GameAction.Shoot: return Binding.M(0);
                 case GameAction.Flick: return Binding.K(Key.R);
+                case GameAction.Down: return Binding.K(Key.S);
                 default: return Binding.K(Key.LeftShift);
             }
         }

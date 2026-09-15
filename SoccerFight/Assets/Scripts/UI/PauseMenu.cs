@@ -122,12 +122,12 @@ namespace SoccerFight
                 () => GameSettings.ChromaticAberration, v => { GameSettings.ChromaticAberration = v; ApplySettings(); });
 
             UiKit.Section(settingsPanel, "STEUERUNG", new Vector2(rx, 214f), colW);
-            float y = 164f;
+            float y = 166f;
             foreach (var a in KeyBindings.All)
             {
                 var action = a;
                 keyRows[a] = UiKit.MakeKeyRow(settingsPanel, KeyBindings.ActionName(a), new Vector2(rx, y), colW, () => BeginCapture(action));
-                y -= 50f;
+                y -= 46f;
             }
             UiKit.MakeButton(settingsPanel, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 16f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
             UiKit.Label("KeyHint", settingsPanel, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 60f), new Vector2(colW, 20f), true, 4f);

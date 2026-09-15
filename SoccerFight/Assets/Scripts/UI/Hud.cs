@@ -281,9 +281,10 @@ namespace SoccerFight
                 s.badgeRim.rectTransform.sizeDelta = new Vector2(w + 2f, 28f);
             }
             if (hintText != null)
-                hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN     "
-                    + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN     " + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS     "
-                    + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK     " + KeyBindings.DisplayName(GameAction.Juggle) + "  HOCHHALTEN     ESC  PAUSE";
+                hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN    "
+                    + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN    " + KeyBindings.DisplayName(GameAction.Down) + "  RUNTER    "
+                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    "
+                    + KeyBindings.DisplayName(GameAction.Flick) + "  RAINBOW FLICK    " + KeyBindings.DisplayName(GameAction.Juggle) + "  HOCHHALTEN    ESC  PAUSE";
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -346,9 +347,9 @@ namespace SoccerFight
             deathSub = Text("Sub", death, "", 22f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -30f), new Vector2(900f, 30f), false, true, 4f);
             Text("Restart", death, "[ ENTER ]  NEUSTART", 18f, Palette.ShotCyan, TextAlignmentOptions.Center, new Vector2(0f, -86f), new Vector2(900f, 30f), true, true, 6f);
 
-            var hint = Node("Hint", canvasRect, new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(1400f, 30f));
+            var hint = Node("Hint", canvasRect, new Vector2(0.5f, 0f), new Vector2(0f, 42f), new Vector2(1500f, 30f));
             hintGroup = hint.gameObject.AddComponent<CanvasGroup>();
-            hintText = Text("HintText", hint, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1400f, 30f), true, true, 3f);
+            hintText = Text("HintText", hint, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1500f, 30f), true, true, 2.5f);
             RefreshBindings();
             KeyBindings.Changed += RefreshBindings;
 

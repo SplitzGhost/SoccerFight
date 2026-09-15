@@ -74,6 +74,7 @@ namespace SoccerFight
             if (scenario == "quick") yield return Quick();
             else if (scenario == "moves") yield return Moves();
             else if (scenario == "portrait") yield return Portrait();
+            else if (scenario == "platforms") yield return Platforms();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -217,6 +218,123 @@ namespace SoccerFight
             GameInput.JumpHeld = false;
             yield return Shot("m08_airdash");
             yield return Seconds(1f);
+        }
+
+        void PlaceOn(int platform, float offset = 0f)
+        {
+            var p = Level.Platforms[platform];
+            P.Pos = new Vector2(p.Center + offset, p.Y);
+            P.Vel = Vector2.zero;
+            P.Grounded = true;
+            P.OnPlatform = platform;
+            G.Ball.ResetTo(P.Pos + new Vector2(0.5f * P.Facing, Art.BallRadius));
+            G.Cam.Snap(P.Pos);
+        }
+
+        void LogPlayer(string what) =>
+            Debug.Log($"[Capture] {what}: grounded={P.Grounded} platform={P.OnPlatform} pos=({P.Pos.x:F2}, {P.Pos.y:F2})");
+
+        /// <summary>Depth layers, platforms, blobs leaping after the player, dropping through, flicking from above.</summary>
+        IEnumerator Platforms()
+        {
+            Aim(new Vector2(5f, 1.6f));
+            yield return Seconds(1.2f);
+            G.Hud.SetVisible(false);
+            yield return Shot("pl01_scene");
+
+            // the whole arena at once, then close-ups of each platform type
+            G.Cam.SetOverride(new Vector2(0f, 3.6f), 8.8f);
+            yield return Frames(3);
+            yield return Shot("pl02_overview");
+            var rock = Level.Platforms[3];
+            G.Cam.SetOverride(new Vector2(rock.Center, rock.Y - 0.4f), 2.1f);
+            yield return Frames(3);
+            yield return Shot("pl03_rock");
+            var terrace = Level.Platforms[0];
+            G.Cam.SetOverride(new Vector2(terrace.Center, terrace.Y - 0.7f), 2.6f);
+            yield return Frames(3);
+            yield return Shot("pl04_terrace");
+            var capital = Level.Platforms[4];
+            G.Cam.SetOverride(new Vector2(capital.Center, capital.Y - 0.8f), 2.1f);
+            yield return Frames(3);
+            yield return Shot("pl05_capital");
+            // the far layers, zoomed: peaks + castle, forest + stadium, aqueduct
+            G.Cam.SetOverride(new Vector2(4f, 5.2f), 2.6f);
+            yield return Frames(3);
+            yield return Shot("pl05b_far_detail");
+            G.Cam.SetOverride(new Vector2(-6.5f, 3.4f), 3f);
+            yield return Frames(3);
+            yield return Shot("pl05c_mid_detail");
+            G.Cam.ClearOverride();
+            G.Hud.SetVisible(true);
+            yield return Frames(3);
+
+            // a real jump onto the capital to the left of the spawn
+            Move(-1f);
+            GameInput.JumpPressed = true;
+            GameInput.JumpHeld = true;
+            yield return Seconds(0.22f);
+            Move(0f);
+            yield return Seconds(0.3f);
+            GameInput.JumpHeld = false;
+            yield return Seconds(0.8f);
+            LogPlayer("jump onto capital");
+            yield return Shot("pl06_on_capital");
+
+            // up on a floating rock: the camera frames the level, blobs leap up after the player
+            PlaceOn(3);
+            yield return Seconds(1f);
+            yield return Shot("pl07_high");
+            var b1 = G.Waves.SpawnAt(Monster.Kind.Blob, new Vector2(rock.X0 - 2.2f, 0f));
+            var b2 = G.Waves.SpawnAt(Monster.Kind.Blob, new Vector2(rock.X1 + 1.6f, 0f));
+            G.Waves.SpawnAt(Monster.Kind.Wisp, new Vector2(rock.X1 + 2.5f, 6f));
+            for (int i = 0; i < 6; i++)
+            {
+                yield return Seconds(0.5f);
+                Debug.Log($"[Capture] blobs t={0.5f * (i + 1):F1}s: ({b1.Pos.x:F2}, {b1.Pos.y:F2}) ({b2.Pos.x:F2}, {b2.Pos.y:F2})");
+                if (i == 2) yield return Shot("pl08_blobs_climb");
+            }
+            yield return Shot("pl09_blobs_up");
+
+            // drop back down through the rock
+            G.Waves.Restart(999f);
+            yield return Frames(2);
+            PlaceOn(3);
+            yield return Seconds(0.4f);
+            GameInput.DownPressed = true;
+            GameInput.DownHeld = true;
+            yield return Seconds(0.3f);
+            GameInput.DownHeld = false;
+            yield return Seconds(0.9f);
+            LogPlayer("after drop-through");
+            yield return Shot("pl10_dropped");
+
+            // rainbow flick from the terrace down onto the pitch
+            PlaceOn(0, 1.2f);
+            yield return Seconds(0.8f);
+            Aim(new Vector2(6f, -1f));
+            GameInput.FlickPressed = true;
+            for (int i = 0; i < 200 && G.Ball.St != Ball.State.Rainbow; i++) yield return null;
+            yield return Frames(14);
+            yield return Shot("pl11_flick_from_terrace");
+            for (int i = 0; i < 200 && G.Ball.St == Ball.State.Rainbow; i++) yield return null;
+            yield return Frames(2);
+            yield return Shot("pl12_flick_impact");
+            yield return Seconds(1.2f);
+
+            // parallax: the same layers seen from both ends of the arena and from up high
+            G.Hud.SetVisible(false);
+            G.Cam.SetOverride(new Vector2(-9.5f, 3f), 4.9f);
+            yield return Frames(3);
+            yield return Shot("pl13_left");
+            G.Cam.SetOverride(new Vector2(9.5f, 3f), 4.9f);
+            yield return Frames(3);
+            yield return Shot("pl14_right");
+            G.Cam.SetOverride(new Vector2(9.5f, 4.8f), 5.2f);
+            yield return Frames(3);
+            yield return Shot("pl15_right_high");
+            G.Cam.ClearOverride();
+            G.Hud.SetVisible(true);
         }
 
         IEnumerator All()

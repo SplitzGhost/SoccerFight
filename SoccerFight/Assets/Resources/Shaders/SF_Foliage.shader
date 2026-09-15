@@ -13,6 +13,7 @@ Shader "SoccerFight/Foliage"
         _FogColor ("Fog Color", Color) = (0.47, 0.79, 0.83, 1)
         _FogAmount ("Fog Amount", Range(0, 1)) = 0
         _WindScale ("Wind Scale", Float) = 1
+        _Tint ("Depth Tint", Color) = (1, 1, 1, 1)
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
     }
@@ -59,6 +60,7 @@ Shader "SoccerFight/Foliage"
                 half4 _FogColor;
                 float _FogAmount;
                 float _WindScale;
+                half4 _Tint;
             CBUFFER_END
 
             // set every frame by WorldEnvironment
@@ -108,7 +110,7 @@ Shader "SoccerFight/Foliage"
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 half a = tex.a * i.color.a;
                 half3 rgb = tex.rgb * i.color.rgb;
-                rgb = lerp(rgb, _FogColor.rgb * tex.a, _FogAmount);
+                rgb = lerp(rgb, _FogColor.rgb * tex.a, _FogAmount) * _Tint.rgb;
                 return half4(rgb * (i.color.a * _Intensity * i.pulse), a);
             }
             ENDHLSL

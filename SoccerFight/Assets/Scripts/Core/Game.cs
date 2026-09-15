@@ -180,7 +180,7 @@ namespace SoccerFight
 
             Vector2 aimOffset = Vector2.ClampMagnitude((GameInput.AimWorld - (Player.Pos + Vector2.up)) * 0.09f, 1.1f);
             Vector2 look = new Vector2(Player.Facing * 0.8f + aimOffset.x, aimOffset.y * 0.35f);
-            Cam.Update(Player.Pos, look, dt, paused ? 0f : udt);
+            Cam.Update(Player.Pos, Player.Grounded, Player.Pos.y, look, dt, paused ? 0f : udt);
 
             envTime += dt;
             Environment.Update(dt, envTime, Player, Ball);

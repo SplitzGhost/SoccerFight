@@ -32,7 +32,7 @@ namespace SoccerFight
         }
 
         public static Texture2D Atlas;
-        public static Variant[] Grass, TallGrass, Ferns, Flowers, Mushrooms, Bushes, Ivy, Moss, Canopies, FgLeaves, Banners, Clover, Crystals, Stones, Reeds;
+        public static Variant[] Grass, TallGrass, Ferns, Flowers, Mushrooms, Bushes, Ivy, Moss, Canopies, FgLeaves, Banners, Clover, Crystals, Stones, Reeds, Roots;
         public static Variant Glow;
 
         static AtlasBuilder builder;
@@ -67,6 +67,7 @@ namespace SoccerFight
             Bushes = Many("bush", 3, Mode.Rooted, 0.35f, (v, i) => Bush(801 + i * 29, 1.1f + i * 0.25f));
             Ivy = Many("ivy", 4, Mode.Hanging, 0.7f, (v, i) => IvyStrand(901 + i * 31, 0.9f + i * 0.45f));
             Moss = Many("moss", 2, Mode.Hanging, 0.9f, (v, i) => MossCurtain(1001 + i * 37));
+            Roots = Many("roots", 3, Mode.Hanging, 0.55f, (v, i) => HangingRoots(1701 + i * 67, 0.6f + i * 0.35f));
             Canopies = Many("canopy", 4, Mode.Rooted, 0.22f, (v, i) => Canopy(1101 + i * 41, 3.2f + i * 0.5f));
             FgLeaves = Many("fgleaf", 3, Mode.Rooted, 0.5f, (v, i) => ForegroundFrond(1201 + i * 43));
             Banners = Many("banner", 2, Mode.Hanging, 1.3f, (v, i) => Banner(1301 + i * 47, i));
@@ -394,6 +395,41 @@ namespace SoccerFight
                 prev = pt;
             }
             c.RimLight(new Vector2(0.008f, 0.006f), Palette.FolRim, 0.4f);
+            return c;
+        }
+
+        /// <summary>Roots dangling from a floating rock: tapered, wandering strands with little rootlets.</summary>
+        static SdfCanvas HangingRoots(int seed, float length)
+        {
+            var r = new System.Random(seed);
+            var c = new SdfCanvas(new Rect(-0.32f, -length - 0.1f, 0.64f, length + 0.14f), 200f);
+            Color dark = new Color(0.06f, 0.13f, 0.14f), light = new Color(0.22f, 0.34f, 0.31f);
+            int strands = 2 + r.Next(2);
+            for (int k = 0; k < strands; k++)
+            {
+                Vector2 prev = new Vector2((Rnd(r) - 0.5f) * 0.14f, 0.02f);
+                float len = length * (0.55f + Rnd(r) * 0.45f);
+                float w = 0.02f + Rnd(r) * 0.012f;
+                float wob = Rnd(r) * 6f;
+                const int segs = 8;
+                for (int s = 1; s <= segs; s++)
+                {
+                    float t0 = (s - 1) / (float)segs, t1 = s / (float)segs;
+                    Vector2 next = new Vector2(prev.x + Mathf.Sin(t1 * 5f + wob) * 0.022f + (Rnd(r) - 0.5f) * 0.018f, 0.02f - len * t1);
+                    Vector2 p0 = prev, p1 = next;
+                    float w0 = Mathf.Lerp(w, 0.004f, t0), w1 = Mathf.Lerp(w, 0.004f, t1);
+                    Color col = Color.Lerp(light, dark, t0 * 0.7f);
+                    c.Fill(p => Sdf.Tapered(p, p0, w0, p1, w1), col, 0f, Rect.MinMaxRect(Mathf.Min(p0.x, p1.x) - 0.05f, p1.y - 0.05f, Mathf.Max(p0.x, p1.x) + 0.05f, p0.y + 0.05f));
+                    if (s > 2 && Rnd(r) > 0.55f)
+                    {
+                        Vector2 tip = p1 + new Vector2((Rnd(r) - 0.5f) * 0.2f, -0.04f - Rnd(r) * 0.1f);
+                        float wr = w1 * 0.7f;
+                        c.Fill(p => Sdf.Tapered(p, p1, wr, tip, 0.002f), col, 0f, Rect.MinMaxRect(Mathf.Min(p1.x, tip.x) - 0.04f, tip.y - 0.04f, Mathf.Max(p1.x, tip.x) + 0.04f, p1.y + 0.04f));
+                    }
+                    prev = next;
+                }
+            }
+            c.RimLight(new Vector2(0.01f, 0.008f), new Color(0.45f, 0.72f, 0.66f), 0.5f);
             return c;
         }
 

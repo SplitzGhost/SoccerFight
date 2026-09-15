@@ -19,6 +19,8 @@ namespace SoccerFight
         sealed class Leg { public Transform thigh, shin, boot, glow; }
         sealed class Arm { public Transform upper, fore, hand; }
 
+        static readonly int FloorId = Shader.PropertyToID("_FloorY");
+
         readonly Player player;
         Transform root, flip;
         Transform torso, pelvis, neck, head, tuft;
@@ -473,10 +475,12 @@ namespace SoccerFight
             NearFootWorld = rootW + new Vector2(nearFoot.x * facing, nearFoot.y);
             HeadWorld = rootW + new Vector2(headPos.x * facing, headPos.y + 0.2f);
 
-            // --- contact shadow
-            float h = Mathf.Max(0f, player.Pos.y);
+            // --- contact shadow on whatever surface is below (pitch or platform)
+            float floor = player.GroundY;
+            float h = Mathf.Max(0f, player.Pos.y - floor);
             float s = Mathf.Lerp(1.05f, 0.55f, Mathf.Clamp01(h / 3f));
-            shadow.transform.position = new Vector3(player.Pos.x, 0.02f, 0f);
+            shadow.transform.position = new Vector3(player.Pos.x, floor + 0.02f, 0f);
+            Art.CharacterMat.SetFloat(FloorId, floor);   // contact occlusion follows the surface
             shadow.transform.localScale = new Vector3(s * 1.15f, s, 1f);
             shadow.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.5f, 0.12f, Mathf.Clamp01(h / 3f)));
 

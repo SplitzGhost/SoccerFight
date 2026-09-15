@@ -22,8 +22,9 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 
 | Taste | Aktion |
 |---|---|
-| A / D (oder Pfeiltasten) | Laufen |
-| Leertaste / W | Springen (länger halten = höher) |
+| A / D | Laufen |
+| Leertaste | Springen (länger halten = höher), auch durch Plattformen hindurch nach oben |
+| S | Durch die Plattform unter dir nach unten fallen (in der Luft gehalten: durch alle Plattformen) |
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
 | R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
 | Shift | Ball hochhalten: drücken, wenn der Ball in den Ring fällt. Jede Berührung heilt ein wenig (perfekt = mehr, alle 10 ein Bonus). Zu früh oder zu spät und der Ball fällt, das Zeitfenster wird mit jeder Berührung enger. Währenddessen kein Laufen und kein Schuss |
@@ -32,17 +33,30 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | F2 | VSync an/aus (aus = unbegrenzte FPS) |
 | Enter | Neustart nach Niederlage |
 
-Laufen, Springen, Schuss, Rainbow Flick und Hochhalten lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
+Laufen, Springen, Durchfallen, Schuss, Rainbow Flick und Hochhalten lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
 (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build), VSync, FPS-Anzeige, Bildschirmwackeln,
 Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
+
+## Arena
+
+- **Plattformen:** links und rechts je eine Ruinen-Terrasse, dazwischen zwei Säulenkapitelle (Höhe ~2,2, ein Sprung vom Rasen)
+  und drei schwebende Felsen mit Wurzeln und Kristallen (Höhe ~4,1, ein Sprung von den unteren Ebenen). Alle sind
+  von unten durchspringbar. Blobs springen dem Spieler gezielt hinterher (erkennbar am langen Ducken davor) und hüpfen
+  von der Kante, wenn der Spieler unten ist. Ball, Schatten, Gras und Rainbow Flick funktionieren auf jeder Ebene.
+- **Tiefe:** acht Parallax-Ebenen hinter dem Spielfeld (Büsche, Säulen und Riesenstamm, Arkaden-Ruine, Aquädukt mit
+  Wasserlauf, große Bäume, Waldhügel mit verfallenem Stadion und Flutlichtmast, Berge mit Wasserfall, Gipfel mit Burg vor
+  dem Mond). Jede Ebene bewegt sich entsprechend ihrer Entfernung mit der Kamera, horizontal wie vertikal, und wird nach
+  hinten dunkler (`WorldEnvironment.DepthTint`). Zwischen den Ebenen liegt Nebel.
+- **Spielfeld:** Kreidelinien (Mittellinie, Mittelkreis, Strafräume, Torräume, Elfmeterpunkte) in derselben Perspektive
+  wie die Mähstreifen, ausgetretener Matsch vor den Toren, Pfützen mit Mondspiegelung, die spritzen, wenn man durchläuft.
 
 ## Code-Überblick (`SoccerFight/Assets/Scripts`)
 
 | Ordner | Inhalt |
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
-| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, Monster, Umgebung (`EnvironmentArt`) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`) |
-| `World/` | Parallax-Ebenen (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfall, Blätter, Laternen, Geisterlichter (`Ambient`) |
+| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, Monster, Umgebung (`EnvironmentArt`), tiefe Ebenen, Plattformen und Spielfeldlinien (`DepthArt`) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`) |
+| `World/` | Begehbare Geometrie und Plattformen (`Level`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
 | `Enemies/` | Monster (Blob, Wisp) und Wellen-Logik |
@@ -60,7 +74,9 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Posen:** `PoseKick` / `PoseFlick` / `PoseJuggle` in `PlayerRig.cs`
 - **Spieler-Look:** Formen in `PlayerArt.cs`, Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
-- **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`
+- **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
+- **Plattformen:** Lage und Höhe in `Level.Platforms` (Grafik und Pflanzen passen sich automatisch an), Sprungverhalten der Blobs in `Monster.PlanLeap`
+- **Tiefenwirkung:** Parallax-Faktoren in `WorldEnvironment.AddLayer(...)`-Aufrufen, Abdunklung pro Ebene über die `D*`-Konstanten und `DepthTint`
 - **Glow/Bloom:** `PostFx.cs` und die Material-Intensitäten in `Art.cs`
 - **Wind:** Stärke von Neigung und Böen in `WorldEnvironment.Update`, Wellenform im Shader `SF_Foliage`
 - **Pflanzendichte:** die Schleifen in `WorldEnvironment.BuildNear/BuildGround/BuildRuins`

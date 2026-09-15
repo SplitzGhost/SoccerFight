@@ -22,7 +22,7 @@ namespace SoccerFight
             public bool front;
         }
         struct Spirit { public SpriteRenderer glow, core; public Vector2 home; public float phase; }
-        struct Lamp { public Transform pivot; public SpriteRenderer glow, halo; public Transform[] moths; public float seed; }
+        struct Lamp { public Transform pivot; public SpriteRenderer glow, halo; public Transform[] moths; public float seed, chain; }
         struct Puff { public SpriteRenderer sr; public float phase; }
 
         readonly List<Cloud> clouds = new List<Cloud>();
@@ -36,6 +36,7 @@ namespace SoccerFight
         Transform batGroup;
         Material waterBack, waterFront;
         Vector2 waterBase;
+        float waterShade = 1f;     // the far waterfall sits in a darkened depth layer
         float batTimer = 5f;
 
         // ------------------------------------------------------------------ building
@@ -72,24 +73,38 @@ namespace SoccerFight
             }
         }
 
-        public void BuildWaterfall(Transform far)
+        public void BuildWaterfall(Transform far, float shade)
         {
             Vector2 top = EnvironmentArt.WaterfallTop;
             float len = Mathf.Max(0.5f, EnvironmentArt.WaterfallLength);
             waterBase = new Vector2(top.x, top.y - len);
+            waterShade = shade;
             waterBack = Art.MakeMeshMaterial("SF Waterfall Back", EnvironmentArt.WaterfallTex, 1f, false, false);
             waterFront = Art.MakeMeshMaterial("SF Waterfall Front", EnvironmentArt.WaterfallTex, 1.3f, true, false);
-            WaterQuad(far, "Waterfall Back", top, 0.62f, len, waterBack, -899, new Color(0.55f, 0.8f, 0.86f, 0.55f));
-            WaterQuad(far, "Waterfall Front", top, 0.42f, len, waterFront, -898, new Color(0.7f, 0.92f, 0.96f, 0.5f));
+            WaterQuad(far, "Waterfall Back", top, 0.62f, len, waterBack, -899, Shade(new Color(0.55f, 0.8f, 0.86f, 0.55f), shade));
+            WaterQuad(far, "Waterfall Front", top, 0.42f, len, waterFront, -898, Shade(new Color(0.7f, 0.92f, 0.96f, 0.5f), shade));
             for (int i = 0; i < 7; i++)
             {
                 var sr = Art.MakeSprite("Mist", far, Art.SoftGlow, -897, Art.SpriteMat, new Color(0.8f, 0.94f, 0.97f, 0f));
                 mist.Add(new Puff { sr = sr, phase = i / 7f });
             }
-            var pool = Art.MakeSprite("Pool Glow", far, Art.SoftGlow, -897, Art.SpriteAddMat, new Color(0.6f, 0.9f, 0.95f, 0.25f));
+            var pool = Art.MakeSprite("Pool Glow", far, Art.SoftGlow, -897, Art.SpriteAddMat, Shade(new Color(0.6f, 0.9f, 0.95f, 0.25f), shade));
             pool.transform.localPosition = waterBase;
             pool.transform.localScale = new Vector3(2.2f, 0.7f, 1f);
         }
+
+        /// <summary>Water still spilling from the broken aqueduct channel (shares the animated water materials).</summary>
+        public void BuildAqueductFall(Transform layer, Vector2 top, float length, float shade, int order)
+        {
+            if (waterBack == null) return;
+            WaterQuad(layer, "Aqueduct Fall", top, 0.2f, length, waterBack, order, Shade(new Color(0.55f, 0.8f, 0.86f, 0.5f), shade));
+            WaterQuad(layer, "Aqueduct Fall Core", top, 0.12f, length, waterFront, order + 1, Shade(new Color(0.7f, 0.92f, 0.96f, 0.45f), shade));
+            var splash = Art.MakeSprite("Aqueduct Splash", layer, Art.SoftGlow, order + 1, Art.SpriteAddMat, Shade(new Color(0.6f, 0.9f, 0.95f, 0.22f), shade));
+            splash.transform.localPosition = top - new Vector2(0f, length);
+            splash.transform.localScale = new Vector3(1.1f, 0.4f, 1f);
+        }
+
+        static Color Shade(Color c, float s) => new Color(c.r * s, c.g * s, c.b * s, c.a);
 
         static void WaterQuad(Transform parent, string name, Vector2 top, float width, float length, Material mat, int order, Color tint)
         {
@@ -128,31 +143,33 @@ namespace SoccerFight
                 spirits.Add(new Spirit { glow = glow, core = core, home = home, phase = R() * 20f });
             }
 
-            foreach (var spot in EnvironmentArt.LanternSpots)
+            foreach (var spot in EnvironmentArt.LanternSpots) AddLantern(ruins, spot, -698, 0.42f, R() * 50f);
+        }
+
+        /// <summary>A swinging lantern with a flickering glow and two moths. order = the halo; the rest stacks above it.</summary>
+        public void AddLantern(Transform parent, Vector2 spot, int order, float chainLen, float seed)
+        {
+            var pivot = new GameObject("Lantern").transform;
+            pivot.SetParent(parent, false);
+            pivot.localPosition = spot;
+            var chain = Art.MakeSprite("Chain", pivot, EnvironmentArt.Chain, order + 1);
+            chain.transform.localScale = new Vector3(1f, chainLen, 1f);
+            var body = Art.MakeSprite("Body", pivot, EnvironmentArt.Lantern, order + 2);
+            body.transform.localPosition = new Vector3(0f, -chainLen, 0f);
+            var halo = Art.MakeSprite("Halo", pivot, Art.SoftGlow, order, Art.SpriteAddMat, Palette.Lantern.WithAlpha(0.22f));
+            halo.transform.localPosition = new Vector3(0f, -chainLen - 0.26f, 0f);
+            halo.transform.localScale = Vector3.one * 2.6f;
+            var glow = Art.MakeSprite("Glow", pivot, Art.SoftGlow, order + 3, Art.SpriteGlowMat, Palette.Lantern.WithAlpha(0.5f));
+            glow.transform.localPosition = new Vector3(0f, -chainLen - 0.27f, 0f);
+            glow.transform.localScale = Vector3.one * 0.5f;
+            var moths = new Transform[2];
+            for (int m = 0; m < 2; m++)
             {
-                var pivot = new GameObject("Lantern").transform;
-                pivot.SetParent(ruins, false);
-                pivot.localPosition = spot;
-                const float chainLen = 0.42f;
-                var chain = Art.MakeSprite("Chain", pivot, EnvironmentArt.Chain, -697);
-                chain.transform.localScale = new Vector3(1f, chainLen, 1f);
-                var body = Art.MakeSprite("Body", pivot, EnvironmentArt.Lantern, -696);
-                body.transform.localPosition = new Vector3(0f, -chainLen, 0f);
-                var halo = Art.MakeSprite("Halo", pivot, Art.SoftGlow, -698, Art.SpriteAddMat, Palette.Lantern.WithAlpha(0.22f));
-                halo.transform.localPosition = new Vector3(0f, -chainLen - 0.26f, 0f);
-                halo.transform.localScale = Vector3.one * 2.6f;
-                var glow = Art.MakeSprite("Glow", pivot, Art.SoftGlow, -695, Art.SpriteGlowMat, Palette.Lantern.WithAlpha(0.5f));
-                glow.transform.localPosition = new Vector3(0f, -chainLen - 0.27f, 0f);
-                glow.transform.localScale = Vector3.one * 0.5f;
-                var moths = new Transform[2];
-                for (int m = 0; m < 2; m++)
-                {
-                    var moth = Art.MakeSprite("Moth", ruins, Art.Circle, -694, Art.SpriteMat, new Color(0.85f, 0.82f, 0.7f, 0.9f));
-                    moth.transform.localScale = Vector3.one * 0.028f;
-                    moths[m] = moth.transform;
-                }
-                lamps.Add(new Lamp { pivot = pivot, glow = glow, halo = halo, moths = moths, seed = R() * 50f });
+                var moth = Art.MakeSprite("Moth", parent, Art.Circle, order + 4, Art.SpriteMat, new Color(0.85f, 0.82f, 0.7f, 0.9f));
+                moth.transform.localScale = Vector3.one * 0.028f;
+                moths[m] = moth.transform;
             }
+            lamps.Add(new Lamp { pivot = pivot, glow = glow, halo = halo, moths = moths, seed = seed, chain = chainLen });
         }
 
         public void BuildLeaves(Transform world)
@@ -220,7 +237,7 @@ namespace SoccerFight
                 float flicker = 0.82f + 0.18f * Mathf.PerlinNoise(t * 3.3f, l.seed) + 0.05f * Mathf.Sin(t * 19f + l.seed);
                 l.glow.color = Palette.Lantern.WithAlpha(0.5f * flicker);
                 l.halo.color = Palette.Lantern.WithAlpha(0.22f * flicker);
-                Vector3 center = l.pivot.localPosition + l.pivot.localRotation * new Vector3(0f, -0.69f, 0f);
+                Vector3 center = l.pivot.localPosition + l.pivot.localRotation * new Vector3(0f, -l.chain - 0.27f, 0f);
                 for (int m = 0; m < l.moths.Length; m++)
                 {
                     float a = t * (2.4f + m * 0.9f) + l.seed + m * 2.1f;
@@ -281,7 +298,7 @@ namespace SoccerFight
                 m.sr.transform.localPosition = waterBase + new Vector2(Mathf.Sin(m.phase * 17f) * 0.35f, 0.05f + u * 0.45f);
                 float s = Mathf.Lerp(0.5f, 1.5f, u);
                 m.sr.transform.localScale = new Vector3(s * 1.3f, s, 1f);
-                m.sr.color = new Color(0.8f, 0.94f, 0.97f, a);
+                m.sr.color = new Color(0.8f * waterShade, 0.94f * waterShade, 0.97f * waterShade, a);
             }
         }
 

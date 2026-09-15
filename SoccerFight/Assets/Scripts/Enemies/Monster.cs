@@ -39,6 +39,8 @@ namespace SoccerFight
         float blinkTimer, blink;
         float hopTimer;
         bool grounded;
+        int standing = Level.None;     // platform under a grounded blob
+        bool leapPlanned;              // the next hop is a big leap up to a platform (longer crouch)
         float t;
         float diveTimer, windup, diveTime;
         float sizeMul = 1f;
@@ -135,6 +137,8 @@ namespace SoccerFight
             hpDisplay = 1f;
             squash = squashVel = 0f;
             grounded = false;
+            standing = Level.None;
+            leapPlanned = false;
             hopTimer = Random.Range(0.2f, 0.5f);
             diveTimer = Random.Range(2.5f, 4.5f);
             windup = diveTime = 0f;
@@ -172,7 +176,7 @@ namespace SoccerFight
             flash = big ? 0.1f : 0.07f;
             hpShow = 1.6f;
             Vel += dir.normalized * knock + Vector2.up * (K == Kind.Blob ? knock * 0.45f : 0f);
-            if (K == Kind.Blob && Vel.y > 0.5f) grounded = false;
+            if (K == Kind.Blob && Vel.y > 0.5f) { grounded = false; standing = Level.None; leapPlanned = false; }
             squashVel += big ? 14f : 9f;
             windup = 0f;
             diveTime = 0f;
@@ -253,10 +257,11 @@ namespace SoccerFight
             float ga = (K == Kind.Blob ? 0.14f + 0.08f * pulse : 0.28f + 0.1f * pulse) + windup * 0.6f;
             glow.color = gc.WithAlpha(ga);
 
-            // shadow
-            float h = Mathf.Max(0f, Pos.y - (K == Kind.Wisp ? 0.4f : 0f));
+            // shadow on the surface below
+            float floor = K == Kind.Blob && grounded ? Pos.y : Level.FloorBelow(Pos.x, Pos.y + 0.02f, 0.15f);
+            float h = Mathf.Max(0f, Pos.y - floor - (K == Kind.Wisp ? 0.4f : 0f));
             float s = Mathf.Lerp(0.95f, 0.35f, Mathf.Clamp01(h / 4f)) * scaleNow;
-            shadow.transform.position = new Vector3(Pos.x, 0.02f, 0f);
+            shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
             shadow.transform.localScale = new Vector3(s, s, 1f);
             shadow.color = new Color(0, 0, 0, Mathf.Lerp(0.42f, 0.08f, Mathf.Clamp01(h / 4f)));
 
@@ -274,39 +279,138 @@ namespace SoccerFight
             hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
         }
 
+        const float BlobGravity = 24f;
+        const float LeapCrouch = 0.34f, HopCrouch = 0.16f;
+        const float MaxLeapRise = 2.7f, MaxLeapReach = 4.6f;
+
         void UpdateBlob(float dt, Player player, Vector2 toPlayer)
         {
             if (grounded)
             {
                 Vel.x = Mathf.MoveTowards(Vel.x, 0f, 14f * dt);
+                float before = hopTimer;
                 hopTimer -= dt;
-                if (hopTimer < 0.16f && hopTimer > 0f) squashVel -= 55f * dt; // crouch anticipation
-                if (hopTimer <= 0f && spawnT >= 1f)
-                {
-                    float dir = Mathf.Sign(toPlayer.x);
-                    Vel = new Vector2(dir * Random.Range(2.2f, 3.4f), Random.Range(5.8f, 7.6f));
-                    grounded = false;
-                    squashVel += 12f;
-                    hopTimer = Random.Range(0.45f, 0.85f);
-                }
+                // decide early whether the next hop is a leap, so the crouch can telegraph it
+                if (before >= LeapCrouch && hopTimer < LeapCrouch) leapPlanned = PlanLeap(player, out _, out _);
+                float crouch = leapPlanned ? LeapCrouch : HopCrouch;
+                if (hopTimer < crouch && hopTimer > 0f) squashVel -= (leapPlanned ? 70f : 55f) * dt; // crouch anticipation
+                if (hopTimer <= 0f && spawnT >= 1f) Hop(player, toPlayer);
             }
             else
             {
-                Vel.y -= 24f * dt;
+                Vel.y -= BlobGravity * dt;
             }
+
+            float prevY = Pos.y;
             Pos += Vel * dt;
-            if (Pos.y <= 0f)
+            float half = 0.2f * sizeMul;
+            if (grounded)
             {
-                if (!grounded)
+                // slid or got shoved off an edge
+                if (Level.FloorBelow(Pos.x, Pos.y + 0.02f, half) < Pos.y - 0.01f) { grounded = false; standing = Level.None; }
+            }
+            else if (Vel.y <= 0f)
+            {
+                float floor = Level.FloorBelow(Pos.x, prevY + 0.02f, half, Level.None, out int index);
+                if (Pos.y <= floor)
                 {
                     float impact = -Vel.y;
                     squashVel -= Mathf.Clamp(impact * 1.6f, 4f, 18f);
-                    if (impact > 3f) FxSystem.I.Dust(Pos, new Vector2(Mathf.Sign(Vel.x), 0f), 3, 1.2f, 0.32f, 0.26f);
+                    if (impact > 3f) FxSystem.I.Dust(new Vector2(Pos.x, floor), new Vector2(Mathf.Sign(Vel.x), 0f), 3, 1.2f, 0.32f, 0.26f);
+                    Pos.y = floor;
+                    Vel.y = 0f;
+                    grounded = true;
+                    standing = index;
                 }
-                Pos.y = 0f;
-                Vel.y = 0f;
-                grounded = true;
             }
+        }
+
+        void Hop(Player player, Vector2 toPlayer)
+        {
+            hopTimer = Random.Range(0.45f, 0.85f);
+            bool planned = leapPlanned;
+            leapPlanned = false;
+            float dir = Mathf.Sign(toPlayer.x == 0f ? 1f : toPlayer.x);
+
+            // the player is up on a higher level: leap after them (via a lower step if needed)
+            if (PlanLeap(player, out float top, out float landX))
+            {
+                if (planned) { Leap(top, landX); return; }
+                leapPlanned = true;        // not telegraphed yet: crouch properly first
+                hopTimer = LeapCrouch;
+                return;
+            }
+            if (player.GroundY > Pos.y + 0.6f)
+            {
+                // nothing reachable from here: move towards the closest way up
+                if (NearestStep(player, out float stepX)) dir = Mathf.Sign(stepX - Pos.x);
+            }
+            else if (player.GroundY < Pos.y - 0.6f && standing != Level.None)
+            {
+                // the player is below: bounce to the nearest edge and drop after them
+                var p = Level.Platforms[standing];
+                if (player.Pos.x > p.X0 - 0.6f && player.Pos.x < p.X1 + 0.6f) dir = Pos.x - p.X0 < p.X1 - Pos.x ? -1f : 1f;
+            }
+            Vel = new Vector2(dir * Random.Range(2.2f, 3.4f), Random.Range(5.8f, 7.6f));
+            grounded = false;
+            standing = Level.None;
+            squashVel += 12f;
+        }
+
+        /// <summary>Is there a platform one leap up that brings the blob closer to a player standing higher?</summary>
+        bool PlanLeap(Player player, out float top, out float landX)
+        {
+            top = 0f;
+            landX = Pos.x;
+            float playerFloor = player.GroundY;
+            if (!grounded || playerFloor < Pos.y + 0.6f) return false;
+            int playerPlatform = player.Grounded ? player.OnPlatform : Level.None;
+            int best = Level.None;
+            float bestScore = float.MaxValue, bestX = 0f;
+            var plats = Level.Platforms;
+            for (int i = 0; i < plats.Length; i++)
+            {
+                var p = plats[i];
+                if (p.Y < Pos.y + 0.5f || p.Y > Pos.y + MaxLeapRise || p.Y > playerFloor + 0.1f) continue;
+                // land a little inside, on the side facing the player
+                float lx = Level.ClampOnto(p, Mathf.Lerp(Pos.x, player.Pos.x, 0.35f), 0.45f);
+                float reach = Mathf.Abs(lx - Pos.x);
+                if (reach > MaxLeapReach) continue;
+                float score = reach + Mathf.Abs(Level.ClampOnto(p, player.Pos.x, 0f) - player.Pos.x) * 0.7f - (i == playerPlatform ? 2.5f : 0f);
+                if (score < bestScore) { bestScore = score; best = i; bestX = lx; }
+            }
+            if (best == Level.None) return false;
+            top = plats[best].Y;
+            landX = bestX;
+            return true;
+        }
+
+        /// <summary>x of the closest platform a leap could start under, for walking towards it.</summary>
+        bool NearestStep(Player player, out float x)
+        {
+            x = Pos.x;
+            float bestD = float.MaxValue;
+            foreach (var p in Level.Platforms)
+            {
+                if (p.Y < Pos.y + 0.5f || p.Y > Pos.y + MaxLeapRise || p.Y > player.GroundY + 0.1f) continue;
+                float cx = Level.ClampOnto(p, Pos.x, 0.45f);
+                float d = Mathf.Abs(cx - Pos.x) + Mathf.Abs(p.Center - player.Pos.x) * 0.5f;
+                if (d < bestD) { bestD = d; x = cx; }
+            }
+            return bestD < float.MaxValue;
+        }
+
+        void Leap(float top, float landX)
+        {
+            const float clearance = 0.6f;
+            float apex = top - Pos.y + clearance;
+            float vy = Mathf.Sqrt(2f * BlobGravity * apex);
+            float flight = vy / BlobGravity + Mathf.Sqrt(2f * clearance / BlobGravity);
+            Vel = new Vector2((landX - Pos.x) / flight, vy);
+            grounded = false;
+            standing = Level.None;
+            squashVel += 18f;
+            FxSystem.I.Dust(Pos, new Vector2(-Mathf.Sign(Vel.x + 0.001f), 0.2f), 4, 1.4f, 0.34f, 0.28f);
         }
 
         void UpdateWisp(float dt, Player player, Vector2 toPlayer)
@@ -336,7 +440,7 @@ namespace SoccerFight
             }
             Pos += Vel * dt;
             if (Pos.y < 0.5f) { Pos.y = 0.5f; Vel.y = Mathf.Abs(Vel.y) * 0.5f; }
-            if (Pos.y > 7.5f) { Pos.y = 7.5f; Vel.y = -Mathf.Abs(Vel.y) * 0.5f; }
+            if (Pos.y > 9.2f) { Pos.y = 9.2f; Vel.y = -Mathf.Abs(Vel.y) * 0.5f; }
 
             // tail: each segment chases the previous one (smooth trailing motion)
             Vector2 anchor = Pos + new Vector2(-Mathf.Sign(faceT) * 0.18f, -0.12f);

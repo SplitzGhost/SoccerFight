@@ -12,6 +12,8 @@ namespace SoccerFight
         public static float MoveX;
         public static bool JumpPressed;
         public static bool JumpHeld;
+        public static bool DownPressed;
+        public static bool DownHeld;
         public static bool ShootPressed;
         public static bool FlickPressed;
         public static bool JugglePressed;
@@ -32,7 +34,7 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -53,7 +55,7 @@ namespace SoccerFight
             if (Blocked)
             {
                 MoveX = 0f;
-                JumpPressed = JumpHeld = ShootPressed = FlickPressed = JugglePressed = false;
+                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
             }
             else
             {
@@ -63,6 +65,8 @@ namespace SoccerFight
                 MoveX = move;
                 JumpPressed = KeyBindings.WasPressed(GameAction.Jump);
                 JumpHeld = KeyBindings.IsPressed(GameAction.Jump);
+                DownPressed = KeyBindings.WasPressed(GameAction.Down);
+                DownHeld = KeyBindings.IsPressed(GameAction.Down);
                 ShootPressed = KeyBindings.WasPressed(GameAction.Shoot);
                 FlickPressed = KeyBindings.WasPressed(GameAction.Flick);
                 JugglePressed = KeyBindings.WasPressed(GameAction.Juggle);
@@ -78,7 +82,7 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
+            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = false;
         }
     }
 }

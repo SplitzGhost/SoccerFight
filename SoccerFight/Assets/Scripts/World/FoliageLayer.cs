@@ -160,8 +160,8 @@ namespace SoccerFight
             mr.receiveShadows = false;
         }
 
-        /// <summary>Foliage material for one layer: fog tint and wind scale are per layer.</summary>
-        public static Material MakeMaterial(string name, float fog, float windScale, bool glow = false, float intensity = 1f)
+        /// <summary>Foliage material for one layer: fog, depth darkening and wind scale are per layer.</summary>
+        public static Material MakeMaterial(string name, float fog, float windScale, bool glow = false, float intensity = 1f, Color? tint = null)
         {
             var m = new Material(Shader.Find("SoccerFight/Foliage")) { name = name };
             m.mainTexture = FoliageArt.Atlas;
@@ -169,6 +169,7 @@ namespace SoccerFight
             m.SetFloat("_Glow", glow ? 1f : 0f);
             m.SetFloat("_FogAmount", fog);
             m.SetColor("_FogColor", Color.Lerp(Palette.Fog, Palette.MidBottom, 0.35f));
+            m.SetColor("_Tint", tint ?? Color.white);
             m.SetFloat("_WindScale", windScale);
             m.SetFloat("_SrcBlend", (float)BlendMode.One);
             m.SetFloat("_DstBlend", glow ? (float)BlendMode.One : (float)BlendMode.OneMinusSrcAlpha);
