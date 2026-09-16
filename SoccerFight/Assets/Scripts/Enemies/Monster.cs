@@ -53,12 +53,17 @@ namespace SoccerFight
         public Vector2 Center => K == Kind.Blob ? Pos + new Vector2(0f, 0.36f * scaleNow) : Pos;
         public bool Named => Rank != Rank.Normal;
         public bool Has(EliteAffix a) => Affixes.Contains(a);
-        public float DamageTakenMul => Has(EliteAffix.Armored) ? 0.65f : 1f;
+        public float DamageTakenMul => (Has(EliteAffix.Armored) ? 0.65f : 1f) * (ExposeTime > 0f ? 1.4f : 1f);
+        public bool Halted => FreezeTime > 0f || StunTime > 0f;
         public float TopY => Center.y + Radius + 0.15f;
         public int BossPhase => Rank != Rank.Boss ? 0 : Hp > MaxHp * 0.66f ? 0 : Hp > MaxHp * 0.33f ? 1 : 2;
 
         // ---- status effects
         public float BurnTime, BurnDps, SlowTime, SlowAmount, FreezeTime;
+        /// <summary>Knocked over (slide tackle, nutmeg) or held by the whistle: no AI, only gravity.</summary>
+        public float StunTime;
+        /// <summary>Nutmegged: takes more damage from everything for a while.</summary>
+        public float ExposeTime;
         public int HitCount;
         public bool Burning => BurnTime > 0f;
         public bool Slowed => SlowTime > 0f || FreezeTime > 0f;
@@ -88,6 +93,7 @@ namespace SoccerFight
         bool grounded;
         int standing = Level.None;     // platform under a grounded blob
         bool leapPlanned;              // the next hop is a big leap up to a platform (longer crouch)
+        Vector2 focus;                  // what the AI currently believes is the player
         float diveTimer, windup, diveTime;
         float attackTimer, attackWind;  // spitter / lantern / brute charge / mini special
         float chargeTime;
@@ -204,6 +210,7 @@ namespace SoccerFight
             attackTimer = Random.Range(1.8f, 3f); attackWind = 0f; chargeTime = 0f; burst = 0; burstTimer = 0f;
             primeTime = 0f; detonated = false; slamPending = false; teleportT = -1f; regenDelay = 0f;
             BurnTime = BurnDps = SlowTime = SlowAmount = FreezeTime = 0f; HitCount = 0; PullStrength = 0f;
+            StunTime = ExposeTime = 0f;
             moveIndex = 0; moveT = 0f; moveCd = 2.2f; moveActive = false; lastPhase = 0;
             t = Random.value * 10f;
             faceT = s.Vel.x >= 0f ? 1f : -1f;
@@ -353,6 +360,26 @@ namespace SoccerFight
             FxSystem.I.Ring(FxLayer.Front, Center, 0.1f, Radius * 2.4f, 0.12f, 0.01f, 0.25f, Color.white, new Color(0.6f, 0.9f, 1f, 0f), 2f);
         }
 
+        /// <summary>Knocked over or held: no attacks, no walking, just gravity. Bosses only ever briefly.</summary>
+        public void Stun(float time)
+        {
+            if (!Alive) return;
+            if (Rank == Rank.Boss) time = Mathf.Min(time, 1.2f);
+            StunTime = Mathf.Max(StunTime, time);
+            windup = 0f;
+            diveTime = 0f;
+            attackWind = 0f;
+            squashVel += 8f;
+            FxSystem.I.Sparkles(Center + new Vector2(0f, Radius * 0.9f), Radius * 0.9f, 4, new Color(1f, 0.95f, 0.7f), 2.4f, 0.5f);
+        }
+
+        /// <summary>Nutmegged: everything hits harder while the mark lasts.</summary>
+        public void Expose(float time)
+        {
+            if (!Alive) return;
+            ExposeTime = Mathf.Max(ExposeTime, time);
+        }
+
         void Die(Vector2 dir)
         {
             Alive = false;
@@ -398,7 +425,9 @@ namespace SoccerFight
             t += dt;
             spawnT = Mathf.Min(1f, spawnT + dt / (Rank == Rank.Boss ? 0.9f : 0.45f));
             scaleNow = MathUtil.EaseOutBack(spawnT, 2.2f) * sizeMul;
-            Vector2 toPlayer = player.Pos + new Vector2(0f, 0.8f) - Center;
+            // the decoy takes the attention while it lasts: every chase and every shot aims here
+            focus = Decoys.Focus(player.Pos);
+            Vector2 toPlayer = focus + new Vector2(0f, 0.8f) - Center;
             float targetFace = Mathf.Abs(toPlayer.x) > 0.2f ? Mathf.Sign(toPlayer.x) : faceT;
 
             UpdateStatus(dt);
@@ -418,11 +447,11 @@ namespace SoccerFight
                 else { grounded = false; standing = Level.None; }
             }
 
-            float slow = FreezeTime > 0f ? 0f : 1f - SlowAmount * (SlowTime > 0f ? 1f : 0f);
+            float slow = Halted ? 0f : 1f - SlowAmount * (SlowTime > 0f ? 1f : 0f);
             float spd = speedMul * slow * StageMechanics.EnemySpeedBoost;
-            if (FreezeTime > 0f)
+            if (Halted)
             {
-                // frozen solid: only gravity and knockback move it
+                // frozen or knocked over: only gravity and knockback move it
                 if (K == Kind.Blob && !grounded) Vel.y -= BlobGravity * dt;
                 Vel *= Mathf.Exp(-6f * dt);
                 Vector2 prev = Pos;
@@ -466,6 +495,8 @@ namespace SoccerFight
             }
             if (SlowTime > 0f) SlowTime -= dt; else SlowAmount = 0f;
             if (FreezeTime > 0f) FreezeTime -= dt;
+            if (StunTime > 0f) StunTime -= dt;
+            if (ExposeTime > 0f) ExposeTime -= dt;
             if (Has(EliteAffix.Regenerating))
             {
                 regenDelay -= dt;
@@ -571,7 +602,7 @@ namespace SoccerFight
             {
                 // mini-boss special: a high leap that ends in a two-way shockwave
                 moveCd -= dt * rate;
-                if (moveCd <= 0f && spawnT >= 1f) { moveCd = Random.Range(5f, 6.5f); LeapAt(player.Pos.x, 1.4f); slamPending = true; }
+                if (moveCd <= 0f && spawnT >= 1f) { moveCd = Random.Range(5f, 6.5f); LeapAt(focus.x, 1.4f); slamPending = true; }
             }
         }
 
@@ -603,12 +634,12 @@ namespace SoccerFight
             {
                 attackWind = 0f;
                 Vector2 from = Center + new Vector2(faceT * Radius * 0.6f, Radius * 0.5f);
-                EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(Random.Range(-0.4f, 0.4f), 0.2f), ContactDamage * 0.85f, look.Glow);
+                EnemyProjectiles.I.Lob(from, focus + new Vector2(Random.Range(-0.4f, 0.4f), 0.2f), ContactDamage * 0.85f, look.Glow);
                 squashVel += 16f;
                 if (Rank != Rank.Normal)
                 {
-                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(-1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
-                    EnemyProjectiles.I.Lob(from, player.Pos + new Vector2(1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
+                    EnemyProjectiles.I.Lob(from, focus + new Vector2(-1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
+                    EnemyProjectiles.I.Lob(from, focus + new Vector2(1.6f, 0.2f), ContactDamage * 0.85f, look.Glow);
                 }
             }
         }
@@ -656,7 +687,7 @@ namespace SoccerFight
             {
                 // the player is below: bounce to the nearest edge and drop after them
                 var p = Level.Platforms[standing];
-                if (player.Pos.x > p.X0 - 0.6f && player.Pos.x < p.X1 + 0.6f) dir = Pos.x - p.X0 < p.X1 - Pos.x ? -1f : 1f;
+                if (focus.x > p.X0 - 0.6f && focus.x < p.X1 + 0.6f) dir = Pos.x - p.X0 < p.X1 - Pos.x ? -1f : 1f;
             }
             else if (Type == EnemyType.Spitter && Mathf.Abs(toPlayer.x) < 5f) dir = -dir;   // keep lobbing distance
             float hx = Random.Range(2.2f, 3.4f), hy = Random.Range(5.8f, 7.6f);
@@ -683,10 +714,10 @@ namespace SoccerFight
                 var p = plats[i];
                 if (p.Y < Pos.y + 0.5f || p.Y > Pos.y + MaxLeapRise || p.Y > playerFloor + 0.1f) continue;
                 // land a little inside, on the side facing the player
-                float lx = Level.ClampOnto(p, Mathf.Lerp(Pos.x, player.Pos.x, 0.35f), 0.45f);
+                float lx = Level.ClampOnto(p, Mathf.Lerp(Pos.x, focus.x, 0.35f), 0.45f);
                 float reach = Mathf.Abs(lx - Pos.x);
                 if (reach > MaxLeapReach) continue;
-                float score = reach + Mathf.Abs(Level.ClampOnto(p, player.Pos.x, 0f) - player.Pos.x) * 0.7f - (i == playerPlatform ? 2.5f : 0f);
+                float score = reach + Mathf.Abs(Level.ClampOnto(p, focus.x, 0f) - focus.x) * 0.7f - (i == playerPlatform ? 2.5f : 0f);
                 if (score < bestScore) { bestScore = score; best = i; bestX = lx; }
             }
             if (best == Level.None) return false;
@@ -704,7 +735,7 @@ namespace SoccerFight
             {
                 if (p.Y < Pos.y + 0.5f || p.Y > Pos.y + MaxLeapRise || p.Y > player.GroundY + 0.1f) continue;
                 float cx = Level.ClampOnto(p, Pos.x, 0.45f);
-                float d = Mathf.Abs(cx - Pos.x) + Mathf.Abs(p.Center - player.Pos.x) * 0.5f;
+                float d = Mathf.Abs(cx - Pos.x) + Mathf.Abs(p.Center - focus.x) * 0.5f;
                 if (d < bestD) { bestD = d; x = cx; }
             }
             return bestD < float.MaxValue;
@@ -739,10 +770,10 @@ namespace SoccerFight
 
         void UpdateWisp(float dt, Player player, Vector2 toPlayer, float spd)
         {
-            float side = Pos.x > player.Pos.x ? 1f : -1f;
+            float side = Pos.x > focus.x ? 1f : -1f;
             bool lantern = Type == EnemyType.Lantern;
             float dist = lantern ? 4.6f : 2.6f, height = lantern ? 3.2f : 2.4f;
-            Vector2 hover = player.Pos + new Vector2(side * dist, height + Mathf.Sin(t * 1.3f) * 0.45f);
+            Vector2 hover = focus + new Vector2(side * dist, height + Mathf.Sin(t * 1.3f) * 0.45f);
             float rate = Has(EliteAffix.Frenzied) ? 1.6f : 1f;
 
             if (teleportT >= 0f)
@@ -754,7 +785,7 @@ namespace SoccerFight
                 if (teleportT >= 0.3f && teleportT - dt < 0.3f)
                 {
                     FxSystem.I.Burst(Center, look.Top, look.Glow, 0.5f);
-                    Pos = player.Pos + new Vector2(-player.Facing * 2.4f, 2.2f);
+                    Pos = focus + new Vector2(-player.Facing * 2.4f, 2.2f);
                     ResetChains();
                     FxSystem.I.Ring(FxLayer.Front, Pos, 0.1f, 1.2f, 0.12f, 0.01f, 0.25f, look.Glow, look.Glow.WithAlpha(0f), 2.2f);
                 }
@@ -785,7 +816,7 @@ namespace SoccerFight
                     {
                         burst--;
                         burstTimer = 0.14f;
-                        Vector2 dir = (player.Pos + new Vector2(0f, 0.8f) - Center).normalized;
+                        Vector2 dir = (focus + new Vector2(0f, 0.8f) - Center).normalized;
                         EnemyProjectiles.I.Bolt(Center + dir * Radius, dir, 9f * Mathf.Min(spd, 1.3f), ContactDamage * 0.8f, look.Glow);
                         squashVel += 6f;
                     }
@@ -869,8 +900,8 @@ namespace SoccerFight
                 }
                 else
                 {
-                    float side = Pos.x > player.Pos.x ? 1f : -1f;
-                    Vector2 hover = new Vector2(player.Pos.x + side * 4.5f, 4.2f + Mathf.Sin(t * 0.9f) * 0.6f);
+                    float side = Pos.x > focus.x ? 1f : -1f;
+                    Vector2 hover = new Vector2(focus.x + side * 4.5f, 4.2f + Mathf.Sin(t * 0.9f) * 0.6f);
                     Vel = MathUtil.Damp(Vel, Vector2.ClampMagnitude((hover - Pos) * 1.2f, 4f), 2f, dt);
                 }
                 moveCd -= dt * tempo;
@@ -920,7 +951,7 @@ namespace SoccerFight
             switch (move)
             {
                 case BossMove.LeapSlam:
-                    if (!telegraph && burst == 0 && grounded) { burst = 1; LeapAt(player.Pos.x, 1.15f - 0.1f * phase); }
+                    if (!telegraph && burst == 0 && grounded) { burst = 1; LeapAt(focus.x, 1.15f - 0.1f * phase); }
                     if (moveT > 99f || (burst == 1 && moveT > 3.5f)) EndMove(2.2f);
                     break;
                 case BossMove.Charge:
@@ -942,10 +973,10 @@ namespace SoccerFight
                             burstTimer = K == Kind.Blob ? 0.12f : 0.1f;
                             float spread = (burst - (total - 1) * 0.5f) * 0.9f;
                             Vector2 from = Center + new Vector2(0f, Radius * 0.6f);
-                            if (K == Kind.Blob) ep.Lob(from, player.Pos + new Vector2(spread, 0.2f), ContactDamage * 0.55f, look.Glow);
+                            if (K == Kind.Blob) ep.Lob(from, focus + new Vector2(spread, 0.2f), ContactDamage * 0.55f, look.Glow);
                             else
                             {
-                                Vector2 dir = MathUtil.Rotate((player.Pos + new Vector2(0f, 0.8f) - from).normalized, spread * 7f);
+                                Vector2 dir = MathUtil.Rotate((focus + new Vector2(0f, 0.8f) - from).normalized, spread * 7f);
                                 ep.Bolt(from, dir, 9.5f, ContactDamage * 0.5f, look.Glow);
                             }
                             burst++;
@@ -974,7 +1005,7 @@ namespace SoccerFight
                     {
                         burst = 1;
                         FxSystem.I.Burst(Center, look.Top, look.Glow, 1.2f);
-                        Pos = new Vector2(Mathf.Clamp(player.Pos.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
+                        Pos = new Vector2(Mathf.Clamp(focus.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
                         ResetChains();
                         FxSystem.I.Ring(FxLayer.Front, Pos, 0.2f, 2.4f, 0.2f, 0.01f, 0.35f, look.Glow, look.Glow.WithAlpha(0f), 2.4f);
                     }
@@ -989,7 +1020,7 @@ namespace SoccerFight
                         int n = 3 + phase;
                         for (int i = 0; i < n; i++)
                         {
-                            float x = player.Pos.x + (i - (n - 1) * 0.5f) * 2.2f + Random.Range(-0.4f, 0.4f);
+                            float x = focus.x + (i - (n - 1) * 0.5f) * 2.2f + Random.Range(-0.4f, 0.4f);
                             if (move == BossMove.LightningCall) StageMechanics.I.Strike(x, ContactDamage * 0.9f, 0.9f + i * 0.12f);
                             else StageMechanics.I.Geyser(x, ContactDamage * 0.9f, 0.9f + i * 0.12f);
                         }
@@ -1047,8 +1078,10 @@ namespace SoccerFight
             }
             Color tint = Color.white;
             if (FreezeTime > 0f) tint = new Color(0.62f, 0.85f, 1f);
+            else if (StunTime > 0f) tint = Color.Lerp(Color.white, new Color(1f, 0.93f, 0.62f), 0.45f + 0.2f * Mathf.Sin(t * 16f));
             else if (SlowTime > 0f) tint = Color.Lerp(Color.white, new Color(0.7f, 0.88f, 1f), 0.6f);
             else if (BurnTime > 0f) tint = Color.Lerp(Color.white, new Color(1f, 0.72f, 0.55f), 0.35f + 0.15f * Mathf.Sin(t * 20f));
+            if (ExposeTime > 0f) tint = Color.Lerp(tint, Palette.Showboat, 0.35f + 0.12f * Mathf.Sin(t * 9f));
             bool white = flash > 0f;
             if (!white) bodySr.color = tint.WithAlpha(fade);
             foreach (var p in parts)

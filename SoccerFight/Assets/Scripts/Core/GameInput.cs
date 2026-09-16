@@ -20,6 +20,7 @@ namespace SoccerFight
         public static bool PowerPressed;
         public static bool StepOverPressed;
         public static bool BicyclePressed;
+        public static bool TacklePressed, PuntPressed, WallPressed, NutmegPressed, DecoyPressed, WhistlePressed;
         public static bool RestartPressed;
         public static bool PausePressed;
         public static bool ToggleFps;
@@ -43,6 +44,7 @@ namespace SoccerFight
             MoveX = 0f;
             JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
             PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
+            TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -70,6 +72,7 @@ namespace SoccerFight
                 MoveX = 0f;
                 JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
                 PowerPressed = StepOverPressed = BicyclePressed = false;
+                TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
             }
             else
             {
@@ -87,6 +90,12 @@ namespace SoccerFight
                 PowerPressed = KeyBindings.WasPressed(GameAction.PowerShot);
                 StepOverPressed = KeyBindings.WasPressed(GameAction.StepOver);
                 BicyclePressed = KeyBindings.WasPressed(GameAction.Bicycle);
+                TacklePressed = KeyBindings.WasPressed(GameAction.Tackle);
+                PuntPressed = KeyBindings.WasPressed(GameAction.Punt);
+                WallPressed = KeyBindings.WasPressed(GameAction.Wall);
+                NutmegPressed = KeyBindings.WasPressed(GameAction.Nutmeg);
+                DecoyPressed = KeyBindings.WasPressed(GameAction.Decoy);
+                WhistlePressed = KeyBindings.WasPressed(GameAction.Whistle);
             }
 
             if (cam != null)
@@ -101,6 +110,7 @@ namespace SoccerFight
         {
             JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             PowerPressed = StepOverPressed = BicyclePressed = false;
+            TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
         }
     }
 }

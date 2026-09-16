@@ -48,6 +48,20 @@ namespace SoccerFight
         public float ReturnSpeedMul, CatchRadiusMul, JuggleHealMul, JuggleWindowMul, Luck;
         public float FlickRadiusMul, BlastRadiusMul;
 
+        // ---- the later moves
+        public bool TackleWave;        // Bodenwelle: shockwave at the end of a slide
+        public float TackleHeal;       // Blutgrätsche: heal per swept monster
+        public int PuntExtra;          // Hagel: extra meteors
+        public bool PuntFire;          // Brandsatz: the crater keeps burning
+        public float WallLifeBonus;    // Stabile Mauer
+        public bool WallBounce;        // Abpraller: the ball leaves the wall faster and harder
+        public bool NutmegSpread;      // Demütigung: the mark jumps to a neighbour
+        public float NutmegRefund;     // Straßenfußball: every nutmeg shaves cooldowns
+        public float WhistleBonus;     // Nachspielzeit
+        public bool RedCard;           // Rote Karte: one normal monster is sent off
+        public int DecoyCount;         // Doppelgänger: extra decoys
+        public bool DecoyBlast;        // Ablenkungsmanöver: the decoy bursts hard
+
         public void Reset()
         {
             DamageMul = ShotDamageMul = PowerDamageMul = FlickDamageMul = BlastDamageMul = 1f;
@@ -73,6 +87,10 @@ namespace SoccerFight
 
             ReturnSpeedMul = CatchRadiusMul = JuggleHealMul = JuggleWindowMul = 1f; Luck = 0f;
             FlickRadiusMul = BlastRadiusMul = 1f;
+
+            TackleWave = false; TackleHeal = 0f; PuntExtra = 0; PuntFire = false;
+            WallLifeBonus = 0f; WallBounce = false; NutmegSpread = false; NutmegRefund = 0f;
+            WhistleBonus = 0f; RedCard = false; DecoyCount = 0; DecoyBlast = false;
         }
     }
 }

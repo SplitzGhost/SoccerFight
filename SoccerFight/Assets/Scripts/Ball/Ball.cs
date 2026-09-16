@@ -11,7 +11,7 @@ namespace SoccerFight
     {
         // Pierce: power shot that flies straight through every monster. Blast: bicycle kick that
         // explodes on the first thing it touches.
-        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast }
+        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor }
 
         public State St { get; private set; } = State.Held;
         public Vector2 Pos;
@@ -35,6 +35,7 @@ namespace SoccerFight
 
         Transform root, stretch, spinNode;
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
+        SpriteRenderer markerRing, markerGlow;
         TrailRenderer shotTrail, rainbowTrail, heavyTrail;
         Gradient pierceGradient, blastGradient;
         float spin, spinVel;
@@ -76,6 +77,10 @@ namespace SoccerFight
             pattern = Art.MakeSprite("Pattern", spinNode, Art.BallPattern, order);
             shade = Art.MakeSprite("Shade", stretch, Art.BallShade, order + 1);
             highlight = Art.MakeSprite("Highlight", stretch, Art.BallHighlight, order + 2, Art.SpriteAddMat, new Color(1, 1, 1, 0.9f));
+
+            // goal-kick marker: a ring on the ground that tightens while the ball is out of frame
+            markerGlow = Art.MakeSprite("MeteorGlow", parent, Art.SoftGlow, -43, Art.SpriteGlowMat, Color.clear);
+            markerRing = Art.MakeSprite("MeteorRing", parent, Art.Ring, -42, Art.SpriteGlowMat, Color.clear);
 
             shotTrail = MakeTrail("ShotTrail", Art.TrailShotMat, 0.17f, R * 1.8f, order - 3);
             var g = new Gradient();
@@ -148,6 +153,7 @@ namespace SoccerFight
             stateTime = 0f;
             JuggleMode = false;
             Charge = 0f;
+            HideMarker();
             shotTrail.Clear();
             rainbowTrail.Clear();
             heavyTrail.Clear();
@@ -201,6 +207,98 @@ namespace SoccerFight
             if (pierceMarked) return;
             pierceMarked = true;
             Combat.OnPierceTarget(pierceTarget);
+        }
+
+        // ---- goal kick: the ball leaves the frame and comes back down on the marked spot
+        Vector2 meteorTarget;
+        float meteorDelay;
+        bool meteorFalling;
+
+        /// <summary>Punted out of the frame; it returns as a meteor on target after delay seconds.</summary>
+        public void Punt(Vector2 target, float delay)
+        {
+            Enter(State.Meteor);
+            hitIds.Clear();
+            FlightId++;
+            meteorTarget = target;
+            meteorDelay = delay;
+            meteorFalling = false;
+            Vel = new Vector2(Random.Range(-1.5f, 1.5f), 26f);
+            JuggleMode = false;
+            heavyTrail.colorGradient = blastGradient;
+            heavyTrail.Clear();
+            squashVel += 7f;
+        }
+
+        void MeteorImpact()
+        {
+            var game = Game.I;
+            var fx = FxSystem.I;
+            var st = game.Run.Stats;
+            Vector2 p = meteorTarget;
+            float radius = Player.PuntRadius * st.AreaMul;
+            game.Waves.Blast(p, radius, Player.PuntDamage, Src.Punt);
+            // Hagel: a couple of smaller craters left and right
+            for (int i = 0; i < st.PuntExtra; i++)
+            {
+                float off = (i % 2 == 0 ? 1f : -1f) * (2.1f + i * 0.5f);
+                Vector2 q = new Vector2(Mathf.Clamp(p.x + off, -Player.ArenaHalf, Player.ArenaHalf), p.y);
+                game.Waves.Blast(q, radius * 0.7f, Player.PuntDamage * 0.5f, Src.Punt);
+                fx.Ring(FxLayer.Front, q, 0.2f, radius * 0.8f, 0.3f, 0.02f, 0.4f, Color.white, Palette.Amber.WithAlpha(0f), 2.4f);
+                fx.Dust(q, Vector2.up, 6, 2.6f, 0.5f, 0.4f);
+            }
+            if (st.PuntFire)
+            {
+                foreach (var m in game.Waves.Monsters)
+                    if (m.Alive && (m.Center - p).sqrMagnitude < (radius + m.Radius) * (radius + m.Radius))
+                        m.Ignite(Mathf.Max(6f, Player.PuntDamage * 0.12f), 4f);
+                for (int i = 0; i < 10; i++)
+                    fx.Streak(FxLayer.Front, p + new Vector2(Random.Range(-radius, radius), 0.1f), new Vector2(Random.Range(-1f, 1f), Random.Range(3f, 7f)),
+                        Random.Range(0.4f, 0.8f), 0.09f, 0.05f, new Color(1f, 0.85f, 0.45f), Palette.BlastOrange.WithAlpha(0f), 2.6f, 1.4f, 4f);
+            }
+
+            fx.Flash(p, 6f, Palette.Amber, 0.26f, 2.8f);
+            fx.Flash(p, 2.6f, Color.white, 0.1f, 3.4f);
+            fx.Ring(FxLayer.Front, p, 0.3f, radius * 1.25f, 0.6f, 0.03f, 0.5f, Color.white, Palette.Amber.WithAlpha(0f), 2.8f);
+            fx.Ring(FxLayer.Front, p, 0.15f, radius * 0.7f, 0.3f, 0.02f, 0.3f, Palette.Gold, Palette.BlastOrange.WithAlpha(0f), 2.4f);
+            fx.Sparks(p, Vector2.up, 150f, 26, 7f, 18f, Palette.Amber, 2.8f, 0.06f, 0.45f, 13f);
+            fx.Dust(p, Vector2.right, 10, 4f, 0.7f, 0.45f);
+            fx.Dust(p, Vector2.left, 10, 4f, 0.7f, 0.45f);
+            fx.Sparkles(p + Vector2.up * 0.5f, 1.6f, 12, Palette.Gold, 3f, 0.8f);
+
+            game.Cam.AddTrauma(0.7f);
+            game.Cam.Kick(new Vector2(0f, -0.4f));
+            game.Post.Impact(0.9f);
+            TimeFx.HitStop(0.09f, 0.04f);
+
+            Pos = p + new Vector2(0f, R);
+            Vel = new Vector2(Random.Range(-2f, 2f), 7f);
+            Enter(State.Loose);
+            squashVel -= 12f;
+            HideMarker();
+        }
+
+        void HideMarker()
+        {
+            if (markerRing != null) markerRing.color = Color.clear;
+            if (markerGlow != null) markerGlow.color = Color.clear;
+        }
+
+        /// <summary>Ground mark under the falling ball: tightens and beats faster as it closes in.</summary>
+        void UpdateMarker(float dt)
+        {
+            float k = Mathf.Clamp01(stateTime / (meteorDelay + 0.35f));
+            float pulse = 0.55f + 0.45f * Mathf.Sin(stateTime * (9f + 26f * k));
+            float radius = Player.PuntRadius * Game.I.Run.Stats.AreaMul;
+            float r = Mathf.Lerp(radius * 1.35f, radius * 0.55f, MathUtil.EaseInQuad(k));
+            markerRing.transform.position = new Vector3(meteorTarget.x, meteorTarget.y + 0.05f, 0f);
+            markerRing.transform.localScale = new Vector3(r * 2f, r * 0.9f, 1f);
+            markerRing.color = Palette.Amber.WithAlpha((0.35f + 0.45f * k) * pulse);
+            markerGlow.transform.position = markerRing.transform.position;
+            markerGlow.transform.localScale = new Vector3(r * 2.6f, r * 1.2f, 1f);
+            markerGlow.color = Palette.Amber.WithAlpha(0.1f + 0.2f * k * pulse);
+            if (Random.value < dt * 12f * k)
+                FxSystem.I.Sparks(new Vector2(meteorTarget.x + Random.Range(-r, r), meteorTarget.y + 0.05f), Vector2.up, 26f, 1, 2f, 5f, Palette.Amber, 2.4f, 0.04f, 0.3f, 5f);
         }
 
         /// <summary>Bicycle kick: a heavy shot that explodes on the first surface or monster it meets.</summary>
@@ -405,6 +503,33 @@ namespace SoccerFight
                     if (stateTime > 0.75f || Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.55f) { MarkPierceTarget(); StartReturn(); }
                     break;
                 }
+                case State.Meteor:
+                {
+                    // out of the frame, a beat of nothing but the marker, then straight back down
+                    if (!meteorFalling)
+                    {
+                        Pos += Vel * dt;
+                        Vel.y = Mathf.Max(6f, Vel.y - 14f * dt);
+                        if (stateTime >= meteorDelay)
+                        {
+                            meteorFalling = true;
+                            Pos = meteorTarget + new Vector2(0f, 16f);
+                            Vel = new Vector2(0f, -46f);
+                            heavyTrail.Clear();
+                            squashVel += 6f;
+                        }
+                    }
+                    else
+                    {
+                        Pos += Vel * dt;
+                        if (Random.value < dt * 40f)
+                            FxSystem.I.Streak(FxLayer.Front, Pos + new Vector2(Random.Range(-0.3f, 0.3f), 0.4f), new Vector2(0f, 14f),
+                                0.2f, 0.06f, 0.05f, new Color(1f, 0.9f, 0.6f), Palette.Amber.WithAlpha(0f), 2.6f, 2f);
+                        if (Pos.y <= meteorTarget.y + R) MeteorImpact();
+                    }
+                    UpdateMarker(dt);
+                    break;
+                }
                 case State.Blast:
                 {
                     Vel.y -= 20f * Gravity * dt;
@@ -457,6 +582,9 @@ namespace SoccerFight
 
         void CollideWorld(float restitution)
         {
+            // the free-kick wall bounces the ball back into play (a pierce shot goes straight through)
+            if (St != State.Pierce && Barrier.I != null && Barrier.I.Deflect(prevPos, ref Pos, ref Vel, R)) squashVel -= 6f;
+
             // one-way platforms: only a ball that was above a surface last step can land on it
             float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f, 0f, passTimer > 0f ? passPlatform : Level.None, out int under);
             if (Pos.y < floor + R)
@@ -573,6 +701,7 @@ namespace SoccerFight
                 case State.Loose: glowCol = Palette.ShotCyan; glowA = 0.28f; glowSize = 1f; break;
                 case State.Pierce: glowCol = Palette.PowerGold; glowA = 0.85f; glowSize = 1.6f; coreA = 0.7f; break;
                 case State.Blast: glowCol = Palette.BlastOrange; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
+                case State.Meteor: glowCol = Palette.Amber; glowA = 0.9f; glowSize = 1.7f; coreA = 0.75f; break;
                 default: glowCol = Palette.ShotCyan; glowA = 0.06f + 0.03f * Mathf.Sin(Time.time * 3f); glowSize = 0.85f; break;
             }
             if (Charge > 0f && IsHeld)
@@ -587,12 +716,12 @@ namespace SoccerFight
 
             shotTrail.emitting = St == State.Shot || (St == State.Returning && speed > 7f) || (St == State.Loose && speed > 7f);
             rainbowTrail.emitting = St == State.Rainbow;
-            heavyTrail.emitting = St == State.Pierce || St == State.Blast;
+            heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor;
 
             // heavy shots shed embers along their path
-            if ((St == State.Pierce || St == State.Blast) && Random.value < dt * 45f && speed > 1f)
+            if ((St == State.Pierce || St == State.Blast || St == State.Meteor) && Random.value < dt * 45f && speed > 1f)
             {
-                Color c = St == State.Pierce ? Palette.PowerGold : Palette.BlastOrange;
+                Color c = St == State.Pierce ? Palette.PowerGold : St == State.Meteor ? Palette.Amber : Palette.BlastOrange;
                 FxSystem.I.Sparks(Pos, -delta.normalized, 35f, 1, 1.5f, 4.5f, c, 2.4f, 0.035f, 0.2f, St == State.Blast ? 6f : 0f);
             }
 
@@ -604,7 +733,7 @@ namespace SoccerFight
             float s = Mathf.Lerp(0.5f, 0.2f, Mathf.Clamp01(h / 4f));
             shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
             shadow.transform.localScale = new Vector3(s, s * 0.9f, 1f);
-            shadow.color = new Color(0f, 0f, 0f, Mathf.Lerp(0.45f, 0.08f, Mathf.Clamp01(h / 4f)));
+            shadow.color = new Color(0f, 0f, 0f, St == State.Meteor && !meteorFalling ? 0f : Mathf.Lerp(0.45f, 0.08f, Mathf.Clamp01(h / 4f)));
 
             // rainbow flight sheds sparkles
             if (St == State.Rainbow && Random.value < dt * 40f)

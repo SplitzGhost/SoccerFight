@@ -4,7 +4,7 @@ using UnityEngine.InputSystem.Controls;
 
 namespace SoccerFight
 {
-    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down, PowerShot, StepOver, Bicycle }
+    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down, PowerShot, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -24,7 +24,8 @@ namespace SoccerFight
         public static readonly GameAction[] All =
         {
             GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot,
-            GameAction.PowerShot, GameAction.StepOver, GameAction.Bicycle, GameAction.Flick, GameAction.Juggle
+            GameAction.PowerShot, GameAction.StepOver, GameAction.Bicycle, GameAction.Flick, GameAction.Juggle,
+            GameAction.Tackle, GameAction.Punt, GameAction.Wall, GameAction.Nutmeg, GameAction.Decoy, GameAction.Whistle
         };
         static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
@@ -47,6 +48,12 @@ namespace SoccerFight
                 case GameAction.PowerShot: return "POWER-SCHUSS";
                 case GameAction.StepOver: return "ÜBERSTEIGER";
                 case GameAction.Bicycle: return "FALLRÜCKZIEHER";
+                case GameAction.Tackle: return "GRÄTSCHE";
+                case GameAction.Punt: return "ABSTOSS";
+                case GameAction.Wall: return "MAUER";
+                case GameAction.Nutmeg: return "TUNNEL";
+                case GameAction.Decoy: return "LOCKVOGEL";
+                case GameAction.Whistle: return "SCHLUSSPFIFF";
                 default: return "BALL HOCHHALTEN";
             }
         }
@@ -64,6 +71,12 @@ namespace SoccerFight
                 case GameAction.PowerShot: return Binding.M(1);
                 case GameAction.StepOver: return Binding.K(Key.E);
                 case GameAction.Bicycle: return Binding.K(Key.Q);
+                case GameAction.Tackle: return Binding.K(Key.C);
+                case GameAction.Punt: return Binding.K(Key.F);
+                case GameAction.Wall: return Binding.K(Key.V);
+                case GameAction.Nutmeg: return Binding.K(Key.X);
+                case GameAction.Decoy: return Binding.K(Key.T);
+                case GameAction.Whistle: return Binding.K(Key.G);
                 default: return Binding.K(Key.LeftShift);
             }
         }

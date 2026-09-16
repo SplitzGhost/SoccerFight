@@ -10,6 +10,7 @@ namespace SoccerFight
         public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
         public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
+        public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -249,6 +250,8 @@ namespace SoccerFight
             ak.Fill(p => Sdf.Triangle(p, ub + ud * 14f, ub + un * 11f - ud * 2f, ub - un * 11f - ud * 2f), Color.white);
             IconAirKick = ToUi(ak, "UiIconAirKick");
 
+            BuildMoveIcons(D);
+
             // Lock for abilities the run hasn't unlocked yet
             var lk = new SdfCanvas(new Rect(-32, -32, 64, 64), D * 2f);
             lk.Fill(p => Sdf.Intersect(Sdf.Ring(p, new Vector2(0f, 4f), 11f, 3.6f), -(p.y - 4f)), Color.white);
@@ -263,6 +266,116 @@ namespace SoccerFight
             Diamond = ToUi(dm, "UiDiamond");
         }
 
+
+        /// <summary>Icons for the six later moves. Each carries its own colours; the HUD draws them white.</summary>
+        static void BuildMoveIcons(float D)
+        {
+            var rect = new Rect(-64, -64, 128, 128);
+            Color dark = new Color(0.12f, 0.15f, 0.23f);
+
+            // Slide tackle: the leg goes in low, turf sprays up behind the boot
+            var tk = new SdfCanvas(rect, D);
+            Color turf = new Color(0.61f, 0.9f, 0.39f);
+            tk.Fill(p => Sdf.Box(p, new Vector2(0f, -46f), new Vector2(54f, 2.6f), 2.6f), turf.WithAlpha(0.9f));
+            for (int i = 0; i < 5; i++)
+            {
+                Vector2 c = new Vector2(-50f + i * 11f, -34f + (i % 2) * 14f);
+                float ang = 20f + i * 23f;
+                tk.Fill(p => Sdf.Box(p, c, new Vector2(6f, 3.4f), 1.6f, ang), turf.WithAlpha(0.9f - i * 0.13f));
+            }
+            tk.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(-34f, 14f), new Vector2(-2f, -14f), 9.5f),
+                                   Sdf.Capsule(p, new Vector2(-2f, -14f), new Vector2(30f, -26f), 8f)), Color.white);
+            tk.Fill(p => Sdf.Box(p, new Vector2(40f, -30f), new Vector2(13f, 6.5f), 3f, -10f), dark);
+            IconTackle = ToUi(tk, "UiIconTackle");
+
+            // Goal kick: the ball comes down out of the sky into a target ring
+            var pu = new SdfCanvas(rect, D);
+            Color amber = new Color(1f, 0.69f, 0.23f);
+            pu.Fill(p => Sdf.Ring(p, new Vector2(0f, -38f), 26f, 4f), amber);
+            pu.Fill(p => Sdf.Ring(p, new Vector2(0f, -38f), 12f, 3f), amber.WithAlpha(0.75f));
+            pu.Fill(p => Sdf.Circle(p, new Vector2(0f, -38f), 3.4f), Color.white);
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2 a = new Vector2(34f + i * 12f, 60f - i * 10f), b = new Vector2(12f + i * 12f, 16f - i * 10f);
+                pu.Fill(p => Sdf.Tapered(p, a, 1.2f, b, 4f), amber.WithAlpha(0.85f - i * 0.2f));
+            }
+            IconBall(pu, new Vector2(4f, 8f), 20f);
+            IconWhiteSparks(pu, new Vector2(0f, -38f), amber);
+            IconPunt = ToUi(pu, "UiIconPunt");
+
+            // Wall: three defenders shoulder to shoulder, a bolt breaking on them
+            var wl = new SdfCanvas(rect, D);
+            Color guard = new Color(0.36f, 0.55f, 1f);
+            wl.Fill(p => Sdf.Box(p, new Vector2(0f, -46f), new Vector2(52f, 2.6f), 2.6f), guard.WithAlpha(0.8f));
+            for (int i = 0; i < 3; i++)
+            {
+                float x = -28f + i * 28f;
+                float h = i == 1 ? 26f : 22f;
+                wl.Fill(p => Sdf.Box(p, new Vector2(x, -18f + h - 22f), new Vector2(11f, h), 8f), Color.white);
+                wl.Fill(p => Sdf.Circle(p, new Vector2(x, h + 4f), 9f), Color.white);
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2 a = new Vector2(62f, 30f - i * 6f), b = new Vector2(38f, 22f - i * 6f);
+                wl.Fill(p => Sdf.Tapered(p, a, 1f, b, 3.4f), guard.WithAlpha(0.9f - i * 0.25f));
+            }
+            wl.Fill(p => Sdf.Star4(p, new Vector2(34f, 22f), 15f, 0.45f), Color.white);
+            IconWall = ToUi(wl, "UiIconWall");
+
+            // Nutmeg: the ball rolls between two legs
+            var nm = new SdfCanvas(rect, D);
+            Color pink = new Color(1f, 0.44f, 0.84f);
+            nm.Fill(p => Sdf.Box(p, new Vector2(0f, 38f), new Vector2(28f, 10f), 8f), Color.white);
+            nm.Fill(p => Sdf.Capsule(p, new Vector2(-22f, 34f), new Vector2(-30f, -34f), 9f), Color.white);
+            nm.Fill(p => Sdf.Capsule(p, new Vector2(22f, 34f), new Vector2(30f, -34f), 9f), Color.white);
+            nm.Fill(p => Sdf.Box(p, new Vector2(-34f, -42f), new Vector2(11f, 5.5f), 3f), dark);
+            nm.Fill(p => Sdf.Box(p, new Vector2(34f, -42f), new Vector2(11f, 5.5f), 3f), dark);
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 4f + (i - 1) * 13f;
+                nm.Fill(p => Sdf.Tapered(p, new Vector2(-16f, y), 1f, new Vector2(-2f, y), 3f), pink.WithAlpha(0.85f - Mathf.Abs(i - 1) * 0.25f));
+            }
+            IconBall(nm, new Vector2(16f, 2f), 17f);
+            IconNutmeg = ToUi(nm, "UiIconNutmeg");
+
+            // Decoy: the real body steps aside, the ghost stays behind
+            var dc = new SdfCanvas(rect, D);
+            Color trick = new Color(0.78f, 0.49f, 1f);
+            dc.Fill(p => Sdf.Union(Sdf.Circle(p, new Vector2(20f, 28f), 12f),
+                                   Sdf.Capsule(p, new Vector2(20f, 8f), new Vector2(20f, -28f), 14f)), trick.WithAlpha(0.45f));
+            dc.Fill(p => Sdf.Union(Sdf.Circle(p, new Vector2(-16f, 30f), 13f),
+                                   Sdf.Capsule(p, new Vector2(-16f, 8f), new Vector2(-16f, -30f), 15f)), Color.white);
+            for (int i = 0; i < 3; i++)
+            {
+                float x = -1f + i * 7f;
+                dc.Fill(p => Sdf.Box(p, new Vector2(x, 2f + i * 4f), new Vector2(2.4f, 6f), 2.4f), trick.WithAlpha(0.8f - i * 0.2f));
+            }
+            IconDecoy = ToUi(dc, "UiIconDecoy");
+
+            // Whistle: the referee's whistle with two sound arcs
+            var wh = new SdfCanvas(rect, D);
+            Color silver = new Color(0.75f, 0.91f, 1f);
+            wh.Fill(p => Sdf.Union(Sdf.Box(p, new Vector2(-10f, -6f), new Vector2(23f, 16f), 9f),
+                                   Sdf.Box(p, new Vector2(20f, 2f), new Vector2(16f, 7f), 4f)), Color.white);
+            wh.Fill(p => Sdf.Circle(p, new Vector2(-16f, -4f), 6f), dark);
+            wh.Fill(p => Sdf.Capsule(p, new Vector2(-22f, 12f), new Vector2(-4f, 24f), 3f), silver);
+            for (int i = 0; i < 2; i++)
+            {
+                float r = 20f + i * 13f;
+                wh.Fill(p => Sdf.Intersect(Sdf.Ring(p, new Vector2(30f, 26f), r, 4f), p.x - 32f), silver.WithAlpha(0.9f - i * 0.3f));
+            }
+            IconWhistle = ToUi(wh, "UiIconWhistle");
+        }
+
+        static void IconWhiteSparks(SdfCanvas c, Vector2 at, Color col)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 d = MathUtil.Dir(25f + i * 40f);
+                Vector2 a = at + d * 30f, b = at + d * 44f;
+                c.Fill(p => Sdf.Tapered(p, a, 3f, b, 1f), col.WithAlpha(0.8f));
+            }
+        }
         static void BuildFonts()
         {
             var bold = Resources.Load<Font>("Fonts/Inter-SemiBold");

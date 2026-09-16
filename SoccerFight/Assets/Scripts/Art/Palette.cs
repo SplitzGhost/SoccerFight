@@ -104,6 +104,14 @@ namespace SoccerFight
         public static readonly Color StoneLight = Hex("#2D6576");
         public static readonly Color Mortar = Hex("#0A1F2B");
 
+        // Skill accents (one hue per ability so the bar reads at a glance)
+        public static readonly Color Turf = Hex("#9BE564");        // Grätsche
+        public static readonly Color Amber = Hex("#FFB03A");       // Abstoß
+        public static readonly Color Guard = Hex("#5B8CFF");       // Mauer
+        public static readonly Color Showboat = Hex("#FF6FD5");    // Tunnel
+        public static readonly Color Trick = Hex("#C77DFF");       // Lockvogel
+        public static readonly Color Silver = Hex("#BFE9FF");      // Schlusspfiff
+
         // UI
         public static readonly Color UiGlass = Hex("#0C1522");
         public static readonly Color UiRim = Hex("#FFFFFF");

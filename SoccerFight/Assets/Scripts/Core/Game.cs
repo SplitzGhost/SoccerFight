@@ -32,6 +32,8 @@ namespace SoccerFight
         public StageMechanics Mechanics { get; private set; }
         public DevPanel Dev { get; private set; }
         EnemyProjectiles enemyShots;
+        Barrier barrier;
+        Decoys decoys;
         Lightning lightning;
         EchoBalls echoes;
         Vortices vortices;
@@ -110,6 +112,10 @@ namespace SoccerFight
             echoes.Build(transform);
             vortices = new Vortices();
             vortices.Build(transform);
+            barrier = new Barrier();
+            barrier.Build(transform);
+            decoys = new Decoys();
+            decoys.Build(transform, Player.Rig);
             twinSun = new TwinSun();
             twinSun.Build(transform);
             BuildTimer.Mark("actors");
@@ -180,6 +186,8 @@ namespace SoccerFight
             enemyShots.Clear();
             echoes.Clear();
             vortices.Clear();
+            barrier.Clear();
+            decoys.Clear();
             lightning.Clear();
             Mechanics.SetRunning(false);
             Run.Reset();
@@ -260,6 +268,8 @@ namespace SoccerFight
             Waves.Update(dt, Player, Ball);
             echoes.Update(dt);
             vortices.Update(dt);
+            barrier.Update(dt);
+            decoys.Update(dt);
             twinSun.Update(dt, Player, Director.Fighting);
             enemyShots.Update(dt, Player);
             Mechanics.Update(dt, Player, Ball, Waves);

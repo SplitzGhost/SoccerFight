@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Where a hit came from. Primary sources scale with the build; derived ones (chains, explosions, burn) carry already-scaled damage.</summary>
-    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Dash, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
+    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
 
     /// <summary>
     /// Every player hit on a monster goes through here: damage multipliers, crits, then the build's
@@ -121,6 +121,8 @@ namespace SoccerFight
             if (s.BloodFrenzy) { frenzyStacks = Mathf.Min(10, frenzyStacks + 1); frenzyTime = 4f; }
             if (s.AdrenalineTime > 0f) adrenalineT = s.AdrenalineTime;
             if (s.Perpetual) Game.I.Player.ReduceCooldowns(0.5f);
+            // the whistle fills with every kill — elites and bosses are worth a lot more
+            Game.I.Player.AddUltimate(m.Rank == Rank.Boss ? 0.5f : m.Rank == Rank.MiniBoss ? 0.25f : m.Rank == Rank.Elite ? 0.12f : 0.05f);
             if (s.BurnSpread && m.Burning)
             {
                 foreach (var o in Game.I.Waves.Monsters)

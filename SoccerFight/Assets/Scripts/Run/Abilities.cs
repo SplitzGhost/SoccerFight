@@ -3,11 +3,15 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Player abilities. A run starts with Shot + Power Shot (the air-kick recoil always works); the rest are unlocked one per stage.</summary>
-    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick }
+    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle }
 
     public static class Abilities
     {
-        public static readonly Ability[] Unlockable = { Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle };
+        public static readonly Ability[] Unlockable =
+        {
+            Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle,
+            Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle
+        };
 
         public static string Name(Ability a)
         {
@@ -20,6 +24,12 @@ namespace SoccerFight
                 case Ability.StepOver: return "ÜBERSTEIGER";
                 case Ability.Bicycle: return "FALLRÜCKZIEHER";
                 case Ability.AirKick: return "LUFT-RÜCKSTOSS";
+                case Ability.Tackle: return "GRÄTSCHE";
+                case Ability.Punt: return "ABSTOSS";
+                case Ability.Wall: return "MAUER";
+                case Ability.Nutmeg: return "TUNNEL";
+                case Ability.Decoy: return "LOCKVOGEL";
+                case Ability.Whistle: return "SCHLUSSPFIFF";
                 default: return "";
             }
         }
@@ -33,6 +43,12 @@ namespace SoccerFight
                 case Ability.StepOver: return "Täuschung über den Ball, dann ein unverwundbarer Dash mitten durch die Gegner.";
                 case Ability.Bicycle: return "Rückwärtssalto in der Luft: Der Ball explodiert beim Aufprall.";
                 case Ability.AirKick: return "Schüsse in der Luft stoßen dich in die Gegenrichtung. Nach unten: ein zweiter Sprung.";
+                case Ability.Tackle: return "Rutscht flach über den Rasen, wirft Gegner um und duckt sich unter Geschossen weg.";
+                case Ability.Punt: return "Drischt den Ball in den Himmel. Er kommt als Meteor genau dort herunter, wohin du gezielt hast.";
+                case Ability.Wall: return "Stellt eine Mauer aus drei Geister-Spielern auf: hält Geschosse und Gegner auf.";
+                case Ability.Nutmeg: return "Spielt den Ball durch die Beine: Der Getunnelte taumelt und nimmt mehr Schaden.";
+                case Ability.Decoy: return "Körpertäuschung zur Seite. Das Nachbild bindet die Gegner und platzt mit einem Stoß.";
+                case Ability.Whistle: return "Aufgeladen durch Siege: Ein Pfiff friert alle Gegner ein und stoppt ihre Geschosse.";
                 default: return "";
             }
         }
@@ -46,6 +62,12 @@ namespace SoccerFight
                 case Ability.Juggle: return GameAction.Juggle;
                 case Ability.StepOver: return GameAction.StepOver;
                 case Ability.Bicycle: return GameAction.Bicycle;
+                case Ability.Tackle: return GameAction.Tackle;
+                case Ability.Punt: return GameAction.Punt;
+                case Ability.Wall: return GameAction.Wall;
+                case Ability.Nutmeg: return GameAction.Nutmeg;
+                case Ability.Decoy: return GameAction.Decoy;
+                case Ability.Whistle: return GameAction.Whistle;
                 default: return GameAction.Shoot;   // air kick rides on the normal shot
             }
         }
@@ -60,6 +82,12 @@ namespace SoccerFight
                 case Ability.StepOver: return UiArt.IconStepOver;
                 case Ability.Bicycle: return UiArt.IconBicycle;
                 case Ability.AirKick: return UiArt.IconAirKick;
+                case Ability.Tackle: return UiArt.IconTackle;
+                case Ability.Punt: return UiArt.IconPunt;
+                case Ability.Wall: return UiArt.IconWall;
+                case Ability.Nutmeg: return UiArt.IconNutmeg;
+                case Ability.Decoy: return UiArt.IconDecoy;
+                case Ability.Whistle: return UiArt.IconWhistle;
                 default: return UiArt.IconShot;
             }
         }
@@ -74,6 +102,12 @@ namespace SoccerFight
                 case Ability.StepOver: return Palette.DashMint;
                 case Ability.Bicycle: return Palette.BlastOrange;
                 case Ability.AirKick: return Palette.ShotCyan;
+                case Ability.Tackle: return Palette.Turf;
+                case Ability.Punt: return Palette.Amber;
+                case Ability.Wall: return Palette.Guard;
+                case Ability.Nutmeg: return Palette.Showboat;
+                case Ability.Decoy: return Palette.Trick;
+                case Ability.Whistle: return Palette.Silver;
                 default: return Palette.ShotCyan;
             }
         }

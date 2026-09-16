@@ -102,6 +102,18 @@ namespace SoccerFight
             foreach (var p in pool) { p.active = false; p.root.gameObject.SetActive(false); }
         }
 
+        /// <summary>The whistle: everything in the air drops out of play at once.</summary>
+        public void PopAll()
+        {
+            var player = Game.I.Player;
+            foreach (var p in pool)
+            {
+                if (!p.active) continue;
+                p.hit = true;
+                Pop(p, 0f, player);
+            }
+        }
+
         void Pop(Proj p, float splash, Player player)
         {
             var fx = FxSystem.I;
@@ -115,12 +127,15 @@ namespace SoccerFight
 
         public void Update(float dt, Player player)
         {
-            Vector2 pc = player.Pos + new Vector2(0f, 0.8f);
+            // a sliding player is low enough for chest-high shots to miss
+            Vector2 pc = player.Pos + new Vector2(0f, player.HitHeight);
             foreach (var p in pool)
             {
                 if (!p.active) continue;
                 p.age += dt;
                 float pulse = 0.85f + 0.15f * Mathf.Sin(p.age * 30f);
+                // the free-kick wall swallows anything that reaches it
+                if (Barrier.I != null && Barrier.I.Blocks(p.pos)) { Pop(p, 0f, player); continue; }
                 switch (p.kind)
                 {
                     case PKind.Lob:
