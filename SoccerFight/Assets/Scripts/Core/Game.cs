@@ -38,6 +38,8 @@ namespace SoccerFight
         EchoBalls echoes;
         Vortices vortices;
         TwinSun twinSun;
+        BossTells bossTells;
+        UpgradeVisuals upgradeLook;
 
         float envTime;
 
@@ -67,6 +69,13 @@ namespace SoccerFight
 
             GameSettings.Load();
             GameSettings.Apply();
+            // the art jobs run nested Parallel.For loops: with only the default pool size they would
+            // wait for the thread pool to grow, one thread every half second
+            if (Par.Threads)
+            {
+                System.Threading.ThreadPool.GetMinThreads(out int workers, out int io);
+                System.Threading.ThreadPool.SetMinThreads(Mathf.Max(workers, System.Environment.ProcessorCount * 3), io);
+            }
             TimeFx.ResetAll();
             Combat.Reset();
             Run = new RunState();
@@ -78,6 +87,10 @@ namespace SoccerFight
             StageArt.Prepare(1, Run.Seed);
             Art.Build();
             UiArt.Build();
+            // the title screen's art starts once the main thread's own heavy drawing is done, so the
+            // two never fight over the thread pool; Menu.Build collects it
+            MenuScenery.Begin();
+            MenuArt.Begin();
 
             Cam = new CameraRig();
             Cam.Init(transform);
@@ -102,10 +115,14 @@ namespace SoccerFight
             Ball.Build(transform);
             Player = new Player();
             Player.Build(transform, Ball);
+            upgradeLook = new UpgradeVisuals();
+            upgradeLook.Build(transform, Player, Ball);
             Waves = new WaveDirector();
             Waves.Build(transform, Environment);
             enemyShots = new EnemyProjectiles();
             enemyShots.Build(transform);
+            bossTells = new BossTells();
+            bossTells.Build(transform);
             Mechanics = new StageMechanics();
             Mechanics.Build(transform);
             echoes = new EchoBalls();
@@ -185,6 +202,7 @@ namespace SoccerFight
             FxSystem.I.Clear();
             Rewards.Cancel();
             enemyShots.Clear();
+            bossTells.Clear();
             echoes.Clear();
             vortices.Clear();
             barrier.Clear();
@@ -266,7 +284,9 @@ namespace SoccerFight
             Player.Rig.Update(dt);
             Ball.Update(dt, Player);
             Player.LateVisuals(dt);
+            upgradeLook.Update(dt);
             Waves.Update(dt, Player, Ball);
+            bossTells.Update(dt);
             echoes.Update(dt);
             vortices.Update(dt);
             barrier.Update(dt);

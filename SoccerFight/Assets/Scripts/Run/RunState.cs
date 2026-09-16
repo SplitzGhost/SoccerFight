@@ -57,6 +57,17 @@ namespace SoccerFight
             set { PlayerPrefs.SetInt("sf_best_stage", value); PlayerPrefs.Save(); }
         }
 
+        /// <summary>Best stage reached with one character (shown on the character cards).</summary>
+        public static int BestStageOf(int character) => PlayerPrefs.GetInt("sf_best_stage_" + character, 0);
+
+        /// <summary>A run got this far: keeps the overall and the per-character record.</summary>
+        public static void RecordStage(int reached)
+        {
+            if (reached > BestStage) BestStage = reached;
+            string key = "sf_best_stage_" + Characters.Index;
+            if (reached > PlayerPrefs.GetInt(key, 0)) { PlayerPrefs.SetInt(key, reached); PlayerPrefs.Save(); }
+        }
+
         public void Reset()
         {
             Stage = 1; Wave = 0; Kills = 0; Time = 0f; RoundsCleared = 0; OffersSinceEpic = 0; RevivesUsed = 0;

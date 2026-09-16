@@ -192,19 +192,29 @@ namespace SoccerFight
             return list.ToArray();
         }
 
+        static readonly Quaternion BallTilt = Quaternion.Euler(18f, 32f, 9f);
+
         static void BuildBall()
         {
-            const float R = BallRadius;
-            float ext = R * 1.12f;
-            var rect = new Rect(-ext, -ext, ext * 2f, ext * 2f);
-            const float ppu = 256f / (BallRadius * 2.24f);
+            BallPattern = BallPatternCanvas(256f).ToSprite("BallPattern", Vector2.zero);
+            BallShade = BallShadeCanvas(256f).ToSprite("BallShade", Vector2.zero);
+            BallHighlight = BallHighlightCanvas(256f).ToSprite("BallHighlight", Vector2.zero);
+        }
 
+        const float BallExt = BallRadius * 1.12f;
+        static Rect BallRect => new Rect(-BallExt, -BallExt, BallExt * 2f, BallExt * 2f);
+
+        /// <summary>The ball's panels at a given texture size (the title screen wants a much bigger one). Thread-safe.</summary>
+        public static SdfCanvas BallPatternCanvas(float pixels)
+        {
+            const float R = BallRadius;
+            float ppu = pixels / (BallExt * 2f);
             // Truncated icosahedron: the visible face along a view ray is the face plane hit first,
             // i.e. the one maximizing dot(n, c) / planeDistance. Pentagons sit ~2.65% farther out.
             const float d5 = 2.3274f, d6 = 2.2673f;
-            Quaternion tilt = Quaternion.Euler(18f, 32f, 9f);
+            Quaternion tilt = BallTilt;
 
-            var pat = new SdfCanvas(rect, ppu);
+            var pat = new SdfCanvas(BallRect, ppu);
             pat.Fill(p => Sdf.Circle(p, Vector2.zero, R), p =>
             {
                 Vector2 q = p / R;
@@ -233,11 +243,16 @@ namespace SoccerFight
                 float seam = 1f - MathUtil.Smooth01((edge - 0.004f) / 0.01f);
                 return Color.Lerp(face, bestIsPent ? Palette.BallPanel : Palette.BallSeam, seam * 0.85f);
             });
-            BallPattern = pat.ToSprite("BallPattern", Vector2.zero);
+            return pat;
+        }
 
-            // Non-rotating shading overlay: the light stays top-left while the pattern spins.
+        /// <summary>Non-rotating shading overlay: the light stays top-left while the pattern spins.</summary>
+        public static SdfCanvas BallShadeCanvas(float pixels)
+        {
+            const float R = BallRadius;
+            float ppu = pixels / (BallExt * 2f);
             Vector3 L = new Vector3(-0.45f, 0.62f, 0.64f).normalized;
-            var shade = new SdfCanvas(rect, ppu);
+            var shade = new SdfCanvas(BallRect, ppu);
             shade.Fill(p => Sdf.Circle(p, Vector2.zero, R + 0.002f), p =>
             {
                 Vector2 q = p / R;
@@ -247,9 +262,14 @@ namespace SoccerFight
                 float dark = Mathf.Pow(1f - lambert, 1.7f) * 0.72f + Mathf.Pow(1f - z, 4f) * 0.25f;
                 return new Color(0.03f, 0.05f, 0.12f, Mathf.Clamp01(dark));
             });
-            BallShade = shade.ToSprite("BallShade", Vector2.zero);
+            return shade;
+        }
 
-            var hi = new SdfCanvas(rect, ppu);
+        public static SdfCanvas BallHighlightCanvas(float pixels)
+        {
+            const float R = BallRadius;
+            float ppu = pixels / (BallExt * 2f);
+            var hi = new SdfCanvas(BallRect, ppu);
             hi.Fill(p => Sdf.Circle(p, Vector2.zero, R), p =>
             {
                 Vector2 q = p / R;
@@ -259,7 +279,7 @@ namespace SoccerFight
                 float rim = Mathf.Pow(1f - z, 3f) * Mathf.Clamp01(Vector2.Dot(q.normalized, new Vector2(-0.55f, 0.83f))) * 0.9f;
                 return new Color(0.85f, 0.97f, 1f, Mathf.Clamp01(spec + rim));
             });
-            BallHighlight = hi.ToSprite("BallHighlight", Vector2.zero);
+            return hi;
         }
 
         // ------------------------------------------------------------------ particles

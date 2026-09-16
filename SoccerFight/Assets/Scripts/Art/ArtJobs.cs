@@ -54,6 +54,8 @@ namespace SoccerFight
             public Color32[] Data;
             public Texture2D Texture;
             public Sprite Sprite;
+            /// <summary>How long drawing and encoding took on its thread (ms).</summary>
+            public float Ms;
         }
 
         readonly List<Job> jobs = new List<Job>();
@@ -75,11 +77,23 @@ namespace SoccerFight
                 var j = jobs[i];
                 tasks[i] = Par.Run(() =>
                 {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
                     j.Canvas = j.Build();
                     j.Data = j.Canvas.Encode(j.Linear, j.Dither, j.Premultiply);
+                    j.Ms = (float)sw.Elapsed.TotalMilliseconds;
                 });
             }
             all = Task.WhenAll(tasks);
+        }
+
+        /// <summary>The slowest jobs, for the boot log.</summary>
+        public string Slowest(int count)
+        {
+            var sorted = new List<Job>(jobs);
+            sorted.Sort((a, b) => b.Ms.CompareTo(a.Ms));
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < Mathf.Min(count, sorted.Count); i++) sb.Append(sorted[i].Name).Append(' ').Append(Mathf.RoundToInt(sorted[i].Ms)).Append("ms  ");
+            return sb.ToString();
         }
 
         public void Complete()

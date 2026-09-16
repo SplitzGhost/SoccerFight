@@ -172,7 +172,7 @@ namespace SoccerFight
                 if (ball.IsDangerous)
                 {
                     Vector2 d = ball.Pos - m.Center;
-                    float r = m.Radius + Art.BallRadius + 0.05f;
+                    float r = m.Radius + ball.Radius + 0.05f;
                     if (d.sqrMagnitude < r * r && ball.TryRegisterHit(m.Id)) BallHit(ball, m, d, stats);
                 }
 

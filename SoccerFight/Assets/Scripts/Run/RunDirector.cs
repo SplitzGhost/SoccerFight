@@ -93,7 +93,7 @@ namespace SoccerFight
             if (P == Phase.RunOver) return;
             StageMechanics.I.SetRunning(false);
             int reached = run.Stage;
-            if (!DevMode.UsedThisRun && reached > RunState.BestStage) RunState.BestStage = reached;
+            if (!DevMode.UsedThisRun) RunState.RecordStage(reached);
             Enter(Phase.RunOver);
         }
 
@@ -204,7 +204,7 @@ namespace SoccerFight
 
                 case Phase.BossIntro:
                     if (bossPending && t > 0.9f) SpawnBoss();
-                    if (t > 2.6f) { Enter(Phase.Fighting); StageMechanics.I.SetRunning(true); escortTimer = 6f; }
+                    if (t > 2.6f) { Enter(Phase.Fighting); StageMechanics.I.SetRunning(true); escortTimer = 6f / Difficulty.BossAdds; }
                     break;
 
                 case Phase.StageCleared:
@@ -312,8 +312,8 @@ namespace SoccerFight
                 if (escortTimer < 0.6f) waves.ChargeNextPortal(1f - escortTimer / 0.6f);
                 if (escortTimer <= 0f)
                 {
-                    escortTimer = Mathf.Lerp(7f, 4.5f, boss.BossPhase / 2f);
-                    if (waves.AliveCount < 5) waves.SpawnFromPortal(escortPool[Random.Range(0, escortPool.Count)], run.Level - 1f);
+                    escortTimer = Difficulty.BossEscortInterval(boss.BossPhase);
+                    if (waves.AliveCount < Difficulty.BossEscortCap) waves.SpawnFromPortal(escortPool[Random.Range(0, escortPool.Count)], run.Level - 1f);
                 }
             }
             if (bossSeen && waves.Boss == null && P == Phase.Fighting) BossDefeated();
@@ -331,7 +331,7 @@ namespace SoccerFight
                 FxSystem.I.Burst(m.Center, Color.white, run.Theme.Glow, 0.7f);
                 m.Deactivate();
             }
-            if (!DevMode.UsedThisRun && run.Stage + 1 > RunState.BestStage) RunState.BestStage = run.Stage + 1;
+            if (!DevMode.UsedThisRun) RunState.RecordStage(run.Stage + 1);
             run.RoundsCleared++;
             Game.I.Hud.OnStageCleared(run.Stage, run.Theme);
             // start drawing the next arena and its monsters now (threads) or behind the reward screens (WebGL)

@@ -30,11 +30,12 @@ namespace SoccerFight
         }
 
         static int nextId;
+        static Sprite iceShard;
         static readonly List<EliteAffix> affixPool = new List<EliteAffix>();
         /// <summary>Capture tool: monsters stay where they were placed and only animate.</summary>
         public static bool Hold;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { nextId = 0; Hold = false; }
+        static void ResetStatics() { nextId = 0; Hold = false; iceShard = null; }
 
         // ---- identity and stats
         public int Id { get; private set; }
@@ -77,6 +78,11 @@ namespace SoccerFight
 
         Transform root, body;
         SpriteRenderer bodySr, glow, shadow, hpBack, hpFill, aura, auraRing;
+        SpriteRenderer frost, heat;
+        SpriteRenderer[] ice;
+        float frostK, heatK;
+        static readonly float[] IceAngles = { -52f, -18f, 20f, 58f };
+        static readonly float[] IceSizes = { 0.85f, 1.15f, 0.95f, 0.75f };
         PartRt[] parts;
         EyeRt[] eyes;
         ChainRt[] chains;
@@ -111,6 +117,11 @@ namespace SoccerFight
         bool moveActive;
         int lastPhase;
 
+        // ---- warnings (BossTells): where the current leap lands / where a teleport ends up
+        Vector2 tellPos;
+        float leapT, leapAirTime;
+        int TellKey(int slot) => Id * 8 + slot;
+
         /// <summary>Creates the renderers for one body (parts, eyes, chains). The monster is then pooled for that body.</summary>
         public void Build(Transform parent, LookDef def)
         {
@@ -128,6 +139,11 @@ namespace SoccerFight
             auraRing = Art.MakeSprite("AuraRing", body, Art.Ring, 56, Art.SpriteGlowMat, Color.clear);
             glow = Art.MakeSprite("Glow", body, Art.SoftGlow, 57, Art.SpriteGlowMat, Color.clear);
             bodySr = Art.MakeSprite("Body", body, def.Body, 60);
+            // status dressing: a frosty glow with ice shards (slowed / frozen), a warm glow (burning)
+            frost = Art.MakeSprite("Frost", body, Art.SoftGlow, 59, Art.SpriteAddMat, Color.clear);
+            heat = Art.MakeSprite("Heat", body, Art.SoftGlow, 59, Art.SpriteAddMat, Color.clear);
+            ice = new SpriteRenderer[IceAngles.Length];
+            for (int i = 0; i < ice.Length; i++) ice[i] = Art.MakeSprite("Ice" + i, body, IceShard, 69, Art.SpriteMat, Color.clear);
 
             parts = new PartRt[def.Parts.Count];
             for (int i = 0; i < parts.Length; i++)
@@ -211,6 +227,7 @@ namespace SoccerFight
             primeTime = 0f; detonated = false; slamPending = false; teleportT = -1f; regenDelay = 0f;
             BurnTime = BurnDps = SlowTime = SlowAmount = FreezeTime = 0f; HitCount = 0; PullStrength = 0f;
             StunTime = ExposeTime = 0f;
+            frostK = heatK = 0f;
             moveIndex = 0; moveT = 0f; moveCd = 2.2f; moveActive = false; lastPhase = 0;
             t = Random.value * 10f;
             faceT = s.Vel.x >= 0f ? 1f : -1f;
@@ -550,7 +567,42 @@ namespace SoccerFight
             float prevY = Pos.y;
             Pos += Vel * dt;
             if (!Alive) return;
+            // mini-boss slam: the landing spot glows while it is in the air
+            if (slamPending && !grounded) TellLanding(dt);
             LandCheck(prevY);
+        }
+
+        /// <summary>Red mark where the current leap comes down; it flares shortly before touchdown.</summary>
+        void TellLanding(float dt, float from = 0.6f)
+        {
+            leapT += dt;
+            float k = from + (1f - from) * Mathf.Clamp01(leapT / Mathf.Max(0.1f, leapAirTime * 0.85f));
+            BossTells.I?.Spot(TellKey(0), tellPos, Radius * 0.95f, k);
+        }
+
+        /// <summary>Where a jump with this launch velocity lands (same gravity and one-way floors as LandCheck).</summary>
+        Vector2 PredictLanding(Vector2 from, Vector2 vel)
+        {
+            const float step = 1f / 30f;
+            float half = 0.2f * sizeMul;
+            Vector2 p = from, v = vel;
+            for (int i = 0; i < 150; i++)
+            {
+                float prevY = p.y;
+                v.y -= BlobGravity * step;
+                p += v * step;
+                if (v.y > 0f) continue;
+                float floor = Level.FloorBelow(p.x, prevY + 0.02f, half);
+                if (p.y <= floor) return new Vector2(p.x, floor);
+            }
+            return new Vector2(p.x, Level.FloorBelow(p.x, p.y + 0.02f, half));
+        }
+
+        /// <summary>How far a charge at this speed runs before it stops or meets the arena wall.</summary>
+        float ChargeReach(float dir, float speed, float time)
+        {
+            float wall = dir > 0f ? Player.ArenaHalf - 0.5f - Pos.x : Pos.x + Player.ArenaHalf - 0.5f;
+            return Mathf.Clamp(speed * time + 1f, 1f, Mathf.Max(1f, wall));
         }
 
         void LandCheck(float prevY)
@@ -652,6 +704,11 @@ namespace SoccerFight
                 Vel.x = Mathf.MoveTowards(Vel.x, -faceT * 1.2f, 10f * dt);   // rear back
                 squashVel -= 30f * dt;
                 if (Random.value < dt * 20f) FxSystem.I.Dust(Pos, new Vector2(-faceT, 0.2f), 1, 1.4f, 0.35f, 0.28f);
+                if (Rank >= Rank.MiniBoss)
+                {
+                    float dir = Mathf.Sign(toPlayer.x);
+                    BossTells.I?.Lane(TellKey(1), Pos + new Vector2(dir * Radius * 0.5f, 0.05f), new Vector2(dir, 0f), ChargeReach(dir, 11f * spd, 0.65f), attackWind / 0.7f);
+                }
                 if (attackWind >= 0.7f) { attackWind = 0f; chargeTime = 0.65f; Vel = new Vector2(Mathf.Sign(toPlayer.x) * 11f * spd, 1.2f); squashVel += 14f; }
             }
             else
@@ -757,13 +814,20 @@ namespace SoccerFight
         /// <summary>High arcing leap onto an x on the current floor (mini-boss and boss slams).</summary>
         void LeapAt(float x, float airTime)
         {
-            x = Mathf.Clamp(x, -Player.ArenaHalf + 1f, Player.ArenaHalf - 1f);
-            float vy = BlobGravity * airTime * 0.5f;
-            Vel = new Vector2((x - Pos.x) / airTime, vy);
+            Vel = LeapVelocity(x, airTime);
+            tellPos = PredictLanding(Pos, Vel);
+            leapT = 0f;
+            leapAirTime = airTime;
             grounded = false;
             standing = Level.None;
             squashVel += 20f;
             FxSystem.I.Dust(Pos, Vector2.up, 6, 2f, 0.45f, 0.32f);
+        }
+
+        Vector2 LeapVelocity(float x, float airTime)
+        {
+            x = Mathf.Clamp(x, -Player.ArenaHalf + 1f, Player.ArenaHalf - 1f);
+            return new Vector2((x - Pos.x) / airTime, BlobGravity * airTime * 0.5f);
         }
 
         // ------------------------------------------------------------------ wisp body
@@ -872,7 +936,8 @@ namespace SoccerFight
                 Game.I.Cam.AddTrauma(0.5f);
                 Game.I.Post.Impact(0.6f);
                 Game.I.Hud.ShowToast(DisplayName + " WIRD WÜTEND");
-                for (int i = 0; i < 2 + phase; i++) Game.I.Waves.SpawnMinion(Boss.Minion, Center + new Vector2((i - 1) * 1.5f, 0.5f), this);
+                int adds = Difficulty.BossSummons(phase);
+                for (int i = 0; i < adds; i++) Game.I.Waves.SpawnMinion(Boss.Minion, Center + new Vector2((i - (adds - 1) * 0.5f) * 1.5f, 0.5f), this);
                 moveCd = Mathf.Min(moveCd, 0.8f);
             }
             float tempo = 1f + 0.35f * phase;
@@ -930,6 +995,8 @@ namespace SoccerFight
             moveActive = true;
             moveT = 0f;
             burst = 0;
+            if (move == BossMove.Teleport)
+                tellPos = new Vector2(Mathf.Clamp(focus.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
         }
 
         void EndMove(float cooldown)
@@ -947,14 +1014,27 @@ namespace SoccerFight
             if (K == Kind.Blob && !grounded) Vel.y -= BlobGravity * dt;
             if (K == Kind.Wisp) Vel = MathUtil.Damp(Vel, Vector2.zero, 3f, dt);
             var ep = EnemyProjectiles.I;
+            var tells = BossTells.I;
+            float wind = moveT / tell;
 
             switch (move)
             {
                 case BossMove.LeapSlam:
-                    if (!telegraph && burst == 0 && grounded) { burst = 1; LeapAt(focus.x, 1.15f - 0.1f * phase); }
+                {
+                    float air = 1.15f - 0.1f * phase;
+                    if (!telegraph && burst == 0 && grounded) { burst = 1; LeapAt(focus.x, air); }
+                    // the mark follows the player while the boss crouches, then stays where it will land
+                    if (burst == 0 && grounded) tells?.Spot(TellKey(0), PredictLanding(Pos, LeapVelocity(focus.x, air)), Radius * 0.95f, wind * 0.6f);
+                    else if (burst == 1 && !grounded) TellLanding(dt);
                     if (moveT > 99f || (burst == 1 && moveT > 3.5f)) EndMove(2.2f);
                     break;
+                }
                 case BossMove.Charge:
+                    if (burst == 0 || moveT < tell + 0.12f)
+                    {
+                        float dir = burst == 0 ? Mathf.Sign(toPlayer.x) : Mathf.Sign(Vel.x);
+                        tells?.Lane(TellKey(1), new Vector2(Pos.x + dir * Radius * 0.5f, Pos.y + 0.05f), new Vector2(dir, 0f), ChargeReach(dir, 13f * spd, 0.9f), wind);
+                    }
                     if (!telegraph && burst == 0) { burst = 1; chargeTime = 0.9f; Vel = new Vector2(Mathf.Sign(toPlayer.x) * 13f * spd, 1.5f); squashVel += 16f; }
                     if (burst == 1)
                     {
@@ -964,6 +1044,18 @@ namespace SoccerFight
                     }
                     break;
                 case BossMove.Volley:
+                    if (telegraph)
+                    {
+                        // lobs rain down around the player, bolts fly straight at them
+                        int count = 5 + 2 * phase;
+                        if (K == Kind.Blob) tells?.Spot(TellKey(2), new Vector2(focus.x, Level.FloorBelow(focus.x, focus.y + 0.3f)), (count - 1) * 0.45f + 0.5f, wind);
+                        else
+                        {
+                            Vector2 from = Center + new Vector2(0f, Radius * 0.6f);
+                            Vector2 to = focus + new Vector2(0f, 0.8f) - from;
+                            tells?.Lane(TellKey(2), from + to.normalized * Radius, to, to.magnitude - Radius, wind);
+                        }
+                    }
                     if (!telegraph)
                     {
                         burstTimer -= dt;
@@ -986,6 +1078,8 @@ namespace SoccerFight
                     }
                     break;
                 case BossMove.RadialBurst:
+                    if (telegraph) tells?.Ring(TellKey(3), Center, Radius * 1.5f, wind);
+                    else if (burst == 1 && phase > 0) tells?.Ring(TellKey(3), Center, Radius * 1.5f, (moveT - tell) / 0.5f);
                     if (!telegraph && burst == 0) { burst = 1; RadialBurst(12 + 4 * phase, ContactDamage * 0.5f); }
                     if (burst == 1 && moveT > tell + 0.5f && phase > 0) { burst = 2; RadialBurst(12 + 4 * phase, ContactDamage * 0.5f); }
                     if (moveT > tell + 1f) EndMove(2f);
@@ -994,18 +1088,19 @@ namespace SoccerFight
                     if (!telegraph && burst == 0)
                     {
                         burst = 1;
-                        int n = 2 + phase;
+                        int n = Difficulty.BossSummons(phase);
                         for (int i = 0; i < n; i++) Game.I.Waves.SpawnMinion(Boss.Minion, Center + new Vector2((i - (n - 1) * 0.5f) * 1.4f, 0.6f), this);
                         FxSystem.I.Ring(FxLayer.Front, Center, 0.3f, 3f, 0.3f, 0.02f, 0.45f, theme.Accent, theme.Accent.WithAlpha(0f), 2.4f);
                     }
                     if (moveT > tell + 0.8f) EndMove(3f);
                     break;
                 case BossMove.Teleport:
+                    if (burst == 0) tells?.Ring(TellKey(4), tellPos, Radius * 1.1f, moveT / 0.3f);
                     if (burst == 0 && moveT > 0.3f)
                     {
                         burst = 1;
                         FxSystem.I.Burst(Center, look.Top, look.Glow, 1.2f);
-                        Pos = new Vector2(Mathf.Clamp(focus.x + (Random.value < 0.5f ? -4f : 4f), -13f, 13f), 4f);
+                        Pos = tellPos;
                         ResetChains();
                         FxSystem.I.Ring(FxLayer.Front, Pos, 0.2f, 2.4f, 0.2f, 0.01f, 0.35f, look.Glow, look.Glow.WithAlpha(0f), 2.4f);
                     }
@@ -1014,6 +1109,8 @@ namespace SoccerFight
                     break;
                 case BossMove.LightningCall:
                 case BossMove.GeyserCall:
+                    // the hazards mark their own spots; the boss only glows while it calls them
+                    if (telegraph) tells?.Ring(TellKey(3), Center, Radius * 1.3f, wind);
                     if (!telegraph && burst == 0)
                     {
                         burst = 1;
@@ -1090,6 +1187,7 @@ namespace SoccerFight
                 else if (!white) p.Sr.color = (p.D.Tint * tint).WithAlpha(fade * p.D.Tint.a);
             }
             UpdateChains(dt, flipScale, side, white ? Color.white : tint, white);
+            StatusLook(dt);
 
             float pulse = 0.5f + 0.5f * Mathf.Sin(t * 3.4f);
             float ga = look.GlowAlpha + (look.Wisp ? 0.1f : 0.08f) * pulse + Mathf.Max(charge, primed) * 0.5f;
@@ -1131,6 +1229,65 @@ namespace SoccerFight
             hpFill.size = new Vector2(w, 0.07f);
             hpFill.transform.localPosition = hp + new Vector2(-(barW - w) * 0.5f, 0f);
             hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
+        }
+
+        /// <summary>A small faceted ice crystal, pivot at its base (drawn once, shared by every monster).</summary>
+        static Sprite IceShard
+        {
+            get
+            {
+                if (iceShard != null) return iceShard;
+                var c = new SdfCanvas(new Rect(-0.07f, -0.03f, 0.14f, 0.3f), 256f);
+                Vector2 b = new Vector2(0f, -0.01f), l = new Vector2(-0.045f, 0.085f), rr = new Vector2(0.05f, 0.075f), tip = new Vector2(0.004f, 0.245f);
+                c.Fill(p => Mathf.Min(Sdf.Triangle(p, b, rr, tip), Sdf.Triangle(p, b, tip, l)) - 0.006f, new Color(0.2f, 0.42f, 0.62f));
+                c.Fill(p => Sdf.Triangle(p, b, rr, tip), new Color(0.56f, 0.8f, 0.96f));
+                c.Fill(p => Sdf.Triangle(p, b, tip, l), new Color(0.86f, 0.97f, 1f));
+                c.Fill(p => Sdf.Capsule(p, new Vector2(-0.012f, 0.06f), new Vector2(-0.004f, 0.19f), 0.006f), new Color(1f, 1f, 1f, 0.9f));
+                iceShard = c.ToSprite("IceShard", Vector2.zero);
+                return iceShard;
+            }
+        }
+
+        /// <summary>
+        /// Slowed monsters frost over (a cold glow, ice shards growing out of the top, falling glints),
+        /// frozen ones more so; burning ones glow warm and lick flames.
+        /// </summary>
+        void StatusLook(float dt)
+        {
+            bool frozen = FreezeTime > 0f;
+            float want = frozen ? 1f : SlowTime > 0f ? Mathf.Lerp(0.55f, 0.85f, Mathf.Clamp01(SlowAmount * 1.5f)) : 0f;
+            frostK = Mathf.MoveTowards(frostK, want, dt * (want > frostK ? 6f : 2.5f));
+            Vector2 c = K == Kind.Blob ? new Vector2(0f, 0.36f) : Vector2.zero;
+            float r = K == Kind.Blob ? 0.42f : 0.34f;
+            frost.transform.localPosition = c;
+            frost.transform.localScale = Vector3.one * r * 3.4f;
+            frost.color = new Color(0.6f, 0.88f, 1f, (frozen ? 0.2f : 0.11f) * frostK * fade);
+            for (int i = 0; i < ice.Length; i++)
+            {
+                float a = IceAngles[i];
+                ice[i].transform.localPosition = c + MathUtil.Dir(90f - a) * r * 0.86f;
+                ice[i].transform.localRotation = Quaternion.Euler(0f, 0f, -a);
+                // the shards grow in one after another
+                float grow = Mathf.Clamp01(frostK * 1.7f - i * 0.22f);
+                float sc = MathUtil.EaseOutBack(grow, 1.6f) * (frozen ? 1.35f : 1f) * IceSizes[i];
+                ice[i].transform.localScale = new Vector3(sc, sc, 1f);
+                ice[i].color = Color.white.WithAlpha(Mathf.Clamp01(grow * 2f) * fade * 0.95f);
+            }
+            var fx = FxSystem.I;
+            if (frostK > 0.3f && Random.value < dt * 5f * frostK)
+                fx.Spawn(FxLayer.Front, true, Art.CellSparkle, Center + Random.insideUnitCircle * Radius, new Vector2(Random.Range(-0.2f, 0.2f), -0.3f),
+                    0.6f, 0.1f, 0f, Color.white, UpgradeVisuals.Frost.WithAlpha(0f), 2f, 1.5f, 0.8f, Random.Range(0f, 90f), 40f);
+
+            heatK = Mathf.MoveTowards(heatK, BurnTime > 0f ? 1f : 0f, dt * 4f);
+            heat.transform.localPosition = c;
+            heat.transform.localScale = Vector3.one * r * 3f;
+            heat.color = UpgradeVisuals.Fire.WithAlpha(0.16f * heatK * fade * (0.8f + 0.2f * Mathf.PerlinNoise(t * 9f, Id * 0.37f)));
+            if (heatK > 0.5f && Random.value < dt * 16f)
+            {
+                Vector2 top = Center + new Vector2(Random.Range(-0.6f, 0.6f) * Radius, Radius * Random.Range(0.3f, 0.8f));
+                fx.Spawn(FxLayer.Front, true, Art.CellGlow, top, new Vector2(Random.Range(-0.2f, 0.2f), Random.Range(1.2f, 2.2f)), Random.Range(0.25f, 0.45f),
+                    Radius * Random.Range(0.35f, 0.55f), 0f, new Color(1f, 0.75f, 0.3f), new Color(1f, 0.2f, 0.1f, 0f), 2.6f, 1f, -1f);
+            }
         }
 
         /// <summary>One part's little life: breathing, swaying, flapping, swinging its fists, gaping, orbiting.</summary>

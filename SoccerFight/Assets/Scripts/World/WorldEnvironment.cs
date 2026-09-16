@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// Assembles the world: eight parallax depth layers — far snowy peaks with a castle, mountains
+    /// Assembles the world: eight parallax depth layers — far snowy peaks, mountains
     /// with a waterfall, a forest hill with a ruined stadium, big trees, an aqueduct, the arcade ruins,
     /// near columns and trunks, bushes — each moving with the camera by its distance and getting
     /// darker the further back it lies, mist pooling between them, hundreds of wind-animated plants,
@@ -134,7 +134,7 @@ namespace SoccerFight
             }
         }
 
-        // ------------------------------------------------------------------ far peaks with the castle
+        // ------------------------------------------------------------------ far peaks
 
         // The far layers stand on the horizon (eye level ≈ the camera's base height), each one peeking
         // out above the one in front of it: forest hill, then the mountains, then the snowy peaks.
@@ -144,7 +144,6 @@ namespace SoccerFight
             var l = AddLayer("Peaks", new Vector2(0f, 3.4f), 0.94f, 0.9f);
             Color tint = DepthTint(DPeaks);
             Art.MakeSprite("Range", l, DepthArt.Peaks, -950, Art.SpriteMat, tint);
-            foreach (var w in DepthArt.PeakLights) AddBlink(l, w, 0.14f, Palette.Lantern, 0.5f, -949);
             AddFog("Fog Peaks", -945, new Vector2(0f, 3.1f), 0.92f, 0.88f, 1.4f, 0.14f, 0.07f, DPeaks);
         }
 

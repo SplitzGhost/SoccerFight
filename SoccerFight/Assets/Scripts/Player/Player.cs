@@ -118,6 +118,8 @@ namespace SoccerFight
         public float ShieldCharge;
         readonly System.Collections.Generic.HashSet<int> dashHits = new System.Collections.Generic.HashSet<int>();
         int shotCount;
+        /// <summary>Golden boot: the next kick will be the guaranteed golden one.</summary>
+        public bool NextShotGolden => S.GoldenBoot && (shotCount + 1) % 3 == 0;
         float regenAcc;
         Vector2 dashStartPos;
         public float InvulnTimer;
@@ -392,7 +394,10 @@ namespace SoccerFight
 
             // --- buffers
             jumpBuffer = GameInput.JumpPressed && !Dead ? JumpBufferTime : Mathf.Max(0f, jumpBuffer - dt);
-            shotBuffer = GameInput.ShootPressed && !Dead ? 0.35f : Mathf.Max(0f, shotBuffer - dt);
+            // a tap is buffered for a moment; holding the key keeps a short buffer alive (auto-fire) that
+            // runs out right after the release, so letting go never fires a late extra shot
+            shotBuffer = Dead ? 0f : GameInput.ShootPressed ? 0.35f
+                : GameInput.ShootHeld ? Mathf.Max(shotBuffer - dt, 0.06f) : Mathf.Max(0f, shotBuffer - dt);
             powerBuffer = GameInput.PowerPressed && !Dead ? 0.3f : Mathf.Max(0f, powerBuffer - dt);
             // the four skill keys play whatever the run has put into their slot
             DecaySkillBuffers(dt);
@@ -1457,6 +1462,9 @@ namespace SoccerFight
 
             AbortJuggle();
             amount *= 1f - Mathf.Min(0.6f, s.Armor);
+            // shin guards: the reduced part of the hit sparks off steel
+            if (s.Armor > 0f)
+                FxSystem.I.Sparks(Pos + new Vector2(0f, 0.35f), new Vector2(-dir, 0.5f), 90f, 3 + Mathf.RoundToInt(s.Armor * 20f), 3f, 7f, new Color(0.75f, 0.85f, 1f), 2.4f, 0.03f, 0.2f, 4f);
             Hp = Mathf.Max(0f, Hp - amount);
             InvulnTimer = 1.3f + s.InvulnBonus;
             Vel = new Vector2(dir * 7.5f, Grounded ? 6.5f : Mathf.Max(Vel.y, 4f));

@@ -62,5 +62,21 @@ namespace SoccerFight
         // big fights weigh the same at the same level
         public const float MiniBaseHealth = 220f, MiniBaseDamage = 11f, MiniDamage = 1.35f, MiniSize = 1.8f, MiniCost = 10f;
         public const float BossBaseHealth = 380f, BossBaseDamage = 13f, BossDamage = 1f;
+
+        /// <summary>
+        /// Share of the adds a boss brings along: its summons, the reinforcements at each phase change
+        /// and the portal trickle. The first boss drowned stage 1 in monsters, so every boss now fields
+        /// this share — one factor for all of them, so later bosses still build on the earlier ones.
+        /// </summary>
+        public const float BossAdds = 0.5f;
+
+        /// <summary>Monsters per summon (and per phase change) at boss phase 0..2 — was 2 / 3 / 4.</summary>
+        public static int BossSummons(int phase) => Mathf.Max(1, Mathf.RoundToInt((2 + phase) * BossAdds));
+
+        /// <summary>Seconds between two escorts out of the portals (the trickle thins by the same factor).</summary>
+        public static float BossEscortInterval(int phase) => Mathf.Lerp(7f, 4.5f, phase / 2f) / BossAdds;
+
+        /// <summary>No escort comes while this many monsters (boss included) are already up.</summary>
+        public static int BossEscortCap => Mathf.CeilToInt(5 * BossAdds);
     }
 }

@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills" && scenario != "look")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -92,6 +92,7 @@ namespace SoccerFight
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
             else if (scenario == "newskills") yield return NewSkills();
+            else if (scenario == "look") yield return UpgradeLook();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -472,7 +473,7 @@ namespace SoccerFight
             G.Cam.SetOverride(new Vector2(capital.Center, capital.Y - 0.8f), 2.1f);
             yield return Frames(3);
             yield return Shot("pl05_capital");
-            // the far layers, zoomed: peaks + castle, forest + stadium, aqueduct
+            // the far layers, zoomed: peaks, forest + stadium, aqueduct
             G.Cam.SetOverride(new Vector2(4f, 5.2f), 2.6f);
             yield return Frames(3);
             yield return Shot("pl05b_far_detail");
@@ -897,86 +898,163 @@ namespace SoccerFight
             foreach (var a in abilities) run.Unlock(a);
             P.ApplyStats(true);
         }
-        /// <summary>Title screen: hover, the kicked ball, the page change, and a shot into empty space.</summary>
+        /// <summary>
+        /// Title screen: the landing page, every sub page (reached by kicking the ball at its button),
+        /// a "coming soon" bounce, the character cards, and the kick that starts the run.
+        /// </summary>
         IEnumerator MenuTour()
         {
             var menu = G.Menu;
+            int original = Characters.Index;
             G.ToMenu();
-            yield return Seconds(1.6f);
-            yield return Shot("m0_title");
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(-260f, 160f));
+            yield return Seconds(2.4f);
+            yield return Shot("m00_title");
 
-            GameInput.AimScreen = menu.ButtonScreen(0);
-            yield return Seconds(0.6f);
-            yield return Shot("m1_hover");
+            GameInput.AimScreen = menu.TargetScreen("play");
+            yield return Seconds(0.7f);
+            yield return Shot("m01_hover_play");
 
-            GameInput.ClickPressed = true;
-            yield return Frames(6);
-            yield return Shot("m2_flight");
-            yield return Frames(10);
-            yield return Shot("m3_impact");
-            yield return Frames(13);
-            yield return Shot("m4_falling");
-            yield return Seconds(1.3f);
-            yield return Shot("m5_ingame");
+            yield return Kick("shop");
+            yield return Seconds(0.9f);
+            yield return Shot("m02_shop");
+            yield return Kick("buy1");
+            yield return Frames(12);
+            yield return Shot("m03_shop_soon");
+            yield return Kick("back" + MenuPage.Shop);
+            yield return Seconds(0.9f);
 
-            // the pause menu now offers the way back to the title screen
-            G.Pause.Open();
-            yield return Seconds(1.1f);
-            yield return Shot("m5b_pause");
-            G.Pause.Close();
-            yield return Seconds(0.4f);
+            string[] ids = { "ranking", "friends", "events", "info", "settings" };
+            int[] pages = { MenuPage.Ranking, MenuPage.Friends, MenuPage.Events, MenuPage.Info, MenuPage.Settings };
+            for (int i = 0; i < ids.Length; i++)
+            {
+                yield return Kick(ids[i]);
+                yield return Seconds(0.9f);
+                yield return Shot("m0" + (4 + i) + "_" + ids[i]);
+                if (i < ids.Length - 1) yield return Kick("back" + pages[i]);
+                else GameInput.PausePressed = true;   // Esc also leads back
+                yield return Seconds(0.9f);
+            }
 
-            // back to the title screen (what HAUPTMENÜ does), then into the settings page
-            G.ToMenu();
-            yield return Seconds(1.4f);
-            GameInput.AimScreen = menu.ButtonScreen(1);
-            yield return Seconds(0.4f);
-            GameInput.ClickPressed = true;
-            yield return Seconds(1.4f);
-            yield return Shot("m6_settings");
-            GameInput.PausePressed = true;         // Esc leaves the settings page
-            yield return Seconds(1.4f);
-
-            // a shot into empty space: the ball spawns, flies, falls, nothing else happens
-            GameInput.AimScreen = menu.ScreenOf(new Vector2(-620f, 150f));
-            yield return Seconds(0.4f);
+            // a shot into empty space: the ball flies, falls, nothing else happens
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(-420f, 330f));
+            yield return Seconds(0.3f);
             GameInput.ClickPressed = true;
             yield return Frames(7);
-            yield return Shot("m7_miss");
-            yield return Seconds(1.6f);
-            yield return Shot("m8_title_again");
+            yield return Shot("m09_miss");
+            yield return Seconds(1.2f);
 
-            // character select: open the page, shoot a card, then take that player into the arena
-            GameInput.AimScreen = menu.ButtonScreen(1);
-            yield return Seconds(0.5f);
-            GameInput.ClickPressed = true;
-            yield return Seconds(1.6f);
-            yield return Shot("m9_characters");
-            GameInput.AimScreen = menu.ButtonScreen(6);
-            yield return Seconds(0.6f);
-            yield return Shot("m10_card_hover");
+            // character select through the figure on the pedestal
+            yield return Kick("figure");
+            yield return Seconds(1.4f);
+            yield return Shot("m10_characters");
+            int next = (original + 1) % Characters.All.Length;
+            GameInput.AimScreen = menu.TargetScreen("card" + next);
+            yield return Seconds(0.8f);
+            yield return Shot("m11_card_hover");
             GameInput.ClickPressed = true;
             yield return Frames(22);
-            yield return Shot("m11_card_hit");
+            yield return Shot("m12_card_hit");
             yield return Seconds(1.2f);
-            yield return Shot("m12_picked");
+            yield return Shot("m13_picked");
             Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
-            GameInput.AimScreen = menu.ButtonScreen(5);
-            yield return Seconds(0.4f);
-            GameInput.ClickPressed = true;
-            yield return Seconds(1.4f);
-            yield return Shot("m13_picked_middle");
-            Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
+            yield return Kick("back" + MenuPage.Characters);
+            yield return Seconds(1.2f);
+            yield return Shot("m14_title_new_player");
 
-            // and in the arena with that kit
-            G.Restart();
-            yield return Seconds(1.6f);
+            // SPIELEN: the player kicks the ball at the camera, the flash opens onto the arena
+            yield return Kick("play", false);
+            yield return Frames(14);
+            yield return Shot("m15_leave");
+            yield return Frames(14);
+            yield return Shot("m16_kick");
+            yield return Frames(16);
+            yield return Shot("m17_ball");
+            yield return Frames(10);
+            yield return Shot("m18_flash");
+            yield return Seconds(1.2f);
+            yield return Shot("m19_ingame");
+
+            // back to the title screen from the pause menu
+            G.Pause.Open();
+            yield return Seconds(0.8f);
+            G.Pause.Close();
+            G.ToMenu();
+            yield return Seconds(2f);
+            yield return Shot("m20_title_again");
+            Characters.Select(original);
+            yield return Seconds(0.5f);
+        }
+
+        /// <summary>Aim at a menu target, kick the ball at it and (optionally) wait for the impact.</summary>
+        IEnumerator Kick(string id, bool wait = true)
+        {
+            GameInput.AimScreen = G.Menu.TargetScreen(id);
+            yield return Seconds(0.35f);
+            GameInput.ClickPressed = true;
+            if (wait) yield return Seconds(0.4f);
+        }
+
+        /// <summary>
+        /// The build made visible (a bigger, burning, freezing, sparking ball, echo balls, the shield
+        /// bubble, frosted monsters) and the red warnings of the first boss.
+        /// </summary>
+        IEnumerator UpgradeLook()
+        {
+            // 1 — the ball at the feet with a fire / frost / spark / echo build, shield and fast boots
+            G.Director.DebugJump(1, 1, 0, false);
+            foreach (var id in new[] { "kick_power", "kick_power", "kick_power", "kick_power", "kick_power", "blazing_boot", "frost_ball", "chain_spark", "one_two", "one_two", "captain_shield", "quick_feet", "quick_feet" })
+                G.Run.Take(UpgradeDb.Get(id), P);
+            P.ApplyStats(true);
+            P.Pos = new Vector2(-6f, 0f);
+            G.Cam.Snap(P.Pos);
+            yield return Seconds(1f);
             G.Hud.SetVisible(false);
-            G.Cam.SetOverride(P.Pos + new Vector2(0.4f, 1f), 2.2f);
-            yield return Frames(4);
-            yield return Shot("m14_ingame_character");
+            G.Cam.SetOverride(P.Pos + new Vector2(0.6f, 0.9f), 1.5f);
+            yield return Seconds(0.6f);
+            yield return Shot("u01_ball_close");
+            yield return Frames(20);
+            yield return Shot("u02_ball_close_b");
+
+            // 2 — a slowed, a frozen and a burning monster, held in place
             G.Cam.ClearOverride();
+            var run = G.Run;
+            Monster.Hold = true;
+            var spec = new Monster.SpawnSpec { Type = EnemyType.Hopper, Level = run.Level, Theme = run.Theme, Rank = Rank.Normal };
+            spec.At = P.Pos + new Vector2(2.2f, 0f); var slowed = G.Waves.Spawn(spec);
+            spec.At = P.Pos + new Vector2(3.6f, 0f); var frozen = G.Waves.Spawn(spec);
+            spec.At = P.Pos + new Vector2(5f, 0f); var burning = G.Waves.Spawn(spec);
+            for (int f = 0; f < 50; f++)
+            {
+                slowed.Chill(0.5f, 5f);
+                frozen.Chill(0.5f, 5f);
+                frozen.Freeze(3f);
+                burning.Ignite(1f, 5f);
+                P.DodgeTime = 0.3f;
+                yield return null;
+            }
+            G.Cam.SetOverride(P.Pos + new Vector2(3.6f, 0.7f), 1.6f);
+            yield return Frames(3);
+            yield return Shot("u03_status");
+            G.Cam.ClearOverride();
+            Monster.Hold = false;
+            G.Waves.Restart();
+
+            // 3 — the first boss without a damage build: its warnings, a picture every third of a second
+            G.Director.DebugJump(1, Difficulty.WavesInStage(1) + 1, 0, true);
+            P.ApplyStats(true);
             G.Hud.SetVisible(true);
+            int shots = 0;
+            for (int f = 0; f < 60 * 14; f++)
+            {
+                P.Hp = P.MaxHp;
+                P.DodgeTime = 0.2f;
+                // wander so the boss keeps choosing moves; never shoot
+                Move(Mathf.Sin(f * 0.012f) > 0f ? 1f : -1f);
+                if (f > 240 && f % 20 == 0 && shots < 30) { shots++; yield return Shot("u1" + shots.ToString("00") + "_boss"); }
+                yield return null;
+            }
+            Move(0f);
         }
 
         IEnumerator All()

@@ -29,7 +29,10 @@ namespace SoccerFight
         public float ShotMul = 1f;
         public bool GoldenShot;
         public int RicochetsLeft;
-        const float R = Art.BallRadius;
+        /// <summary>Visual and hit size (the damage upgrades make the ball a little bigger).</summary>
+        public float SizeMul = 1f;
+        public float Radius => Art.BallRadius * SizeMul;
+        float R => Art.BallRadius * SizeMul;
         float rainbowEcho = -1f;
         Vector2 rainbowEchoAt;
 
@@ -37,7 +40,8 @@ namespace SoccerFight
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
         SpriteRenderer markerRing, markerGlow;
         TrailRenderer shotTrail, rainbowTrail, heavyTrail;
-        Gradient pierceGradient, blastGradient;
+        Gradient pierceGradient, blastGradient, shotGradient;
+        float shotTrailTime = 0.17f;
         float spin, spinVel;
         float stateTime;
         float squash, squashVel;
@@ -87,7 +91,7 @@ namespace SoccerFight
             g.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Palette.ShotCyan, 0.35f), new GradientColorKey(new Color(0.3f, 0.5f, 1f), 1f) },
                 new[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0.6f, 0.4f), new GradientAlphaKey(0f, 1f) });
-            shotTrail.colorGradient = g;
+            shotTrail.colorGradient = shotGradient = g;
             shotTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.5f, 0.55f), new Keyframe(1f, 0f));
 
             rainbowTrail = MakeTrail("RainbowTrail", Art.TrailRainbowMat, 0.55f, 0.46f, order - 4);
@@ -105,7 +109,14 @@ namespace SoccerFight
             blastGradient = TrailGradient(new Color(1f, 0.95f, 0.8f), Palette.BlastOrange, new Color(0.75f, 0.15f, 0.2f));
         }
 
-        static Gradient TrailGradient(Color head, Color mid, Color tail)
+        /// <summary>The normal shot's trail colour and length (elemental upgrades recolour it).</summary>
+        public void SetShotTrail(Gradient g, float time)
+        {
+            if (g != null && g != shotGradient) { shotGradient = g; shotTrail.colorGradient = g; }
+            shotTrailTime = time;
+        }
+
+        public static Gradient TrailGradient(Color head, Color mid, Color tail)
         {
             var g = new Gradient();
             g.SetKeys(
@@ -684,7 +695,7 @@ namespace SoccerFight
             float st = (St == State.Held || St == State.Scripted) ? 0f : Mathf.Clamp(speed / 36f, 0f, 0.32f);
             float sq = Mathf.Clamp(squash * 0.06f, -0.25f, 0.25f);
             stretch.localRotation = Quaternion.Euler(0f, 0f, velAng);
-            stretch.localScale = new Vector3(1f + st + sq, 1f - st * 0.55f - sq * 0.7f, 1f);
+            stretch.localScale = new Vector3((1f + st + sq) * SizeMul, (1f - st * 0.55f - sq * 0.7f) * SizeMul, 1f);
             spinNode.localRotation = Quaternion.Euler(0f, 0f, spin - velAng);
             shade.transform.localRotation = Quaternion.Euler(0f, 0f, -velAng);
             highlight.transform.localRotation = Quaternion.Euler(0f, 0f, -velAng);
@@ -711,7 +722,11 @@ namespace SoccerFight
                 glowCol = Palette.PowerGold; glowA = 0.15f + 0.65f * c; glowSize = 0.9f + 0.7f * c; coreA = 0.55f * c;
             }
             glow.color = Color.Lerp(glow.color, glowCol.WithAlpha(glowA), 1f - Mathf.Exp(-14f * dt));
-            glow.transform.localScale = Vector3.one * Mathf.Lerp(glow.transform.localScale.x, glowSize, 1f - Mathf.Exp(-12f * dt));
+            glow.transform.localScale = Vector3.one * Mathf.Lerp(glow.transform.localScale.x, glowSize * SizeMul, 1f - Mathf.Exp(-12f * dt));
+            core.transform.localScale = Vector3.one * 0.55f * SizeMul;
+            shotTrail.widthMultiplier = R * 1.8f;
+            shotTrail.time = shotTrailTime;
+            heavyTrail.widthMultiplier = R * 2.6f;
             core.color = Color.Lerp(core.color, Color.white.WithAlpha(coreA), 1f - Mathf.Exp(-14f * dt));
 
             if (St != State.Meteor) HideMarker();
@@ -731,7 +746,7 @@ namespace SoccerFight
 
             // shadow on the surface below
             float h = Mathf.Max(0f, Pos.y - R - floor);
-            float s = Mathf.Lerp(0.5f, 0.2f, Mathf.Clamp01(h / 4f));
+            float s = Mathf.Lerp(0.5f, 0.2f, Mathf.Clamp01(h / 4f)) * SizeMul;
             shadow.transform.position = new Vector3(Pos.x, floor + 0.02f, 0f);
             shadow.transform.localScale = new Vector3(s, s * 0.9f, 1f);
             shadow.color = new Color(0f, 0f, 0f, St == State.Meteor && !meteorFalling ? 0f : Mathf.Lerp(0.45f, 0.08f, Mathf.Clamp01(h / 4f)));

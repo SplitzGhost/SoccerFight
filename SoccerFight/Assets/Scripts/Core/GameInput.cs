@@ -18,6 +18,10 @@ namespace SoccerFight
         public static bool DownPressed;
         public static bool DownHeld;
         public static bool ShootPressed;
+        /// <summary>Shoot key held down: keeps kicking whenever the ball is back and the cooldown is over.</summary>
+        public static bool ShootHeld;
+        // a hold only counts once the press happened in play (not the click that started the run)
+        static bool shootArmed;
         public static bool PowerPressed;
         /// <summary>One flag per skill slot (slot 1 = index 0).</summary>
         public static readonly bool[] SkillPressed = new bool[Slots];
@@ -42,7 +46,8 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = PowerPressed = false;
+            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = false;
+            shootArmed = false;
             RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             ClearSkills();
             AimScreen = AimWorld = Vector2.zero;
@@ -84,7 +89,8 @@ namespace SoccerFight
             if (Blocked)
             {
                 MoveX = 0f;
-                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = PowerPressed = false;
+                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = false;
+                shootArmed = false;
                 ClearSkills();
             }
             else
@@ -98,6 +104,10 @@ namespace SoccerFight
                 DownPressed = KeyBindings.WasPressed(GameAction.Down);
                 DownHeld = KeyBindings.IsPressed(GameAction.Down);
                 ShootPressed = KeyBindings.WasPressed(GameAction.Shoot);
+                bool shootDown = KeyBindings.IsPressed(GameAction.Shoot);
+                if (ShootPressed) shootArmed = true;
+                else if (!shootDown) shootArmed = false;
+                ShootHeld = shootDown && shootArmed;
                 PowerPressed = KeyBindings.WasPressed(GameAction.PowerShot);
                 for (int i = 0; i < SkillPressed.Length; i++)
                     SkillPressed[i] = KeyBindings.WasPressed((GameAction)((int)GameAction.Skill1 + i));

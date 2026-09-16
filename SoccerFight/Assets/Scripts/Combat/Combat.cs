@@ -80,6 +80,10 @@ namespace SoccerFight
             bool shock = direct && s.ThermalShock && m.Burning && m.Slowed;
             Vector2 at = m.Center;
             bool killed = m.Hit(d, dir, knock, big || crit, crit);
+            // heavier kicks (knockback upgrades) land with a visible punch ring
+            if (direct && s.KnockbackMul > 1f)
+                FxSystem.I.Ring(FxLayer.Front, at, 0.1f, 0.45f + 0.55f * (s.KnockbackMul - 1f), 0.1f, 0.01f, 0.18f,
+                    Color.white.WithAlpha(0.8f), Palette.ShotCyan.WithAlpha(0f), 2f);
 
             if (crit) OnCrit(at);
             if (direct)
@@ -108,7 +112,9 @@ namespace SoccerFight
             var s = S;
             if (s.BulletTime && bulletTimeCd <= 0f) { bulletTimeCd = 1.4f; TimeFx.SlowMo(0.35f, 0.1f, 0.25f); }
             if (s.Perpetual) Game.I.Player.ReduceCooldowns(0.2f);
-            FxSystem.I.Sparkles(at, 0.35f, 4, Palette.Gold, 2.6f, 0.4f);
+            // the crit-damage upgrades make the sparkle bigger
+            float boost = Mathf.Max(0f, s.CritMul + s.SharpshooterBonus - 1.75f);
+            FxSystem.I.Sparkles(at, 0.35f + boost * 0.2f, 4 + Mathf.RoundToInt(boost * 6f), Palette.Gold, 2.6f, 0.4f + boost * 0.1f);
         }
 
         /// <summary>Called for every monster death (any cause).</summary>
@@ -117,7 +123,14 @@ namespace SoccerFight
             var s = S;
             var run = Game.I.Run;
             run.Kills++;
-            if (s.LifeOnKill > 0f) Game.I.Player.Heal(s.LifeOnKill);
+            if (s.LifeOnKill > 0f)
+            {
+                var player = Game.I.Player;
+                player.Heal(s.LifeOnKill);
+                // a small green orb flies from the kill to the player
+                Vector2 to = player.Pos + new Vector2(0f, 1f) - m.Center;
+                FxSystem.I.Spawn(FxLayer.Front, true, Art.CellGlow, m.Center, to / 0.4f, 0.4f, 0.3f, 0.12f, Palette.Heal, Palette.Heal.WithAlpha(0.2f), 2.8f);
+            }
             if (s.BloodFrenzy) { frenzyStacks = Mathf.Min(10, frenzyStacks + 1); frenzyTime = 4f; }
             if (s.AdrenalineTime > 0f) adrenalineT = s.AdrenalineTime;
             if (s.Perpetual) Game.I.Player.ReduceCooldowns(0.5f);

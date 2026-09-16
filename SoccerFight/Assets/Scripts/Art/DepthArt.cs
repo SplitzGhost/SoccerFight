@@ -5,7 +5,7 @@ namespace SoccerFight
 {
     /// <summary>
     /// The deep backdrop and the play-plane props, generated on worker threads next to
-    /// EnvironmentArt: a far range of snowy peaks with a castle, a forest hill with a ruined stadium
+    /// EnvironmentArt: a far range of snowy peaks, a forest hill with a ruined stadium
     /// and its floodlight masts, a broken aqueduct, near columns and a giant trunk and the chalk
     /// markings of the pitch (the platforms live in PlatformArt, generated per stage).
     /// Backdrop colours are authored at full brightness — WorldEnvironment darkens every layer by
@@ -17,7 +17,6 @@ namespace SoccerFight
         public static Sprite MarkCenter, MarkLeft, MarkRight, Puddle, GroundStrip;
         public static Sprite[] Pebbles;
 
-        public static readonly List<Vector2> PeakLights = new List<Vector2>();     // castle windows (layer space)
         public static readonly List<Vector3> ForestLights = new List<Vector3>();   // x, y, size (layer space)
         public static readonly List<Vector2> AqueductIvy = new List<Vector2>();    // hanging ivy anchors (layer space)
         public static readonly List<Vector2> TrunkMoss = new List<Vector2>();      // relative to the trunk pivot
@@ -28,7 +27,7 @@ namespace SoccerFight
         public const float PeaksW = 26f, ForestW = 30f, AqW = 34f;
         public const float MarkBoxCenter = 14.2f;
         // every far layer stands on the horizon: local y = 0 is placed at eye level by WorldEnvironment
-        const float PeaksY0 = -3f, PeaksY1 = 4.4f, CastleX = 5.3f, CastleK = 0.62f;
+        const float PeaksY0 = -3f, PeaksY1 = 4.4f, SummitX = 5.3f;
         const float ForestY0 = -2.6f, ForestY1 = 4.2f, StadiumX = -6.4f, TowerX = 6.9f;
         const float AqY0 = -1.6f, AqY1 = 5.4f;
         const float AqP1 = 2.5f, AqR1 = 0.88f, AqSpring1 = 1.95f, AqTop1 = 3.1f;
@@ -42,7 +41,7 @@ namespace SoccerFight
 
         public static void Begin()
         {
-            PeakLights.Clear(); ForestLights.Clear(); AqueductIvy.Clear(); TrunkMoss.Clear(); ColumnIvy.Clear();
+            ForestLights.Clear(); AqueductIvy.Clear(); TrunkMoss.Clear(); ColumnIvy.Clear();
             jobs = new ArtJobs();
             jPeaks = jobs.Add("Peaks", BuildPeaks, Vector2.zero);
             jForest = jobs.Add("Far Forest", BuildFarForest, Vector2.zero);
@@ -128,7 +127,7 @@ namespace SoccerFight
             c.Fill(sdf, col, 0f, new Rect(b.x - rad * 1.6f, b.y - 0.05f, rad * 3.2f, h + 0.1f));
         }
 
-        // ---------------------------------------------------------------- far peaks with a castle (p ≈ 0.95)
+        // ---------------------------------------------------------------- far peaks (p ≈ 0.95)
 
         static SdfCanvas BuildPeaks()
         {
@@ -140,7 +139,7 @@ namespace SoccerFight
             for (int x = 0; x < W; x++)
             {
                 float ux = left + (x + 0.5f) / ppu;
-                back[x] = 1.15f + 1.25f * Ridge(ux * 0.15f, 3.3f) + 0.12f * Fbm(ux * 1.1f, 8.1f) + 0.55f * Mathf.Exp(-Sq((ux - CastleX) / 1.2f));
+                back[x] = 1.15f + 1.25f * Ridge(ux * 0.15f, 3.3f) + 0.12f * Fbm(ux * 1.1f, 8.1f) + 0.55f * Mathf.Exp(-Sq((ux - SummitX) / 1.2f));
                 front[x] = 0.45f + 0.8f * Ridge(ux * 0.24f, 7.7f) + 0.09f * Fbm(ux * 1.7f, 2.9f);
             }
             var slopeB = Slope(back, ppu);
@@ -192,36 +191,8 @@ namespace SoccerFight
                     pc, 0f, new Rect(px - w - 0.05f, by - 0.05f, w * 2f + 0.1f, h * 1.2f + 0.1f));
             }
 
-            // a castle on the highest summit, right in front of the moon
-            // the castle is built in "castle units" (CastleK scales it to the distance)
-            float cb = back[Col(c, CastleX)] - 0.08f;
-            Vector2 K(float dx, float dy) => new Vector2(CastleX + dx * CastleK, cb + dy * CastleK);
-            Vector2 H(float hx, float hy) => new Vector2(hx * CastleK, hy * CastleK);
-            Color stone = new Color(0.12f, 0.21f, 0.28f);
-            SdfCanvas.SdfFn castle = q =>
-            {
-                float d = Sdf.Box(q, K(0f, 0.34f), H(0.5f, 0.34f));
-                d = Mathf.Min(d, Sdf.Box(q, K(0.05f, 0.62f), H(0.17f, 0.62f)));
-                d = Mathf.Min(d, Sdf.Box(q, K(-0.46f, 0.5f), H(0.09f, 0.5f)));
-                d = Mathf.Min(d, Sdf.Box(q, K(0.5f, 0.42f), H(0.08f, 0.42f)));
-                d = Mathf.Min(d, Sdf.Triangle(q, K(-0.14f, 1.24f), K(0.24f, 1.24f), K(0.05f, 1.62f)));
-                d = Mathf.Min(d, Sdf.Triangle(q, K(-0.57f, 1f), K(-0.35f, 1f), K(-0.46f, 1.3f)));
-                d = Mathf.Min(d, Sdf.Triangle(q, K(0.41f, 0.84f), K(0.59f, 0.84f), K(0.5f, 1.08f)));
-                float step = 0.08f * CastleK;
-                float cx = Mathf.Round((q.x - CastleX) / step) * step + CastleX;
-                d = Mathf.Min(d, Mathf.Max(Sdf.Box(q, new Vector2(cx, cb + 0.71f * CastleK), H(0.022f, 0.035f)), Mathf.Abs(q.x - CastleX) - 0.5f * CastleK));
-                return d;
-            };
-            c.Fill(castle, q => Mul(stone, 0.9f + 0.25f * S01((q.x - CastleX + 0.2f) / 0.5f)), 0f, new Rect(CastleX - 0.6f, cb - 0.1f, 1.2f, 1.25f));
             // moonlit crests keep the far range readable even after the depth darkening
             c.RimLight(new Vector2(0.03f, 0.04f), new Color(0.76f, 0.9f, 0.96f), 0.75f);
-
-            Vector2[] windows = { K(0.05f, 0.98f), K(0.05f, 0.64f), K(-0.46f, 0.78f), K(0.27f, 0.4f), K(-0.24f, 0.44f) };
-            foreach (var w in windows)
-            {
-                c.Fill(q => Sdf.Box(q, w, H(0.024f, 0.042f), 0.008f), new Color(1f, 0.8f, 0.48f), 0f, new Rect(w.x - 0.08f, w.y - 0.08f, 0.16f, 0.16f));
-                PeakLights.Add(w);
-            }
             return c;
         }
 

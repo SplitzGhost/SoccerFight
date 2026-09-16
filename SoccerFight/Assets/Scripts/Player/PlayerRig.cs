@@ -34,6 +34,8 @@ namespace SoccerFight
 
         /// <summary>Set by the player: snapshots of the old pose sell the turn.</summary>
         public Afterimages Ghosts;
+        /// <summary>Brightness of the boot neon (the speed upgrades turn it up).</summary>
+        public float GlowBoost = 1f;
 
         // locomotion state
         float phase;
@@ -1054,7 +1056,12 @@ namespace SoccerFight
             for (int i = 0; i < Parts.Count; i++)
             {
                 var sr = Parts[i];
-                if (partMats[i] == Art.SpriteGlowMat) { sr.enabled = !flashing; continue; }
+                if (partMats[i] == Art.SpriteGlowMat)
+                {
+                    sr.enabled = !flashing;
+                    sr.color = partColors[i].WithAlpha(Mathf.Min(1f, partColors[i].a * GlowBoost));
+                    continue;
+                }
                 sr.sharedMaterial = flashing ? Art.SpriteSolidMat : partMats[i];
                 Color c = flashing ? new Color(1f, 0.55f, 0.6f, 1f) : partColors[i];
                 if (blinkOff) c.a *= 0.35f;
