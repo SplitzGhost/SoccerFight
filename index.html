@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>SoccerFight</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #070b16; }
+      #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; background: #070b16; }
+      #loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: radial-gradient(ellipse at 50% 40%, #16233f 0%, #070b16 70%); color: #dbe7ff;
+        font: 500 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; transition: opacity .6s ease;
+      }
+      #loader.done { opacity: 0; pointer-events: none; }
+      #title {
+        font-size: clamp(32px, 6vw, 56px); font-weight: 800; letter-spacing: .04em;
+        background: linear-gradient(90deg, #7fd8ff, #c89bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      #bar { width: min(340px, 70vw); height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+      #fill { width: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7fd8ff, #c89bff); transition: width .2s ease; }
+      #status { opacity: .75; }
+      #hint { position: absolute; bottom: 16px; left: 16px; right: 16px; text-align: center; opacity: .45; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loader">
+      <div id="title">SoccerFight</div>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Lädt …</div>
+      <div id="hint">A/D laufen · Leertaste springen · Linksklick schießen (in der Luft: Rückstoß) · Rechtsklick Power-Schuss · weitere Fähigkeiten nach jedem Boss · Esc Menü · F3 Developer</div>
+    </div>
+    <script>
+      (function () {
+        var canvas = document.querySelector("#unity-canvas");
+        var loader = document.querySelector("#loader");
+        var fill = document.querySelector("#fill");
+        var statusText = document.querySelector("#status");
+        canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        // The build's file names are baked in here, but build.json — fetched fresh on every visit,
+        // never from a cache — wins. So even a cached copy of this page always boots the newest build.
+        var files = {
+          loader: "Build/a10112bbd8fd140e62facb916f2bfdce.loader.js",
+          data: "Build/a9c4979d383c642998c7e7ee1359c69c.data.unityweb",
+          framework: "Build/f841d6d4ad2c7d4335b7f48e65fdfc67.framework.js.unityweb",
+          code: "Build/862359cc5eff49431dfd80e13d257a6d.wasm.unityweb"
+        };
+
+        function start() {
+          var script = document.createElement("script");
+          script.src = files.loader;
+          script.onerror = function () { statusText.textContent = "Fehler: Spiel konnte nicht geladen werden – bitte neu laden."; };
+          script.onload = function () {
+            createUnityInstance(canvas, {
+              arguments: [],
+              dataUrl: files.data,
+              frameworkUrl: files.framework,
+              codeUrl: files.code,
+              streamingAssetsUrl: "StreamingAssets",
+              companyName: "DefaultCompany",
+              productName: "SoccerFight",
+              productVersion: "1.0",
+            }, function (progress) {
+              fill.style.width = (100 * progress) + "%";
+              statusText.textContent = progress < 1 ? "Lädt … " + Math.round(100 * progress) + " %" : "Welt wird erzeugt …";
+            }).then(function () {
+              loader.classList.add("done");
+              canvas.focus();
+            }).catch(function (message) {
+              statusText.textContent = "Fehler: " + message;
+            });
+          };
+          document.body.appendChild(script);
+        }
+
+        fetch("build.json?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && j.loader && j.data && j.framework && j.code) files = j; }, function () {})
+          .then(start, start);
+      })();
+    </script>
+  </body>
+</html>
