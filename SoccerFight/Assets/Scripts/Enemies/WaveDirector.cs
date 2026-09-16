@@ -187,6 +187,7 @@ namespace SoccerFight
                     if ((c - closest).sqrMagnitude < reach * reach)
                     {
                         if (player.IsDashing && stats.DashDamageFrac > 0f) player.DashStrike(m);
+                        else if (m.Halted) { }   // knocked over or whistled: it cannot hurt anyone right now
                         else if (player.TakeDamage(m.ContactDamage * StageMechanics.EnemyDamageBoost, m.Center))
                             m.Vel.x = Mathf.Sign(m.Center.x - player.Pos.x) * (m.Rank >= Rank.MiniBoss ? 5f : 3.5f);   // bounce off instead of sitting on the player
                     }

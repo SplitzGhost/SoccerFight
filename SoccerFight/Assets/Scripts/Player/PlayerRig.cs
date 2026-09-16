@@ -185,6 +185,8 @@ namespace SoccerFight
 
         public void OnDash() { squashXVel += 3f; squashYVel -= 1.4f; tuftVel -= 180f; }
 
+        public void OnWhistle() { squashXVel -= 1.6f; squashYVel += 2.6f; tuftVel -= 120f; }
+
         public void OnJuggleTouch(Player.Touch part)
         {
             touchAt = player.JuggleBallLocal;
@@ -466,6 +468,46 @@ namespace SoccerFight
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
                     ref extraHipY, ref ballLocal);
             }
+            else if (player.CurrentAction == Player.Action.Punt)
+            {
+                // the goal kick is the shot swing, wound up further and following through higher
+                PoseKick(t, Player.PuntWindup, Player.PuntContact, Player.PuntDuration * 0.7f, Player.PuntDuration, 0.75f, hipY, air,
+                    ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref extraHipY);
+                if (t < Player.PuntContact) ballLocal = player.KickBallLocal;
+            }
+            else if (player.CurrentAction == Player.Action.Tackle)
+            {
+                PoseTackle(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
+            }
+            else if (player.CurrentAction == Player.Action.Nutmeg)
+            {
+                PoseRush(t, Player.NutmegRun, 1f, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+                if (player.StepCarry)
+                {
+                    // the ball is pushed low through the gap in front
+                    ballLocal = new Vector2(Mathf.Lerp(0.5f, 1.3f, Mathf.Clamp01(t / Player.NutmegRun)), Art.BallRadius);
+                    BallIsScripted = true;
+                }
+            }
+            else if (player.CurrentAction == Player.Action.Decoy)
+            {
+                PoseRush(t, Player.DecoyStep, -1f, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+            }
+            else if (player.CurrentAction == Player.Action.Wall)
+            {
+                PoseWall(t, ref nearFoot, ref nearFlat, ref farFoot, ref farFlat,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+            }
+            else if (player.CurrentAction == Player.Action.Whistle)
+            {
+                PoseWhistle(t, ref nearFoot, ref nearFlat, ref farFoot, ref farFlat,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+            }
 
             // --- springs for the upper body
             MathUtil.Spring(ref lean, ref leanVel, leanTarget, acting ? 5.5f : 3f, 0.72f, dt);
@@ -530,6 +572,112 @@ namespace SoccerFight
             UpdateFlash(dt);
         }
 
+
+        // ------------------------------------------------------------------ slide tackle
+
+        /// <summary>
+        /// The slide: hip on the turf, body tipped back, the near leg stretched out at the ball and
+        /// the far leg folded under. The recovery pushes the body back upright.
+        /// </summary>
+        void PoseTackle(float t, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY, ref Vector2 ballLocal)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float tS = Player.TackleSlide, tE = Player.TackleDuration;
+            float inW = MathUtil.Smooth01(t / 0.07f);
+            float outW = 1f - MathUtil.Smooth01((t - tS) / Mathf.Max(0.05f, tE - tS));
+            float w = inW * Mathf.Max(0.15f, outW);
+
+            // the body drops as it goes down, and climbs back up during the recovery
+            float down = t < tS ? MathUtil.Smooth01(t / 0.09f) : outW;
+            Vector2 nf = new Vector2(Mathf.Lerp(0.55f, 0.95f, down), A + 0.02f);
+            Vector2 ff = new Vector2(Mathf.Lerp(-0.1f, 0.12f, down), A + 0.3f * down);
+            float lean = Mathf.Lerp(-6f, -58f, down);
+            float head = Mathf.Lerp(0f, 26f, down);
+            float hipOff = -0.55f * down;
+            float nsh = Mathf.Lerp(-20f, -118f, down), nel = Mathf.Lerp(30f, 18f, down);
+            float fsh = Mathf.Lerp(20f, -96f, down), fel = Mathf.Lerp(35f, 26f, down);
+
+            nearFoot = Vector2.Lerp(nearFoot, nf, w); nearFlat = Mathf.Lerp(nearFlat, 0.25f, w); nearPoint = Mathf.Lerp(nearPoint, 0.7f, w);
+            farFoot = Vector2.Lerp(farFoot, ff, w); farFlat = Mathf.Lerp(farFlat, 0.1f, w); farPoint = Mathf.Lerp(farPoint, 0.8f, w);
+            nearShoulder = Mathf.Lerp(nearShoulder, nsh, w); nearElbow = Mathf.Lerp(nearElbow, nel, w);
+            farShoulder = Mathf.Lerp(farShoulder, fsh, w); farElbow = Mathf.Lerp(farElbow, fel, w);
+            leanTarget = Mathf.Lerp(leanTarget, lean, w);
+            headTarget = Mathf.Lerp(headTarget, head, w);
+            extraHipY += hipOff * w;
+
+            if (player.StepCarry)
+            {
+                // the ball rolls just ahead of the outstretched boot
+                Vector2 ball = new Vector2(Mathf.Lerp(0.6f, 1.15f, down), Art.BallRadius);
+                ballLocal = t < tS ? ball : Vector2.Lerp(ball, ballLocal, MathUtil.Smooth01((t - tS) / Mathf.Max(0.05f, tE - tS)));
+                BallIsScripted = true;
+            }
+        }
+
+        // ------------------------------------------------------------------ nutmeg / decoy sprint
+
+        /// <summary>A frozen sprint stride: used by the nutmeg run-through and the decoy sidestep.</summary>
+        void PoseRush(float t, float dur, float dir, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float w = MathUtil.Smooth01(t / 0.05f) * (1f - MathUtil.Smooth01((t - dur) / 0.14f));
+            float swing = Mathf.Sin(t / Mathf.Max(0.05f, dur) * Mathf.PI);
+
+            nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.46f * dir, A + 0.1f + 0.1f * swing), w);
+            nearFlat = Mathf.Lerp(nearFlat, 0.2f, w); nearPoint = Mathf.Lerp(nearPoint, 0.5f, w);
+            farFoot = Vector2.Lerp(farFoot, new Vector2(-0.48f * dir, A + 0.18f * swing), w);
+            farFlat = Mathf.Lerp(farFlat, 0f, w); farPoint = Mathf.Lerp(farPoint, 0.9f, w);
+            nearShoulder = Mathf.Lerp(nearShoulder, -62f * dir, w); nearElbow = Mathf.Lerp(nearElbow, 38f, w);
+            farShoulder = Mathf.Lerp(farShoulder, 58f * dir, w); farElbow = Mathf.Lerp(farElbow, 30f, w);
+            leanTarget = Mathf.Lerp(leanTarget, -22f * dir, w);
+            headTarget = Mathf.Lerp(headTarget, 6f * dir, w);
+            extraHipY += -0.07f * w;
+        }
+
+        // ------------------------------------------------------------------ wall + whistle gestures
+
+        /// <summary>Wall: both arms shove forward, as if pushing the defenders into place.</summary>
+        void PoseWall(float t, ref Vector2 nearFoot, ref float nearFlat, ref Vector2 farFoot, ref float farFlat,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float w = MathUtil.Smooth01(t / 0.06f) * (1f - MathUtil.Smooth01((t - Player.WallSet) / 0.22f));
+            float push = MathUtil.Bump(Mathf.Clamp01(t / Player.WallSet));
+
+            nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.3f, A), w); nearFlat = Mathf.Lerp(nearFlat, 1f, w);
+            farFoot = Vector2.Lerp(farFoot, new Vector2(-0.3f, A), w); farFlat = Mathf.Lerp(farFlat, 1f, w);
+            nearShoulder = Mathf.Lerp(nearShoulder, -70f - 25f * push, w); nearElbow = Mathf.Lerp(nearElbow, 20f - 15f * push, w);
+            farShoulder = Mathf.Lerp(farShoulder, -62f - 25f * push, w); farElbow = Mathf.Lerp(farElbow, 26f - 15f * push, w);
+            leanTarget = Mathf.Lerp(leanTarget, 8f - 12f * push, w);
+            headTarget = Mathf.Lerp(headTarget, -4f, w);
+            extraHipY += -0.06f * w * push;
+        }
+
+        /// <summary>Whistle: the hand goes to the mouth, the chest fills, the body leans back into the blow.</summary>
+        void PoseWhistle(float t, ref Vector2 nearFoot, ref float nearFlat, ref Vector2 farFoot, ref float farFlat,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float w = MathUtil.Smooth01(t / 0.05f) * (1f - MathUtil.Smooth01((t - Player.WhistleDuration * 0.7f) / 0.2f));
+            float blow = MathUtil.Bump(Mathf.Clamp01((t - 0.1f) / 0.3f));
+
+            nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.26f, A), w); nearFlat = Mathf.Lerp(nearFlat, 1f, w);
+            farFoot = Vector2.Lerp(farFoot, new Vector2(-0.26f, A), w); farFlat = Mathf.Lerp(farFlat, 1f, w);
+            // near arm folds up so the hand sits at the mouth
+            nearShoulder = Mathf.Lerp(nearShoulder, -34f, w); nearElbow = Mathf.Lerp(nearElbow, 118f + 14f * blow, w);
+            farShoulder = Mathf.Lerp(farShoulder, 26f, w); farElbow = Mathf.Lerp(farElbow, 30f, w);
+            leanTarget = Mathf.Lerp(leanTarget, 6f + 8f * blow, w);
+            headTarget = Mathf.Lerp(headTarget, -10f - 8f * blow, w);
+            extraHipY += 0.03f * w * blow;
+        }
         // ------------------------------------------------------------------ kick
 
         /// <summary>Shot and power shot share one pendulum swing; power (0..1) winds further back,

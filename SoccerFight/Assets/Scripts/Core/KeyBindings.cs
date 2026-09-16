@@ -4,7 +4,8 @@ using UnityEngine.InputSystem.Controls;
 
 namespace SoccerFight
 {
-    public enum GameAction { Left, Right, Jump, Shoot, Flick, Juggle, Down, PowerShot, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle }
+    /// <summary>Movement, the two shots, and four skill slots — whatever the run unlocks lands in the slots in order.</summary>
+    public enum GameAction { Left, Right, Jump, Shoot, Down, PowerShot, Skill1, Skill2, Skill3, Skill4 }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -24,8 +25,7 @@ namespace SoccerFight
         public static readonly GameAction[] All =
         {
             GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot,
-            GameAction.PowerShot, GameAction.StepOver, GameAction.Bicycle, GameAction.Flick, GameAction.Juggle,
-            GameAction.Tackle, GameAction.Punt, GameAction.Wall, GameAction.Nutmeg, GameAction.Decoy, GameAction.Whistle
+            GameAction.PowerShot, GameAction.Skill1, GameAction.Skill2, GameAction.Skill3, GameAction.Skill4
         };
         static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
@@ -43,18 +43,12 @@ namespace SoccerFight
                 case GameAction.Right: return "NACH RECHTS";
                 case GameAction.Jump: return "SPRINGEN";
                 case GameAction.Shoot: return "SCHUSS";
-                case GameAction.Flick: return "RAINBOW FLICK";
                 case GameAction.Down: return "DURCHFALLEN";
                 case GameAction.PowerShot: return "POWER-SCHUSS";
-                case GameAction.StepOver: return "ÜBERSTEIGER";
-                case GameAction.Bicycle: return "FALLRÜCKZIEHER";
-                case GameAction.Tackle: return "GRÄTSCHE";
-                case GameAction.Punt: return "ABSTOSS";
-                case GameAction.Wall: return "MAUER";
-                case GameAction.Nutmeg: return "TUNNEL";
-                case GameAction.Decoy: return "LOCKVOGEL";
-                case GameAction.Whistle: return "SCHLUSSPFIFF";
-                default: return "BALL HOCHHALTEN";
+                case GameAction.Skill1: return "FÄHIGKEIT 1";
+                case GameAction.Skill2: return "FÄHIGKEIT 2";
+                case GameAction.Skill3: return "FÄHIGKEIT 3";
+                default: return "FÄHIGKEIT 4";
             }
         }
 
@@ -66,18 +60,12 @@ namespace SoccerFight
                 case GameAction.Right: return Binding.K(Key.D);
                 case GameAction.Jump: return Binding.K(Key.Space);
                 case GameAction.Shoot: return Binding.M(0);
-                case GameAction.Flick: return Binding.K(Key.R);
                 case GameAction.Down: return Binding.K(Key.S);
                 case GameAction.PowerShot: return Binding.M(1);
-                case GameAction.StepOver: return Binding.K(Key.E);
-                case GameAction.Bicycle: return Binding.K(Key.Q);
-                case GameAction.Tackle: return Binding.K(Key.C);
-                case GameAction.Punt: return Binding.K(Key.F);
-                case GameAction.Wall: return Binding.K(Key.V);
-                case GameAction.Nutmeg: return Binding.K(Key.X);
-                case GameAction.Decoy: return Binding.K(Key.T);
-                case GameAction.Whistle: return Binding.K(Key.G);
-                default: return Binding.K(Key.LeftShift);
+                case GameAction.Skill1: return Binding.K(Key.E);
+                case GameAction.Skill2: return Binding.K(Key.Q);
+                case GameAction.Skill3: return Binding.K(Key.R);
+                default: return Binding.K(Key.F);
             }
         }
 

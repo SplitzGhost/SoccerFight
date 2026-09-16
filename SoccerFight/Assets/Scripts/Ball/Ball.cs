@@ -80,7 +80,7 @@ namespace SoccerFight
 
             // goal-kick marker: a ring on the ground that tightens while the ball is out of frame
             markerGlow = Art.MakeSprite("MeteorGlow", parent, Art.SoftGlow, -43, Art.SpriteGlowMat, Color.clear);
-            markerRing = Art.MakeSprite("MeteorRing", parent, Art.Ring, -42, Art.SpriteGlowMat, Color.clear);
+            markerRing = Art.MakeSprite("MeteorRing", parent, Art.MarkRing, -42, Art.SpriteGlowMat, Color.clear);
 
             shotTrail = MakeTrail("ShotTrail", Art.TrailShotMat, 0.17f, R * 1.8f, order - 3);
             var g = new Gradient();
@@ -290,13 +290,13 @@ namespace SoccerFight
             float k = Mathf.Clamp01(stateTime / (meteorDelay + 0.35f));
             float pulse = 0.55f + 0.45f * Mathf.Sin(stateTime * (9f + 26f * k));
             float radius = Player.PuntRadius * Game.I.Run.Stats.AreaMul;
-            float r = Mathf.Lerp(radius * 1.35f, radius * 0.55f, MathUtil.EaseInQuad(k));
+            float r = Mathf.Lerp(radius * 1.05f, radius * 0.5f, MathUtil.EaseInQuad(k));
             markerRing.transform.position = new Vector3(meteorTarget.x, meteorTarget.y + 0.05f, 0f);
-            markerRing.transform.localScale = new Vector3(r * 2f, r * 0.9f, 1f);
+            markerRing.transform.localScale = new Vector3(r * 2.15f, r * 0.85f, 1f);
             markerRing.color = Palette.Amber.WithAlpha((0.35f + 0.45f * k) * pulse);
             markerGlow.transform.position = markerRing.transform.position;
-            markerGlow.transform.localScale = new Vector3(r * 2.6f, r * 1.2f, 1f);
-            markerGlow.color = Palette.Amber.WithAlpha(0.1f + 0.2f * k * pulse);
+            markerGlow.transform.localScale = new Vector3(r * 2.4f, r * 0.9f, 1f);
+            markerGlow.color = Palette.Amber.WithAlpha(0.06f + 0.12f * k * pulse);
             if (Random.value < dt * 12f * k)
                 FxSystem.I.Sparks(new Vector2(meteorTarget.x + Random.Range(-r, r), meteorTarget.y + 0.05f), Vector2.up, 26f, 1, 2f, 5f, Palette.Amber, 2.4f, 0.04f, 0.3f, 5f);
         }
@@ -714,6 +714,7 @@ namespace SoccerFight
             glow.transform.localScale = Vector3.one * Mathf.Lerp(glow.transform.localScale.x, glowSize, 1f - Mathf.Exp(-12f * dt));
             core.color = Color.Lerp(core.color, Color.white.WithAlpha(coreA), 1f - Mathf.Exp(-14f * dt));
 
+            if (St != State.Meteor) HideMarker();
             shotTrail.emitting = St == State.Shot || (St == State.Returning && speed > 7f) || (St == State.Loose && speed > 7f);
             rainbowTrail.emitting = St == State.Rainbow;
             heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor;

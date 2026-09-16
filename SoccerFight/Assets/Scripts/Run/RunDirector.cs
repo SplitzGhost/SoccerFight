@@ -514,7 +514,7 @@ namespace SoccerFight
         {
             DevMode.MarkRun();
             var locked = run.LockedAbilities();
-            if (locked.Count == 0) { Game.I.Hud.ShowToast("ALLE FÄHIGKEITEN SIND SCHON FREI"); return; }
+            if (locked.Count == 0) { Game.I.Hud.ShowToast("ALLE VIER PLÄTZE SIND BELEGT"); return; }
             var choice = new List<Ability>();
             while (choice.Count < Mathf.Min(2, locked.Count))
             {
@@ -552,7 +552,7 @@ namespace SoccerFight
             foreach (var a in run.LockedAbilities()) run.Unlock(a);
             player.ApplyStats(false);
             foreach (var a in Abilities.Unlockable) Game.I.Hud.OnAbilityUnlocked(a);
-            Game.I.Hud.ShowToast("ALLE FÄHIGKEITEN FREIGESCHALTET");
+            Game.I.Hud.ShowToast("FÄHIGKEITS-PLÄTZE GEFÜLLT");
         }
 
         public void DevClearBuild()

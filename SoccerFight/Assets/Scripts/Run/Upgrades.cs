@@ -170,6 +170,32 @@ namespace SoccerFight
                 (s, n) => s.Perpetual = true);
             U("maestro", "MAESTRO", L, UpIcon.Maestro, 1, n => "Jede Fähigkeit macht dich " + N(1) + " s unverwundbar und feuert eine Echo-Salve auf nahe Gegner.",
                 (s, n) => s.Maestro = true);
+
+            // ------------------------------------------------------------------ the later moves
+            U("blood_tackle", "BLUTGRÄTSCHE", C, UpIcon.Leech, 4, n => "Jeder von der Grätsche umgeworfene Gegner heilt " + N(3f * n) + ".",
+                (s, n) => s.TackleHeal += 3f * n, ab: Ability.Tackle);
+            U("ground_wave", "BODENWELLE", R, UpIcon.Shockwave, 1, n => "Am Ende der Grätsche rollt eine Schockwelle über den Boden (" + N(26) + " Flächenschaden).",
+                (s, n) => s.TackleWave = true, ab: Ability.Tackle);
+            U("firebomb", "BRANDSATZ", R, UpIcon.Fire, 1, n => "Der Abstoß-Krater brennt: Getroffene Gegner stehen " + N(4) + " s in Flammen.",
+                (s, n) => s.PuntFire = true, ab: Ability.Punt);
+            U("hailstorm", "HAGEL", E, UpIcon.Explode, 2, n => "Der Abstoß schlägt " + V(n.ToString()) + " mal zusätzlich neben dem Ziel ein (halber Schaden).",
+                (s, n) => s.PuntExtra += n, ab: Ability.Punt);
+            U("solid_wall", "STABILE MAUER", C, UpIcon.Shield, 3, n => "Die Mauer steht " + N(1.2f * n) + " s länger.",
+                (s, n) => s.WallLifeBonus += 1.2f * n, ab: Ability.Wall);
+            U("rebound", "ABPRALLER", R, UpIcon.Ricochet, 1, n => "Dein Ball kommt von der Mauer schneller zurück, als er ankam.",
+                (s, n) => s.WallBounce = true, ab: Ability.Wall);
+            U("street_ball", "STRASSENFUSSBALL", C, UpIcon.Cooldown, 3, n => "Jeder Tunnel verkürzt alle Abklingzeiten um " + N(0.6f * n) + " s.",
+                (s, n) => s.NutmegRefund += 0.6f * n, ab: Ability.Nutmeg);
+            U("humiliation", "DEMÜTIGUNG", R, UpIcon.Chain, 1, n => "Die Tunnel-Markierung springt auf einen zweiten Gegner in der Nähe über.",
+                (s, n) => s.NutmegSpread = true, ab: Ability.Nutmeg);
+            U("stoppage", "NACHSPIELZEIT", R, UpIcon.Time, 2, n => "Der Schlusspfiff hält " + N(0.5f * n) + " s länger an.",
+                (s, n) => s.WhistleBonus += 0.5f * n, ab: Ability.Whistle);
+            U("red_card", "ROTE KARTE", E, UpIcon.Crit, 1, n => "Beim Schlusspfiff fliegt ein einfacher Gegner sofort vom Platz.",
+                (s, n) => s.RedCard = true, ab: Ability.Whistle);
+            U("diversion", "ABLENKUNGSMANÖVER", R, UpIcon.Nova, 1, n => "Der Lockvogel platzt mit " + N(45) + " Flächenschaden statt " + N(18) + " und größerem Radius.",
+                (s, n) => s.DecoyBlast = true, ab: Ability.Decoy);
+            U("doppelganger", "DOPPELGÄNGER", E, UpIcon.Echo, 2, n => "Die Körpertäuschung lässt " + V(n.ToString()) + " zusätzliche Nachbilder stehen.",
+                (s, n) => s.DecoyCount += n, ab: Ability.Decoy);
         }
 
         public static int Count(Rarity r) { int c = 0; foreach (var u in All) if (u.Rarity == r) c++; return c; }

@@ -26,6 +26,24 @@ namespace SoccerFight
         public readonly HashSet<Ability> Unlocked = new HashSet<Ability>();
         /// <summary>Unlocked abilities in the order they were gained (the skill bar grows leftwards in this order).</summary>
         public readonly List<Ability> UnlockOrder = new List<Ability>();
+        /// <summary>
+        /// The four skill slots. Shot and Power are always there on the mouse buttons; everything a run
+        /// unlocks fills slot 1 to 4 in order and is played with that slot's key.
+        /// </summary>
+        public readonly List<Ability> Skills = new List<Ability>();
+        public const int MaxSkills = 4;
+        public bool CanUnlockMore => Skills.Count < MaxSkills;
+        public int SkillCount => Skills.Count;
+        public Ability SkillAt(int slot) => slot >= 0 && slot < Skills.Count ? Skills[slot] : Ability.None;
+        public int SlotOf(Ability a) => Skills.IndexOf(a);
+        /// <summary>Which key plays this ability right now.</summary>
+        public GameAction ActionFor(Ability a)
+        {
+            if (a == Ability.Power) return GameAction.PowerShot;
+            int i = SlotOf(a);
+            return i < 0 ? GameAction.Shoot : (GameAction)((int)GameAction.Skill1 + i);
+        }
+        public static bool IsSkill(Ability a) => a != Ability.None && a != Ability.Shot && a != Ability.Power && a != Ability.AirKick;
         public readonly PlayerStats Stats = new PlayerStats();
 
         public StageTheme Theme => StageThemes.For(Stage);
@@ -46,6 +64,7 @@ namespace SoccerFight
             Owned.Clear(); PickOrder.Clear();
             Unlocked.Clear();
             UnlockOrder.Clear();
+            Skills.Clear();
             Unlock(Ability.Shot);
             Unlock(Ability.Power);
         }
@@ -53,9 +72,11 @@ namespace SoccerFight
         public bool Has(Ability a) => a == Ability.None || Unlocked.Contains(a);
         public int Stacks(string id) => Owned.TryGetValue(id, out int n) ? n : 0;
 
+        /// <summary>What a boss could still hand out — nothing once all four slots are taken.</summary>
         public List<Ability> LockedAbilities()
         {
             var list = new List<Ability>();
+            if (!CanUnlockMore) return list;
             foreach (var a in Abilities.Unlockable) if (!Unlocked.Contains(a)) list.Add(a);
             return list;
         }
@@ -70,7 +91,13 @@ namespace SoccerFight
 
         public void Unlock(Ability a)
         {
-            if (Unlocked.Add(a)) UnlockOrder.Add(a);
+            // the four slots are the hard limit: a full build takes nothing else
+            if (IsSkill(a) && !CanUnlockMore && !Unlocked.Contains(a)) return;
+            if (Unlocked.Add(a))
+            {
+                UnlockOrder.Add(a);
+                if (IsSkill(a)) Skills.Add(a);
+            }
             Rebuild();
         }
 

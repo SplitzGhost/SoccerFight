@@ -29,6 +29,7 @@ namespace SoccerFight
         public static Sprite SoftGlow;
         public static Sprite Shadow;
         public static Sprite Ring;
+        public static Sprite MarkRing;
         public static Sprite Pill;
         public static Sprite LightRay;
 
@@ -132,6 +133,11 @@ namespace SoccerFight
             var r2 = new SdfCanvas(new Rect(-0.5f, -0.5f, 1f, 1f), 320f);
             r2.Fill(p => Sdf.Ring(p, Vector2.zero, 0.46f, 0.03f), Color.white);
             Ring = r2.ToSprite("Ring", Vector2.zero);
+
+            // hairline ring for ground markers: stays thin even when scaled up a lot
+            var r3 = new SdfCanvas(new Rect(-0.5f, -0.5f, 1f, 1f), 320f);
+            r3.Fill(p => Sdf.Ring(p, Vector2.zero, 0.47f, 0.008f), Color.white);
+            MarkRing = r3.ToSprite("MarkRing", Vector2.zero);
 
             var pill = new SdfCanvas(new Rect(-0.25f, -0.0625f, 0.5f, 0.125f), 256f);
             pill.Fill(p => Sdf.Box(p, Vector2.zero, new Vector2(0.245f, 0.058f), 0.058f), Color.white);

@@ -67,7 +67,7 @@ namespace SoccerFight
 
         // goal kick: the ball leaves the frame and comes down as a meteor where the cursor pointed
         public const float PuntWindup = 0.16f, PuntContact = 0.24f, PuntDuration = 0.5f;
-        public const float PuntCooldown = 8f, PuntDamage = 55f, PuntRadius = 3f, PuntFlight = 1.15f;
+        public const float PuntCooldown = 8f, PuntDamage = 55f, PuntRadius = 2.6f, PuntFlight = 0.85f;
 
         // free-kick wall: three ghost defenders hold a line in front of the player
         public const float WallSet = 0.22f, WallDuration = 0.46f, WallCooldown = 12f, WallLife = 4f;
@@ -231,6 +231,46 @@ namespace SoccerFight
             ghosts.Clear();
         }
 
+        void DecaySkillBuffers(float dt)
+        {
+            flickBuffer = Mathf.Max(0f, flickBuffer - dt);
+            juggleBuffer = Mathf.Max(0f, juggleBuffer - dt);
+            stepBuffer = Mathf.Max(0f, stepBuffer - dt);
+            bikeBuffer = Mathf.Max(0f, bikeBuffer - dt);
+            tackleBuffer = Mathf.Max(0f, tackleBuffer - dt);
+            puntBuffer = Mathf.Max(0f, puntBuffer - dt);
+            wallBuffer = Mathf.Max(0f, wallBuffer - dt);
+            nutmegBuffer = Mathf.Max(0f, nutmegBuffer - dt);
+            decoyBuffer = Mathf.Max(0f, decoyBuffer - dt);
+            whistleBuffer = Mathf.Max(0f, whistleBuffer - dt);
+        }
+
+        /// <summary>A skill key was pressed: buffer whatever ability sits in that slot.</summary>
+        void PressSkill(Ability a, int slot)
+        {
+            switch (a)
+            {
+                case Ability.Flick: flickBuffer = 0.3f; break;
+                case Ability.Juggle: juggleBuffer = 0.2f; break;
+                case Ability.StepOver: stepBuffer = 0.25f; break;
+                case Ability.Bicycle: bikeBuffer = 0.25f; break;
+                case Ability.Tackle: tackleBuffer = 0.25f; break;
+                case Ability.Punt: puntBuffer = 0.3f; break;
+                case Ability.Wall: wallBuffer = 0.25f; break;
+                case Ability.Nutmeg: nutmegBuffer = 0.25f; break;
+                case Ability.Decoy: decoyBuffer = 0.25f; break;
+                case Ability.Whistle: whistleBuffer = 0.25f; break;
+                default: Game.I.Hud.OnEmptySlot(slot); break;   // nothing in this slot yet
+            }
+        }
+
+        /// <summary>Was the key of the slot this ability sits in pressed this frame?</summary>
+        bool SkillDown(Ability a)
+        {
+            int slot = Run.SlotOf(a);
+            return slot >= 0 && slot < GameInput.Slots && GameInput.SkillPressed[slot];
+        }
+
         Vector2 ToLocal(Vector2 world) => new Vector2((world.x - Pos.x) * Facing, world.y - Pos.y);
         Vector2 ToWorld(Vector2 local) => Pos + new Vector2(local.x * Facing, local.y);
 
@@ -353,33 +393,16 @@ namespace SoccerFight
             // --- buffers
             jumpBuffer = GameInput.JumpPressed && !Dead ? JumpBufferTime : Mathf.Max(0f, jumpBuffer - dt);
             shotBuffer = GameInput.ShootPressed && !Dead ? 0.35f : Mathf.Max(0f, shotBuffer - dt);
-            flickBuffer = GameInput.FlickPressed && !Dead ? 0.3f : Mathf.Max(0f, flickBuffer - dt);
-            juggleBuffer = GameInput.JugglePressed && !Dead ? 0.2f : Mathf.Max(0f, juggleBuffer - dt);
             powerBuffer = GameInput.PowerPressed && !Dead ? 0.3f : Mathf.Max(0f, powerBuffer - dt);
-            stepBuffer = GameInput.StepOverPressed && !Dead ? 0.25f : Mathf.Max(0f, stepBuffer - dt);
-            bikeBuffer = GameInput.BicyclePressed && !Dead ? 0.25f : Mathf.Max(0f, bikeBuffer - dt);
-            tackleBuffer = GameInput.TacklePressed && !Dead ? 0.25f : Mathf.Max(0f, tackleBuffer - dt);
-            puntBuffer = GameInput.PuntPressed && !Dead ? 0.3f : Mathf.Max(0f, puntBuffer - dt);
-            wallBuffer = GameInput.WallPressed && !Dead ? 0.25f : Mathf.Max(0f, wallBuffer - dt);
-            nutmegBuffer = GameInput.NutmegPressed && !Dead ? 0.25f : Mathf.Max(0f, nutmegBuffer - dt);
-            decoyBuffer = GameInput.DecoyPressed && !Dead ? 0.25f : Mathf.Max(0f, decoyBuffer - dt);
-            whistleBuffer = GameInput.WhistlePressed && !Dead ? 0.25f : Mathf.Max(0f, whistleBuffer - dt);
+            // the four skill keys play whatever the run has put into their slot
+            DecaySkillBuffers(dt);
+            if (!Dead)
+                for (int i = 0; i < GameInput.Slots; i++)
+                    if (GameInput.SkillPressed[i]) PressSkill(run.SkillAt(i), i);
 
             // --- start actions
             if (CurrentAction == Action.None && !Dead)
             {
-                // locked abilities stay silent until the run unlocks them
-                if (flickBuffer > 0f && !run.Has(Ability.Flick)) { flickBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Flick); }
-                if (bikeBuffer > 0f && !run.Has(Ability.Bicycle)) { bikeBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Bicycle); }
-                if (stepBuffer > 0f && !run.Has(Ability.StepOver)) { stepBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.StepOver); }
-                if (juggleBuffer > 0f && !run.Has(Ability.Juggle)) { juggleBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Juggle); }
-                if (tackleBuffer > 0f && !run.Has(Ability.Tackle)) { tackleBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Tackle); }
-                if (puntBuffer > 0f && !run.Has(Ability.Punt)) { puntBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Punt); }
-                if (wallBuffer > 0f && !run.Has(Ability.Wall)) { wallBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Wall); }
-                if (nutmegBuffer > 0f && !run.Has(Ability.Nutmeg)) { nutmegBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Nutmeg); }
-                if (decoyBuffer > 0f && !run.Has(Ability.Decoy)) { decoyBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Decoy); }
-                if (whistleBuffer > 0f && !run.Has(Ability.Whistle)) { whistleBuffer = 0f; Game.I.Hud.OnLockedAbility(GameAction.Whistle); }
-
                 if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
@@ -661,7 +684,7 @@ namespace SoccerFight
             released = false;
             chargeFxTimer = 0f;
             PowerCd = PowerCooldownTotal;
-            Game.I.Hud.OnSkillUsed(GameAction.PowerShot);
+            Game.I.Hud.OnSkillUsed(Ability.Power);
             Game.I.Cam.SetZoom(0.96f);
         }
 
@@ -721,7 +744,7 @@ namespace SoccerFight
             if (StepCarry) Ball.BeginScripted();
             ghostTimer = 0f;
             dashHits.Clear();
-            Game.I.Hud.OnSkillUsed(GameAction.StepOver);
+            Game.I.Hud.OnSkillUsed(Ability.StepOver);
         }
 
         void DashBurst()
@@ -761,7 +784,7 @@ namespace SoccerFight
             Ball.BeginScripted();
             Vel.y = Mathf.Max(Vel.y, 4.5f);
             boostRise = true;
-            Game.I.Hud.OnSkillUsed(GameAction.Bicycle);
+            Game.I.Hud.OnSkillUsed(Ability.Bicycle);
             Game.I.Cam.SetZoom(0.95f);
         }
 
@@ -899,7 +922,7 @@ namespace SoccerFight
             JuggleBallLocal = new Vector2(jugX0 + jugVx * jugT, jugY0 + jugVy0 * jugT - 0.5f * JuggleGravity * jugT * jugT);
 
             float err = jugTc - jugT;   // > 0: the ball is still above the touch point
-            if (GameInput.JugglePressed && !Dead && SinceTouch > JuggleIgnore)
+            if (SkillDown(Ability.Juggle) && !Dead && SinceTouch > JuggleIgnore)
             {
                 if (Mathf.Abs(err) <= JuggleWindow) JuggleHit(Mathf.Abs(err) <= JuggleWindow * JugglePerfect);
                 else if (err > 0f) JuggleMiss(true);
@@ -1125,7 +1148,7 @@ namespace SoccerFight
             fx.Dust(Pos, new Vector2(-slideDir, 0.5f), 10, 3.4f, 0.5f, 0.4f);
             fx.Ring(FxLayer.Front, Pos + new Vector2(0f, 0.2f), 0.2f, 1.6f, 0.14f, 0.01f, 0.24f, Color.white, Palette.Turf.WithAlpha(0f), 2f);
             Game.I.Cam.Kick(new Vector2(slideDir * 0.12f, 0f));
-            Game.I.Hud.OnSkillUsed(GameAction.Tackle);
+            Game.I.Hud.OnSkillUsed(Ability.Tackle);
         }
 
         void UpdateTackle(float dt)
@@ -1200,7 +1223,7 @@ namespace SoccerFight
             released = false;
             PuntCd = PuntCooldownTotal;
             Ball.BeginScripted();
-            Game.I.Hud.OnSkillUsed(GameAction.Punt);
+            Game.I.Hud.OnSkillUsed(Ability.Punt);
         }
 
         void UpdatePunt(float dt)
@@ -1236,7 +1259,7 @@ namespace SoccerFight
             ActionTime = 0f;
             wallPlaced = false;
             WallCd = WallCooldownTotal;
-            Game.I.Hud.OnSkillUsed(GameAction.Wall);
+            Game.I.Hud.OnSkillUsed(Ability.Wall);
         }
 
         void UpdateWall(float dt)
@@ -1266,7 +1289,7 @@ namespace SoccerFight
             StepCarry = Ball.IsHeldFree;
             if (StepCarry) Ball.BeginScripted();
             ghostTimer = 0f;
-            Game.I.Hud.OnSkillUsed(GameAction.Nutmeg);
+            Game.I.Hud.OnSkillUsed(Ability.Nutmeg);
         }
 
         void UpdateNutmeg(float dt)
@@ -1323,7 +1346,7 @@ namespace SoccerFight
             DodgeTime = DecoyStep + 0.14f;
             Decoys.I.Spawn(this, DecoyLife, S.DecoyCount);
             ghostTimer = 0f;
-            Game.I.Hud.OnSkillUsed(GameAction.Decoy);
+            Game.I.Hud.OnSkillUsed(Ability.Decoy);
         }
 
         void UpdateDecoy(float dt)
@@ -1354,7 +1377,7 @@ namespace SoccerFight
             ActionTime = 0f;
             whistleBlown = false;
             Ultimate = 0f;
-            Game.I.Hud.OnSkillUsed(GameAction.Whistle);
+            Game.I.Hud.OnSkillUsed(Ability.Whistle);
         }
 
         void UpdateWhistle(float dt)
@@ -1382,7 +1405,7 @@ namespace SoccerFight
             var game = Game.I;
             Vector2 c = Pos + new Vector2(0f, 1.6f);
             for (int i = 0; i < 3; i++)
-                fx.Ring(FxLayer.Front, c, 0.4f + i * 0.5f, 16f + i * 5f, 0.5f, 0.02f, 0.55f + i * 0.12f, Color.white, Palette.Silver.WithAlpha(0f), 2.6f);
+                fx.Ring(FxLayer.Front, c, 0.4f + i * 0.5f, 15f + i * 4f, 0.26f, 0.015f, 0.5f + i * 0.12f, i == 0 ? Color.white : Palette.Silver, Palette.Silver.WithAlpha(0f), 2.2f);
             fx.Flash(c, 3.4f, Palette.Silver, 0.2f, 3f);
             fx.Sparkles(c, 1.6f, 16, Color.white, 3f, 0.7f);
             TimeFx.SlowMo(0.22f, 0.22f, 0.5f);

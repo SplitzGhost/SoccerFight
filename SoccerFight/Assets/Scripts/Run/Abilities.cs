@@ -53,24 +53,6 @@ namespace SoccerFight
             }
         }
 
-        public static GameAction Action(Ability a)
-        {
-            switch (a)
-            {
-                case Ability.Power: return GameAction.PowerShot;
-                case Ability.Flick: return GameAction.Flick;
-                case Ability.Juggle: return GameAction.Juggle;
-                case Ability.StepOver: return GameAction.StepOver;
-                case Ability.Bicycle: return GameAction.Bicycle;
-                case Ability.Tackle: return GameAction.Tackle;
-                case Ability.Punt: return GameAction.Punt;
-                case Ability.Wall: return GameAction.Wall;
-                case Ability.Nutmeg: return GameAction.Nutmeg;
-                case Ability.Decoy: return GameAction.Decoy;
-                case Ability.Whistle: return GameAction.Whistle;
-                default: return GameAction.Shoot;   // air kick rides on the normal shot
-            }
-        }
 
         public static Sprite Icon(Ability a)
         {

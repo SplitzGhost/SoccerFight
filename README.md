@@ -9,11 +9,12 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
   Die Schwierigkeit ist eine durchgehende Kurve (`Difficulty.cs`): Jede Welle +1 Stufe, jede neue Stage beginnt
   0,35 Stufen unter dem Ende der vorigen – die letzte Welle einer Stage ist also etwas härter als die erste der nächsten.
 - **Nach jeder zweiten Runde** (Wellen und Bosskämpfe zählen): 3 zufällige Upgrade-Karten (Gewöhnlich / Selten /
-  Episch / Legendär), eine davon nimmst du (Taste 1/2/3 oder Klick). 59 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
-- **Nach jedem Boss:** die Wahl zwischen 2 zufälligen Fähigkeiten – fällt der Boss auf eine Upgrade-Runde, vorher
+  Episch / Legendär), eine davon nimmst du (Taste 1/2/3 oder Klick). 71 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
+- **Nach jedem Boss:** die Wahl zwischen 2 von 10 zufälligen Fähigkeiten (höchstens **4 pro Lauf**, danach gibt es stattdessen eine zweite Belohnungskarte) – fällt der Boss auf eine Upgrade-Runde, vorher
   eine Boss-Belohnung (nur Selten+). Hinter der Fähigkeitswahl entsteht schon die Arena der nächsten Stage.
   Zu Beginn hast du nur **Schuss** und **Power-Schuss** (der Luft-Rückstoß beim Schießen in der Luft geht immer);
-  Rainbow Flick, Hochhalten, Übersteiger und Fallrückzieher werden Stage für Stage freigeschaltet.
+  Vier der zehn Fähigkeiten (Rainbow Flick, Hochhalten, Übersteiger, Fallrückzieher, Grätsche, Abstoß, Mauer,
+  Tunnel, Lockvogel, Schlusspfiff) füllen Stage für Stage die vier Fähigkeits-Plätze.
   Die nicht gewählte Fähigkeit kommt zurück in den Pool.
 - **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
   Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
@@ -65,10 +66,7 @@ Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 | S | Durch die Plattform unter dir nach unten fallen (in der Luft gehalten: durch alle Plattformen) |
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
 | Rechtsklick | Power-Schuss (nur im Stand, Cooldown 3,5 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (12 statt 18) |
-| E | Übersteiger (am Boden, Cooldown 3,5 s): Fuß kreist über den Ball, dann ein Dash (~5 m) in Blick- oder Laufrichtung. Während des ganzen Moves unverwundbar, der Ball wird mitgenommen |
-| Q | Fallrückzieher (nur in der Luft, Cooldown 5 s): Rückwärtssalto mit Scherenschlag, harter Schuss Richtung Mauszeiger. Der Ball explodiert beim ersten Aufprall auf Boden, Plattform oder Gegner (Flächenschaden) |
-| R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
-| Shift | Ball hochhalten: drücken, wenn der Ball in den Ring fällt. Jede Berührung heilt ein wenig (perfekt = mehr, alle 10 ein Bonus). Zu früh oder zu spät und der Ball fällt, das Zeitfenster wird mit jeder Berührung enger. Währenddessen kein Laufen und kein Schuss |
+| E / Q / R / F | **Fähigkeit 1 bis 4** – die vier Plätze, die der Lauf füllt (siehe unten) |
 | 1 / 2 / 3 | Upgrade- bzw. Fähigkeitskarte wählen |
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Hauptmenü, Beenden) |
 | F1 | FPS-Anzeige an/aus |
@@ -76,11 +74,30 @@ Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 | F3 | Developer-Modus (auch im Pausemenü): Unverwundbar, keine Abklingzeiten, Ein-Treffer-Kills, Spieltempo, Stage-Sprung, Welle überspringen, Boss/Gegner rufen, Karten öffnen, jedes Upgrade gezielt hinzufügen, Live-Zahlen. Dev-Läufe zählen nicht für den Rekord |
 | Enter | Neuer Lauf nach Niederlage |
 
-Flick, Hochhalten, Übersteiger und Fallrückzieher sind zu Beginn gesperrt und erscheinen erst nach ihrer Freischaltung (nach Boss-Siegen) in der Skill-Leiste – links neben den vorhandenen, alle gleich groß; der normale Schuss sitzt etwas größer ganz rechts.
+### Die vier Fähigkeits-Plätze
 
-Alle zehn Aktionen (Laufen, Springen, Durchfallen, Schuss, Power-Schuss, Übersteiger, Fallrückzieher, Rainbow Flick, Hochhalten) lassen sich im Pausemenü unter **Einstellungen → Steuerung** frei belegen
-(auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build), VSync, FPS-Anzeige, Bildschirmwackeln,
-Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
+Schuss und Power-Schuss liegen fest auf den Maustasten. Alles andere wird **nicht einzeln belegt**: Es gibt
+vier Plätze auf **E, Q, R und F**, und was ein Lauf freischaltet, landet der Reihe nach darin – die erste
+Fähigkeit auf Platz 1, die zweite auf Platz 2 und so weiter. **Mehr als vier gibt es pro Lauf nicht**; danach
+bringt jeder Boss stattdessen eine zweite Belohnungskarte. Zehn Fähigkeiten stehen zur Auswahl, jeder Lauf
+bekommt also eine andere Viererkombination:
+
+| Fähigkeit | Was sie tut |
+|---|---|
+| Rainbow Flick | Der Ball fliegt im Regenbogen über die Gegner und schlägt mit Flächenschaden ein (Cooldown 6 s) |
+| Ball hochhalten | Im Takt tippen, jede Berührung heilt; perfekt getimt doppelt, alle 10 Berührungen ein Bonus |
+| Übersteiger | Täuschung über den Ball, dann ein unverwundbarer Dash (~5 m) mitten durch die Gegner (3,5 s) |
+| Fallrückzieher | Nur in der Luft: Salto mit Scherenschlag, der Ball explodiert beim ersten Aufprall (5 s) |
+| Grätsche | Rutscht flach über den Rasen (4 s): wirft Gegner um, die dann kurz gar nichts tun, und duckt sich unter brusthohen Geschossen weg. Auf Eis rutschst du deutlich weiter |
+| Abstoß | Drischt den Ball aus dem Bild (8 s). Nach gut einer Sekunde kommt er als Meteor genau auf dem markierten Punkt herunter (55 Flächenschaden) – in der Wartezeit bist du ohne Ball |
+| Mauer | Drei Geister-Spieler stellen sich 4 s lang in den Weg (12 s): sie schlucken Geschosse, halten Gegner auf, und dein eigener Ball prallt von ihnen ab |
+| Tunnel | Der Ball geht durch die Beine (6 s): Der Getunnelte taumelt und nimmt 3 s lang 40 % mehr Schaden von allem |
+| Lockvogel | Körpertäuschung zur Seite (7 s). Das Nachbild bleibt stehen, die Gegner greifen es an und es platzt am Ende mit einem Stoß |
+| Schlusspfiff | Keine Abklingzeit, sondern eine Leiste, die sich mit jedem Sieg füllt: Ein Pfiff friert alle Gegner 2 s ein und lässt ihre Geschosse aus der Luft fallen |
+
+Bewegung, die beiden Schüsse und die vier Fähigkeits-Plätze lassen sich im Pausemenü unter
+**Einstellungen → Steuerung** frei belegen (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build),
+VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 
 ## Arena
 
@@ -108,7 +125,7 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
 | `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
-| `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne |
+| `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne, Freistoß-Mauer (`Barrier`), Lockvogel (`Decoys`) |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
 | `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
@@ -124,6 +141,9 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Stages:** Name, Farbstimmung, Wetter, Gegner, Plattform-Stile, Boss (samt Körper `Look`) und Regel in `StageThemes.cs`
 - **Upgrade-Takt:** `RunState.RoundsPerUpgrade` (heute 2)
 - **Monster-Körper:** je eine Funktion pro Körper in `MonsterArt.cs` (Form, Teile, Augen, Ketten, Animationsart)
+- **Fähigkeits-Plätze:** Anzahl in `RunState.MaxSkills` (heute 4); welche Fähigkeit auf welcher Taste liegt, ergibt sich aus der Reihenfolge in `RunState.Skills` (`Player.PressSkill`, `Hud.LayoutSlots`)
+- **Die späteren Moves:** Timing, Reichweiten und Schaden als Konstanten oben in `Player.cs` (`Tackle*`, `Punt*`, `Wall*`, `Nutmeg*`, `Decoy*`, `Whistle*`), Wirkung in den gleichnamigen `Start`/`Update`-Methoden; Mauer in `Combat/Barrier.cs`, Lockvogel in `Combat/Decoys.cs`, Meteor im `Ball.Punt`-Zustand
+- **Schlusspfiff-Leiste:** Ladung pro Kill in `Combat.OnKill`, Wirkung in `Player.BlowWhistle`
 - **Spielgefühl:** Konstanten oben in `Player.cs` (Tempo, Sprung, Cooldowns, Schaden)
 - **Timing von Schuss & Flick:** `KickWindup/KickContact/...` und `FlickSet/FlickRoll/...` in `Player.cs`
 - **Hochhalten:** `Juggle*`-Konstanten in `Player.cs` (Zeitfenster, Heilung, Flughöhen, Reihenfolge Fuß/Knie/Kopf)
@@ -152,7 +172,7 @@ Nach jeder Antwort von Claude Code startet ein Stop-Hook (`.claude/settings.loca
 Von Hand geht es mit `powershell -File tools\publish.ps1` (mit `-Force` wird auch ohne Änderung neu gebaut).
 Visuelle Prüfung: `tools\capture.ps1 -Scenario run` (Stage-Karte, Welle, Karten, Fähigkeitswahl, Boss, alle 8 Themen,
 Zusammenfassung), `-Scenario bestiary` (alle Monster-Körper), `-Scenario layouts` (die Arenen aller Stages samt
-Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt), `-Scenario menu` (Titelbildschirm, Ballschuss, Seitenwechsel) und `-Scenario sim` (ein Bot spielt einen echten Lauf
+Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt), `-Scenario menu` (Titelbildschirm, Ballschuss, Seitenwechsel), `-Scenario newskills` (Grätsche, Abstoß, Mauer, Tunnel, Lockvogel, Schlusspfiff) und `-Scenario sim` (ein Bot spielt einen echten Lauf
 und protokolliert jede Phase im Unity-Log).
 Protokoll: `.build/publish.log`, Unity-Log des letzten Builds: `.build/unity-build.log`.
 Für die Pushes muss die GitHub-CLI eingeloggt sein (`gh auth login`).

@@ -50,7 +50,7 @@ namespace SoccerFight
             // keep-up bot: taps so the press lands on the contact frame (runs after Game.Update,
             // so the edge is consumed by the next gameplay step)
             if (juggleBot && P.CurrentAction == Player.Action.Juggle && !P.JuggleDropped && P.JuggleTimeToContact - 1f / 60f <= 0.008f)
-                GameInput.JugglePressed = true;
+                GameInput.PressAbility(Ability.Juggle);
             if (running || Finished) return;
             running = true;
             StartCoroutine(Main());
@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -91,6 +91,7 @@ namespace SoccerFight
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
+            else if (scenario == "newskills") yield return NewSkills();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -321,13 +322,13 @@ namespace SoccerFight
                     if (Mathf.Abs(P.Pos.x) > Player.ArenaHalf - 1f) Move(-Mathf.Sign(P.Pos.x));
                     if (frame % 16 == 0) { GameInput.ShootPressed = true; shots++; }
                     if (frame % 200 == 100) GameInput.PowerPressed = true;
-                    if (adx < 1.8f && G.Run.Has(Ability.StepOver) && P.StepOverCd <= 0f) GameInput.StepOverPressed = true;
+                    if (adx < 1.8f && G.Run.Has(Ability.StepOver) && P.StepOverCd <= 0f) GameInput.PressAbility(Ability.StepOver);
                     else if (adx < 2.2f && P.Grounded && frame % 30 == 0) GameInput.JumpPressed = true;
                     // a human would hop over a charging heavyweight
                     if (m.Rank >= Rank.MiniBoss && adx < 4.5f && Mathf.Abs(m.Vel.x) > 6f && Mathf.Sign(m.Vel.x) == -Mathf.Sign(dx) && P.Grounded) { GameInput.JumpPressed = true; GameInput.JumpHeld = true; }
                     else if (P.Grounded) GameInput.JumpHeld = false;
-                    if (G.Run.Has(Ability.Flick) && P.FlickCd <= 0f && frame % 45 == 0) GameInput.FlickPressed = true;
-                    if (!P.Grounded && G.Run.Has(Ability.Bicycle) && P.BicycleCd <= 0f) GameInput.BicyclePressed = true;
+                    if (G.Run.Has(Ability.Flick) && P.FlickCd <= 0f && frame % 45 == 0) GameInput.PressAbility(Ability.Flick);
+                    if (!P.Grounded && G.Run.Has(Ability.Bicycle) && P.BicycleCd <= 0f) GameInput.PressAbility(Ability.Bicycle);
                     if (G.Run.IsBossWave && !bossShot && G.Waves.Boss != null && d.PhaseTime > 4f) { bossShot = true; yield return Shot("s3_boss"); }
                     if (G.Run.Stage == 2 && G.Run.Wave == 2 && !stage2Shot && d.PhaseTime > 6f) { stage2Shot = true; yield return Shot("s4_stage2"); }
                 }
@@ -378,6 +379,8 @@ namespace SoccerFight
             Move(1f);
             yield return Seconds(0.9f);
             Move(-1f);
+            yield return Seconds(0.45f);
+            Move(0f);
             BeginSheet(6, 2);
             for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0f, 0.9f), 1.3f); yield return Frames(1); }
             EndSheet("m02_turn_sheet");
@@ -387,7 +390,7 @@ namespace SoccerFight
 
             // C — keep-ups with a bot that taps on the beat
             juggleBot = true;
-            GameInput.JugglePressed = true;
+            GameInput.PressAbility(Ability.Juggle);
             yield return Frames(2);
             BeginSheet(6, 3);
             for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.1f, 1.3f), 1.9f); yield return Frames(4); }
@@ -400,7 +403,7 @@ namespace SoccerFight
             // D — tapping early swings through air and the ball drops
             for (int i = 0; i < 300 && !(P.JuggleTimeToContact > 0.35f && P.JuggleTimeToContact < 0.45f); i++) yield return null;
             juggleBot = false;
-            GameInput.JugglePressed = true;
+            GameInput.PressAbility(Ability.Juggle);
             yield return Frames(10);
             yield return Shot("m06_juggle_early");
             yield return Seconds(1f);
@@ -482,6 +485,8 @@ namespace SoccerFight
 
             // a real jump onto the capital to the left of the spawn
             Move(-1f);
+            yield return Seconds(0.45f);
+            Move(0f);
             GameInput.JumpPressed = true;
             GameInput.JumpHeld = true;
             yield return Seconds(0.22f);
@@ -524,7 +529,7 @@ namespace SoccerFight
             PlaceOn(0, 1.2f);
             yield return Seconds(0.8f);
             Aim(new Vector2(6f, -1f));
-            GameInput.FlickPressed = true;
+            GameInput.PressAbility(Ability.Flick);
             for (int i = 0; i < 200 && G.Ball.St != Ball.State.Rainbow; i++) yield return null;
             yield return Frames(14);
             yield return Shot("pl11_flick_from_terrace");
@@ -576,7 +581,7 @@ namespace SoccerFight
             yield return Frames(6);
             float hpBefore = P.Hp;
             Move(1f);
-            GameInput.StepOverPressed = true;
+            GameInput.PressAbility(Ability.StepOver);
             BeginSheet(6, 3);
             for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.6f, 0.9f), 1.6f); yield return Frames(1); }
             EndSheet("s03_stepover_sheet");
@@ -600,7 +605,7 @@ namespace SoccerFight
             GameInput.JumpHeld = true;
             yield return Seconds(0.24f);
             Aim(new Vector2(3.6f, -2.8f));
-            GameInput.BicyclePressed = true;
+            GameInput.PressAbility(Ability.Bicycle);
             BeginSheet(6, 3);
             for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0f, 1.5f), 1.9f); yield return Frames(1); }
             EndSheet("s05_bicycle_sheet");
@@ -779,6 +784,119 @@ namespace SoccerFight
             }
         }
 
+
+        /// <summary>The six later moves: slide, goal kick, wall, nutmeg, decoy and whistle.</summary>
+        IEnumerator NewSkills()
+        {
+            G.Director.DebugJump(1, 1, 0, false);
+            SetSkills(Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg);
+            Aim(new Vector2(5f, 0.8f));
+            yield return Seconds(1f);
+            Debug.Log("[Capture] slots: " + string.Join(", ", G.Run.Skills));
+
+            // A — slide tackle sweeps three blobs off their feet
+            var b1 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3.2f, 0f));
+            var b2 = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(4.6f, 0f));
+            yield return Frames(10);
+            GameInput.PressAbility(Ability.Tackle);
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(1.2f, 0.9f), 1.6f); yield return Frames(2); }
+            EndSheet("n01_tackle_sheet");
+            yield return Shot("n02_tackle");
+            Debug.Log($"[Capture] tackle: hp {b1.Hp:0} {b2.Hp:0}, stunned {b1.StunTime:0.0}s {b2.StunTime:0.0}s");
+            yield return Seconds(1.4f);
+
+            // B — goal kick: marker on the ground, then the meteor
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(6.5f, 0f));
+            G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(7.6f, 0f));
+            Monster.Hold = true;                 // they hold still so the meteor can be seen landing on them
+            Aim(new Vector2(7f, 0.2f));
+            yield return Frames(10);
+            GameInput.PressAbility(Ability.Punt);
+            yield return Frames(30);
+            yield return Shot("n03_punt_marker");
+            yield return Frames(58);
+            yield return Shot("n04_punt_impact");
+            Monster.Hold = false;
+            yield return Seconds(1.4f);
+
+            // C — the wall holds a spitter's lobs
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            SpawnSpec(EnemyType.Spitter, P.Pos + new Vector2(7f, 0.5f), Rank.Normal, 0, null);
+            SpawnSpec(EnemyType.Hopper, P.Pos + new Vector2(5.5f, 0.5f), Rank.Normal, 0, null);
+            Aim(new Vector2(6f, 0.8f));
+            yield return Frames(8);
+            GameInput.PressAbility(Ability.Wall);
+            yield return Seconds(1.6f);
+            yield return Shot("n05_wall");
+            yield return Seconds(1.4f);
+            yield return Shot("n06_wall_hold");
+
+            // D — nutmeg: through the legs, the victim is left wide open
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            var victim = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(2.6f, 0f));
+            Aim(new Vector2(4f, 0.8f));
+            yield return Frames(10);
+            GameInput.PressAbility(Ability.Nutmeg);
+            yield return Frames(14);
+            yield return Shot("n07_nutmeg");
+            yield return Frames(30);
+            Debug.Log($"[Capture] nutmeg: exposed {victim.ExposeTime:0.0}s, damage taken x{victim.DamageTakenMul:0.00}");
+            yield return Seconds(1.2f);
+
+            // E — decoy: the monsters walk to the ghost
+            SetSkills(Ability.Decoy, Ability.Whistle, Ability.Tackle, Ability.Punt);
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            for (int i = 0; i < 4; i++) G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(5f + i * 1.3f, 0f));
+            yield return Frames(20);
+            GameInput.PressAbility(Ability.Decoy);
+            yield return Frames(20);
+            yield return Shot("n08_decoy");
+            Move(-1f);
+            yield return Seconds(0.45f);
+            Move(0f);
+            yield return Seconds(1.6f);
+            Move(0f);
+            yield return Shot("n09_decoy_pull");
+            yield return Seconds(1.4f);
+
+            // F — whistle: everything freezes, the shots drop out of the air
+            G.Waves.Restart(999f);
+            yield return WaitBallHome();
+            for (int i = 0; i < 3; i++) G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3f + i * 1.6f, 0f));
+            SpawnSpec(EnemyType.Lantern, P.Pos + new Vector2(6f, 2.4f), Rank.Normal, 0, null);
+            SpawnSpec(EnemyType.Spitter, P.Pos + new Vector2(-5f, 0.5f), Rank.Normal, 0, null);
+            P.AddUltimate(1f);
+            yield return Seconds(2.2f);
+            yield return Shot("n10_before_whistle");
+            GameInput.PressAbility(Ability.Whistle);
+            yield return Frames(22);
+            yield return Shot("n11_whistle");
+            yield return Seconds(1f);
+            yield return Shot("n12_frozen");
+            int held = 0;
+            foreach (var m in G.Waves.Monsters) if (m.Alive && m.Halted) held++;
+            Debug.Log($"[Capture] whistle: {held} monsters held, charge now {P.Ultimate:0.00}");
+            yield return Seconds(1.5f);
+        }
+
+        /// <summary>Capture helper: put exactly these abilities into the four slots.</summary>
+        void SetSkills(params Ability[] abilities)
+        {
+            var run = G.Run;
+            run.Unlocked.Clear();
+            run.UnlockOrder.Clear();
+            run.Skills.Clear();
+            run.Unlock(Ability.Shot);
+            run.Unlock(Ability.Power);
+            foreach (var a in abilities) run.Unlock(a);
+            P.ApplyStats(true);
+        }
         /// <summary>Title screen: hover, the kicked ball, the page change, and a shot into empty space.</summary>
         IEnumerator MenuTour()
         {
@@ -880,7 +998,7 @@ namespace SoccerFight
 
             // 5 — rainbow flick close-up
             Aim(new Vector2(6f, 0.5f));
-            GameInput.FlickPressed = true;
+            GameInput.PressAbility(Ability.Flick);
             BeginSheet(6, 3);
             for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.1f, 1.0f), 1.45f); yield return Frames(2); }
             EndSheet("06_flick_sheet");

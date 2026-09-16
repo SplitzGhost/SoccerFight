@@ -6,21 +6,21 @@ namespace SoccerFight
     /// <summary>
     /// Polled once per frame. Everything reads from here so a scripted driver (screenshot capture)
     /// can feed inputs without touching gameplay code. Gameplay actions go through KeyBindings.
+    /// Abilities are not bound one by one: four skill keys play whatever sits in slot 1 to 4.
     /// </summary>
     public static class GameInput
     {
+        public const int Slots = RunState.MaxSkills;
+
         public static float MoveX;
         public static bool JumpPressed;
         public static bool JumpHeld;
         public static bool DownPressed;
         public static bool DownHeld;
         public static bool ShootPressed;
-        public static bool FlickPressed;
-        public static bool JugglePressed;
         public static bool PowerPressed;
-        public static bool StepOverPressed;
-        public static bool BicyclePressed;
-        public static bool TacklePressed, PuntPressed, WallPressed, NutmegPressed, DecoyPressed, WhistlePressed;
+        /// <summary>One flag per skill slot (slot 1 = index 0).</summary>
+        public static readonly bool[] SkillPressed = new bool[Slots];
         public static bool RestartPressed;
         public static bool PausePressed;
         public static bool ToggleFps;
@@ -42,11 +42,25 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
-            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
-            TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
+            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = PowerPressed = false;
+            RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
+            ClearSkills();
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
+        }
+
+        static void ClearSkills()
+        {
+            for (int i = 0; i < SkillPressed.Length; i++) SkillPressed[i] = false;
+        }
+
+        /// <summary>Scripted driver: press whichever slot currently holds this ability.</summary>
+        public static void PressAbility(Ability a)
+        {
+            int slot = Game.I != null ? Game.I.Run.SlotOf(a) : -1;
+            if (slot >= 0 && slot < SkillPressed.Length) SkillPressed[slot] = true;
+            else if (a == Ability.Power) PowerPressed = true;
+            else if (a == Ability.Shot) ShootPressed = true;
         }
 
         public static void Poll(Camera cam)
@@ -70,9 +84,8 @@ namespace SoccerFight
             if (Blocked)
             {
                 MoveX = 0f;
-                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
-                PowerPressed = StepOverPressed = BicyclePressed = false;
-                TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
+                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = PowerPressed = false;
+                ClearSkills();
             }
             else
             {
@@ -85,17 +98,9 @@ namespace SoccerFight
                 DownPressed = KeyBindings.WasPressed(GameAction.Down);
                 DownHeld = KeyBindings.IsPressed(GameAction.Down);
                 ShootPressed = KeyBindings.WasPressed(GameAction.Shoot);
-                FlickPressed = KeyBindings.WasPressed(GameAction.Flick);
-                JugglePressed = KeyBindings.WasPressed(GameAction.Juggle);
                 PowerPressed = KeyBindings.WasPressed(GameAction.PowerShot);
-                StepOverPressed = KeyBindings.WasPressed(GameAction.StepOver);
-                BicyclePressed = KeyBindings.WasPressed(GameAction.Bicycle);
-                TacklePressed = KeyBindings.WasPressed(GameAction.Tackle);
-                PuntPressed = KeyBindings.WasPressed(GameAction.Punt);
-                WallPressed = KeyBindings.WasPressed(GameAction.Wall);
-                NutmegPressed = KeyBindings.WasPressed(GameAction.Nutmeg);
-                DecoyPressed = KeyBindings.WasPressed(GameAction.Decoy);
-                WhistlePressed = KeyBindings.WasPressed(GameAction.Whistle);
+                for (int i = 0; i < SkillPressed.Length; i++)
+                    SkillPressed[i] = KeyBindings.WasPressed((GameAction)((int)GameAction.Skill1 + i));
             }
 
             if (cam != null)
@@ -108,9 +113,9 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
-            PowerPressed = StepOverPressed = BicyclePressed = false;
-            TacklePressed = PuntPressed = WallPressed = NutmegPressed = DecoyPressed = WhistlePressed = false;
+            JumpPressed = DownPressed = ShootPressed = PowerPressed = false;
+            RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
+            ClearSkills();
         }
     }
 }

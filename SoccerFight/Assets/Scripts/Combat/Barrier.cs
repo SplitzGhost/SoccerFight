@@ -56,15 +56,19 @@ namespace SoccerFight
             const float ppu = 200f;
             var c = new SdfCanvas(new Rect(-0.42f, -0.04f, 0.84f, 2.3f), ppu);
             SdfCanvas.SdfFn body = p => Sdf.Union(
-                Sdf.Union(Sdf.Capsule(p, new Vector2(-0.14f, 0.1f), new Vector2(-0.12f, 0.95f), 0.115f),   // legs
-                          Sdf.Capsule(p, new Vector2(0.14f, 0.1f), new Vector2(0.12f, 0.95f), 0.115f)),
-                Sdf.Union(Sdf.Box(p, new Vector2(0f, 1.32f), new Vector2(0.21f, 0.4f), 0.14f),             // torso
-                          Sdf.Circle(p, new Vector2(0f, 1.95f), 0.19f)));                                  // head
-            SdfCanvas.SdfFn arms = p => Sdf.Union(Sdf.Capsule(p, new Vector2(-0.24f, 1.5f), new Vector2(0.24f, 1.34f), 0.085f),
-                                                  Sdf.Capsule(p, new Vector2(0.24f, 1.52f), new Vector2(-0.24f, 1.36f), 0.085f));
-            c.Fill(p => Sdf.Union(body(p), arms(p)), Color.white);
+                Sdf.Union(Sdf.Capsule(p, new Vector2(-0.12f, 0.09f), new Vector2(-0.09f, 0.92f), 0.085f),  // legs, with a gap
+                          Sdf.Capsule(p, new Vector2(0.12f, 0.09f), new Vector2(0.09f, 0.92f), 0.085f)),
+                Sdf.Union(Sdf.Union(Sdf.Box(p, new Vector2(0f, 1.3f), new Vector2(0.155f, 0.38f), 0.1f),   // torso
+                                    Sdf.Box(p, new Vector2(0f, 1.63f), new Vector2(0.235f, 0.075f), 0.07f)), // shoulders
+                          Sdf.Union(Sdf.Capsule(p, new Vector2(0f, 1.72f), new Vector2(0f, 1.78f), 0.055f), // neck
+                                    Sdf.Circle(p, new Vector2(0f, 1.94f), 0.165f))));                        // head
+            // arms folded in front of the chest
+            SdfCanvas.SdfFn arms = p => Sdf.Union(Sdf.Capsule(p, new Vector2(-0.245f, 1.5f), new Vector2(0.235f, 1.33f), 0.068f),
+                                                  Sdf.Capsule(p, new Vector2(0.245f, 1.52f), new Vector2(-0.235f, 1.35f), 0.068f));
+            SdfCanvas.SdfFn all = p => Sdf.Union(body(p), arms(p));
+            c.Fill(all, new Color(1f, 1f, 1f, 0.72f));
             // a brighter rim so the silhouette reads against the dark arena
-            c.Fill(p => Mathf.Abs(Sdf.Union(body(p), arms(p))) - 0.022f, new Color(1f, 1f, 1f, 0.55f));
+            c.Fill(p => Mathf.Abs(all(p)) - 0.016f, Color.white);
             return c.ToSprite("Defender", new Vector2(0f, 0f));
         }
 

@@ -260,7 +260,9 @@ namespace SoccerFight
                 UiKit.Img("Divider", ct, UiArt.LineFade, Color.white.WithAlpha(0.14f), new Vector2(0f, -42f), new Vector2(300f, 2f));
                 Wrap(UiKit.Label("Desc", ct, Abilities.Description(a), 19f, Palette.UiText, TextAlignmentOptions.Top, new Vector2(0f, -100f), new Vector2(370f, 100f), false, 0f));
 
-                string keyName = a == Ability.AirKick ? "IN DER LUFT: " + KeyBindings.DisplayName(GameAction.Shoot) : "TASTE: " + KeyBindings.DisplayName(Abilities.Action(a));
+                // it lands in the next free slot, so that is the key it will answer to
+                string keyName = a == Ability.AirKick ? "IN DER LUFT: " + KeyBindings.DisplayName(GameAction.Shoot)
+                    : "PLATZ " + (Game.I.Run.SkillCount + 1) + ":  " + KeyBindings.DisplayName((GameAction)((int)GameAction.Skill1 + Mathf.Min(RunState.MaxSkills - 1, Game.I.Run.SkillCount)));
                 var kb = UiKit.Img("KeyBack", ct, UiArt.Pill, Color.white.WithAlpha(0.08f), new Vector2(0f, -174f), new Vector2(260f, 30f), Image.Type.Sliced);
                 UiKit.Label("KeyName", kb.transform, keyName, 13f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(260f, 30f), true, 3f);
                 int unlocks = 0;
