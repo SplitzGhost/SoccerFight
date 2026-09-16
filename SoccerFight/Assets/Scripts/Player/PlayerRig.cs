@@ -30,6 +30,7 @@ namespace SoccerFight
         public readonly List<SpriteRenderer> Parts = new List<SpriteRenderer>();
         readonly List<Color> partColors = new List<Color>();
         readonly List<Material> partMats = new List<Material>();
+        readonly List<PlayerPart> partKinds = new List<PlayerPart>();
 
         /// <summary>Set by the player: snapshots of the old pose sell the turn.</summary>
         public Afterimages Ghosts;
@@ -74,16 +75,17 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ construction
 
-        SpriteRenderer Part(string name, Sprite sprite, int order, bool back, bool glow = false)
+        SpriteRenderer Part(string name, PlayerPart kind, int order, bool back, bool glow = false)
         {
             var mat = glow ? Art.SpriteGlowMat : Art.CharacterMat;
-            var sr = Art.MakeSprite(name, flip, sprite, BaseOrder + order, mat);
+            var sr = Art.MakeSprite(name, flip, PlayerArt.SpriteOf(kind), BaseOrder + order, mat);
             Color c = back ? Palette.BackLimbTint : Color.white;
             if (glow) c = back ? Palette.Neon.WithAlpha(0.35f) : Palette.Neon.WithAlpha(0.7f);
             sr.color = c;
             Parts.Add(sr);
             partColors.Add(c);
             partMats.Add(mat);
+            partKinds.Add(kind);
             return sr;
         }
 
@@ -101,35 +103,41 @@ namespace SoccerFight
             // upper one (the boot over the sock), so the moonlit top of a joint cap is never exposed.
             farArm = new Arm
             {
-                hand = Part("FarHand", PlayerArt.Hand, 1, true).transform,
-                fore = Part("FarForearm", PlayerArt.Forearm, 2, true).transform,
-                upper = Part("FarUpperArm", PlayerArt.UpperArm, 3, true).transform
+                hand = Part("FarHand", PlayerPart.Hand, 1, true).transform,
+                fore = Part("FarForearm", PlayerPart.Forearm, 2, true).transform,
+                upper = Part("FarUpperArm", PlayerPart.UpperArm, 3, true).transform
             };
             farLeg = new Leg
             {
-                shin = Part("FarShin", PlayerArt.Shin, 4, true).transform,
-                thigh = Part("FarThigh", PlayerArt.Thigh, 5, true).transform,
-                boot = Part("FarBoot", PlayerArt.Boot, 6, true).transform,
-                glow = Part("FarBootGlow", PlayerArt.BootGlow, 7, true, true).transform
+                shin = Part("FarShin", PlayerPart.Shin, 4, true).transform,
+                thigh = Part("FarThigh", PlayerPart.Thigh, 5, true).transform,
+                boot = Part("FarBoot", PlayerPart.Boot, 6, true).transform,
+                glow = Part("FarBootGlow", PlayerPart.BootGlow, 7, true, true).transform
             };
-            neck = Part("Neck", PlayerArt.Neck, 8, false).transform;
-            pelvis = Part("Pelvis", PlayerArt.Pelvis, 10, false).transform;
+            neck = Part("Neck", PlayerPart.Neck, 8, false).transform;
+            pelvis = Part("Pelvis", PlayerPart.Pelvis, 10, false).transform;
             nearLeg = new Leg
             {
-                shin = Part("NearShin", PlayerArt.Shin, 12, false).transform,
-                thigh = Part("NearThigh", PlayerArt.Thigh, 13, false).transform,
-                boot = Part("NearBoot", PlayerArt.Boot, 14, false).transform,
-                glow = Part("NearBootGlow", PlayerArt.BootGlow, 15, false, true).transform
+                shin = Part("NearShin", PlayerPart.Shin, 12, false).transform,
+                thigh = Part("NearThigh", PlayerPart.Thigh, 13, false).transform,
+                boot = Part("NearBoot", PlayerPart.Boot, 14, false).transform,
+                glow = Part("NearBootGlow", PlayerPart.BootGlow, 15, false, true).transform
             };
-            torso = Part("Torso", PlayerArt.Torso, 18, false).transform;
-            tuft = Part("HairTuft", PlayerArt.HairTuft, 19, false).transform;
-            head = Part("Head", PlayerArt.Head, 20, false).transform;
+            torso = Part("Torso", PlayerPart.Torso, 18, false).transform;
+            tuft = Part("HairTuft", PlayerPart.HairTuft, 19, false).transform;
+            head = Part("Head", PlayerPart.Head, 20, false).transform;
             nearArm = new Arm
             {
-                hand = Part("NearHand", PlayerArt.Hand, 25, false).transform,
-                fore = Part("NearForearm", PlayerArt.Forearm, 26, false).transform,
-                upper = Part("NearUpperArm", PlayerArt.UpperArm, 27, false).transform
+                hand = Part("NearHand", PlayerPart.Hand, 25, false).transform,
+                fore = Part("NearForearm", PlayerPart.Forearm, 26, false).transform,
+                upper = Part("NearUpperArm", PlayerPart.UpperArm, 27, false).transform
             };
+        }
+
+        /// <summary>The chosen character changed: re-bind every part to the new body art.</summary>
+        public void ApplyLook()
+        {
+            for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(partKinds[i]);
         }
 
         public void ResetPose()

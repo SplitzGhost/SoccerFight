@@ -62,6 +62,7 @@ namespace SoccerFight
                 var dst = g.parts[i].transform;
                 dst.SetPositionAndRotation(src.position, src.rotation);
                 dst.localScale = src.lossyScale;
+                g.parts[i].sprite = sourceParts[i].sprite;   // the character may have changed since this ghost was made
                 g.parts[i].color = color.WithAlpha(alpha);
             }
         }

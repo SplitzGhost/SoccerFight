@@ -96,6 +96,7 @@ namespace SoccerFight
                     var dst = g.parts[i].transform;
                     dst.SetPositionAndRotation(src.position + new Vector3(offset.x, offset.y, 0f), src.rotation);
                     dst.localScale = src.lossyScale;
+                    g.parts[i].sprite = source[i].sprite;
                 }
                 g.ring.transform.position = new Vector3(g.pos.x, g.pos.y + 0.05f, 0f);
                 g.ring.transform.localScale = Vector3.one * 1.6f;

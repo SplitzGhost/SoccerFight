@@ -32,6 +32,10 @@ namespace SoccerFight
             public Color Accent;
             public System.Action Action;
             public float Hover, HoverVel, Punch, PunchVel, Hit;
+            /// <summary>Which menu page this target belongs to (0 = main, 2 = character select).</summary>
+            public int Page;
+            /// <summary>Custom look (character cards); when set the pill styling is skipped.</summary>
+            public System.Action<float, float, float> Style;
             public bool Primary;
         }
 
@@ -63,6 +67,7 @@ namespace SoccerFight
         RectTransform root, pageRoot, logoRoot, wordRoot, fxRoot, cursorRoot, logoSpin, shineMask;
         CanvasGroup rootGroup, menuGroup, pageGroup;
         SettingsPanel settings;
+        CharacterPage characters;
         Image logoBurst, curRing, curDot, curGlow;
         Image[] curBrackets;
         TextMeshProUGUI shine, bestLabel;
@@ -70,10 +75,10 @@ namespace SoccerFight
         readonly List<Shot> shots = new List<Shot>();
         readonly List<Bit> bits = new List<Bit>();
 
-        float openT, openVel, pageT, pageVel, time, shake, shakeVel;
+        float openT, openVel, pageT, pageVel, charT, charVel, time, shake, shakeVel;
         float curPunch, curPunchVel, lockT, lockVel, logoAngle, logoSpinRate = 34f, shineT;
         Vector2 aimLocal;
-        bool onSettings;
+        bool onSettings, onChars;
         State state = State.Menu;
         float stateT;
         bool playFired;
@@ -130,6 +135,10 @@ namespace SoccerFight
             settings = new SettingsPanel();
             settings.Build(menu, true);
             settings.BackRequested += () => onSettings = false;
+
+            characters = new CharacterPage();
+            characters.Build(menu, AddTarget);
+            MakeButton("ZURÜCK", new Vector2(0f, -408f), new Vector2(300f, 64f), Palette.ShotCyan, false, () => onChars = false, 2, characters.Root);
 
             fxRoot = UiKit.Node("Shots", root, Vector2.zero, Vector2.zero);
             BuildCursor();
@@ -216,16 +225,23 @@ namespace SoccerFight
             Vector2 size = new Vector2(430f, 78f);
             float y = -48f;
             MakeButton("SPIELEN", new Vector2(0f, y), size, Palette.ShotCyan, true, Play);
+            MakeButton("SPIELER", new Vector2(0f, y -= 94f), size, Palette.Trick, false, OpenCharacters);
             MakeButton("EINSTELLUNGEN", new Vector2(0f, y -= 94f), size, Palette.ShotCyan, false, () => onSettings = true);
 #if !UNITY_WEBGL || UNITY_EDITOR
             MakeButton("BEENDEN", new Vector2(0f, y -= 94f), size, Palette.Hurt, false, Quit);   // a browser tab can't be quit
 #endif
         }
 
-        void MakeButton(string text, Vector2 pos, Vector2 size, Color accent, bool primary, System.Action action)
+        /// <summary>Registers a shootable target that draws itself (the character cards).</summary>
+        void AddTarget(RectTransform root, Vector2 home, Vector2 size, System.Action action, System.Action<float, float, float> style)
         {
-            var b = new Btn { Home = pos, Size = size, Action = action, Accent = accent, Primary = primary };
-            b.Root = UiKit.Node(text, pageRoot, pos, size);
+            buttons.Add(new Btn { Root = root, Home = home, Size = size, Action = action, Style = style, Page = 2, Accent = Palette.ShotCyan });
+        }
+
+        void MakeButton(string text, Vector2 pos, Vector2 size, Color accent, bool primary, System.Action action, int page = 0, RectTransform parent = null)
+        {
+            var b = new Btn { Home = pos, Size = size, Action = action, Accent = accent, Primary = primary, Page = page };
+            b.Root = UiKit.Node(text, parent != null ? parent : pageRoot, pos, size);
             b.Glow = UiKit.Img("Glow", b.Root, UiArt.Glow, accent.WithAlpha(0f), Vector2.zero, size + new Vector2(200f, 130f));
             b.Rim = UiKit.Img("Rim", b.Root, UiArt.Pill, Color.white.WithAlpha(0.16f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
             b.Bg = UiKit.Img("Bg", b.Root, UiArt.Pill, UiKit.ButtonBase, Vector2.zero, size, Image.Type.Sliced);
@@ -244,6 +260,12 @@ namespace SoccerFight
         }
 
         /// <summary>The footer hangs off the bottom edge so it survives wide or narrow windows.</summary>
+        void OpenCharacters()
+        {
+            characters.EnsureFigures();   // the other two bodies are drawn the first time they are needed
+            onChars = true;
+        }
+
         void BuildFooter(RectTransform parent)
         {
             bestLabel = UiKit.Label("Best", parent, BestText(), 14f, Palette.UiMuted,
@@ -292,7 +314,8 @@ namespace SoccerFight
             state = State.Menu;
             stateT = 0f;
             onSettings = false;
-            pageT = pageVel = 0f;
+            pageT = pageVel = charT = charVel = 0f;
+            onChars = false;
             openT = openVel = 0f;
             hovered = null;
             playFired = false;
@@ -319,11 +342,22 @@ namespace SoccerFight
             IsOpen = false;
         }
 
+        /// <summary>Closes the title screen without the play animation (dev tools, restart).</summary>
+        public void Dismiss()
+        {
+            if (!IsOpen) return;
+            state = State.Starting;
+            stateT = 0.25f;
+            playFired = true;
+            IsOpen = false;
+        }
+
         /// <summary>Esc: cancel a rebind or leave the settings page.</summary>
         public void HandleEscape()
         {
             if (settings.IsCapturing) settings.CancelCapture();
             else if (onSettings) onSettings = false;
+            else if (onChars) onChars = false;
         }
 
         // ------------------------------------------------------------------ update
@@ -336,6 +370,7 @@ namespace SoccerFight
             // opens with a soft rise, leaves quickly so the stage card behind it is not muddied
             MathUtil.Spring(ref openT, ref openVel, IsOpen ? 1f : 0f, IsOpen ? 3.4f : 5.5f, 0.9f, udt);
             MathUtil.Spring(ref pageT, ref pageVel, onSettings ? 1f : 0f, 3.6f, 0.95f, udt);
+            MathUtil.Spring(ref charT, ref charVel, onChars ? 1f : 0f, 3.6f, 0.95f, udt);
             MathUtil.Spring(ref shake, ref shakeVel, 0f, 7f, 0.35f, udt);
 
             if (IsOpen) Aim();
@@ -392,8 +427,11 @@ namespace SoccerFight
             if (RectTransformUtility.ScreenPointToLocalPointInRectangle(root, GameInput.AimScreen, uiCam, out var local))
                 aimLocal = local;
 
-            bool interactive = state == State.Menu && !onSettings && openT > 0.8f && pageT < 0.2f;
-            hovered = interactive ? ButtonAt(aimLocal) : null;
+            // which page accepts shots right now: the main list, or the character cards
+            int page = onChars ? 2 : 0;
+            bool settled = onChars ? charT > 0.75f : pageT < 0.2f && charT < 0.2f;
+            bool interactive = state == State.Menu && !onSettings && openT > 0.8f && settled;
+            hovered = interactive ? ButtonAt(aimLocal, page) : null;
 
             if (!GameInput.ClickPressed) return;
             // the settings card is an ordinary UI surface — only the open screen is a shooting range
@@ -417,10 +455,11 @@ namespace SoccerFight
             return RectTransformUtility.WorldToScreenPoint(uiCam, root.TransformPoint(canvasLocal));
         }
 
-        Btn ButtonAt(Vector2 local)
+        Btn ButtonAt(Vector2 local, int page)
         {
             foreach (var b in buttons)
             {
+                if (b.Page != page) continue;
                 Vector2 d = local - b.Home;
                 if (Mathf.Abs(d.x) <= b.Size.x * 0.5f + 8f && Mathf.Abs(d.y) <= b.Size.y * 0.5f + 8f) return b;
             }
@@ -431,9 +470,10 @@ namespace SoccerFight
         {
             float o = Mathf.Clamp01(openT);
             float p = Mathf.Clamp01(pageT);
+            float ch = Mathf.Clamp01(charT);
             rootGroup.blocksRaycasts = rootGroup.interactable = IsOpen;
             menuGroup.alpha = o;
-            pageGroup.alpha = 1f - p;
+            pageGroup.alpha = 1f - Mathf.Max(p, ch);
             settings.Group.alpha = p;
             settings.Group.interactable = settings.Group.blocksRaycasts = p >= 0.5f && IsOpen;
             settings.Root.anchoredPosition = new Vector2(70f * (1f - p), 0f);
@@ -443,7 +483,15 @@ namespace SoccerFight
             // menu-wide jolt from an impact, plus a slight parallax lean towards the pointer
             Vector2 lean = new Vector2(aimLocal.x * 0.012f, aimLocal.y * 0.008f) * o;
             Vector2 jolt = new Vector2(Mathf.Sin(time * 71f), Mathf.Cos(time * 63f)) * shake * 16f;
-            pageRoot.anchoredPosition = new Vector2(-70f * p, 0f) + jolt + lean;
+            pageRoot.anchoredPosition = new Vector2(-70f * p, -60f * ch) + jolt + lean;
+
+            // character page: slides up from below and takes the jolt with it
+            characters.Group.alpha = ch;
+            characters.Root.anchoredPosition = new Vector2(0f, (1f - ch) * -70f) + jolt * ch;
+            float cs = Mathf.Lerp(0.96f, 1f, ch);
+            characters.Root.localScale = new Vector3(cs, cs, 1f);
+            bool showChars = ch > 0.005f;
+            if (characters.Root.gameObject.activeSelf != showChars) characters.Root.gameObject.SetActive(showChars);
 
             logoRoot.anchoredPosition = new Vector2(0f, 238f + (1f - o) * 46f + Mathf.Sin(time * 0.9f) * 3.5f);
             float ls = Mathf.Lerp(0.94f, 1f, o) + (state == State.Starting ? Mathf.Min(0.1f, stateT * 0.22f) : 0f);
@@ -456,7 +504,7 @@ namespace SoccerFight
             {
                 var b = buttons[i];
                 // staggered entrance: each button follows the one above it
-                float delay = 0.13f * (i + 1);
+                float delay = b.Page == 0 ? 0.13f * (i + 1) : 0f;
                 float o = Mathf.Clamp01((openT - delay) / Mathf.Max(0.05f, 1f - delay));
                 MathUtil.Spring(ref b.Hover, ref b.HoverVel, hovered == b ? 1f : 0f, 5.5f, 0.85f, udt);
                 MathUtil.Spring(ref b.Punch, ref b.PunchVel, 0f, 6f, 0.32f, udt);
@@ -465,6 +513,8 @@ namespace SoccerFight
                 float h = Mathf.Clamp01(b.Hover);
                 float leave = state == State.Starting ? Mathf.Clamp01(stateT * 2.6f) : 0f;
                 float fade = o * (1f - leave);
+                // cards live on their own page: it fades them, so they only need the hover state
+                if (b.Style != null) { b.Style(h, b.Hit, 1f); continue; }
                 bool visible = fade > 0.002f;
                 if (b.Root.gameObject.activeSelf != visible) b.Root.gameObject.SetActive(visible);
                 if (!visible) continue;

@@ -163,6 +163,7 @@ namespace SoccerFight
         /// <summary>A fresh run from stage 1.</summary>
         public void Restart()
         {
+            if (Menu != null) Menu.Dismiss();
             Hud.SetVisible(true);
             Begin(true);
         }

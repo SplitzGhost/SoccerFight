@@ -57,6 +57,24 @@ geschossen wird nur daneben.
 
 Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 
+
+## Charaktere
+
+Drei Spieler stehen zur Wahl, jeder in einer Klasse: **RIO** (Stürmer), **BRUNO** (Verteidiger) und
+**MIRA** (Skiller). Ausgewählt wird im Titelbildschirm unter **SPIELER** – drei Karten im Stil einer
+Brawler-Auswahl, jede mit der echten Spielfigur, Namensschild, Klasse und drei Klassenbalken. Eine Karte
+wird wie jeder andere Menüknopf **mit dem Ball abgeschossen**; die Wahl bleibt gespeichert.
+
+**Die Klassen haben noch keine Sonderfähigkeiten** – heute entscheidet die Wahl nur das Aussehen
+(Trikot, Haut, Haare, Schuh-Leuchten). Die Balken auf den Karten zeigen an, wohin die Klassen später
+gehen sollen.
+
+Technisch ist eine Figur ein **Kit** aus dreizehn Farben plus Haarlänge und Stirnband
+(`Run/Characters.cs`). `PlayerArt` zeichnet damit denselben Körper in drei Fassungen, speichert jede als
+`PlayerLook` und tauscht sie über `PlayerArt.Use` aus; das Skelett, jede Pose und jede Animation bleiben
+identisch. Die beiden nicht gewählten Spieler werden erst gezeichnet, wenn die Auswahl zum ersten Mal
+geöffnet wird, damit der Start nicht länger dauert.
+
 ## Steuerung
 
 | Taste | Aktion |
@@ -124,11 +142,11 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
-| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
+| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Spielerfiguren und ihre Farb-Kits (`Characters`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne, Freistoß-Mauer (`Barrier`), Lockvogel (`Decoys`) |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
-| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Charakterauswahl (`CharacterPage`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
 | `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
@@ -150,8 +168,9 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 - **Luft-Rückstoß:** `AirKickBoost` / `BoostControlTime` in `Player.cs`
 - **Skills:** `Power*`, `StepOver*`/`DashTime`/`DashSpeed`, `Bicycle*`/`Blast*` in `Player.cs` (Timing, Cooldowns, Schaden, Explosionsradius)
 - **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
-- **Spieler-Look:** Formen in `PlayerArt.cs`, Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
+- **Spieler-Look:** Formen in `PlayerArt.cs` (Farben kommen aus dem Kit des gewählten Charakters), Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
+- **Charaktere:** Namen, Klassen, Sprüche und alle Farben in `Run/Characters.cs`; das Kartenlayout in `UI/CharacterPage.cs` (`CardW/CardH`), die Figur-Pose in `CharacterPage.BuildFigure`
 - **Hauptmenü:** Aufbau, Knopf-Liste und Logo-Wort (`Word`) oben in `MainMenu.cs`; Flugbahn, Perspektive und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, Treffer-Effekte in `Land`, Kameraführung am Ende von `MainMenu.Update`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`

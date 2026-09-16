@@ -945,6 +945,38 @@ namespace SoccerFight
             yield return Shot("m7_miss");
             yield return Seconds(1.6f);
             yield return Shot("m8_title_again");
+
+            // character select: open the page, shoot a card, then take that player into the arena
+            GameInput.AimScreen = menu.ButtonScreen(1);
+            yield return Seconds(0.5f);
+            GameInput.ClickPressed = true;
+            yield return Seconds(1.6f);
+            yield return Shot("m9_characters");
+            GameInput.AimScreen = menu.ButtonScreen(6);
+            yield return Seconds(0.6f);
+            yield return Shot("m10_card_hover");
+            GameInput.ClickPressed = true;
+            yield return Frames(22);
+            yield return Shot("m11_card_hit");
+            yield return Seconds(1.2f);
+            yield return Shot("m12_picked");
+            Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
+            GameInput.AimScreen = menu.ButtonScreen(5);
+            yield return Seconds(0.4f);
+            GameInput.ClickPressed = true;
+            yield return Seconds(1.4f);
+            yield return Shot("m13_picked_middle");
+            Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
+
+            // and in the arena with that kit
+            G.Restart();
+            yield return Seconds(1.6f);
+            G.Hud.SetVisible(false);
+            G.Cam.SetOverride(P.Pos + new Vector2(0.4f, 1f), 2.2f);
+            yield return Frames(4);
+            yield return Shot("m14_ingame_character");
+            G.Cam.ClearOverride();
+            G.Hud.SetVisible(true);
         }
 
         IEnumerator All()
