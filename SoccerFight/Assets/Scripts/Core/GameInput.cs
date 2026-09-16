@@ -24,6 +24,8 @@ namespace SoccerFight
         public static bool PausePressed;
         public static bool ToggleFps;
         public static bool ToggleVsync;
+        /// <summary>Left mouse button, polled even while menus block gameplay (the title screen needs it).</summary>
+        public static bool ClickPressed;
         /// <summary>F3: developer panel.</summary>
         public static bool DevPressed;
         public static Vector2 AimScreen;
@@ -40,7 +42,7 @@ namespace SoccerFight
         {
             MoveX = 0f;
             JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = FlickPressed = JugglePressed = false;
-            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = false;
+            PowerPressed = StepOverPressed = BicyclePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             AimScreen = AimWorld = Vector2.zero;
             Scripted = Blocked = false;
         }
@@ -57,7 +59,11 @@ namespace SoccerFight
             ToggleFps = kb != null && kb.f1Key.wasPressedThisFrame;
             ToggleVsync = kb != null && kb.f2Key.wasPressedThisFrame;
             DevPressed = kb != null && kb.f3Key.wasPressedThisFrame;
-            if (mouse != null) AimScreen = mouse.position.ReadValue();
+            if (mouse != null)
+            {
+                AimScreen = mouse.position.ReadValue();
+                ClickPressed = mouse.leftButton.wasPressedThisFrame;
+            }
 
             if (Blocked)
             {
@@ -93,7 +99,7 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = false;
+            JumpPressed = DownPressed = ShootPressed = FlickPressed = JugglePressed = RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             PowerPressed = StepOverPressed = BicyclePressed = false;
         }
     }

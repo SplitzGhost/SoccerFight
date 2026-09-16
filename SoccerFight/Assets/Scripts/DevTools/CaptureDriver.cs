@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -90,6 +90,7 @@ namespace SoccerFight
             else if (scenario == "bestiary") yield return Bestiary();
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
+            else if (scenario == "menu") yield return MenuTour();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -776,6 +777,56 @@ namespace SoccerFight
                 yield return Seconds(2.6f);
                 G.Waves.Restart();
             }
+        }
+
+        /// <summary>Title screen: hover, the kicked ball, the page change, and a shot into empty space.</summary>
+        IEnumerator MenuTour()
+        {
+            var menu = G.Menu;
+            G.ToMenu();
+            yield return Seconds(1.6f);
+            yield return Shot("m0_title");
+
+            GameInput.AimScreen = menu.ButtonScreen(0);
+            yield return Seconds(0.6f);
+            yield return Shot("m1_hover");
+
+            GameInput.ClickPressed = true;
+            yield return Frames(6);
+            yield return Shot("m2_flight");
+            yield return Frames(10);
+            yield return Shot("m3_impact");
+            yield return Frames(13);
+            yield return Shot("m4_falling");
+            yield return Seconds(1.3f);
+            yield return Shot("m5_ingame");
+
+            // the pause menu now offers the way back to the title screen
+            G.Pause.Open();
+            yield return Seconds(1.1f);
+            yield return Shot("m5b_pause");
+            G.Pause.Close();
+            yield return Seconds(0.4f);
+
+            // back to the title screen (what HAUPTMENÜ does), then into the settings page
+            G.ToMenu();
+            yield return Seconds(1.4f);
+            GameInput.AimScreen = menu.ButtonScreen(1);
+            yield return Seconds(0.4f);
+            GameInput.ClickPressed = true;
+            yield return Seconds(1.4f);
+            yield return Shot("m6_settings");
+            GameInput.PausePressed = true;         // Esc leaves the settings page
+            yield return Seconds(1.4f);
+
+            // a shot into empty space: the ball spawns, flies, falls, nothing else happens
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(-620f, 150f));
+            yield return Seconds(0.4f);
+            GameInput.ClickPressed = true;
+            yield return Frames(7);
+            yield return Shot("m7_miss");
+            yield return Seconds(1.6f);
+            yield return Shot("m8_title_again");
         }
 
         IEnumerator All()

@@ -223,5 +223,17 @@ namespace SoccerFight
             };
             return new KeyRow { Key = key, Background = bg, Rim = rim, Anim = anim };
         }
+
+        /// <summary>Glass card with a soft drop shadow, a hairline border and a lit top edge.</summary>
+        public static RectTransform Panel(Transform parent, string name, Vector2 size, out CanvasGroup group)
+        {
+            var rt = Node(name, parent, Vector2.zero, size);
+            group = rt.gameObject.AddComponent<CanvasGroup>();
+            Img("Shadow", rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.35f);
+            Img("Border", rt, UiArt.Panel, Color.white.WithAlpha(0.1f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
+            Img("Glass", rt, UiArt.Panel, new Color(0.045f, 0.075f, 0.12f, 0.995f), Vector2.zero, size, Image.Type.Sliced, true);
+            Img("Top Light", rt, UiArt.LineFade, Palette.ShotCyan.WithAlpha(0.35f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
+            return rt;
+        }
     }
 }

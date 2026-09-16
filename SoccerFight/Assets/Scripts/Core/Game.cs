@@ -17,6 +17,7 @@ namespace SoccerFight
         public PostFx Post { get; private set; }
         public Hud Hud { get; private set; }
         public PauseMenu Pause { get; private set; }
+        public MainMenu Menu { get; private set; }
         public WaveDirector Waves { get; private set; }
         public Player Player { get; private set; }
         public Ball Ball { get; private set; }
@@ -125,9 +126,15 @@ namespace SoccerFight
             Pause.DevRequested += () => { if (Rewards.IsOpen) return; Pause.Close(); Dev.Open(); };
             Director = new RunDirector();
             Director.Build(Run, Waves, Player, Rewards);
+            Menu = new MainMenu();
+            Menu.Build(transform, Cam.Cam, CaptureMode);
+            Menu.PlayRequested += Restart;
+            Pause.MenuRequested += () => { Pause.Close(); ToMenu(); };
             BuildTimer.Mark("hud");
 
-            Restart();
+            // a capture drives the game itself; a player starts at the title screen
+            if (CaptureMode) Restart();
+            else ToMenu();
 
             if (CaptureMode && GetComponent<CaptureDriver>() == null) gameObject.AddComponent<CaptureDriver>();
             BuildTimer.Mark("rest");
@@ -150,6 +157,23 @@ namespace SoccerFight
         /// <summary>A fresh run from stage 1.</summary>
         public void Restart()
         {
+            Hud.SetVisible(true);
+            Begin(true);
+        }
+
+        /// <summary>
+        /// Back to the title screen. The arena keeps running behind it — the player idles, the world
+        /// breathes — but the run itself is parked, so no wave ever starts while the menu is up.
+        /// </summary>
+        public void ToMenu()
+        {
+            Hud.SetVisible(false);
+            Begin(false);
+            Menu.Open();
+        }
+
+        void Begin(bool startRun)
+        {
             TimeFx.ResetAll();
             FxSystem.I.Clear();
             Rewards.Cancel();
@@ -164,9 +188,10 @@ namespace SoccerFight
             Player.Respawn();
             Ball.ResetTo(Player.Pos + new Vector2(0.5f, Art.BallRadius));
             Waves.Restart();
-            Director.StartRun();
+            if (startRun) Director.StartRun();
+            else { Player.ApplyStats(true); Director.Idle(); }
             Hud.ResetState();
-            Hud.ShowStageCard(Run.Stage, Run.Theme);
+            if (startRun) Hud.ShowStageCard(Run.Stage, Run.Theme);
             Cam.SetZoom(1f);
             Cam.Snap(Player.Pos);
         }
@@ -176,17 +201,18 @@ namespace SoccerFight
             if (RecoverFromReload()) return;
             float udt = TimeFx.UiDelta;
 
-            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
+            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen || Menu.IsOpen;
             GameInput.Poll(Cam.Cam);
 
-            if (GameInput.DevPressed && !CaptureMode)
+            if (GameInput.DevPressed && !CaptureMode && !Menu.IsOpen)
             {
                 if (Dev.IsOpen) Dev.Close();
                 else if (!Rewards.IsOpen) { Pause.Close(); Dev.Open(); }
             }
             if (GameInput.PausePressed)
             {
-                if (Dev.IsOpen) Dev.Close();
+                if (Menu.IsOpen) Menu.HandleEscape();
+                else if (Dev.IsOpen) Dev.Close();
                 else if (Pause.IsOpen) Pause.HandleEscape();
                 else if (!CaptureMode) Pause.Open();
             }
@@ -195,7 +221,8 @@ namespace SoccerFight
             TimeFx.Paused = paused;
             TimeFx.Update(udt);
             Hud.SetPaused(paused);
-            Cursor.visible = paused || Player.Dead;
+            // the title screen draws the game's crosshair instead of the system pointer
+            Cursor.visible = (paused || Player.Dead) && !Menu.IsOpen;
 
             if (GameInput.ToggleFps)
             {
@@ -260,6 +287,7 @@ namespace SoccerFight
             Hud.Update(paused ? 0f : udt);
             Rewards.Update(udt, !Pause.IsOpen);
             Pause.Update(udt);
+            Menu.Update(udt);
             Dev.Update(udt);
             Post.Update(udt);
         }

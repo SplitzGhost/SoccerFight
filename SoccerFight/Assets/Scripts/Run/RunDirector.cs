@@ -62,6 +62,15 @@ namespace SoccerFight
             BeginStage(true);
         }
 
+        /// <summary>Parks the run: no waves, no timers. The world the title screen plays in front of.</summary>
+        public void Idle()
+        {
+            plan.Clear();
+            planIndex = 0;
+            bossPending = bossSeen = false;
+            Enter(Phase.Idle);
+        }
+
         void BeginStage(bool instant)
         {
             run.Wave = 0;

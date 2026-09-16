@@ -13,6 +13,8 @@ namespace SoccerFight
         public float BaseSize = 4.9f;
         public float MinX = -9.5f, MaxX = 9.5f;
         public float BaseY = 3.0f;
+        /// <summary>Extra framing shift (the title screen pushes the view aside so the menu has room).</summary>
+        public Vector2 Offset;
 
         Vector2 pos, vel;
         float zoom = 1f, zoomVel, zoomTarget = 1f;
@@ -74,7 +76,7 @@ namespace SoccerFight
             // rise with the level (a little less, so the pitch below stays in view), and only
             // follow a jump once it goes clearly above that level
             float y = BaseY + anchor * 0.42f + Mathf.Max(0f, player.y - anchor - 1.2f) * 0.45f;
-            Vector2 t = new Vector2(player.x, y) + lookAhead;
+            Vector2 t = new Vector2(player.x, y) + lookAhead + Offset;
             t.x = Mathf.Clamp(t.x, MinX, MaxX);
             return t;
         }

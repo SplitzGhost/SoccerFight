@@ -40,6 +40,22 @@ Am besten am Desktop mit Maus und Tastatur spielen.
 
 Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird beim Start aufgebaut (~2 s).
 
+## Hauptmenü
+
+Das Spiel startet im Titelbildschirm. Dahinter läuft die echte Arena weiter – der Spieler steht am Rand, die Welt
+lebt, aber der Lauf ist geparkt (`RunDirector.Idle`), es kommen also keine Monster. Die Kamera schiebt sich sanft
+zur Seite und driftet langsam, damit der Spieler nicht hinter den Knöpfen verschwindet (`CameraRig.Offset`).
+
+Statt eines Mauszeigers gibt es das Fadenkreuz aus dem Spiel. **Knöpfe werden nicht angeklickt, sondern
+abgeschossen:** Ein Linksklick tritt einen Ball aus der Ich-Perspektive ins Bild – er startet groß am unteren Rand,
+wird auf dem Weg nach hinten kleiner und trifft genau dort, wo das Fadenkreuz stand. Erst beim Aufschlag löst der
+Knopf aus; der Ball prallt zurück in Richtung Kamera und fällt mit Schwerkraft, Drall und Luftwiderstand aus dem
+Bild, während der Bildschirm dahinter längst wechselt. Ein Schuss ins Leere macht nichts außer fliegen und fallen.
+Die Einstellungskarte ist die Ausnahme: Innerhalb der Karte arbeiten Schalter, Regler und Tastenfelder ganz normal,
+geschossen wird nur daneben.
+
+Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
+
 ## Steuerung
 
 | Taste | Aktion |
@@ -54,7 +70,7 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 | R | Rainbow Flick (Cooldown 6 s, Flächenschaden beim Aufprall) |
 | Shift | Ball hochhalten: drücken, wenn der Ball in den Ring fällt. Jede Berührung heilt ein wenig (perfekt = mehr, alle 10 ein Bonus). Zu früh oder zu spät und der Ball fällt, das Zeitfenster wird mit jeder Berührung enger. Währenddessen kein Laufen und kein Schuss |
 | 1 / 2 / 3 | Upgrade- bzw. Fähigkeitskarte wählen |
-| Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Beenden) |
+| Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Hauptmenü, Beenden) |
 | F1 | FPS-Anzeige an/aus |
 | F2 | VSync an/aus (aus = unbegrenzte FPS) |
 | F3 | Developer-Modus (auch im Pausemenü): Unverwundbar, keine Abklingzeiten, Ein-Treffer-Kills, Spieltempo, Stage-Sprung, Welle überspringen, Boss/Gegner rufen, Karten öffnen, jedes Upgrade gezielt hinzufügen, Live-Zahlen. Dev-Läufe zählen nicht für den Rekord |
@@ -87,7 +103,7 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 | Ordner | Inhalt |
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
-| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), Umgebung (`EnvironmentArt`), tiefe Ebenen und Spielfeldlinien (`DepthArt`), Plattformen (`PlatformArt`) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
+| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), Umgebung (`EnvironmentArt`), tiefe Ebenen und Spielfeldlinien (`DepthArt`), Plattformen (`PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
@@ -95,7 +111,7 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
-| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Pausemenü (`PauseMenu`, Widgets in `UiKit`) |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
 | `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
@@ -116,6 +132,7 @@ Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
 - **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
 - **Spieler-Look:** Formen in `PlayerArt.cs`, Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
+- **Hauptmenü:** Aufbau, Knopf-Liste und Logo-Wort (`Word`) oben in `MainMenu.cs`; Flugbahn, Perspektive und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, Treffer-Effekte in `Land`, Kameraführung am Ende von `MainMenu.Update`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Tiefenwirkung:** Parallax-Faktoren in `WorldEnvironment.AddLayer(...)`-Aufrufen, Abdunklung pro Ebene über die `D*`-Konstanten und `DepthTint`
@@ -135,7 +152,7 @@ Nach jeder Antwort von Claude Code startet ein Stop-Hook (`.claude/settings.loca
 Von Hand geht es mit `powershell -File tools\publish.ps1` (mit `-Force` wird auch ohne Änderung neu gebaut).
 Visuelle Prüfung: `tools\capture.ps1 -Scenario run` (Stage-Karte, Welle, Karten, Fähigkeitswahl, Boss, alle 8 Themen,
 Zusammenfassung), `-Scenario bestiary` (alle Monster-Körper), `-Scenario layouts` (die Arenen aller Stages samt
-Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt) und `-Scenario sim` (ein Bot spielt einen echten Lauf
+Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt), `-Scenario menu` (Titelbildschirm, Ballschuss, Seitenwechsel) und `-Scenario sim` (ein Bot spielt einen echten Lauf
 und protokolliert jede Phase im Unity-Log).
 Protokoll: `.build/publish.log`, Unity-Log des letzten Builds: `.build/unity-build.log`.
 Für die Pushes muss die GitHub-CLI eingeloggt sein (`gh auth login`).
