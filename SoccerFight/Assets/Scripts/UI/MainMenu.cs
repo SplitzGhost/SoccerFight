@@ -121,6 +121,7 @@ namespace SoccerFight
 
             BuildBackdrop(menu);
             pageRoot = UiKit.Node("Page", menu, Vector2.zero, Vector2.zero);
+            Stretch(pageRoot);      // full-screen, so the footer can hang off the bottom edge
             pageGroup = pageRoot.gameObject.AddComponent<CanvasGroup>();
             BuildLogo(pageRoot);
             BuildButtons();
@@ -242,14 +243,25 @@ namespace SoccerFight
             buttons.Add(b);
         }
 
+        /// <summary>The footer hangs off the bottom edge so it survives wide or narrow windows.</summary>
         void BuildFooter(RectTransform parent)
         {
             bestLabel = UiKit.Label("Best", parent, BestText(), 14f, Palette.UiMuted,
-                TextAlignmentOptions.Left, new Vector2(-660f, -458f), new Vector2(560f, 22f), true, 6f);
-            UiKit.Label("Hint", parent, "LINKSKLICK SCHIESST DEN BALL  ·  TRIFF EINEN KNOPF", 14f, Palette.ShotCyan.WithAlpha(0.75f),
-                TextAlignmentOptions.Center, new Vector2(0f, -458f), new Vector2(900f, 22f), true, 8f);
-            UiKit.Label("Keys", parent, "F1 FPS  ·  F2 VSYNC  ·  F3 DEVELOPER", 14f, Palette.UiMuted,
-                TextAlignmentOptions.Right, new Vector2(660f, -458f), new Vector2(560f, 22f), true, 6f);
+                TextAlignmentOptions.Left, Vector2.zero, new Vector2(560f, 22f), true, 6f);
+            Corner(bestLabel.rectTransform, new Vector2(0f, 0f), new Vector2(44f, 44f));
+            var hint = UiKit.Label("Hint", parent, "LINKSKLICK SCHIESST DEN BALL  ·  TRIFF EINEN KNOPF", 14f, Palette.ShotCyan.WithAlpha(0.75f),
+                TextAlignmentOptions.Center, Vector2.zero, new Vector2(900f, 22f), true, 8f);
+            Corner(hint.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, 44f));
+            var keys = UiKit.Label("Keys", parent, "F1 FPS  ·  F2 VSYNC  ·  F3 DEVELOPER", 14f, Palette.UiMuted,
+                TextAlignmentOptions.Right, Vector2.zero, new Vector2(560f, 22f), true, 6f);
+            Corner(keys.rectTransform, new Vector2(1f, 0f), new Vector2(-44f, 44f));
+        }
+
+        static void Corner(RectTransform rt, Vector2 anchor, Vector2 pos)
+        {
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = new Vector2(anchor.x, 0.5f);
+            rt.anchoredPosition = pos;
         }
 
         static string BestText()
@@ -513,7 +525,7 @@ namespace SoccerFight
             s.Target = target;
             s.T = 0f;
             // kicked from the player's point of view: just below the frame, roughly under the target
-            s.From = new Vector2(at.x * 0.28f + Random.Range(-50f, 50f), -700f);
+            s.From = new Vector2(at.x * 0.28f + Random.Range(-50f, 50f), -BelowFrame);
             s.To = at;
             s.Dur = 0.17f + Vector2.Distance(s.From, s.To) / 9000f;
             s.Scale = 1f;
@@ -524,6 +536,9 @@ namespace SoccerFight
             curPunch = 1f;
             if (Game.I != null) Game.I.Cam.AddTrauma(0.04f);
         }
+
+        /// <summary>Just outside the bottom edge — the canvas is taller than 1080 on narrow windows.</summary>
+        float BelowFrame => root.rect.height * 0.5f + 170f;
 
         static Vector2 PathAt(Shot s, float e)
         {
@@ -568,7 +583,7 @@ namespace SoccerFight
                     s.SpinRate = Mathf.Lerp(s.SpinRate, 260f * Mathf.Sign(s.SpinRate), udt * 1.4f);
                     s.Angle += s.SpinRate * udt;
                     foreach (var g in s.Ghosts) if (g.color.a > 0f) g.color = g.color.WithAlpha(Mathf.Max(0f, g.color.a - udt * 4f));
-                    if (s.Pos.y < -780f) { Retire(s); continue; }
+                    if (s.Pos.y < -BelowFrame - 90f) { Retire(s); continue; }
                 }
 
                 s.Root.anchoredPosition = s.Pos;
