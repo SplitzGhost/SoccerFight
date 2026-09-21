@@ -5,20 +5,20 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Character select in the style of a brawler collection: one chunky card per player with a
-    /// class badge and record in the header, a big striped portrait with the live figure (it starts
-    /// juggling when you aim at it), the name printed over the portrait, three class bars and a
-    /// WÄHLEN / GEWÄHLT button. Cards are picked like every other menu button — by kicking the ball.
+    /// Character select as a row of player cards in the in-game card style: dark glass with a
+    /// hairline frame in the player's colour, a class diamond and the record in the header, a tall
+    /// portrait where the live figure stands in its own coloured light (it starts juggling when you
+    /// aim at it), the name over the portrait, three class bars and a WÄHLEN / GEWÄHLT button.
+    /// Cards are picked like every other menu button — by kicking the ball.
     /// </summary>
     public sealed class CharacterPage
     {
-        public const float CardW = 450f, CardH = 660f, CardGap = 44f;
+        public const float CardW = 440f, CardH = 660f, CardGap = 50f;
 
         sealed class Card
         {
             public RectTransform Root, Portrait;
-            public Image Frame, FrameGlow, Header, Wash, Bar;
-            public RawImage Stripes;
+            public Image Frame, FrameGlow, Wash, Spot;
             public TextMeshProUGUI Best, Flavour;
             public ChunkButton Pick;
             public MenuFigure Figure;
@@ -26,6 +26,8 @@ namespace SoccerFight
             public int Index;
             public float Chosen, ChosenVel, Jiggle;
         }
+
+        static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
 
         readonly Card[] cards = new Card[3];
         SubPage page;
@@ -36,14 +38,13 @@ namespace SoccerFight
 
         public void Build(RectTransform parent, System.Action<MenuTarget> register, System.Action back)
         {
-            page = new SubPage(parent, MenuPage.Characters, "SPIELER", new Color(0.36f, 0.56f, 1f), register, back);
+            page = new SubPage(parent, MenuPage.Characters, "SPIELER", "3 SPIELER · 3 KLASSEN", MenuArt.Accent, register, back);
             var content = page.Content;
-            MenuArt.Label("Count", content, "3 SPIELER  ·  3 KLASSEN", 24f, new Color(0.75f, 0.85f, 1f), new Vector2(0f, 385f), new Vector2(800f, 36f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
 
             float step = CardW + CardGap;
             for (int i = 0; i < cards.Length; i++)
             {
-                var card = BuildCard(content, Characters.All[i], i, new Vector2((i - 1) * step, -20f));
+                var card = BuildCard(content, Characters.All[i], i, new Vector2((i - 1) * step, -30f));
                 cards[i] = card;
                 int index = i;
                 register(new MenuTarget
@@ -55,74 +56,73 @@ namespace SoccerFight
             }
         }
 
+        static Color Soft(Color c) => Color.Lerp(c, Color.white, 0.35f);
+
         Card BuildCard(RectTransform parent, CharacterDef def, int index, Vector2 pos)
         {
             var c = new Card { Def = def, Index = index };
             var size = new Vector2(CardW, CardH);
             c.Root = UiKit.Node(def.Name, parent, pos, size);
-            c.FrameGlow = UiKit.Img("FrameGlow", c.Root, UiArt.Glow, Palette.Gold.WithAlpha(0f), Vector2.zero, size + new Vector2(260f, 260f));
-            c.Frame = UiKit.Img("Frame", c.Root, MenuArt.Edge, Palette.Gold.WithAlpha(0f), new Vector2(0f, -4f), size + new Vector2(30f, 36f), Image.Type.Sliced);
-            UiKit.Img("Keyline", c.Root, MenuArt.Edge, MenuArt.Ink, new Vector2(0f, -4f), size + new Vector2(14f, 22f), Image.Type.Sliced);
-            UiKit.Img("Back", c.Root, MenuArt.CardBody, new Color(0.13f, 0.12f, 0.3f), Vector2.zero, size, Image.Type.Sliced);
+            c.FrameGlow = UiKit.Img("FrameGlow", c.Root, UiArt.Glow, Gold.WithAlpha(0f), Vector2.zero, size + new Vector2(240f, 240f));
+            MenuUi.Plate(c.Root, "Card", Vector2.zero, size, def.Accent, 0f);
+            c.Frame = UiKit.Img("Frame", c.Root, MenuArt.Frame, Soft(def.Accent).WithAlpha(0.4f), Vector2.zero, size + new Vector2(4f, 4f), Image.Type.Sliced);
 
-            // portrait: the character's colour, diagonal stripes, a light behind the figure
-            const float portraitTop = CardH * 0.5f - 76f, portraitBottom = -64f;
+            // portrait: the player's colour as light in the dark, a pool of light on the floor
+            const float portraitTop = CardH * 0.5f - 72f, portraitBottom = -66f;
             float ph = portraitTop - portraitBottom;
-            c.Portrait = UiKit.Node("Portrait", c.Root, new Vector2(0f, (portraitTop + portraitBottom) * 0.5f), new Vector2(CardW - 16f, ph));
+            float pw = CardW - 20f;
+            c.Portrait = UiKit.Node("Portrait", c.Root, new Vector2(0f, (portraitTop + portraitBottom) * 0.5f), new Vector2(pw, ph));
             c.Portrait.gameObject.AddComponent<RectMask2D>();
-            UiKit.Img("Colour", c.Portrait, null, def.Accent, Vector2.zero, new Vector2(CardW - 16f, ph));
-            c.Stripes = new GameObject("Stripes", typeof(RectTransform)).AddComponent<RawImage>();
-            c.Stripes.rectTransform.SetParent(c.Portrait, false);
-            c.Stripes.rectTransform.sizeDelta = new Vector2(CardW - 16f, ph);
-            c.Stripes.texture = MenuArt.Stripes;
-            c.Stripes.uvRect = new Rect(0f, 0f, (CardW - 16f) / 64f, ph / 64f);
-            c.Stripes.color = Color.white.WithAlpha(0.1f);
-            c.Stripes.raycastTarget = false;
-            c.Wash = UiKit.Img("Light", c.Portrait, UiArt.Glow, Color.Lerp(def.Accent, Color.white, 0.6f).WithAlpha(0.6f), new Vector2(0f, 20f), new Vector2(420f, 420f));
-            UiKit.Img("Floor", c.Portrait, UiArt.Glow, new Color(0f, 0f, 0.1f, 0.35f), new Vector2(0f, -ph * 0.5f), new Vector2(CardW, 120f));
+            UiKit.Img("Back", c.Portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.07f), Vector2.zero, new Vector2(pw, ph));
+            c.Wash = UiKit.Img("Light", c.Portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 30f), new Vector2(560f, 560f));
+            UiKit.Img("Moon", c.Portrait, UiArt.Glow, new Color(0.75f, 0.95f, 1f, 0.12f), new Vector2(90f, ph * 0.5f - 40f), new Vector2(300f, 300f));
+            c.Spot = UiKit.Img("Floor", c.Portrait, UiArt.Glow, Soft(def.Accent).WithAlpha(0.35f), new Vector2(-10f, -ph * 0.5f + 34f), new Vector2(300f, 70f));
+            UiKit.Img("TopShade", c.Portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.6f), new Vector2(0f, ph * 0.5f), new Vector2(pw * 1.6f, 60f));
             // the figure is added on first open (EnsureFigures); name and shade sit on top of it
-            var nameShade = UiKit.Img("NameShade", c.Portrait, UiArt.LineFade, new Color(0.05f, 0.03f, 0.15f, 0.55f), new Vector2(0f, -ph * 0.5f + 34f), new Vector2(CardW * 1.4f, 90f));
+            var nameShade = UiKit.Img("NameShade", c.Portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.75f), new Vector2(0f, -ph * 0.5f + 30f), new Vector2(pw * 1.6f, 90f));
             nameShade.transform.SetAsLastSibling();
-            var name = MenuArt.Label("Name", c.Portrait, def.Name, 70f, Color.white, new Vector2(-CardW * 0.5f + 26f + 200f, -ph * 0.5f + 44f), new Vector2(400f, 90f), TextAlignmentOptions.Left, 3f);
+            var name = MenuArt.Label("Name", c.Portrait, def.Name, 58f, Color.white, new Vector2(-pw * 0.5f + 24f + 200f, -ph * 0.5f + 40f), new Vector2(400f, 80f), TextAlignmentOptions.Left, 12f);
             name.transform.SetAsLastSibling();
+            UiKit.Img("PortraitFrame", c.Root, MenuArt.Frame, Color.white.WithAlpha(0.08f), c.Portrait.anchoredPosition, new Vector2(pw + 2f, ph + 2f), Image.Type.Sliced);
 
-            // header: class badge, class name, record
-            c.Header = UiKit.Img("Header", c.Root, MenuArt.CardBody, new Color(0.09f, 0.08f, 0.22f), new Vector2(0f, CardH * 0.5f - 38f), new Vector2(CardW - 16f, 62f), Image.Type.Sliced);
-            var badge = UiKit.Img("BadgeKey", c.Root, MenuArt.Badge, def.Accent, new Vector2(-CardW * 0.5f + 44f, CardH * 0.5f - 34f), new Vector2(76f, 86f));
-            var icon = UiKit.Img("ClassIcon", badge.transform, MenuArt.ClassIcon(def.Class), Color.white, new Vector2(0f, 4f), new Vector2(54f, 54f));
+            // header: class diamond, class name, record
+            float hy = CardH * 0.5f - 38f;
+            var badge = UiKit.Img("Badge", c.Root, MenuArt.Badge, Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f), new Vector2(-CardW * 0.5f + 40f, hy), new Vector2(58f, 58f));
+            var icon = UiKit.Img("ClassIcon", badge.transform, MenuArt.ClassIcon(def.Class), Color.white, Vector2.zero, new Vector2(30f, 30f));
             icon.preserveAspect = true;
-            var role = MenuArt.Label("Role", c.Root, def.Role, 30f, Color.Lerp(def.Accent, Color.white, 0.55f), new Vector2(-CardW * 0.5f + 96f + 100f, CardH * 0.5f - 38f), new Vector2(200f, 50f), TextAlignmentOptions.Left, 2f);
+            var role = MenuArt.Label("Role", c.Root, def.Role, 24f, Soft(def.Accent), new Vector2(-CardW * 0.5f + 80f + 110f, hy), new Vector2(220f, 40f), TextAlignmentOptions.Left, 6f);
             role.enableAutoSizing = true;
-            role.fontSizeMin = 18f;
-            role.fontSizeMax = 30f;
-            UiKit.Img("Trophy", c.Root, MenuArt.IconTrophy, Color.white, new Vector2(CardW * 0.5f - 104f, CardH * 0.5f - 38f), new Vector2(42f, 42f));
-            c.Best = MenuArt.Label("Best", c.Root, "0", 32f, Palette.Gold, new Vector2(CardW * 0.5f - 46f, CardH * 0.5f - 38f), new Vector2(80f, 50f), TextAlignmentOptions.Center, 0f);
+            role.fontSizeMin = 16f;
+            role.fontSizeMax = 24f;
+            UiKit.Img("Trophy", c.Root, MenuArt.IconTrophy, Gold, new Vector2(CardW * 0.5f - 96f, hy), new Vector2(30f, 30f));
+            c.Best = MenuArt.Label("Best", c.Root, "0", 26f, Gold, new Vector2(CardW * 0.5f - 46f, hy), new Vector2(70f, 40f), TextAlignmentOptions.Center, 0f);
 
             // flavour and the three class bars
-            c.Flavour = MenuArt.Label("Flavour", c.Root, def.Flavour, 19f, new Color(0.82f, 0.86f, 1f), new Vector2(0f, -104f), new Vector2(CardW - 50f, 50f), TextAlignmentOptions.Center, 0f, MenuArt.TextHeavySoft);
+            c.Flavour = MenuArt.Label("Flavour", c.Root, def.Flavour, 18f, new Color(0.75f, 0.84f, 0.9f), new Vector2(0f, -104f), new Vector2(CardW - 50f, 50f), TextAlignmentOptions.Center, 0.5f, MenuArt.TextHeavySoft);
             c.Flavour.fontStyle = FontStyles.Normal;
             c.Flavour.textWrappingMode = TextWrappingModes.Normal;
             string[] names = { "ANGRIFF", "ABWEHR", "TECHNIK" };
             int[] values = { def.Attack, def.Defence, def.Tech };
-            Color[] cols = { new Color(1f, 0.36f, 0.4f), new Color(0.4f, 0.62f, 1f), new Color(0.8f, 0.5f, 1f) };
+            Color[] cols = { new Color(1f, 0.45f, 0.42f), new Color(0.45f, 0.66f, 1f), new Color(0.8f, 0.55f, 1f) };
             Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconDefender, MenuArt.IconSkiller };
             for (int r = 0; r < 3; r++)
             {
-                float y = -152f - r * 36f;
-                UiKit.Img("StatIcon", c.Root, icons[r], Color.white, new Vector2(-CardW * 0.5f + 40f, y), new Vector2(30f, 30f));
-                MenuArt.Label(names[r], c.Root, names[r], 19f, Color.white, new Vector2(-CardW * 0.5f + 64f + 70f, y), new Vector2(140f, 30f), TextAlignmentOptions.Left, 1.5f, MenuArt.TextHeavySoft);
+                float y = -150f - r * 34f;
+                var si = UiKit.Img("StatIcon", c.Root, icons[r], Soft(cols[r]), new Vector2(-CardW * 0.5f + 40f, y), new Vector2(24f, 24f));
+                si.preserveAspect = true;
+                MenuArt.Label(names[r], c.Root, names[r], 17f, new Color(0.85f, 0.9f, 0.94f), new Vector2(-CardW * 0.5f + 62f + 70f, y), new Vector2(140f, 30f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
                 for (int s = 0; s < 5; s++)
                 {
-                    float x = -CardW * 0.5f + 222f + s * 40f;
+                    float x = -CardW * 0.5f + 226f + s * 40f;
                     bool on = s < values[r];
-                    UiKit.Img("SegKey", c.Root, MenuArt.Edge, MenuArt.Ink, new Vector2(x, y - 1f), new Vector2(38f, 24f), Image.Type.Sliced);
-                    UiKit.Img("Seg", c.Root, MenuArt.Body, on ? cols[r] : new Color(0.25f, 0.24f, 0.42f), new Vector2(x, y + 1f), new Vector2(32f, 18f), Image.Type.Sliced);
+                    UiKit.Img("Seg", c.Root, UiArt.Pill, on ? cols[r] : new Color(0.12f, 0.18f, 0.24f, 0.9f), new Vector2(x, y), new Vector2(34f, 10f), Image.Type.Sliced);
+                    if (on) UiKit.Img("SegGlow", c.Root, UiArt.Glow, cols[r].WithAlpha(0.18f), new Vector2(x, y), new Vector2(60f, 30f));
                 }
             }
 
-            c.Pick = new ChunkButton(c.Root, "Pick", new Vector2(0f, -CardH * 0.5f + 52f), new Vector2(CardW - 70f, 76f),
-                new Color(0.3f, 0.82f, 0.36f), "WÄHLEN", 36f, MenuArt.IconCheck, 44f);
-            c.Pick.IconLeft(80f);
+            c.Pick = new ChunkButton(c.Root, "Pick", new Vector2(0f, -CardH * 0.5f + 52f), new Vector2(CardW - 70f, 70f),
+                def.Accent, "WÄHLEN", 28f, MenuArt.IconCheck, 30f);
+            c.Pick.IconLeft(92f);
             return c;
         }
 
@@ -137,9 +137,10 @@ namespace SoccerFight
                 float ph = c.Portrait.sizeDelta.y;
                 c.Figure = new MenuFigure();
                 c.Figure.Build(c.Portrait, new Vector2(-20f, -ph * 0.5f - 138f), 230f, PlayerArt.Get(i), c.Def);
-                // name, shade and floor shade stay in front of the figure
+                // name and its shade stay in front of the figure
                 c.Portrait.Find("NameShade").SetAsLastSibling();
                 c.Portrait.Find("Name").SetAsLastSibling();
+                MenuUi.SetLayer(c.Portrait, c.Root.gameObject.layer);
             }
         }
 
@@ -157,9 +158,6 @@ namespace SoccerFight
             {
                 bool lively = c.Chosen > 0.5f || c.Jiggle > 0f;
                 c.Figure.Update(udt, lively ? MenuFigure.Mode.Juggle : MenuFigure.Mode.Idle, aim);
-                var uv = c.Stripes.uvRect;
-                uv.x = Mathf.Repeat(uv.x + udt * 0.15f, 1f);
-                c.Stripes.uvRect = uv;
             }
         }
 
@@ -173,19 +171,21 @@ namespace SoccerFight
             float h = Mathf.Clamp01(t.Hover);
             float fade = t.Fade;
 
-            float lift = h * 12f + pick * 10f;
-            float wob = Mathf.Sin(time * 20f) * c.Jiggle * 3f;
-            c.Root.anchoredPosition = new Vector2((c.Index - 1) * (CardW + CardGap), -20f + lift);
+            float lift = h * 10f + pick * 8f;
+            float wob = Mathf.Sin(time * 20f) * c.Jiggle * 2f;
+            c.Root.anchoredPosition = new Vector2((c.Index - 1) * (CardW + CardGap), -30f + lift);
             c.Root.localRotation = Quaternion.Euler(0f, 0f, wob);
-            float s = 1f + h * 0.025f + t.Punch * 0.05f;
-            c.Root.localScale = new Vector3(s + t.Punch * 0.02f, s - t.Punch * 0.05f, 1f);
+            float s = 1f + h * 0.02f + t.Punch * 0.04f;
+            c.Root.localScale = new Vector3(s + t.Punch * 0.015f, s - t.Punch * 0.04f, 1f);
 
-            float pulse = 0.75f + 0.25f * Mathf.Sin(time * 3f);
-            c.Frame.color = Color.Lerp(Color.white, Palette.Gold, pick).WithAlpha(Mathf.Max(pick, h * 0.6f));
-            c.FrameGlow.color = Palette.Gold.WithAlpha(pick * 0.3f * pulse + t.Hit * 0.4f);
-            c.Wash.color = Color.Lerp(c.Def.Accent, Color.white, 0.6f).WithAlpha(0.45f + 0.25f * h + 0.2f * pick);
+            float pulse = 0.75f + 0.25f * Mathf.Sin(time * 2.4f);
+            c.Frame.color = Color.Lerp(Soft(c.Def.Accent), Gold, pick).WithAlpha(Mathf.Lerp(0.4f + 0.4f * h, 0.95f, pick));
+            c.FrameGlow.color = Gold.WithAlpha(pick * 0.22f * pulse + t.Hit * 0.35f);
+            c.Wash.color = c.Def.Accent.WithAlpha(0.2f + 0.1f * h + 0.1f * pick);
+            c.Spot.color = Soft(c.Def.Accent).WithAlpha(0.28f + 0.2f * pick);
 
-            c.Pick.Color = chosen ? new Color(1f, 0.74f, 0.2f) : new Color(0.3f, 0.82f, 0.36f);
+            c.Pick.Filled = chosen;
+            c.Pick.Color = chosen ? Gold : c.Def.Accent;
             string label = chosen ? "GEWÄHLT" : "WÄHLEN";
             if (c.Pick.Label.text != label) c.Pick.Label.text = label;
             c.Pick.Icon.enabled = chosen;

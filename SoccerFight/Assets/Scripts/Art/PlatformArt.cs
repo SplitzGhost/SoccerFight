@@ -66,6 +66,17 @@ namespace SoccerFight
             return looks;
         }
 
+        /// <summary>
+        /// A platform body drawn only for looks (the title screen's floating islands). The look's
+        /// anchor lists fill like a real platform's. Pure math: any thread.
+        /// </summary>
+        public static SdfCanvas Decor(PlatformLook look, Level.Style kind, float x0, float x1, float top, int seed)
+            => BuildBody(look, new Spec { X0 = x0, X1 = x1, T = top, Seed = seed, SeedI = seed, Kind = kind });
+
+        /// <summary>Centre of a decor body's canvas (use it as the sprite pivot).</summary>
+        public static Vector2 DecorCenter(Level.Style kind, float x0, float x1, float top)
+            => BodyRect(new Spec { X0 = x0, X1 = x1, T = top, Kind = kind }).center;
+
         /// <summary>Free the textures of a layout that is no longer shown.</summary>
         public static void Release(PlatformLook[] looks)
         {

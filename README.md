@@ -55,20 +55,26 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 
 ## Hauptmenü
 
-Das Spiel startet im Titelbildschirm – mit einer **eigenen, bunten Welt** statt der Arena: ein zerbrochenes Land im
-Sonnenuntergang mit gesprungenem Planeten, schwebenden Inseln und Wasserfall, einem verfallenen Stadion mit
-flackernden Flutlichtern, einem aufgerissenen Spielfeld mit glühenden Spalten und großen Blättern in den Ecken.
-Alles bewegt sich: Wolken, Vögel, Glühwürmchen, Blüten, Funken, Lichtstrahlen, und jede Ebene neigt sich mit dem
-Fadenkreuz (`Art/MenuScenery.cs` zeichnet, `UI/MenuBackdrop.cs` animiert). Solange das Menü den Bildschirm
-bedeckt, wird die Arena dahinter gar nicht gezeichnet.
+Das Spiel startet im Titelbildschirm. Sein Hintergrund ist **ein Ort in der Spielwelt selbst**, nicht die Arena und
+kein gemaltes Bild: Die Spielkamera filmt ihn mit denselben Materialien, demselben Wind, Leuchten und Farbton wie
+die Arenen (`World/MenuVista.cs`, eigene Ebene 25 – solange das Menü offen ist, zeichnet die Kamera nur diese Ebene).
+Zu sehen ist die Mondnacht der Mondlicht-Ruinen: ein großer Mond geht in einem Tal auf, darunter die Stadionruine, davor
+ein Stück Spielfeld, das von einer Schlucht voller Kristalllicht zerrissen ist. Der Mittelkreis schwebt als Sockel
+des Spielers in der Lücke, das letzte Flutlicht lehnt schief darüber und leuchtet ihn an (eine Lampe flackert). Dazu
+schwebende Felsen, ein Tor mit einem schwach pulsierenden Monster-Portal, Augen im Dunkeln, Bäume, Moos und Laternen in
+den Ecken, Glühwürmchen, Nebel, Fledermäuse und fallende Blätter; jede Ebene neigt sich mit dem Fadenkreuz. Die neuen
+Teile zeichnet `Art/MenuScenery.cs` mit den Rezepten der Spielwelt, der Rest sind die Grafiken der Arena.
 
-Aufbau: oben das **gezeichnete Logo** (`Art/LogoArt.cs` – eigene Blockbuchstaben, 3D-Kante, Risse, Flammen-Burst;
-im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler auf einem leuchtenden Sockel**, der den Ball
+Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchstaben, dunkle Steinkante, Moos an den
+Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler auf dem
+schwebenden Mittelkreis**, der den Ball
 hochhält – wer ihn (oder sein Namensschild) abschießt, landet in der Spielerauswahl. Links **Shop, Rangliste,
 Freunde**, rechts **Events, Optionen, Info**, oben links das Profil, oben rechts Münzen/Edelsteine (und am Desktop
 Beenden), darunter der große **SPIELEN**-Knopf. Shop, Rangliste, Freunde und Events sind Platzhalter-Seiten
 („kommt bald“), Info erklärt Steuerung und Spielprinzip. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
-Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitzen beginnt der Lauf.
+Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitzen beginnt der Lauf. Die Knöpfe und
+Seiten sprechen die Sprache der Karten und Anzeigen im Spiel: dunkles Glas, feine Rahmen und Leuchten in einer
+Akzentfarbe pro Knopf, weiße Symbole, gesperrte Großbuchstaben; nur SPIELEN ist massiv laternengolden.
 
 Statt eines Mauszeigers gibt es das Fadenkreuz aus dem Spiel. **Knöpfe werden nicht angeklickt, sondern
 abgeschossen:** Ein Linksklick tritt einen Ball aus der Ich-Perspektive ins Bild – er startet groß am unteren Rand,
@@ -84,9 +90,9 @@ Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 ## Charaktere
 
 Drei Spieler stehen zur Wahl, jeder in einer Klasse: **RIO** (Stürmer), **BRUNO** (Verteidiger) und
-**MIRA** (Skiller). Ausgewählt wird über den Spieler in der Mitte des Titelbildschirms – drei dicke Karten im
-Stil einer Brawler-Sammlung: oben Klassen-Wappen, Klasse und bester Stage-Rekord dieser Figur, darunter ein
-gestreiftes Porträt in der Farbe des Spielers mit der lebenden Figur (sie fängt an zu jonglieren, wenn man auf sie
+**MIRA** (Skiller). Ausgewählt wird über den Spieler in der Mitte des Titelbildschirms – drei Karten im
+Stil der Upgrade-Karten: oben Klassen-Raute, Klasse und bester Stage-Rekord dieser Figur, darunter ein
+Porträt, in dem die lebende Figur im Licht ihrer Spielerfarbe steht (sie fängt an zu jonglieren, wenn man auf sie
 zielt), der Name groß über dem Porträt, drei Klassenbalken und ein WÄHLEN/GEWÄHLT-Knopf. Eine Karte wird wie jeder
 andere Menüknopf **mit dem Ball abgeschossen**; die Wahl bleibt gespeichert.
 
@@ -164,14 +170,14 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
 | `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), Umgebung (`EnvironmentArt`), tiefe Ebenen und Spielfeldlinien (`DepthArt`), Plattformen (`PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
-| `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`) |
+| `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
 | `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Spielerfiguren und ihre Farb-Kits (`Characters`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne, Freistoß-Mauer (`Barrier`), Lockvogel (`Decoys`) |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
-| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), animierter Menü-Hintergrund (`MenuBackdrop`), Menü-Spielerfigur (`MenuFigure`), dicke Menü-Knöpfe (`MenuWidgets`), Unterseiten (`MenuPages`), Charakterauswahl (`CharacterPage`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Charakterauswahl (`CharacterPage`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
 | `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
@@ -196,7 +202,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 - **Spieler-Look:** Formen in `PlayerArt.cs` (Farben kommen aus dem Kit des gewählten Charakters), Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
 - **Charaktere:** Namen, Klassen, Sprüche und alle Farben in `Run/Characters.cs`; das Kartenlayout in `UI/CharacterPage.cs` (`CardW/CardH`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
-- **Hauptmenü:** Aufbau und Knöpfe in `MainMenu.Build*` (`BuildColumns`, `BuildTopBars`, `BuildPlay`); Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Landschaft in `Art/MenuScenery.cs`, ihre Bewegung in `UI/MenuBackdrop.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
+- **Hauptmenü:** Aufbau und Knöpfe in `MainMenu.Build*` (`BuildColumns`, `BuildTopBars`, `BuildPlay`); Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Szene in `World/MenuVista.cs` (Aufbau, Mondposition, Flutlicht, Portal, Augen), ihre neuen Grafiken in `Art/MenuScenery.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Tiefenwirkung:** Parallax-Faktoren in `WorldEnvironment.AddLayer(...)`-Aufrufen, Abdunklung pro Ebene über die `D*`-Konstanten und `DepthTint`

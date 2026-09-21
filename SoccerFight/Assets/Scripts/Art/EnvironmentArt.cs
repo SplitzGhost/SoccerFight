@@ -175,10 +175,13 @@ namespace SoccerFight
             return c;
         }
 
-        static SdfCanvas BuildMoon()
+        static SdfCanvas BuildMoon() => MoonCanvas(220f);
+
+        /// <summary>The cratered moon at any density (the title screen shows it much bigger).</summary>
+        internal static SdfCanvas MoonCanvas(float ppu)
         {
             const float Rm = 0.55f;
-            var c = new SdfCanvas(new Rect(-0.62f, -0.62f, 1.24f, 1.24f), 220f);
+            var c = new SdfCanvas(new Rect(-0.62f, -0.62f, 1.24f, 1.24f), ppu);
             var r = new System.Random(41);
             var craters = new List<(Vector2 c, float r)>();
             for (int i = 0; i < 12; i++)

@@ -6,10 +6,11 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Title screen. Its own animated world (MenuBackdrop) instead of the arena, the drawn logo on
-    /// top, the chosen player juggling on a lit pedestal in the middle (shoot it to change player),
-    /// shop / ranking / friends on the left, events / settings / info on the right, and a big
-    /// SPIELEN button underneath.
+    /// Title screen. Its backdrop is a place in the game world (MenuVista, filmed by the game camera
+    /// with the game's own look), the stone logo sits on top, the chosen player juggles on the
+    /// floating centre circle in the middle (shoot it to change player), shop / ranking / friends on
+    /// the left, events / settings / info on the right, and a big SPIELEN button underneath. The UI
+    /// speaks the language of the in-game cards and HUD: dark glass, hairline frames, accent light.
     ///
     /// Buttons are not pressed with the pointer: the mouse is the game's crosshair and a click kicks
     /// a ball from the player's point of view into the screen — it starts big at the bottom edge,
@@ -61,7 +62,8 @@ namespace SoccerFight
         Camera cam;
         RectTransform root, content, main, stack, pagesRoot, fxRoot, cursorRoot;
         CanvasGroup contentGroup, mainGroup;
-        MenuBackdrop backdrop;
+        MenuVista vista;
+        Image veil;
         MenuFigure figure;
         CharacterPage characters;
         MenuPages pages;
@@ -73,9 +75,10 @@ namespace SoccerFight
         readonly List<RectTransform> stickers = new List<RectTransform>();
 
         // main page
-        RectTransform logoRoot, logoBall, logoSpin, logoShine, leftCol, rightCol, topLeft, topRight, tagRoot, pedestal;
-        Image logoShineImg, pedestalGlow, pedestalImg, avatarHead, avatarBody, tagBadge, tagIcon, playHalo;
-        Image[] beams, logoSparkles;
+        RectTransform logoRoot, logoBall, logoSpin, logoShine, leftCol, rightCol, topLeft, topRight, tagRoot;
+        Image logoShineImg, pedestalGlow, avatarHead, avatarBody, avatarRing, tagBadge, tagIcon, playHalo;
+        Image[] logoSparkles;
+        Image toastShadow, toastFrame, toastLight;
         TextMeshProUGUI profileName, profileBest, tagName, tagRole;
         ChunkButton play;
         MenuTarget figureTarget, tagTarget, profileTarget;
@@ -146,13 +149,17 @@ namespace SoccerFight
             go.AddComponent<GraphicRaycaster>();
             root = (RectTransform)go.transform;
 
+            // the scene the menu stands in is part of the world; the camera switches to it while the menu is up
+            vista = new MenuVista();
+            vista.Build(parent);
+            // night falls over the switch between arena and scene
+            veil = UiKit.Img("Veil", root, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
+            MenuUi.Stretch(veil.rectTransform);
+
             // everything that fades with the menu; the flying balls and the transition sit above it
             content = UiKit.Node("Content", root, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(content);
             contentGroup = content.gameObject.AddComponent<CanvasGroup>();
-
-            backdrop = new MenuBackdrop();
-            backdrop.Build(content);
 
             main = UiKit.Node("Main", content, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(main);
@@ -179,11 +186,22 @@ namespace SoccerFight
             toastRoot = UiKit.Node("Toast", root, Vector2.zero, new Vector2(600f, 70f));
             toastGroup = toastRoot.gameObject.AddComponent<CanvasGroup>();
             toastGroup.alpha = 0f;
-            toastPlate = MenuUi.Plate(toastRoot, "Plate", Vector2.zero, new Vector2(600f, 64f), new Color(0.12f, 0.08f, 0.3f), 5f);
-            toast = MenuArt.Label("Text", toastRoot, "", 32f, Palette.Gold, new Vector2(0f, 1f), new Vector2(900f, 60f));
+            toastPlate = MenuUi.Plate(toastRoot, "Plate", Vector2.zero, new Vector2(600f, 60f), Gold, 0.55f);
+            toastPlate.color = MenuArt.Glass.WithAlpha(1f);
+            var plate = toastPlate.transform.parent;
+            toastShadow = plate.Find("Shadow").GetComponent<Image>();
+            toastFrame = plate.Find("Frame").GetComponent<Image>();
+            toastLight = plate.Find("TopLight").GetComponent<Image>();
+            toast = MenuArt.Label("Text", toastRoot, "", 24f, Gold, new Vector2(0f, 1f), new Vector2(900f, 56f), TextAlignmentOptions.Center, 7f);
             BuildCursor();
+            // in captures the canvas is drawn by the game camera, which then only draws these layers
+            MenuUi.SetLayer(root, UiLayer);
             canvas.gameObject.SetActive(false);
         }
+
+        static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
+        static readonly Color Cool = new Color(0.8f, 0.95f, 1f);
+        const int UiLayer = 5;
 
         void Register(MenuTarget t) => targets.Add(t);
 
@@ -213,7 +231,7 @@ namespace SoccerFight
             }
             Vector2 size = LogoArt.Area.size * LogoUnit;
             Vector2 centre = LogoArt.Area.center;
-            UiKit.Img("Glow", logoRoot, UiArt.Glow, new Color(1f, 0.55f, 0.4f, 0.35f), new Vector2(0f, -20f), size * 1.2f);
+            UiKit.Img("Glow", logoRoot, UiArt.Glow, new Color(0.45f, 0.85f, 1f, 0.2f), new Vector2(0f, -10f), size * 1.35f);
             UiKit.Img("Art", logoRoot, MenuScenery.Logo, Color.white, Vector2.zero, size);
 
             // the ball that sits in the O
@@ -225,9 +243,8 @@ namespace SoccerFight
             UiKit.Img("Shade", logoBall, Art.BallShade, Color.white, Vector2.zero, Vector2.one * bs);
             UiKit.Img("Hi", logoBall, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * bs);
 
-            var tag = MenuArt.Label("Tagline", logoRoot, "DER BALL IST DEINE WAFFE", 30f, Color.white,
-                (LogoArt.TaglineCenter - centre) * LogoUnit, new Vector2(3.0f * LogoUnit, 44f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
-            tag.rectTransform.localRotation = Quaternion.Euler(0f, 0f, LogoArt.TiltDeg);
+            MenuUi.Banner(logoRoot, "Tagline", "DER BALL IST DEINE WAFFE", (LogoArt.TaglineCenter - centre) * LogoUnit, 4.2f * LogoUnit,
+                new Color(0.62f, 0.93f, 1f), 21f);
 
             // a glint sweeps across the whole logo now and then
             var maskImg = UiKit.Img("ShineMask", logoRoot, MenuScenery.Logo, Color.white, Vector2.zero, size);
@@ -242,49 +259,43 @@ namespace SoccerFight
 
         void BuildCenter()
         {
-            // the pedestal with its light: the player is "projected" up out of it
-            pedestalGlow = UiKit.Img("PedestalGlow", stack, UiArt.Glow, new Color(1f, 0.85f, 0.45f, 0.4f), new Vector2(0f, FeetY + 10f), new Vector2(700f, 260f));
-            beams = new Image[3];
-            float[] bx = { -95f, 0f, 95f };
-            for (int i = 0; i < beams.Length; i++)
-            {
-                beams[i] = UiKit.Img("Beam" + i, stack, MenuArt.Beam, new Color(1f, 0.9f, 0.65f, 0.1f), new Vector2(bx[i], FeetY), new Vector2(i == 1 ? 260f : 170f, 560f));
-                beams[i].rectTransform.pivot = new Vector2(0.5f, 0f);
-                beams[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -bx[i] * 0.06f);
-            }
-            pedestalImg = UiKit.Img("Pedestal", stack, MenuArt.Pedestal, Color.white, new Vector2(0f, FeetY - 18f), new Vector2(440f, 160f));
-            pedestal = pedestalImg.rectTransform;
+            // the player stands on the floating centre circle of the scene (MenuVista); a soft pool of
+            // floodlight around the feet ties the two together
+            pedestalGlow = UiKit.Img("FeetLight", stack, UiArt.Glow, new Color(0.75f, 0.95f, 1f, 0.2f), new Vector2(-10f, FeetY + 6f), new Vector2(380f, 90f));
 
             figure = new MenuFigure();
             figure.Build(stack, new Vector2(-18f, FeetY), FigureScale, PlayerArt.Get(Characters.Index), Characters.Current);
 
             var hit = UiKit.Node("FigureHit", stack, new Vector2(0f, FeetY + 175f), new Vector2(300f, 400f));
-            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawFigure, Accent = Palette.Gold };
+            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawFigure, Accent = MenuArt.Accent };
             Register(figureTarget);
 
             // name tag next to the player
             tagRoot = UiKit.Node("Tag", stack, new Vector2(300f, -30f), new Vector2(270f, 124f));
-            MenuUi.Plate(tagRoot, "Plate", Vector2.zero, new Vector2(270f, 124f), new Color(0.15f, 0.12f, 0.36f));
-            tagBadge = UiKit.Img("Badge", tagRoot, MenuArt.Badge, Color.white, new Vector2(-96f, 14f), new Vector2(70f, 80f));
-            tagIcon = UiKit.Img("Icon", tagBadge.transform, MenuArt.IconStriker, Color.white, new Vector2(0f, 4f), new Vector2(48f, 48f));
-            tagName = MenuArt.Label("Name", tagRoot, "", 42f, Color.white, new Vector2(40f, 28f), new Vector2(170f, 50f), TextAlignmentOptions.Left, 2f);
-            tagRole = MenuArt.Label("Role", tagRoot, "", 22f, Color.white, new Vector2(40f, -6f), new Vector2(170f, 30f), TextAlignmentOptions.Left, 1.5f, MenuArt.TextHeavySoft);
-            var swapPlate = MenuUi.Plate(tagRoot, "Swap", new Vector2(0f, -44f), new Vector2(230f, 40f), new Color(0.36f, 0.56f, 1f), 3f);
-            UiKit.Img("SwapIcon", swapPlate.transform, MenuArt.IconSwap, Color.white, new Vector2(-82f, 0f), new Vector2(34f, 34f));
-            MenuArt.Label("SwapText", swapPlate.transform, "WECHSELN", 22f, Color.white, new Vector2(18f, 1f), new Vector2(170f, 36f), TextAlignmentOptions.Center, 2f, MenuArt.TextHeavySoft);
-            tagTarget = new MenuTarget { Id = "tag", Root = tagRoot, Size = tagRoot.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawTag, Accent = Palette.Gold };
+            MenuUi.Plate(tagRoot, "Plate", Vector2.zero, new Vector2(270f, 124f), MenuArt.Accent, 0.3f);
+            tagBadge = UiKit.Img("Badge", tagRoot, MenuArt.Badge, Color.white, new Vector2(-94f, 16f), new Vector2(62f, 62f));
+            tagIcon = UiKit.Img("Icon", tagBadge.transform, MenuArt.IconStriker, Color.white, Vector2.zero, new Vector2(32f, 32f));
+            tagIcon.preserveAspect = true;
+            tagName = MenuArt.Label("Name", tagRoot, "", 34f, Color.white, new Vector2(40f, 30f), new Vector2(170f, 44f), TextAlignmentOptions.Left, 7f);
+            tagRole = MenuArt.Label("Role", tagRoot, "", 17f, Color.white, new Vector2(40f, 0f), new Vector2(170f, 26f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+            var swap = UiKit.Node("Swap", tagRoot, new Vector2(0f, -40f), new Vector2(236f, 34f));
+            UiKit.Img("Pill", swap, UiArt.Pill, new Color(0.36f, 0.92f, 1f, 0.14f), Vector2.zero, new Vector2(236f, 34f), Image.Type.Sliced);
+            UiKit.Img("SwapIcon", swap, MenuArt.IconSwap, MenuArt.Accent, new Vector2(-80f, 0f), new Vector2(22f, 22f));
+            MenuArt.Label("SwapText", swap, "WECHSELN", 16f, new Color(0.7f, 0.95f, 1f), new Vector2(14f, 0f), new Vector2(170f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
+            tagTarget = new MenuTarget { Id = "tag", Root = tagRoot, Size = tagRoot.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawTag, Accent = MenuArt.Accent };
             Register(tagTarget);
             Move(tagRoot, new Vector2(500f, 0f), 0.35f);
         }
 
         void BuildPlay()
         {
-            playHalo = UiKit.Img("PlayHalo", stack, UiArt.Glow, new Color(1f, 0.8f, 0.3f, 0.4f), new Vector2(0f, -392f), new Vector2(760f, 300f));
-            play = new ChunkButton(stack, "Play", new Vector2(0f, -392f), new Vector2(460f, 128f), new Color(1f, 0.78f, 0.16f), "SPIELEN", 66f, MenuArt.IconPlay, 74f, true);
-            play.IconLeft(34f);
+            // the one warm, solid thing on the screen: lantern gold, like the power shot's ring
+            playHalo = UiKit.Img("PlayHalo", stack, UiArt.Glow, Gold.WithAlpha(0.3f), new Vector2(0f, -398f), new Vector2(720f, 260f));
+            play = new ChunkButton(stack, "Play", new Vector2(0f, -398f), new Vector2(430f, 108f), Gold, "SPIELEN", 48f, MenuArt.IconPlay, 40f, true, true);
+            play.IconLeft(70f);
             var t = Button(play, "play", Play);
             Move(play.Root, new Vector2(0f, -400f), 0.45f, t);
-            var hint = MenuArt.Label("Hint", stack, "LINKSKLICK: SCHIESS DEN BALL AUF EINEN KNOPF", 20f, Color.white.WithAlpha(0.85f), new Vector2(0f, -490f), new Vector2(900f, 30f), TextAlignmentOptions.Center, 2f, MenuArt.TextHeavySoft);
+            var hint = MenuArt.Label("Hint", stack, "LINKSKLICK  ·  SCHIESS DEN BALL AUF EINEN KNOPF", 16f, new Color(0.7f, 0.82f, 0.9f, 0.85f), new Vector2(0f, -484f), new Vector2(900f, 28f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
             Move(hint.rectTransform, new Vector2(0f, -200f), 0.55f);
         }
 
@@ -293,20 +304,21 @@ namespace SoccerFight
             leftCol = UiKit.Node("Left", main, Vector2.zero, new Vector2(380f, 560f));
             rightCol = UiKit.Node("Right", main, Vector2.zero, new Vector2(380f, 560f));
 
-            var shop = new ChunkButton(leftCol, "Shop", new Vector2(0f, 105f), new Vector2(360f, 220f), new Color(0.95f, 0.3f, 0.62f), "SHOP", 48f, MenuArt.IconShop, 128f).IconTop();
-            stickers.Add(MenuUi.Sticker(shop.Face, "NEU", new Vector2(150f, 100f), 84f, new Color(1f, 0.82f, 0.2f)));
+            // one accent per button, all on the same dark glass: the colours of the game's own lights
+            var shop = new ChunkButton(leftCol, "Shop", new Vector2(0f, 105f), new Vector2(340f, 220f), Gold, "SHOP", 34f, MenuArt.IconShop, 100f).IconTop("TRIKOTS · BÄLLE");
+            stickers.Add(MenuUi.Tag(shop.Face, "NEU", new Vector2(128f, 88f), MenuArt.Accent));
             Move(shop.Root, new Vector2(-600f, 0f), 0.15f, Button(shop, "shop", () => Open(MenuPage.Shop)));
-            var rank = new ChunkButton(leftCol, "Ranking", new Vector2(0f, -80f), new Vector2(360f, 106f), new Color(1f, 0.64f, 0.16f), "RANGLISTE", 36f, MenuArt.IconTrophy, 72f).IconLeft(20f);
+            var rank = new ChunkButton(leftCol, "Ranking", new Vector2(0f, -72f), new Vector2(340f, 92f), new Color(1f, 0.62f, 0.32f), "RANGLISTE", 26f, MenuArt.IconTrophy, 40f).IconLeft(30f);
             Move(rank.Root, new Vector2(-600f, 0f), 0.22f, Button(rank, "ranking", () => Open(MenuPage.Ranking)));
-            var friends = new ChunkButton(leftCol, "Friends", new Vector2(0f, -210f), new Vector2(360f, 106f), new Color(0.3f, 0.78f, 0.42f), "FREUNDE", 36f, MenuArt.IconFriends, 72f).IconLeft(20f);
+            var friends = new ChunkButton(leftCol, "Friends", new Vector2(0f, -182f), new Vector2(340f, 92f), Palette.DashMint, "FREUNDE", 26f, MenuArt.IconFriends, 40f).IconLeft(30f);
             Move(friends.Root, new Vector2(-600f, 0f), 0.29f, Button(friends, "friends", () => Open(MenuPage.Friends)));
 
-            var events = new ChunkButton(rightCol, "Events", new Vector2(0f, 105f), new Vector2(360f, 220f), new Color(0.56f, 0.36f, 0.96f), "EVENTS", 48f, MenuArt.IconEvents, 128f).IconTop();
-            stickers.Add(MenuUi.Sticker(events.Face, "BALD", new Vector2(-150f, 100f), 90f, new Color(1f, 0.5f, 0.2f)));
+            var events = new ChunkButton(rightCol, "Events", new Vector2(0f, 105f), new Vector2(340f, 220f), new Color(0.82f, 0.5f, 1f), "EVENTS", 34f, MenuArt.IconEvents, 100f).IconTop("BESONDERE LÄUFE");
+            stickers.Add(MenuUi.Tag(events.Face, "BALD", new Vector2(-122f, 88f), Gold));
             Move(events.Root, new Vector2(600f, 0f), 0.15f, Button(events, "events", () => Open(MenuPage.Events)));
-            var settings = new ChunkButton(rightCol, "Settings", new Vector2(0f, -80f), new Vector2(360f, 106f), new Color(0.3f, 0.52f, 0.98f), "OPTIONEN", 36f, MenuArt.IconGear, 72f).IconLeft(20f);
+            var settings = new ChunkButton(rightCol, "Settings", new Vector2(0f, -72f), new Vector2(340f, 92f), MenuArt.Accent, "OPTIONEN", 26f, MenuArt.IconGear, 40f).IconLeft(30f);
             Move(settings.Root, new Vector2(600f, 0f), 0.22f, Button(settings, "settings", () => Open(MenuPage.Settings)));
-            var info = new ChunkButton(rightCol, "Info", new Vector2(0f, -210f), new Vector2(360f, 106f), new Color(0.16f, 0.68f, 0.86f), "INFO", 36f, MenuArt.IconInfo, 72f).IconLeft(20f);
+            var info = new ChunkButton(rightCol, "Info", new Vector2(0f, -182f), new Vector2(340f, 92f), new Color(0.5f, 0.72f, 1f), "INFO", 26f, MenuArt.IconInfo, 40f).IconLeft(30f);
             Move(info.Root, new Vector2(600f, 0f), 0.29f, Button(info, "info", () => Open(MenuPage.Info)));
         }
 
@@ -316,16 +328,18 @@ namespace SoccerFight
             topLeft = UiKit.Node("Profile", main, Vector2.zero, new Vector2(430f, 110f));
             topLeft.pivot = new Vector2(0f, 1f);
             var tl = Inner(topLeft, new Vector2(0f, 0.5f));
-            MenuUi.Plate(tl, "Plate", new Vector2(245f, -2f), new Vector2(350f, 84f), new Color(0.14f, 0.11f, 0.34f));
-            var avatar = UiKit.Node("Avatar", tl, new Vector2(62f, 0f), new Vector2(104f, 104f));
-            UiKit.Img("Keyline", avatar, MenuArt.RoundEdge, MenuArt.Ink, new Vector2(0f, -2f), Vector2.one * 116f);
-            avatarBody = UiKit.Img("Body", avatar, MenuArt.Round, Color.white, Vector2.zero, Vector2.one * 104f);
-            var mask = UiKit.Img("Mask", avatar, MenuArt.RoundEdge, Color.white, Vector2.zero, Vector2.one * 96f);
+            MenuUi.Plate(tl, "Plate", new Vector2(240f, 0f), new Vector2(330f, 76f), MenuArt.Accent, 0.25f);
+            // avatar in a ring, like the health ring of the HUD
+            var avatar = UiKit.Node("Avatar", tl, new Vector2(60f, 0f), new Vector2(100f, 100f));
+            UiKit.Img("Glow", avatar, UiArt.Glow, MenuArt.Accent.WithAlpha(0.18f), Vector2.zero, Vector2.one * 170f);
+            avatarBody = UiKit.Img("Body", avatar, MenuArt.Round, Color.white, Vector2.zero, Vector2.one * 92f);
+            var mask = UiKit.Img("Mask", avatar, MenuArt.RoundEdge, Color.white, Vector2.zero, Vector2.one * 88f);
             mask.gameObject.AddComponent<Mask>().showMaskGraphic = false;
             avatarHead = UiKit.Img("Head", mask.transform, null, Color.white, Vector2.zero, Vector2.one);
-            profileName = MenuArt.Label("Name", tl, "", 36f, Color.white, new Vector2(262f, 16f), new Vector2(260f, 44f), TextAlignmentOptions.Left, 2f);
-            UiKit.Img("Trophy", tl, MenuArt.IconTrophy, Color.white, new Vector2(150f, -22f), new Vector2(32f, 32f));
-            profileBest = MenuArt.Label("Best", tl, "", 22f, Palette.Gold, new Vector2(282f, -22f), new Vector2(240f, 32f), TextAlignmentOptions.Left, 1.5f, MenuArt.TextHeavySoft);
+            avatarRing = UiKit.Img("Ring", avatar, MenuArt.RoundFrame, MenuArt.Accent, Vector2.zero, Vector2.one * 102f);
+            profileName = MenuArt.Label("Name", tl, "", 28f, Color.white, new Vector2(250f, 14f), new Vector2(240f, 40f), TextAlignmentOptions.Left, 8f);
+            UiKit.Img("Trophy", tl, MenuArt.IconTrophy, Gold, new Vector2(144f, -18f), new Vector2(22f, 22f));
+            profileBest = MenuArt.Label("Best", tl, "", 16f, Gold, new Vector2(274f, -18f), new Vector2(240f, 28f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
             var hit = UiKit.Node("Hit", tl, new Vector2(215f, 0f), new Vector2(430f, 110f));
             profileTarget = new MenuTarget { Id = "profile", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawProfile };
             Register(profileTarget);
@@ -337,7 +351,7 @@ namespace SoccerFight
             wallet = Inner(topRight, new Vector2(1f, 0.5f));
             float x = 0f;
 #if !UNITY_WEBGL || UNITY_EDITOR
-            var quit = new ChunkButton(wallet, "Quit", new Vector2(-50f, 0f), new Vector2(92f, 86f), new Color(0.9f, 0.28f, 0.34f), null, 0f, MenuArt.IconPower, 54f);
+            var quit = new ChunkButton(wallet, "Quit", new Vector2(-46f, 0f), new Vector2(84f, 76f), new Color(1f, 0.42f, 0.45f), null, 0f, MenuArt.IconPower, 36f);
             Button(quit, "quit", Quit);
             x = -120f;
 #endif
@@ -360,10 +374,13 @@ namespace SoccerFight
         void Currency(string id, Sprite icon, Vector2 pos)
         {
             var pill = UiKit.Node(id, wallet, pos, new Vector2(200f, 70f));
-            MenuUi.Plate(pill, "Plate", new Vector2(10f, 0f), new Vector2(170f, 56f), new Color(0.1f, 0.08f, 0.26f), 4f);
-            UiKit.Img("Icon", pill, icon, Color.white, new Vector2(-72f, 2f), new Vector2(70f, 70f));
-            MenuArt.Label("Amount", pill, "0", 32f, Color.white, new Vector2(8f, 0f), new Vector2(90f, 50f), TextAlignmentOptions.Center, 1f);
-            var plus = new ChunkButton(pill, "Plus", new Vector2(78f, 0f), new Vector2(48f, 48f), new Color(0.3f, 0.82f, 0.36f), null, 0f, MenuArt.IconPlus, 30f);
+            Color accent = id == "coins" ? Gold : MenuArt.Accent;
+            UiKit.Img("Rim", pill, UiArt.Pill, accent.WithAlpha(0.3f), new Vector2(10f, 0f), new Vector2(172f, 52f), Image.Type.Sliced);
+            UiKit.Img("Body", pill, UiArt.Pill, MenuArt.Glass, new Vector2(10f, 0f), new Vector2(170f, 50f), Image.Type.Sliced);
+            UiKit.Img("Glow", pill, UiArt.Glow, accent.WithAlpha(0.2f), new Vector2(-70f, 0f), new Vector2(110f, 110f));
+            UiKit.Img("Icon", pill, icon, Color.white, new Vector2(-70f, 1f), new Vector2(52f, 52f));
+            MenuArt.Label("Amount", pill, "0", 24f, Color.white, new Vector2(8f, 0f), new Vector2(90f, 44f), TextAlignmentOptions.Center, 3f);
+            var plus = new ChunkButton(pill, "Plus", new Vector2(76f, 0f), new Vector2(40f, 40f), accent, null, 0f, MenuArt.IconPlus, 18f);
             var t = new MenuTarget { Id = id, Root = pill, Size = pill.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Shop), Accent = plus.Color };
             t.Draw = m => plus.Style(m.Hover, m.Hit, m.Punch, m.Fade, time);
             Register(t);
@@ -371,11 +388,11 @@ namespace SoccerFight
 
         void BuildTransition()
         {
-            var ft = UiKit.Img("Flash", root, null, new Color(1f, 0.97f, 0.9f, 0f), Vector2.zero, Vector2.zero);
+            var ft = UiKit.Img("Flash", root, null, new Color(0.92f, 0.98f, 1f, 0f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(ft.rectTransform);
             flash = ft;
             hero = UiKit.Node("HeroBall", root, Vector2.zero, Vector2.one * 100f);
-            heroGlow = UiKit.Img("Glow", hero, UiArt.Glow, new Color(1f, 0.85f, 0.5f, 0f), Vector2.zero, Vector2.one * 260f);
+            heroGlow = UiKit.Img("Glow", hero, UiArt.Glow, new Color(0.7f, 0.95f, 1f, 0f), Vector2.zero, Vector2.one * 260f);
             heroSpin = UiKit.Node("Spin", hero, Vector2.zero, Vector2.one * 100f);
             UiKit.Img("Pattern", heroSpin, MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * 100f);
             UiKit.Img("Shade", hero, MenuScenery.HeroShade != null ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * 100f);
@@ -494,13 +511,17 @@ namespace SoccerFight
 #endif
         }
 
-        /// <summary>While the menu covers the screen the arena behind it isn't drawn at all.</summary>
+        /// <summary>
+        /// While the menu is up the camera films the menu's own scene instead of the arena: only the
+        /// scene's layer and the UI layer (for a canvas the camera draws itself) are rendered.
+        /// </summary>
         void SetWorldHidden(bool hide)
         {
-            if (canvas.renderMode != RenderMode.ScreenSpaceOverlay || Game.I == null) return;
+            if (Game.I == null) return;
             var c = Game.I.Cam.Cam;
-            if (hide && !culled) { savedMask = c.cullingMask; c.cullingMask = 0; culled = true; }
+            if (hide && !culled) { savedMask = c.cullingMask; c.cullingMask = MenuVista.Mask | (1 << UiLayer); culled = true; }
             else if (!hide && culled) { c.cullingMask = savedMask; culled = false; }
+            vista.SetVisible(culled);
         }
 
         // ------------------------------------------------------------------ update
@@ -527,8 +548,8 @@ namespace SoccerFight
             UpdateTransition(udt);
             UpdateCursor(udt);
 
-            // the arena is only drawn while something of it can be seen
-            SetWorldHidden(state == State.Menu && IsOpen && openT > 0.995f || state == State.Starting && !playFired);
+            // the scene replaces the arena until the kicked ball has filled the screen
+            SetWorldHidden(IsOpen || state == State.Quitting || state == State.Starting && !playFired);
 
             if (state == State.Quitting && stateT > 0.55f) QuitNow();
             bool transitionDone = state != State.Starting || (playFired && flashA <= 0.001f && heroA <= 0.001f);
@@ -557,13 +578,14 @@ namespace SoccerFight
             figure.SetLook(look, def);
             tagName.text = def.Name;
             tagRole.text = def.Role;
-            tagRole.color = Color.Lerp(def.Accent, Color.white, 0.5f);
-            tagBadge.color = def.Accent;
+            tagRole.color = Color.Lerp(def.Accent, Color.white, 0.4f);
+            tagBadge.color = Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f);
             tagIcon.sprite = MenuArt.ClassIcon(def.Class);
             profileName.text = def.Name;
             int best = RunState.BestStage;
             profileBest.text = best > 0 ? "BESTE STAGE " + best : "NOCH KEIN LAUF";
-            avatarBody.color = def.Accent;
+            avatarBody.color = Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.45f);
+            avatarRing.color = Color.Lerp(def.Accent, Color.white, 0.3f);
             var head = look.Head;
             if (head != null)
             {
@@ -716,22 +738,42 @@ namespace SoccerFight
             float centreFade = (1f - away) * Mathf.Clamp01(openT * 1.5f);
             if (state == State.Starting && !playFired) centreFade = 1f;
             figure.SetAlpha(centreFade);
-            pedestalImg.color = Color.white.WithAlpha(centreFade);
-            foreach (var b in beams) b.color = b.color.WithAlpha(0.1f * centreFade * (0.8f + 0.2f * Mathf.Sin(time * 1.3f + b.rectTransform.anchoredPosition.x)));
-            pedestalGlow.color = pedestalGlow.color.WithAlpha((0.35f + 0.1f * Mathf.Sin(time * 2f)) * centreFade);
-            playHalo.color = new Color(1f, 0.8f, 0.3f, (0.25f + 0.15f * Mathf.Sin(time * 3f)) * (1f - away) * Mathf.Clamp01(openT * 1.4f));
+            pedestalGlow.color = pedestalGlow.color.WithAlpha((0.2f + 0.05f * Mathf.Sin(time * 2f)) * centreFade);
+            playHalo.color = Gold.WithAlpha((0.2f + 0.08f * Mathf.Sin(time * 2.2f)) * (1f - away) * Mathf.Clamp01(openT * 1.4f));
 
             for (int i = 0; i < stickers.Count; i++)
             {
-                float st = 1f + 0.07f * Mathf.Sin(time * 4f + i * 2f);
+                float st = 1f + 0.04f * Mathf.Sin(time * 3f + i * 2f);
                 stickers[i].localScale = new Vector3(st, st, 1f);
-                stickers[i].localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(time * 2.2f + i) * 8f);
             }
 
-            // the backdrop pushes in when the menu opens and on sub pages
-            float zoom = 1f + 0.08f * (1f - MathUtil.EaseOutCubic(Mathf.Clamp01(openT))) + 0.05f * Mathf.Clamp01(sub);
+            // night falls over the switch from the arena to the scene, and over quitting
+            float veilA = state == State.Quitting ? MathUtil.Smooth01(stateT / 0.45f) : state == State.Starting ? 0f : 1f - MathUtil.Smooth01(openT * 1.7f);
+            veil.color = veil.color.WithAlpha(veilA);
+            veil.enabled = veilA > 0.002f;
+
+            // the scene pushes in when the menu opens, on sub pages and as the ball flies at the camera
+            float zoom = 1f + 0.06f * (1f - MathUtil.EaseOutCubic(Mathf.Clamp01(openT))) + 0.04f * Mathf.Clamp01(sub);
             if (state == State.Starting) zoom += 0.12f * MathUtil.EaseInCubic(Mathf.Clamp01(stateT / 0.8f));
-            backdrop.Update(udt, AimNorm(), zoom, new Vector2(0f, 60f * Mathf.Clamp01(sub)));
+            if (Game.I != null && culled)
+            {
+                var rig = Game.I.Cam;
+                float wind = Game.I.Environment != null ? Game.I.Environment.Wind : 0f;
+                vista.Update(udt, rig.Cam, rig.Center, AimNorm(), zoom, new Vector2(0f, 0.5f * Mathf.Clamp01(sub)), wind);
+                // the floating centre circle stays right under the player's boots
+                Vector2 feet = CanvasToWorld(StackToCanvas(new Vector2(-10f, FeetY)));
+                float worldPerPx = rig.Cam.orthographicSize * 2f / Mathf.Max(1f, r.height);
+                vista.PlacePedestal(feet, k * worldPerPx * 1080f / 9.8f, centreFade);
+            }
+        }
+
+        /// <summary>World position (on the game camera) of a point in canvas space.</summary>
+        Vector2 CanvasToWorld(Vector2 canvasLocal)
+        {
+            var c = Game.I.Cam.Cam;
+            Vector2 screen = ScreenOf(canvasLocal);
+            Vector3 w = c.ScreenToWorldPoint(new Vector3(screen.x, screen.y, -c.transform.position.z));
+            return new Vector2(w.x, w.y);
         }
 
         Vector2 MoverHome(Mover m)
@@ -768,16 +810,14 @@ namespace SoccerFight
             float h = Mathf.Clamp01(t.Hover);
             float s = 1f + h * 0.03f + t.Punch * 0.04f;
             figure.Root.localScale = new Vector3(s, s, 1f);
-            pedestal.localScale = new Vector3(1f + h * 0.02f, 1f + h * 0.02f, 1f);
             pedestalGlow.rectTransform.localScale = Vector3.one * (1f + h * 0.15f + swapFlash * 0.4f);
         }
 
         void DrawTag(MenuTarget t)
         {
             float h = Mathf.Max(Mathf.Clamp01(t.Hover), Mathf.Clamp01(figureTarget.Hover));
-            float s = 1f + h * 0.05f + t.Punch * 0.06f + Mathf.Sin(time * 2.2f) * 0.01f;
+            float s = 1f + h * 0.04f + t.Punch * 0.06f;
             tagRoot.localScale = new Vector3(s, s, 1f);
-            tagRoot.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(time * 1.4f) * 1.5f);
         }
 
         void DrawProfile(MenuTarget t)
@@ -796,7 +836,7 @@ namespace SoccerFight
             {
                 Vector2 at = StackToCanvas(new Vector2(0f, FeetY + 170f));
                 Bump(MenuArt.Burst, at, 80f, 520f, Color.white.WithAlpha(0.8f), 0.35f, 2f, 30f);
-                Bump(MenuArt.Shock, at, 60f, 480f, Palette.Gold.WithAlpha(0.7f), 0.45f, 1.6f, 0f);
+                Bump(MenuArt.Shock, at, 60f, 480f, Palette.ShotCyan.WithAlpha(0.7f), 0.45f, 1.6f, 0f);
                 swapFlash = 0.94f;
             }
             // sparkles drift up out of the pedestal
@@ -806,9 +846,9 @@ namespace SoccerFight
                 b.Img.sprite = MenuArt.Sparkle;
                 b.Pos = StackToCanvas(new Vector2(Random.Range(-150f, 150f), FeetY + Random.Range(-10f, 20f)));
                 b.Vel = new Vector2(Random.Range(-6f, 6f), Random.Range(40f, 90f));
-                float sz = Random.Range(16f, 30f);
+                float sz = Random.Range(12f, 22f);
                 b.Size0 = b.Size1 = new Vector2(sz, sz);
-                b.Tint = Color.Lerp(Palette.Gold, Color.white, Random.value).WithAlpha(0.8f);
+                b.Tint = Color.Lerp(Palette.Crystal, Color.white, Random.value * 0.6f).WithAlpha(0.7f);
                 b.Life = Random.Range(1.2f, 2.2f);
                 b.Age = 0f; b.Grav = 0f; b.Fade = 1f; b.Align = false; b.Spin = 60f; b.Bump = true;
                 b.Rt.SetAsFirstSibling();
@@ -903,7 +943,7 @@ namespace SoccerFight
                         g.rectTransform.anchoredPosition = PathAt(s, ge);
                         float gs = Mathf.Lerp(1f, 0.42f, ge) * (1f - k * 0.13f);
                         g.rectTransform.localScale = new Vector3(gs, gs, 1f);
-                        g.color = Color.Lerp(Color.white, Palette.Gold, k * 0.22f).WithAlpha(0.3f * (1f - k / (float)s.Ghosts.Length));
+                        g.color = Color.Lerp(Color.white, Palette.ShotCyan, k * 0.25f).WithAlpha(0.3f * (1f - k / (float)s.Ghosts.Length));
                     }
                     if (u >= 1f) Land(s);
                 }
@@ -923,7 +963,7 @@ namespace SoccerFight
                 s.Root.anchoredPosition = s.Pos;
                 s.Root.localScale = new Vector3(s.Scale, s.Scale, 1f);
                 s.Spin.localRotation = Quaternion.Euler(0f, 0f, s.Angle);
-                s.Glow.color = new Color(1f, 0.9f, 0.6f, s.Flying ? 0.34f : 0.1f);
+                s.Glow.color = new Color(0.7f, 0.95f, 1f, s.Flying ? 0.3f : 0.08f);
             }
         }
 
@@ -936,7 +976,7 @@ namespace SoccerFight
             bool hit = target != null && target.Page == page && target.Fade > 0.5f && (state == State.Menu);
             bool soon = hit && target.Soon != null;
             Vector2 at = s.To;
-            Color tint = hit ? Color.Lerp(target.Accent, Color.white, 0.2f) : new Color(1f, 0.92f, 0.8f);
+            Color tint = hit ? Color.Lerp(target.Accent, Color.white, 0.2f) : Cool;
 
             // bounces back towards the camera: a short hop, then gravity takes it out of frame
             float away = at.x < s.From.x ? -1f : 1f;
@@ -988,10 +1028,12 @@ namespace SoccerFight
         {
             toast.text = text;
             toastT = 0f;
-            float w = toast.GetPreferredValues(text).x + 70f;
-            ((RectTransform)toastPlate.transform.parent).sizeDelta = new Vector2(w, 64f);
-            foreach (var img in toastPlate.transform.parent.GetComponentsInChildren<Image>())
-                img.rectTransform.sizeDelta = img == toastPlate ? new Vector2(w, 64f) : new Vector2(w + 10f, 80f);
+            float w = toast.GetPreferredValues(text).x + 80f;
+            ((RectTransform)toastPlate.transform.parent).sizeDelta = new Vector2(w, 60f);
+            toastPlate.rectTransform.sizeDelta = new Vector2(w, 60f);
+            toastFrame.rectTransform.sizeDelta = new Vector2(w + 2f, 62f);
+            toastShadow.rectTransform.sizeDelta = new Vector2(w * 1.08f + 60f, 125f);
+            toastLight.rectTransform.sizeDelta = new Vector2(w * 0.7f, 2f);
             Rect r = root.rect;
             float half = w * 0.5f + 20f;
             toastPos = new Vector2(Mathf.Clamp(at.x, -r.width * 0.5f + half, r.width * 0.5f - half), Mathf.Clamp(at.y + 110f, -r.height * 0.5f + 60f, r.height * 0.5f - 60f));
@@ -1065,7 +1107,7 @@ namespace SoccerFight
                     heroFrom = root.InverseTransformPoint(ballRt.TransformPoint(Vector3.zero));
                     Vector2 at = heroFrom;
                     Bump(MenuArt.Burst, at, 60f, 520f, Color.white, 0.3f, 2f, 40f);
-                    Bump(MenuArt.Shock, at, 40f, 420f, Palette.Gold.WithAlpha(0.9f), 0.4f, 1.6f, 0f);
+                    Bump(MenuArt.Shock, at, 40f, 420f, Palette.ShotCyan.WithAlpha(0.9f), 0.4f, 1.6f, 0f);
                     shake = 1.2f;
                     shakeVel = 0f;
                     hero.gameObject.SetActive(true);
@@ -1087,7 +1129,7 @@ namespace SoccerFight
                     hero.localScale = new Vector3(sc, sc, 1f);
                     heroSpin.localRotation = Quaternion.Euler(0f, 0f, -heroT * 900f);
                     heroA = 1f;
-                    heroGlow.color = new Color(1f, 0.85f, 0.5f, 0.6f * (1f - u));
+                    heroGlow.color = new Color(0.7f, 0.95f, 1f, 0.6f * (1f - u));
                     UpdateSpeedLines(u, sc * 50f);
                     flashA = MathUtil.Smooth01((u - 0.72f) / 0.28f);
                     if (u >= 1f)
@@ -1108,7 +1150,7 @@ namespace SoccerFight
                 foreach (var l in speedLines) if (l.gameObject.activeSelf) l.gameObject.SetActive(false);
             }
             if (hero.gameObject.activeSelf) heroGroup.alpha = heroA;
-            flash.color = new Color(1f, 0.97f, 0.9f, flashA);
+            flash.color = new Color(0.92f, 0.98f, 1f, flashA);
         }
 
         /// <summary>Streaks racing outwards from behind the ball as it comes at the camera.</summary>
@@ -1128,7 +1170,7 @@ namespace SoccerFight
                 rt.localRotation = Quaternion.Euler(0f, 0f, ang);
                 rt.sizeDelta = new Vector2(160f + 260f * u, 10f + 8f * u);
                 float fade = 1f - Mathf.Clamp01(travel / (span * 0.6f));
-                l.color = new Color(1f, 0.95f, 0.8f, 0.55f * fade * Mathf.Clamp01(u * 4f) * (1f - flashA));
+                l.color = new Color(0.8f, 0.95f, 1f, 0.5f * fade * Mathf.Clamp01(u * 4f) * (1f - flashA));
             }
         }
 
@@ -1147,10 +1189,10 @@ namespace SoccerFight
             float s = 1f + curPunch * 0.45f;
             cursorRoot.localScale = new Vector3(s, s, 1f);
 
-            Color accent = hovered != null ? Palette.Gold : Color.white;
+            Color accent = hovered != null ? Color.Lerp(hovered.Accent, Color.white, 0.25f) : Color.white;
             curRing.color = Color.Lerp(Color.white.WithAlpha(0.9f), accent, lockT * 0.9f);
             curDot.color = Color.Lerp(Color.white, accent, lockT * 0.7f);
-            curGlow.color = Color.Lerp(Palette.ShotCyan, Palette.Gold, lockT).WithAlpha(0.14f + 0.16f * lockT + 0.25f * curPunch);
+            curGlow.color = Color.Lerp(Palette.ShotCyan, hovered != null ? hovered.Accent : Palette.ShotCyan, lockT).WithAlpha(0.14f + 0.16f * lockT + 0.25f * curPunch);
             float pad = Mathf.Lerp(22f, 12f, lockT);
             float bs = Mathf.Lerp(0.7f, 1f, lockT);
             for (int k = 0; k < 4; k++)
@@ -1174,11 +1216,13 @@ namespace SoccerFight
             for (int i = n.Ghosts.Length - 1; i >= 0; i--)
                 n.Ghosts[i] = UiKit.Img("Trail", fxRoot, UiArt.Glow, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(150f, 150f));
             n.Root = UiKit.Node("Shot", fxRoot, Vector2.zero, new Vector2(118f, 118f));
-            n.Glow = UiKit.Img("Glow", n.Root, UiArt.Glow, new Color(1f, 0.9f, 0.6f, 0.34f), Vector2.zero, new Vector2(290f, 290f));
+            n.Glow = UiKit.Img("Glow", n.Root, UiArt.Glow, new Color(0.7f, 0.95f, 1f, 0.3f), Vector2.zero, new Vector2(290f, 290f));
             n.Spin = UiKit.Node("Spin", n.Root, Vector2.zero, new Vector2(118f, 118f));
             UiKit.Img("Pattern", n.Spin, Art.BallPattern, Color.white, Vector2.zero, new Vector2(118f, 118f));
             UiKit.Img("Shade", n.Root, Art.BallShade, Color.white, Vector2.zero, new Vector2(118f, 118f));
             UiKit.Img("Hi", n.Root, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, new Vector2(118f, 118f));
+            foreach (var g in n.Ghosts) g.gameObject.layer = UiLayer;
+            MenuUi.SetLayer(n.Root, UiLayer);
             shots.Add(n);
             return n;
         }
@@ -1198,6 +1242,7 @@ namespace SoccerFight
             n.Img = UiKit.Img("Bit", fxRoot, MenuArt.Spark, Color.white, Vector2.zero, new Vector2(32f, 8f));
             n.Rt = n.Img.rectTransform;
             n.Live = true;
+            n.Rt.gameObject.layer = UiLayer;
             bits.Add(n);
             return n;
         }

@@ -97,7 +97,7 @@ namespace SoccerFight
             Rect.MinMaxRect(Mathf.Min(a.x, b.x) - pad, Mathf.Min(a.y, b.y) - pad, Mathf.Max(a.x, b.x) + pad, Mathf.Max(a.y, b.y) + pad);
 
         /// <summary>Layered conifer silhouette standing at b.</summary>
-        static void Conifer(SdfCanvas c, Vector2 b, float h, Color col, float widthK)
+        internal static void Conifer(SdfCanvas c, Vector2 b, float h, Color col, float widthK)
         {
             float w = h * widthK;
             SdfCanvas.SdfFn sdf = q =>
@@ -116,7 +116,7 @@ namespace SoccerFight
             c.Fill(sdf, col, 0f, new Rect(b.x - w - 0.05f, b.y - 0.05f, w * 2f + 0.1f, h * 1.25f + 0.1f));
         }
 
-        static void RoundTree(SdfCanvas c, Vector2 b, float h, Color col, System.Random r)
+        internal static void RoundTree(SdfCanvas c, Vector2 b, float h, Color col, System.Random r)
         {
             float rad = h * 0.34f;
             Vector2 crown = b + new Vector2(0f, h - rad);

@@ -3,12 +3,11 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// The SOCCERFIGHT logo, drawn from scratch: a chunky display face built from boxes (the same
-    /// counters and bar weights everywhere), "SOCCER" small and cool on top, "FIGHT" big and hot
-    /// below, letters bouncing a little off the baseline. Every letter gets a deep indigo keyline and
-    /// a 3D slab, the faces get a gradient, a top gloss and cracks (the world is broken, after all),
-    /// and a jagged burst flares up behind them. The "O" is left as an empty socket: the menu puts a
-    /// real spinning ball there.
+    /// The SOCCERFIGHT logo, drawn from scratch in the look of the ruins it belongs to: a chunky
+    /// display face built from boxes (the same counters and bar weights everywhere), "SOCCER" small
+    /// on top, "FIGHT" big below. The letters are moonstone blocks: a dark carved slab, pale faces
+    /// with grain, a lit bevel, moss creeping over some top edges and cracks with crystal light in
+    /// them. The "O" is left as an empty socket: the menu puts a real spinning ball there.
     ///
     /// Units: 1 = cap height of "FIGHT". The signed distance of all letters is sampled once into a
     /// grid, so the outline, slab and shading passes are cheap lookups. Runs on a worker thread.
@@ -16,9 +15,9 @@ namespace SoccerFight
     public static class LogoArt
     {
         public const float Ppu = 210f;
-        public static readonly Rect Area = new Rect(-2.9f, -0.72f, 5.8f, 3.32f);
-        /// <summary>The whole logo leans up to the right by this much (degrees).</summary>
-        public const float TiltDeg = 3f;
+        public static readonly Rect Area = new Rect(-2.45f, -0.36f, 4.95f, 2.6f);
+        /// <summary>The whole logo leans up to the right by this much (degrees; the stone letters sit level).</summary>
+        public const float TiltDeg = 0f;
         /// <summary>Where the ball sits (logo units) and its radius.</summary>
         public static Vector2 BallCenter { get; private set; }
         public static float BallRadius { get; private set; }
@@ -27,8 +26,11 @@ namespace SoccerFight
         const float B = 0.22f;  // bar height
         const float Gap = 0.075f;
 
-        static readonly Color Ink = new Color(0.07f, 0.04f, 0.17f, 1f);
-        static readonly Color Slab = new Color(0.16f, 0.07f, 0.3f, 1f);
+        static readonly Color Ink = new Color(0.015f, 0.04f, 0.06f, 1f);
+        static readonly Color Slab = new Color(0.04f, 0.11f, 0.15f, 1f);
+        static readonly Color SlabLight = new Color(0.09f, 0.2f, 0.25f, 1f);
+
+        static Color Mul(Color c, float f) { c.r *= f; c.g *= f; c.b *= f; return c; }
 
         delegate float Glyph(Vector2 q);
 
@@ -179,8 +181,9 @@ namespace SoccerFight
         static Placed[] Layout()
         {
             const string top = "SOCCER", bottom = "FIGHT";
-            float[] topRot = { -5f, 3f, -3f, 4f, -2f, 5f }, topDy = { 0.03f, -0.01f, 0.04f, 0f, 0.03f, -0.01f };
-            float[] botRot = { -4f, 5f, -3f, 4f, -5f }, botDy = { 0f, 0.05f, -0.02f, 0.04f, 0.01f };
+            // settled, weathered blocks: barely off true
+            float[] topRot = { -1.2f, 0f, 0.8f, -0.6f, 1f, -0.8f }, topDy = { 0.01f, 0f, -0.01f, 0.01f, 0f, 0.01f };
+            float[] botRot = { -1f, 1.4f, -0.6f, 0.9f, -1.2f }, botDy = { 0f, 0.02f, -0.01f, 0.01f, 0f };
             const float topScale = 0.66f, topY = 1.2f;
             var list = new System.Collections.Generic.List<Placed>();
 
@@ -219,24 +222,6 @@ namespace SoccerFight
         static Vector2 Untilt(Vector2 p) => MathUtil.Rotate(p, -TiltDeg);
         static Vector2 Tilt(Vector2 p) => MathUtil.Rotate(p, TiltDeg);
 
-        // ------------------------------------------------------------------ burst behind the words
-
-        static float BurstSdf(Vector2 p)
-        {
-            Vector2 c = new Vector2(0.1f, 0.95f);
-            Vector2 q = p - c;
-            float ang = Mathf.Atan2(q.y, q.x);
-            // uneven spikes, like a torn explosion
-            float spikes = 0f;
-            float a = ang * 7f;
-            spikes += Mathf.Pow(Mathf.Abs(Mathf.Cos(a)), 6f) * 0.34f;
-            spikes += Mathf.Pow(Mathf.Abs(Mathf.Cos(ang * 11f + 1.3f)), 10f) * 0.22f;
-            spikes += (Noise.Perlin(ang * 3f + 10f, 0.5f) - 0.5f) * 0.18f;
-            float rx = 1.95f * (1f + spikes * 0.55f), ry = 0.95f * (1f + spikes);
-            float e = new Vector2(q.x / rx, q.y / ry).magnitude;
-            return (e - 1f) * Mathf.Min(rx, ry) * 0.9f;
-        }
-
         // ------------------------------------------------------------------ build
 
         public static SdfCanvas Build()
@@ -262,69 +247,78 @@ namespace SoccerFight
             }
 
             var c = new SdfCanvas(Area, Ppu);
-            float px = 1f / Ppu;
+            Rect letters = new Rect(-2.42f, -0.34f, 4.88f, 2.56f);
 
-            // 1) burst: keyline, hot gradient, a lighter inner flare
-            Rect burstBounds = Area;
-            var burst = new Field(Area, Ppu);
-            burst.Stamp(BurstSdf, Area);
-            SdfCanvas.SdfFn burstAt = burst.At;
-            c.Fill(p => burstAt(p) - 0.05f, Ink, 0f, burstBounds);
-            c.Fill(burstAt, p =>
-            {
-                float k = MathUtil.Smooth01((p.y + 0.3f) / 2.2f);
-                Color col = Color.Lerp(new Color(0.92f, 0.16f, 0.36f), new Color(1f, 0.42f, 0.2f), k);
-                float streak = Noise.Perlin(Mathf.Atan2(p.y - 0.95f, p.x - 0.1f) * 5f, 3.3f);
-                return Color.Lerp(col, new Color(1f, 0.62f, 0.3f), streak * 0.35f);
-            }, 0f, burstBounds);
-            c.Paint(p => burstAt(p) + 0.32f, new Color(1f, 0.72f, 0.32f, 0.55f), 0.25f, burstBounds);
-            c.Paint(p => burstAt(p) + 0.62f, new Color(1f, 0.88f, 0.5f, 0.35f), 0.35f, burstBounds);
+            // 1) a soft dark halo so the letters hold against the bright moon behind them
+            c.Fill(p => field.At(p) - 0.16f, new Color(0.01f, 0.03f, 0.05f, 0.45f), 0.14f, letters);
 
-            // 2) slab: the letters pushed down-right, drawn as one deep block
-            Vector2 depth = new Vector2(0.045f, -0.12f);
-            const int steps = 7;
+            // 2) slab: the letters pushed straight down, carved from the same dark stone
+            Vector2 depth = new Vector2(0.02f, -0.1f);
+            const int steps = 6;
             SdfCanvas.SdfFn slab = p =>
             {
                 float d = 10f;
                 for (int i = 1; i <= steps; i++) d = Mathf.Min(d, field.At(p - depth * (i / (float)steps)));
                 return d;
             };
-            Rect letters = new Rect(-2.2f, -0.45f, 4.5f, 2.75f);
-            c.Fill(p => slab(p) - 0.085f, Ink, 0f, letters);
-            c.Fill(p => slab(p) - 0.045f, p => Color.Lerp(Slab, new Color(0.3f, 0.12f, 0.45f), MathUtil.Smooth01((p.y + 0.2f) / 2f)), 0f, letters);
+            c.Fill(p => slab(p) - 0.05f, Ink, 0f, letters);
+            c.Fill(p => slab(p) - 0.022f, p => Color.Lerp(Slab, SlabLight, MathUtil.Smooth01((p.y + 0.2f) / 2f)), 0f, letters);
 
             // 3) keyline around the faces
-            c.Fill(p => field.At(p) - 0.075f, Ink, 0f, letters);
+            c.Fill(p => field.At(p) - 0.042f, Ink, 0f, letters);
 
-            // 4) faces: SOCCER cool white-blue, FIGHT yellow to orange
+            // 4) faces: moonstone — SOCCER cool and pale, FIGHT bright with a teal foot; grain and streaks
             c.Fill(p => field.At(p), p =>
             {
                 bool top = topField.At(p) < 0.02f;
+                Color col;
                 if (top)
                 {
-                    float k = MathUtil.Smooth01((p.y - 1.15f) / 0.7f);
-                    return Color.Lerp(new Color(0.55f, 0.82f, 1f), Color.white, k);
+                    float k = MathUtil.Smooth01((p.y - 1.2f) / 0.62f);
+                    col = Color.Lerp(new Color(0.38f, 0.72f, 0.8f), new Color(0.86f, 0.98f, 1f), k);
                 }
-                float f = MathUtil.Smooth01((p.y + 0.05f) / 1.05f);
-                Color low = new Color(1f, 0.42f, 0.12f), mid = new Color(1f, 0.72f, 0.16f), high = new Color(1f, 0.94f, 0.45f);
-                return f < 0.5f ? Color.Lerp(low, mid, f * 2f) : Color.Lerp(mid, high, (f - 0.5f) * 2f);
+                else
+                {
+                    float f = MathUtil.Smooth01((p.y + 0.02f) / 1.02f);
+                    Color low = new Color(0.27f, 0.55f, 0.63f), mid = new Color(0.72f, 0.9f, 0.94f), high = new Color(0.97f, 1f, 1f);
+                    col = f < 0.45f ? Color.Lerp(low, mid, f / 0.45f) : Color.Lerp(mid, high, (f - 0.45f) / 0.55f);
+                }
+                float grain = Noise.Perlin(p.x * 34f, p.y * 34f);
+                float streak = Noise.Perlin(p.x * 60f, p.y * 3f);
+                col = Mul(col, 0.93f + 0.08f * grain - 0.05f * MathUtil.Smooth01((streak - 0.62f) / 0.1f));
+                col.a = 1f;
+                return col;
             }, 0f, letters);
 
-            // 5) shading: a gloss band along the top edges, a shadow along the bottom edges
+            // 5) bevel: a lit rim along the top edges, shade along the bottom edges
             c.Paint(p =>
             {
                 float d = field.At(p);
                 if (d > 0f) return Color.clear;
-                float up = field.At(p + new Vector2(0f, 0.07f));
-                float down = field.At(p - new Vector2(0f, 0.06f));
-                float gloss = MathUtil.Smooth01(up / 0.02f) * 0.75f;
-                float shade = MathUtil.Smooth01(down / 0.02f) * 0.35f;
-                if (gloss > 0.01f) return new Color(1f, 1f, 0.96f, gloss);
-                if (shade > 0.01f) return new Color(0.55f, 0.18f, 0.2f, shade);
+                float up = field.At(p + new Vector2(0f, 0.05f));
+                float down = field.At(p - new Vector2(0f, 0.05f));
+                float gloss = MathUtil.Smooth01(up / 0.02f) * 0.7f;
+                float shade = MathUtil.Smooth01(down / 0.02f) * 0.4f;
+                if (gloss > 0.01f) return new Color(1f, 1f, 1f, gloss);
+                if (shade > 0.01f) return new Color(0.1f, 0.25f, 0.32f, shade);
                 return Color.clear;
             }, letters);
 
-            // 6) cracks through FIGHT: dark jagged lines, clipped to the faces
+            // 6) moss creeping over some of the top edges
+            c.Paint(p =>
+            {
+                float d = field.At(p);
+                if (d > 0f) return Color.clear;
+                float up = field.At(p + new Vector2(0f, 0.09f));
+                if (up < -0.01f) return Color.clear;
+                float patch = Noise.Perlin(p.x * 3.4f + 7f, 1.3f);
+                float lump = Noise.Perlin(p.x * 22f, p.y * 22f);
+                float edge = MathUtil.Smooth01((up + 0.01f) / 0.03f) * MathUtil.Smooth01((patch - 0.63f) / 0.08f);
+                float a = edge * MathUtil.Smooth01((lump - 0.35f) / 0.15f);
+                return Color.Lerp(Palette.Moss, Palette.IvyLight, lump).WithAlpha(a * 0.95f);
+            }, letters);
+
+            // 7) cracks through FIGHT with crystal light inside them
             var rng = new System.Random(7);
             float R() => (float)rng.NextDouble();
             foreach (var pl in placed)
@@ -333,63 +327,34 @@ namespace SoccerFight
                 int n = 1 + rng.Next(2);
                 for (int k = 0; k < n; k++)
                 {
-                    Vector2 a = Tilt(pl.Origin + new Vector2(R() * pl.Width, 0.2f + R() * 0.6f) * pl.Scale);
+                    Vector2 a = Tilt(pl.Origin + new Vector2(R() * pl.Width, 0.15f + R() * 0.7f) * pl.Scale);
                     Vector2 dir = MathUtil.Dir(R() * 360f);
-                    var pts = new Vector2[4];
+                    var pts = new Vector2[5];
                     pts[0] = a;
-                    for (int s = 1; s < pts.Length; s++) pts[s] = pts[s - 1] + MathUtil.Rotate(dir, (R() - 0.5f) * 70f) * (0.07f + R() * 0.07f);
+                    for (int s = 1; s < pts.Length; s++) pts[s] = pts[s - 1] + MathUtil.Rotate(dir, (R() - 0.5f) * 70f) * (0.06f + R() * 0.07f);
                     SdfCanvas.SdfFn crack = p =>
                     {
-                        if (field.At(p) > -0.01f) return 1f;
+                        if (field.At(p) > -0.008f) return 1f;
                         float d = 10f;
                         for (int s = 1; s < pts.Length; s++)
-                            d = Mathf.Min(d, Sdf.Tapered(p, pts[s - 1], 0.012f * (1f - s * 0.22f) + 0.004f, pts[s], 0.004f));
+                            d = Mathf.Min(d, Sdf.Tapered(p, pts[s - 1], 0.016f * (1f - s * 0.18f) + 0.004f, pts[s], 0.004f));
                         return d;
                     };
-                    Rect cb = new Rect(a.x - 0.35f, a.y - 0.35f, 0.7f, 0.7f);
-                    c.Paint(crack, new Color(0.45f, 0.1f, 0.12f, 0.85f), 0f, cb);
-                    c.Paint(p => crack(p + new Vector2(0.008f, -0.01f)), new Color(1f, 0.98f, 0.8f, 0.5f), 0f, cb);
+                    Rect cb = new Rect(a.x - 0.4f, a.y - 0.4f, 0.8f, 0.8f);
+                    c.Paint(crack, new Color(0.03f, 0.1f, 0.13f, 0.95f), 0f, cb);
+                    c.Paint(p => crack(p) + 0.006f, new Color(0.55f, 0.97f, 1f, 1f), 0.004f, cb);
+                    c.Paint(p => crack(p) - 0.018f, new Color(0.6f, 0.95f, 1f, 0.22f), 0.02f, cb);
                 }
             }
 
-            // 7) the ball socket: a dark disc the spinning ball will cover
+            // 8) the ball socket: a dark disc the spinning ball will cover
             Vector2 bcn = BallCenter;
             float br = BallRadius;
-            c.Fill(p => Sdf.Circle(p, bcn, br), new Color(0.12f, 0.08f, 0.24f), 0f, new Rect(bcn.x - br - 0.1f, bcn.y - br - 0.1f, br * 2f + 0.2f, br * 2f + 0.2f));
-
-            // 8) ribbon under FIGHT for the tagline
-            SdfCanvas.SdfFn ribbon = p =>
-            {
-                Vector2 q = Untilt(p);
-                q.y -= q.x * q.x * 0.03f;
-                float body = Sdf.Box(q, new Vector2(0.05f, -0.34f), new Vector2(1.55f, 0.15f), 0.02f);
-                float tailL = Sdf.Box(q, new Vector2(-1.62f, -0.44f), new Vector2(0.3f, 0.12f), 0.01f);
-                float tailR = Sdf.Box(q, new Vector2(1.72f, -0.44f), new Vector2(0.3f, 0.12f), 0.01f);
-                float notchL = Sdf.Triangle(q, new Vector2(-1.93f, -0.3f), new Vector2(-1.93f, -0.58f), new Vector2(-1.8f, -0.44f));
-                float notchR = Sdf.Triangle(q, new Vector2(2.03f, -0.3f), new Vector2(2.03f, -0.58f), new Vector2(1.9f, -0.44f));
-                float tails = Sdf.Subtract(Sdf.Subtract(Mathf.Min(tailL, tailR), notchL), notchR);
-                return Mathf.Min(body, tails);
-            };
-            Rect rbnd = new Rect(-2.2f, -0.72f, 4.5f, 0.75f);
-            c.Fill(p => ribbon(p) - 0.04f, Ink, 0f, rbnd);
-            c.Fill(ribbon, p =>
-            {
-                Vector2 q = Untilt(p);
-                bool tail = q.x < -1.5f || q.x > 1.6f;
-                Color col = tail ? new Color(0.22f, 0.12f, 0.42f) : new Color(0.33f, 0.2f, 0.62f);
-                return Color.Lerp(col * 0.85f, col, MathUtil.Smooth01((q.y - q.x * q.x * 0.03f + 0.5f) / 0.3f));
-            }, 0f, rbnd);
-            c.Paint(p =>
-            {
-                Vector2 q = Untilt(p);
-                float bend = q.x * q.x * 0.03f;
-                return Sdf.Box(new Vector2(q.x, q.y - bend), new Vector2(0.05f, -0.24f), new Vector2(1.5f, 0.012f));
-            }, new Color(0.62f, 0.5f, 0.95f, 0.8f), 0f, rbnd);
-
+            c.Fill(p => Sdf.Circle(p, bcn, br), new Color(0.03f, 0.08f, 0.11f), 0f, new Rect(bcn.x - br - 0.1f, bcn.y - br - 0.1f, br * 2f + 0.2f, br * 2f + 0.2f));
             return c;
         }
 
-        /// <summary>Tagline position under FIGHT (logo units) and its tilt.</summary>
-        public static Vector2 TaglineCenter => Tilt(new Vector2(0.05f, -0.34f));
+        /// <summary>Where the tagline goes under FIGHT (logo units).</summary>
+        public static Vector2 TaglineCenter => Tilt(new Vector2(0.05f, -0.52f));
     }
 }

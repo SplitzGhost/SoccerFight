@@ -6,8 +6,9 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Frame every title-screen sub page shares: the landscape dimmed under a slowly scrolling
-    /// ball pattern, a back button in the top-left corner and a big title.
+    /// Frame every title-screen sub page shares, laid out like the in-game upgrade screen: the scene
+    /// dimmed to night blue, a small accent overline, a big tracked title with a fading line under
+    /// it, and a glass back button in the top-left corner.
     /// </summary>
     public sealed class SubPage
     {
@@ -16,43 +17,29 @@ namespace SoccerFight
         public readonly CanvasGroup Group;
         public readonly MenuTarget Back;
         public float T, Vel;
-        readonly RawImage pattern;
         readonly RectTransform title;
 
-        public SubPage(RectTransform parent, int id, string heading, Color accent, System.Action<MenuTarget> register, System.Action back)
+        public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back)
         {
             Id = id;
             Root = UiKit.Node("Page " + heading, parent, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(Root);
             Group = Root.gameObject.AddComponent<CanvasGroup>();
 
-            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.07f, 0.06f, 0.24f, 0.74f), Vector2.zero, Vector2.zero).rectTransform);
-            pattern = new GameObject("Pattern", typeof(RectTransform)).AddComponent<RawImage>();
-            pattern.rectTransform.SetParent(Root, false);
-            MenuUi.Stretch(pattern.rectTransform);
-            pattern.texture = MenuArt.BallPattern;
-            pattern.color = Color.white.WithAlpha(0.05f);
-            pattern.raycastTarget = false;
+            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, 0.72f), Vector2.zero, Vector2.zero).rectTransform);
+            var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, 0.55f), Vector2.zero, Vector2.zero);
+            MenuUi.Stretch(vignette.rectTransform);
 
-            var band = UiKit.Img("TopBand", Root, null, new Color(0.04f, 0.03f, 0.14f, 0.55f), Vector2.zero, Vector2.zero);
-            band.rectTransform.anchorMin = new Vector2(0f, 1f);
-            band.rectTransform.anchorMax = new Vector2(1f, 1f);
-            band.rectTransform.pivot = new Vector2(0.5f, 1f);
-            band.rectTransform.sizeDelta = new Vector2(0f, 150f);
-            var bandLine = UiKit.Img("BandLine", Root, null, accent.WithAlpha(0.8f), Vector2.zero, Vector2.zero);
-            bandLine.rectTransform.anchorMin = new Vector2(0f, 1f);
-            bandLine.rectTransform.anchorMax = new Vector2(1f, 1f);
-            bandLine.rectTransform.anchoredPosition = new Vector2(0f, -150f);
-            bandLine.rectTransform.sizeDelta = new Vector2(0f, 5f);
+            title = UiKit.Node("Heading", Root, Vector2.zero, new Vector2(1200f, 150f));
+            MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -92f));
+            MenuArt.Label("Overline", title, overline, 22f, accent, new Vector2(0f, 46f), new Vector2(1000f, 32f), TextAlignmentOptions.Center, 9f, MenuArt.TextHeavySoft);
+            MenuArt.Label("Title", title, heading, 60f, Color.white, new Vector2(0f, -4f), new Vector2(1200f, 80f), TextAlignmentOptions.Center, 18f);
+            UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.5f), new Vector2(0f, -54f), new Vector2(760f, 2f));
 
-            var titleText = MenuArt.Label("Title", Root, heading, 70f, Color.white, Vector2.zero, new Vector2(1000f, 100f), TextAlignmentOptions.Center, 4f);
-            title = titleText.rectTransform;
-            MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -76f));
-
-            var holder = UiKit.Node("BackHolder", Root, Vector2.zero, new Vector2(130f, 100f));
-            MenuUi.Pin(holder, new Vector2(0f, 1f), new Vector2(118f, -74f));
-            var button = new ChunkButton(holder, "Back", Vector2.zero, new Vector2(124f, 96f), new Color(0.32f, 0.56f, 1f), null, 0f, MenuArt.IconBack, 62f);
-            Back = new MenuTarget { Id = "back" + id, Root = button.Root, Size = button.Size, Page = id, Action = back, Button = button, Accent = accent };
+            var holder = UiKit.Node("BackHolder", Root, Vector2.zero, new Vector2(110f, 96f));
+            MenuUi.Pin(holder, new Vector2(0f, 1f), new Vector2(96f, -78f));
+            var button = new ChunkButton(holder, "Back", Vector2.zero, new Vector2(96f, 84f), MenuArt.Accent, null, 0f, MenuArt.IconBack, 46f);
+            Back = new MenuTarget { Id = "back" + id, Root = button.Root, Size = button.Size, Page = id, Action = back, Button = button, Accent = MenuArt.Accent };
             register(Back);
 
             Content = UiKit.Node("Content", Root, new Vector2(0f, -40f), new Vector2(1600f, 900f));
@@ -61,17 +48,11 @@ namespace SoccerFight
         public void Update(float udt)
         {
             Rect r = Root.rect;
-            var uv = pattern.uvRect;
-            uv.width = r.width / 180f;
-            uv.height = r.height / 180f;
-            uv.x = Mathf.Repeat(uv.x + udt * 0.04f, 1f);
-            uv.y = Mathf.Repeat(uv.y + udt * 0.025f, 1f);
-            pattern.uvRect = uv;
             // the whole page fits the window: content shrinks on small canvases
             float s = Mathf.Min(1f, Mathf.Min(r.width / 1700f, (r.height - 60f) / 1000f));
             Content.localScale = new Vector3(s, s, 1f);
             Content.anchoredPosition = new Vector2(0f, -40f * s);
-            title.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, T);
+            title.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, T) * Mathf.Min(1f, r.width / 1300f);
         }
     }
 
@@ -80,7 +61,7 @@ namespace SoccerFight
     {
         public readonly List<SubPage> Pages = new List<SubPage>();
         readonly List<RectTransform> bobbers = new List<RectTransform>();
-        readonly List<RectTransform> stickers = new List<RectTransform>();
+        readonly List<(Image img, Color color, float phase)> glows = new List<(Image, Color, float)>();
         TextMeshProUGUI rankYou, rankValue;
         readonly List<(TextMeshProUGUI key, GameAction action)> keyRows = new List<(TextMeshProUGUI, GameAction)>();
         float time;
@@ -89,6 +70,9 @@ namespace SoccerFight
 
         System.Action<MenuTarget> register;
         System.Action back;
+
+        static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
+        static readonly Color Muted = new Color(0.62f, 0.72f, 0.8f);
 
         public void Build(RectTransform parent, System.Action<MenuTarget> reg, System.Action goBack)
         {
@@ -103,105 +87,109 @@ namespace SoccerFight
             KeyBindings.Changed += RefreshKeys;
         }
 
-        SubPage NewPage(RectTransform parent, int id, string title, Color accent)
+        SubPage NewPage(RectTransform parent, int id, string title, string overline, Color accent)
         {
-            var p = new SubPage(parent, id, title, accent, register, back);
+            var p = new SubPage(parent, id, title, overline, accent, register, back);
             Pages.Add(p);
             return p;
         }
 
         ChunkButton SoonButton(Transform parent, int page, string id, Vector2 pos, Vector2 size, Color color, string label, float font, string soon)
         {
-            var b = new ChunkButton(parent, id, pos, size, color, label, font, MenuArt.IconLock, size.y * 0.55f);
-            b.IconLeft(22f);
+            var b = new ChunkButton(parent, id, pos, size, color, label, font, MenuArt.IconLock, size.y * 0.42f);
+            b.IconLeft(24f);
+            b.Disabled = true;
             register(new MenuTarget { Id = id, Root = b.Root, Size = size, Page = page, Button = b, Soon = soon, Accent = color });
             return b;
         }
 
-        TextMeshProUGUI Body(Transform parent, string text, Vector2 pos, Vector2 box, float size = 24f, TextAlignmentOptions align = TextAlignmentOptions.Center)
+        TextMeshProUGUI Body(Transform parent, string text, Vector2 pos, Vector2 box, float size = 22f, TextAlignmentOptions align = TextAlignmentOptions.Center)
         {
-            var t = MenuArt.Label("Text", parent, text, size, new Color(0.88f, 0.9f, 1f), pos, box, align, 0.5f, MenuArt.TextHeavySoft);
+            var t = MenuArt.Label("Text", parent, text, size, new Color(0.8f, 0.87f, 0.92f), pos, box, align, 0.5f, MenuArt.TextHeavySoft);
             t.fontStyle = FontStyles.Normal;
             t.textWrappingMode = TextWrappingModes.Normal;
             return t;
+        }
+
+        /// <summary>A glyph in a lit ring, the way the upgrade cards show their icons.</summary>
+        Image Emblem(Transform parent, Sprite icon, Vector2 pos, float size, Color accent, bool colored = false)
+        {
+            var glow = UiKit.Img("EmblemGlow", parent, UiArt.Glow, accent.WithAlpha(0.22f), pos, Vector2.one * size * 2f);
+            glows.Add((glow, accent, Random.value * 10f));
+            UiKit.Img("EmblemDisc", parent, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.8f), pos, Vector2.one * size);
+            UiKit.Img("EmblemRing", parent, MenuArt.RoundFrame, Color.Lerp(accent, Color.white, 0.3f).WithAlpha(0.85f), pos, Vector2.one * (size + 4f));
+            var img = UiKit.Img("Emblem", parent, icon, colored ? Color.white : Color.Lerp(accent, Color.white, 0.5f), pos, Vector2.one * size * 0.56f);
+            img.preserveAspect = true;
+            bobbers.Add(img.rectTransform);
+            return img;
         }
 
         // ------------------------------------------------------------------ shop
 
         void BuildShop(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Shop, "SHOP", new Color(1f, 0.4f, 0.75f));
-            string[] names = { "STARTERPAKET", "GOLDENER BALL", "TRIKOT-SET", "EDELSTEINE" };
-            string[] lines = { "Ein Schwung Münzen und ein Trikot für den Anfang.", "Ein Ball, der golden leuchtet und funkelt.", "Neue Farben für alle drei Spieler.", "Die seltene Währung für besondere Dinge." };
+            var page = NewPage(parent, MenuPage.Shop, "SHOP", "TRIKOTS · BÄLLE · KRISTALLE", Gold);
+            string[] names = { "STARTERPAKET", "GOLDENER BALL", "TRIKOT-SET", "KRISTALLE" };
+            string[] lines = { "Ein Schwung Münzen und ein Trikot für den Anfang.", "Ein Ball, der golden leuchtet und Funken zieht.", "Neue Farben für alle drei Spieler.", "Die seltene Währung aus den Ruinen." };
             Sprite[] icons = { MenuArt.IconShop, MenuArt.IconCoin, MenuArt.IconStar, MenuArt.IconGem };
-            Color[] cols = { new Color(0.55f, 0.36f, 0.95f), new Color(1f, 0.62f, 0.18f), new Color(0.95f, 0.32f, 0.38f), new Color(0.98f, 0.36f, 0.72f) };
+            Color[] cols = { MenuArt.Accent, Gold, new Color(1f, 0.45f, 0.42f), new Color(0.45f, 0.9f, 1f) };
             for (int i = 0; i < names.Length; i++)
             {
-                var tile = UiKit.Node("Offer" + i, page.Content, new Vector2((i - 1.5f) * 345f, 40f), new Vector2(310f, 470f));
-                MenuUi.Plate(tile, "Card", Vector2.zero, new Vector2(310f, 470f), cols[i]);
-                var stripes = new GameObject("Stripes", typeof(RectTransform)).AddComponent<RawImage>();
-                stripes.rectTransform.SetParent(tile, false);
-                stripes.rectTransform.anchoredPosition = new Vector2(0f, 90f);
-                stripes.rectTransform.sizeDelta = new Vector2(290f, 250f);
-                stripes.texture = MenuArt.Stripes;
-                stripes.uvRect = new Rect(0f, 0f, 290f / 64f, 250f / 64f);
-                stripes.color = Color.white.WithAlpha(0.12f);
-                stripes.raycastTarget = false;
-                UiKit.Img("Light", tile, UiArt.Glow, Color.white.WithAlpha(0.35f), new Vector2(0f, 90f), new Vector2(300f, 300f));
-                var icon = UiKit.Img("Icon", tile, icons[i], Color.white, new Vector2(0f, 95f), new Vector2(170f, 170f));
-                bobbers.Add(icon.rectTransform);
-                MenuArt.Label("Name", tile, names[i], 30f, Color.white, new Vector2(0f, -60f), new Vector2(300f, 44f));
-                Body(tile, lines[i], new Vector2(0f, -112f), new Vector2(270f, 60f), 19f);
-                SoonButton(tile, MenuPage.Shop, "buy" + i, new Vector2(0f, -188f), new Vector2(250f, 72f), new Color(0.35f, 0.8f, 0.35f), "BALD", 32f, "DER SHOP ÖFFNET BALD");
-                if (i == 0) stickers.Add(MenuUi.Sticker(tile, "NEU", new Vector2(120f, 215f), 96f, new Color(1f, 0.3f, 0.35f)));
+                var tile = UiKit.Node("Offer" + i, page.Content, new Vector2((i - 1.5f) * 345f, 30f), new Vector2(310f, 470f));
+                MenuUi.Plate(tile, "Card", Vector2.zero, new Vector2(310f, 470f), cols[i], 0.35f);
+                Emblem(tile, icons[i], new Vector2(0f, 95f), 150f, cols[i], i == 1 || i == 3);
+                MenuArt.Label("Name", tile, names[i], 26f, Color.white, new Vector2(0f, -38f), new Vector2(300f, 40f), TextAlignmentOptions.Center, 4f);
+                UiKit.Img("Line", tile, UiArt.LineFade, cols[i].WithAlpha(0.4f), new Vector2(0f, -66f), new Vector2(220f, 2f));
+                Body(tile, lines[i], new Vector2(0f, -108f), new Vector2(260f, 60f), 19f);
+                SoonButton(tile, MenuPage.Shop, "buy" + i, new Vector2(0f, -186f), new Vector2(240f, 66f), cols[i], "BALD", 26f, "DER SHOP ÖFFNET BALD");
+                if (i == 0) MenuUi.Tag(tile, "NEU", new Vector2(110f, 214f), MenuArt.Accent);
             }
-            MenuUi.Ribbon(page.Content, "Soon", "DER SHOP ÖFFNET IN EINEM SPÄTEREN UPDATE", new Vector2(0f, -305f), 900f, new Color(0.85f, 0.2f, 0.55f), 30f);
+            MenuUi.Banner(page.Content, "Soon", "DER SHOP ÖFFNET IN EINEM SPÄTEREN UPDATE", new Vector2(0f, -300f), 1100f, Muted, 22f);
         }
 
         // ------------------------------------------------------------------ ranking
 
         void BuildRanking(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Ranking, "RANGLISTE", new Color(1f, 0.75f, 0.2f));
-            var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 10f), new Vector2(960f, 660f));
-            MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(960f, 660f), new Color(0.2f, 0.25f, 0.6f));
-            UiKit.Img("Trophy", panel, MenuArt.IconTrophy, Color.white, new Vector2(-250f, 260f), new Vector2(80f, 80f));
-            MenuArt.Label("Head", panel, "BESTE STAGES", 46f, Palette.Gold, new Vector2(40f, 262f), new Vector2(520f, 60f));
+            var page = NewPage(parent, MenuPage.Ranking, "RANGLISTE", "BESTE STAGES", Gold);
+            var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 0f), new Vector2(960f, 640f));
+            MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(960f, 640f), Gold, 0.3f);
+            Emblem(panel, MenuArt.IconTrophy, new Vector2(0f, 240f), 110f, Gold);
             for (int i = 0; i < 6; i++)
             {
-                float y = 170f - i * 76f;
+                float y = 130f - i * 70f;
                 bool you = i == 0;
-                var row = UiKit.Node("Row" + i, panel, new Vector2(0f, y), new Vector2(860f, 64f));
-                MenuUi.Plate(row, "Plate", Vector2.zero, new Vector2(860f, 64f), you ? new Color(1f, 0.72f, 0.24f) : new Color(0.14f, 0.17f, 0.44f), 4f);
-                var medal = MenuUi.Medallion(row, "Rank", new Vector2(-380f, 0f), 50f, i == 0 ? new Color(1f, 0.85f, 0.3f) : i == 1 ? new Color(0.8f, 0.85f, 0.95f) : i == 2 ? new Color(0.9f, 0.55f, 0.3f) : new Color(0.35f, 0.4f, 0.7f));
-                MenuArt.Label("N", medal.transform, (i + 1).ToString(), 28f, Color.white, Vector2.zero, new Vector2(50f, 50f), TextAlignmentOptions.Center, 0f, MenuArt.TextHeavySoft);
-                var name = MenuArt.Label("Name", row, you ? "DU" : "? ? ?", 30f, you ? Color.white : new Color(0.6f, 0.65f, 0.9f), new Vector2(-120f, 0f), new Vector2(420f, 50f), TextAlignmentOptions.Left, 2f);
-                var value = MenuArt.Label("Value", row, you ? "STAGE 0" : "—", 30f, you ? Color.white : new Color(0.6f, 0.65f, 0.9f), new Vector2(300f, 0f), new Vector2(240f, 50f), TextAlignmentOptions.Right, 2f);
+                var row = UiKit.Node("Row" + i, panel, new Vector2(0f, y), new Vector2(860f, 58f));
+                UiKit.Img("Plate", row, MenuArt.CardBody, you ? new Color(0.16f, 0.14f, 0.09f, 0.9f) : new Color(0.03f, 0.06f, 0.09f, 0.7f), Vector2.zero, new Vector2(860f, 58f), Image.Type.Sliced);
+                UiKit.Img("Frame", row, MenuArt.Frame, (you ? Gold : Muted).WithAlpha(you ? 0.7f : 0.15f), Vector2.zero, new Vector2(862f, 60f), Image.Type.Sliced);
+                Color medal = i == 0 ? Gold : i == 1 ? new Color(0.8f, 0.87f, 0.92f) : i == 2 ? new Color(0.9f, 0.6f, 0.4f) : Muted;
+                MenuUi.Medallion(row, "Rank", new Vector2(-380f, 0f), 42f, medal);
+                MenuArt.Label("N", row, (i + 1).ToString(), 22f, Color.white, new Vector2(-380f, 0f), new Vector2(42f, 42f), TextAlignmentOptions.Center, 0f, MenuArt.TextHeavySoft);
+                var name = MenuArt.Label("Name", row, you ? "DU" : "? ? ?", 26f, you ? Color.white : Muted.WithAlpha(0.7f), new Vector2(-120f, 0f), new Vector2(420f, 44f), TextAlignmentOptions.Left, 4f);
+                var value = MenuArt.Label("Value", row, you ? "STAGE 0" : "—", 26f, you ? Gold : Muted.WithAlpha(0.7f), new Vector2(300f, 0f), new Vector2(240f, 44f), TextAlignmentOptions.Right, 4f);
                 if (you) { rankYou = name; rankValue = value; }
             }
-            Body(panel, "Die Online-Rangliste kommt später — bis dahin jagst du hier deinen eigenen Rekord.", new Vector2(0f, -290f), new Vector2(820f, 60f), 21f);
+            Body(panel, "Die Online-Rangliste kommt später — bis dahin jagst du hier deinen eigenen Rekord.", new Vector2(0f, -280f), new Vector2(820f, 60f), 20f);
         }
 
         // ------------------------------------------------------------------ friends
 
         void BuildFriends(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Friends, "FREUNDE", new Color(0.35f, 0.9f, 0.5f));
-            var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 20f), new Vector2(820f, 600f));
-            MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(820f, 600f), new Color(0.16f, 0.46f, 0.42f));
-            UiKit.Img("Light", panel, UiArt.Glow, Color.white.WithAlpha(0.25f), new Vector2(0f, 130f), new Vector2(420f, 420f));
-            var icon = UiKit.Img("Icon", panel, MenuArt.IconFriends, Color.white, new Vector2(0f, 130f), new Vector2(210f, 210f));
-            bobbers.Add(icon.rectTransform);
-            MenuArt.Label("Empty", panel, "NOCH KEINE FREUNDE", 48f, Color.white, new Vector2(0f, -20f), new Vector2(760f, 60f));
-            Body(panel, "Freundesliste, Einladungen und gemeinsame Läufe kommen in einem späteren Update.", new Vector2(0f, -90f), new Vector2(640f, 70f));
-            SoonButton(panel, MenuPage.Friends, "invite", new Vector2(0f, -200f), new Vector2(420f, 88f), new Color(0.35f, 0.8f, 0.35f), "EINLADEN", 38f, "ONLINE-FUNKTIONEN KOMMEN BALD");
+            var page = NewPage(parent, MenuPage.Friends, "FREUNDE", "GEMEINSAM SPIELEN", Palette.DashMint);
+            var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 10f), new Vector2(820f, 580f));
+            MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(820f, 580f), Palette.DashMint, 0.3f);
+            Emblem(panel, MenuArt.IconFriends, new Vector2(0f, 130f), 180f, Palette.DashMint);
+            MenuArt.Label("Empty", panel, "NOCH KEINE FREUNDE", 40f, Color.white, new Vector2(0f, -20f), new Vector2(760f, 56f), TextAlignmentOptions.Center, 8f);
+            Body(panel, "Freundesliste, Einladungen und gemeinsame Läufe kommen in einem späteren Update.", new Vector2(0f, -88f), new Vector2(640f, 70f));
+            SoonButton(panel, MenuPage.Friends, "invite", new Vector2(0f, -196f), new Vector2(400f, 80f), Palette.DashMint, "EINLADEN", 30f, "ONLINE-FUNKTIONEN KOMMEN BALD");
         }
 
         // ------------------------------------------------------------------ events
 
         void BuildEvents(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Events, "EVENTS", new Color(0.75f, 0.5f, 1f));
+            var page = NewPage(parent, MenuPage.Events, "EVENTS", "BESONDERE LÄUFE", Palette.MonsterGlow);
             string[] names = { "WOCHEN-CHALLENGE", "BOSS-RUSH" };
             string[] lines =
             {
@@ -209,20 +197,19 @@ namespace SoccerFight
                 "Alle acht Bosse hintereinander, ohne Wellen dazwischen.",
             };
             Sprite[] icons = { MenuArt.IconEvents, MenuArt.IconStriker };
-            Color[] cols = { new Color(0.52f, 0.34f, 0.92f), new Color(0.92f, 0.3f, 0.36f) };
+            Color[] cols = { new Color(0.78f, 0.55f, 1f), Palette.MonsterGlow };
             for (int i = 0; i < 2; i++)
             {
-                var card = UiKit.Node("Event" + i, page.Content, new Vector2((i - 0.5f) * 600f, 30f), new Vector2(540f, 560f));
-                MenuUi.Plate(card, "Card", Vector2.zero, new Vector2(540f, 560f), cols[i]);
-                UiKit.Img("Light", card, UiArt.Glow, Color.white.WithAlpha(0.3f), new Vector2(0f, 110f), new Vector2(380f, 380f));
-                var icon = UiKit.Img("Icon", card, icons[i], Color.white, new Vector2(0f, 120f), new Vector2(190f, 190f));
-                bobbers.Add(icon.rectTransform);
-                MenuArt.Label("Name", card, names[i], 40f, Color.white, new Vector2(0f, -20f), new Vector2(520f, 56f));
-                Body(card, lines[i], new Vector2(0f, -85f), new Vector2(460f, 70f));
-                var timer = MenuUi.Plate(card, "Timer", new Vector2(0f, -150f), new Vector2(260f, 46f), new Color(0.08f, 0.06f, 0.2f), 3f);
-                MenuArt.Label("T", timer.transform, "STARTET BALD", 22f, Palette.Gold, Vector2.zero, new Vector2(260f, 46f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
-                SoonButton(card, MenuPage.Events, "event" + i, new Vector2(0f, -218f), new Vector2(320f, 76f), new Color(0.35f, 0.8f, 0.35f), "MITMACHEN", 30f, "EVENTS STARTEN BALD");
-                stickers.Add(MenuUi.Sticker(card, "BALD", new Vector2(215f, 225f), 110f, new Color(1f, 0.55f, 0.15f)));
+                var card = UiKit.Node("Event" + i, page.Content, new Vector2((i - 0.5f) * 600f, 20f), new Vector2(540f, 560f));
+                MenuUi.Plate(card, "Card", Vector2.zero, new Vector2(540f, 560f), cols[i], 0.35f);
+                Emblem(card, icons[i], new Vector2(0f, 120f), 170f, cols[i]);
+                MenuArt.Label("Name", card, names[i], 34f, Color.white, new Vector2(0f, -20f), new Vector2(520f, 50f), TextAlignmentOptions.Center, 6f);
+                Body(card, lines[i], new Vector2(0f, -84f), new Vector2(460f, 70f));
+                var timer = UiKit.Node("Timer", card, new Vector2(0f, -148f), new Vector2(240f, 40f));
+                UiKit.Img("Pill", timer, UiArt.Pill, new Color(0.02f, 0.05f, 0.08f, 0.85f), Vector2.zero, new Vector2(240f, 40f), Image.Type.Sliced);
+                MenuArt.Label("T", timer, "STARTET BALD", 18f, Gold, Vector2.zero, new Vector2(240f, 40f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
+                SoonButton(card, MenuPage.Events, "event" + i, new Vector2(0f, -218f), new Vector2(320f, 72f), cols[i], "MITMACHEN", 26f, "EVENTS STARTEN BALD");
+                MenuUi.Tag(card, "BALD", new Vector2(208f, 250f), Gold);
             }
         }
 
@@ -230,24 +217,25 @@ namespace SoccerFight
 
         void BuildInfo(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Info, "INFO", new Color(0.35f, 0.8f, 1f));
-            var left = UiKit.Node("Controls", page.Content, new Vector2(-370f, 10f), new Vector2(680f, 700f));
-            MenuUi.Plate(left, "Back", Vector2.zero, new Vector2(680f, 700f), new Color(0.18f, 0.28f, 0.62f));
-            MenuArt.Label("Head", left, "STEUERUNG", 44f, new Color(0.6f, 0.9f, 1f), new Vector2(0f, 300f), new Vector2(600f, 60f));
-            float y = 225f;
+            var page = NewPage(parent, MenuPage.Info, "INFO", "STEUERUNG UND TIPPS", MenuArt.Accent);
+            var left = UiKit.Node("Controls", page.Content, new Vector2(-370f, 0f), new Vector2(680f, 700f));
+            MenuUi.Plate(left, "Back", Vector2.zero, new Vector2(680f, 700f), MenuArt.Accent, 0.3f);
+            MenuArt.Label("Head", left, "STEUERUNG", 30f, MenuArt.Accent, new Vector2(0f, 300f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
+            float y = 232f;
             foreach (var a in KeyBindings.All)
             {
-                MenuArt.Label("Action", left, KeyBindings.ActionName(a), 22f, Color.white, new Vector2(-120f, y), new Vector2(360f, 40f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
-                var plate = MenuUi.Plate(left, "Key", new Vector2(190f, y), new Vector2(210f, 40f), new Color(0.9f, 0.92f, 1f), 3f);
-                var key = MenuArt.Label("K", plate.transform, "", 20f, MenuArt.Ink, Vector2.zero, new Vector2(200f, 40f), TextAlignmentOptions.Center, 1f, MenuArt.TextPlate);
+                MenuArt.Label("Action", left, KeyBindings.ActionName(a), 20f, Color.white, new Vector2(-120f, y), new Vector2(360f, 40f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
+                var plate = UiKit.Img("Key", left, UiArt.Pill, new Color(0.08f, 0.14f, 0.2f, 0.95f), new Vector2(190f, y), new Vector2(210f, 38f), Image.Type.Sliced);
+                UiKit.Img("KeyRim", left, UiArt.Pill, Color.white.WithAlpha(0.12f), new Vector2(190f, y), new Vector2(212f, 40f), Image.Type.Sliced).transform.SetSiblingIndex(plate.transform.GetSiblingIndex());
+                var key = MenuArt.Label("K", plate.transform, "", 18f, new Color(0.85f, 0.95f, 1f), Vector2.zero, new Vector2(200f, 38f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
                 keyRows.Add((key, a));
                 y -= 46f;
             }
-            Body(left, "LINKSKLICK HALTEN = DAUERFEUER  ·  ESC PAUSE", new Vector2(0f, -310f), new Vector2(620f, 36f), 20f);
+            Body(left, "LINKSKLICK HALTEN = DAUERFEUER  ·  ESC PAUSE", new Vector2(0f, -306f), new Vector2(620f, 36f), 18f);
 
-            var right = UiKit.Node("About", page.Content, new Vector2(370f, 10f), new Vector2(680f, 700f));
-            MenuUi.Plate(right, "Back", Vector2.zero, new Vector2(680f, 700f), new Color(0.35f, 0.22f, 0.6f));
-            MenuArt.Label("Head", right, "SO GEHT'S", 44f, new Color(1f, 0.8f, 0.4f), new Vector2(0f, 300f), new Vector2(600f, 60f));
+            var right = UiKit.Node("About", page.Content, new Vector2(370f, 0f), new Vector2(680f, 700f));
+            MenuUi.Plate(right, "Back", Vector2.zero, new Vector2(680f, 700f), Gold, 0.3f);
+            MenuArt.Label("Head", right, "SO GEHT'S", 30f, Gold, new Vector2(0f, 300f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
             string[] tips =
             {
                 "Schieß dich mit dem Ball durch Wellen von Monstern — jede Stage endet mit einem Boss.",
@@ -257,14 +245,17 @@ namespace SoccerFight
                 "Hochhalten heilt dich — aber nur, wenn du den Ball im richtigen Takt triffst.",
             };
             Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconStar, MenuArt.IconCoin, MenuArt.IconDefender, MenuArt.IconSkiller };
-            float ty = 210f;
+            float ty = 206f;
             for (int i = 0; i < tips.Length; i++)
             {
-                UiKit.Img("TipIcon", right, icons[i], Color.white, new Vector2(-280f, ty), new Vector2(54f, 54f));
-                Body(right, tips[i], new Vector2(40f, ty), new Vector2(540f, 90f), 22f, TextAlignmentOptions.Left);
-                ty -= 102f;
+                bool coin = icons[i] == MenuArt.IconCoin;
+                UiKit.Img("TipRing", right, MenuArt.RoundFrame, Gold.WithAlpha(0.5f), new Vector2(-282f, ty), new Vector2(56f, 56f));
+                var ic = UiKit.Img("TipIcon", right, icons[i], coin ? Color.white : Color.Lerp(Gold, Color.white, 0.5f), new Vector2(-282f, ty), new Vector2(32f, 32f));
+                ic.preserveAspect = true;
+                Body(right, tips[i], new Vector2(40f, ty), new Vector2(540f, 90f), 20f, TextAlignmentOptions.Left);
+                ty -= 100f;
             }
-            Body(right, "SOCCERFIGHT  ·  Grafik und Animation komplett im Code erzeugt  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEV", new Vector2(0f, -320f), new Vector2(620f, 40f), 17f);
+            Body(right, "SOCCERFIGHT  ·  Grafik und Animation komplett im Code erzeugt  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEV", new Vector2(0f, -312f), new Vector2(620f, 40f), 15f);
             RefreshKeys();
         }
 
@@ -277,18 +268,16 @@ namespace SoccerFight
 
         void BuildSettings(RectTransform parent)
         {
-            var page = NewPage(parent, MenuPage.Settings, "OPTIONEN", new Color(0.4f, 0.65f, 1f));
+            var page = NewPage(parent, MenuPage.Settings, "OPTIONEN", "ANZEIGE · EFFEKTE · TASTEN", MenuArt.Accent);
             var holder = UiKit.Node("Holder", page.Content, new Vector2(0f, -30f), SettingsPanel.Size);
             // the card is cut down to the rows it holds (its own title is replaced by the page heading)
             Vector2 cardSize = new Vector2(SettingsPanel.Size.x, 660f), cardPos = new Vector2(0f, 22f);
-            UiKit.Img("Keyline", holder, MenuArt.Edge, MenuArt.Ink, cardPos + new Vector2(0f, -4f), cardSize + new Vector2(16f, 24f), Image.Type.Sliced);
             Settings = new SettingsPanel();
             Settings.Build(holder, false);
-            // the shared settings card, recoloured to the title screen's palette
-            Recolor(Settings.Root, "Glass", new Color(0.16f, 0.14f, 0.38f, 1f), cardPos, cardSize);
-            Recolor(Settings.Root, "Border", new Color(0.45f, 0.5f, 1f, 0.35f), cardPos, cardSize + new Vector2(3f, 3f));
-            Recolor(Settings.Root, "Shadow", new Color(0f, 0f, 0f, 0f), cardPos, cardSize);
-            Recolor(Settings.Root, "Top Light", new Color(0.5f, 0.7f, 1f, 0.5f), cardPos + new Vector2(0f, cardSize.y * 0.5f - 1f), new Vector2(cardSize.x * 0.7f, 2f));
+            Recolor(Settings.Root, "Glass", MenuArt.Glass, cardPos, cardSize);
+            Recolor(Settings.Root, "Border", MenuArt.Accent.WithAlpha(0.3f), cardPos, cardSize + new Vector2(3f, 3f));
+            Recolor(Settings.Root, "Shadow", new Color(0f, 0.01f, 0.03f, 0.45f), cardPos + new Vector2(0f, -12f), cardSize * 1.1f);
+            Recolor(Settings.Root, "Top Light", MenuArt.Accent.WithAlpha(0.55f), cardPos + new Vector2(0f, cardSize.y * 0.5f - 1f), new Vector2(cardSize.x * 0.7f, 2f));
             var title = Settings.Root.Find("Title");
             if (title != null) title.gameObject.SetActive(false);   // the page already has a heading
         }
@@ -322,15 +311,10 @@ namespace SoccerFight
             for (int i = 0; i < bobbers.Count; i++)
             {
                 var b = bobbers[i];
-                b.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(time * 1.6f + i) * 4f);
-                b.localScale = Vector3.one * (1f + 0.03f * Mathf.Sin(time * 2.4f + i * 1.3f));
+                b.localScale = Vector3.one * (1f + 0.025f * Mathf.Sin(time * 1.8f + i * 1.3f));
             }
-            for (int i = 0; i < stickers.Count; i++)
-            {
-                float s = 1f + 0.06f * Mathf.Sin(time * 4f + i);
-                stickers[i].localScale = new Vector3(s, s, 1f);
-                stickers[i].localRotation = Quaternion.Euler(0f, 0f, -8f + Mathf.Sin(time * 2f + i) * 5f);
-            }
+            foreach (var (img, color, phase) in glows)
+                img.color = color.WithAlpha(0.16f + 0.08f * Mathf.Sin(time * 1.4f + phase));
             Settings.Update(udt);
         }
     }

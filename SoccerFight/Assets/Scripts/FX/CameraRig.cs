@@ -17,6 +17,8 @@ namespace SoccerFight
         public Vector2 Offset;
 
         Vector2 pos, vel;
+        /// <summary>The followed point before shake, kicks and zoom (the title screen's scene is pinned to it).</summary>
+        public Vector2 Center => pos;
         float zoom = 1f, zoomVel, zoomTarget = 1f;
         // height of the level the player stands on: the camera frames levels, not every jump
         float anchor, anchorTarget, anchorVel;
@@ -39,6 +41,8 @@ namespace SoccerFight
             Cam.orthographicSize = BaseSize;
             Cam.clearFlags = CameraClearFlags.SolidColor;
             Cam.backgroundColor = Palette.SkyTop;
+            // the title screen's own scene lives on a layer the game view never draws
+            Cam.cullingMask = ~MenuVista.Mask;
             Cam.nearClipPlane = 0.1f;
             Cam.farClipPlane = 100f;
             Cam.allowHDR = true;
