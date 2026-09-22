@@ -9,8 +9,7 @@ namespace SoccerFight
     /// The coin counter in the top-right corner of the HUD and the coins that fly into it. A coin
     /// handed over from the pitch pops up where it lay, then sweeps along a curved path into the
     /// counter, trailing sparkles and speeding up towards the end. On arrival the value is credited,
-    /// the counter pops and counts up, a ring and a few sparks burst from the icon and a chime plays
-    /// — pitched a step higher for every coin that follows close behind.
+    /// the counter pops and counts up, a ring and a few sparks burst from the icon.
     /// </summary>
     public sealed class CoinCounter
     {
@@ -42,10 +41,7 @@ namespace SoccerFight
         System.Func<Vector2, Vector2> worldToCanvas;
 
         float shown, pop, popVel, iconPunch, iconPunchVel, ringT = 99f, flashT = 99f, runT = 99f;
-        int combo;
-        float lastArrival = -10f, time;
-
-        static readonly int[] Scale = { 0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24 };
+        float time;
 
         public void Build(RectTransform canvasRect, System.Func<Vector2, Vector2> toCanvas)
         {
@@ -199,13 +195,6 @@ namespace SoccerFight
         {
             Retire(f);
             Wallet.Add(Currencies.Coins, f.Value);
-            // chime climbs a pentatonic ladder while coins keep arriving close together
-            float now = Time.unscaledTime;
-            combo = now - lastArrival < 0.4f ? Mathf.Min(combo + 1, Scale.Length - 1) : 0;
-            lastArrival = now;
-            Sfx.Play(Sound.CoinChime, 0.45f, Mathf.Pow(2f, Scale[combo] / 12f));
-            Sfx.Play(Sound.CounterPop, 0.35f);
-
             popVel += 9f;
             iconPunchVel += 11f;
             flashT = 0f;

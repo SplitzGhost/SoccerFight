@@ -39,6 +39,33 @@
         var statusText = document.querySelector("#status");
         canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
+        // Keys and mouse buttons belong to the game, not the browser: no reload on F5 / Ctrl+R, no find
+        // on F3, no zoom, no scrolling, and the side mouse buttons don't navigate back or forward.
+        // (F11 fullscreen and F12 dev tools stay with the browser. Ctrl+W/T/N can't be taken over by a
+        // page, except in the game's own fullscreen via the Keyboard Lock API below.)
+        function ownKey(e) {
+          if (e.key === "F11" || e.key === "F12") return;
+          e.preventDefault();
+        }
+        window.addEventListener("keydown", ownKey, true);
+        window.addEventListener("keyup", ownKey, true);
+        function ownButton(e) { if (e.button === 1 || e.button === 3 || e.button === 4) e.preventDefault(); }
+        ["mousedown", "mouseup", "auxclick"].forEach(function (t) { window.addEventListener(t, ownButton, true); });
+        window.addEventListener("wheel", function (e) { if (e.ctrlKey) e.preventDefault(); }, { capture: true, passive: false });
+        // safety net for back navigation that slips through anyway: stay on the page
+        history.pushState({ game: 1 }, "");
+        window.addEventListener("popstate", function () { history.pushState({ game: 1 }, ""); });
+        // the game's fullscreen can claim even Esc, Ctrl+W and co.
+        document.addEventListener("fullscreenchange", function () {
+          var kb = navigator.keyboard;
+          if (!kb || !kb.lock) return;
+          if (document.fullscreenElement) kb.lock().catch(function () {});
+          else kb.unlock();
+        });
+        // anything that would still leave or reload the page asks first
+        var running = false;
+        window.addEventListener("beforeunload", function (e) { if (running) { e.preventDefault(); e.returnValue = ""; } });
+
         // The build's file names are baked in here, but build.json — fetched fresh on every visit,
         // never from a cache — wins. So even a cached copy of this page always boots the newest build.
         var files = {
@@ -68,6 +95,7 @@
             }).then(function () {
               loader.classList.add("done");
               canvas.focus();
+              running = true;
             }).catch(function (message) {
               statusText.textContent = "Fehler: " + message;
             });

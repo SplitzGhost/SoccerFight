@@ -80,7 +80,6 @@ namespace SoccerFight
 
         void SetTab(int g)
         {
-            if (g != tab) Sfx.Play(Sound.Equip, 0.5f);
             tab = g;
         }
 
@@ -101,14 +100,12 @@ namespace SoccerFight
             var def = card.Def;
             if (!Profile.OwnsCharacter(def.Id))
             {
-                Sfx.Play(Sound.Select, 0.6f);
                 ShowInShop?.Invoke(Shop.ForCharacter(def));
                 return;
             }
             card.Jiggle = 1f;
             if (Characters.Current == def) return;
             Characters.Select(Characters.IndexOf(def));
-            Sfx.Play(Sound.Select, 0.8f);
         }
 
         void StyleTab(Group grp, MenuTarget t, int index)

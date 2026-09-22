@@ -184,7 +184,6 @@ namespace SoccerFight
                             c.SpinRate *= 0.6f;
                             if (c.Bounces == 1)
                             {
-                                Sfx.Play(Sound.CoinDrop, Mathf.Clamp01(impact / 12f) * 0.55f, 1f + Random.Range(-0.06f, 0.1f));
                                 FxSystem.I.Dust(new Vector2(c.Pos.x, floor), new Vector2(c.Vel.x * 0.1f, 0.2f), 1, 0.8f, 0.18f, 0.2f);
                                 FxSystem.I.Sparkles(c.Pos, 0.12f, 1, Palette.Coin, 2.6f, 0.35f);
                             }

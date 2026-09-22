@@ -153,7 +153,8 @@ namespace SoccerFight
                 var m = monsters[i];
                 if (!m.Alive) continue;
                 Vector2 d = m.Center - c;
-                if (Mathf.Abs(d.x) > radius + m.Radius || Mathf.Abs(d.y) > 3.5f) continue;
+                // c sits a metre above the struck surface; nothing below that surface is hit
+                if (Mathf.Abs(d.x) > radius + m.Radius || d.y < -1.5f || d.y > 3.5f) continue;
                 Combat.Hit(m, scaled, launch ? Vector2.up : new Vector2(Mathf.Sign(d.x), 0.4f), launch ? 12f : 6f, Src.Hazard, big: true);
             }
         }

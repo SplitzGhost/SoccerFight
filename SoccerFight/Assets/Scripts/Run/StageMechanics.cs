@@ -252,7 +252,9 @@ namespace SoccerFight
         void HitColumn(Hazard h, Player player, WaveDirector waves, bool first)
         {
             float half = h.kind == HazardKind.Strike ? 1.1f : 0.8f;
-            if (!player.Dead && Mathf.Abs(player.Pos.x - h.x) < half && player.Pos.y - h.floor < 4f)
+            // the strike stops on the surface it lands on: whoever stands below that platform is sheltered
+            float above = player.Pos.y - h.floor;
+            if (!player.Dead && Mathf.Abs(player.Pos.x - h.x) < half && above > -0.5f && above < 4f)
             {
                 player.TakeDamage(h.dmg, new Vector2(h.x, h.floor));
                 if (h.kind == HazardKind.Geyser) player.Launch(14f);

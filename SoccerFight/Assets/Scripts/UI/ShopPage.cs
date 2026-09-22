@@ -77,7 +77,6 @@ namespace SoccerFight
             if (check == Shop.Result.Blocked)
             {
                 jiggle(1f);
-                Sfx.Play(Sound.Denied, 0.7f);
                 nav.Say(item.Blocked(), at);
                 return false;
             }
@@ -85,7 +84,6 @@ namespace SoccerFight
             {
                 jiggle(1f);
                 pending = null;
-                Sfx.Play(Sound.Denied, 0.7f);
                 nav.Say("DIR FEHLEN " + Currencies.Format(Wallet.Missing(item.Price)) + " MÜNZEN", at);
                 return false;
             }
@@ -94,13 +92,11 @@ namespace SoccerFight
                 pending = item;
                 pendingT = 0f;
                 jiggle(0.5f);
-                Sfx.Play(Sound.Select, 0.6f);
                 nav.Say("NOCH EINMAL SCHIESSEN ZUM KAUFEN", at);
                 return false;
             }
             pending = null;
             if (Shop.Buy(item) != Shop.Result.Bought) return false;
-            Sfx.Play(Sound.Purchase, 0.9f);
             Burst?.Invoke(nav.CanvasPos(at), item.Accent);
             jiggle(0.8f);
             return true;
@@ -115,7 +111,6 @@ namespace SoccerFight
                 if (Characters.Current == def) { nav.Say(def.Name + " SPIELT SCHON", card.Root); return; }
                 Characters.Select(Characters.IndexOf(def));
                 card.Jiggle = 0.6f;
-                Sfx.Play(Sound.Select, 0.8f);
                 nav.Say(def.Name + " IST DEIN SPIELER", card.Root);
                 return;
             }

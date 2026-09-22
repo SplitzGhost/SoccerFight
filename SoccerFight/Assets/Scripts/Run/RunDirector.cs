@@ -13,7 +13,7 @@ namespace SoccerFight
     {
         public enum Phase { Idle, StageIntro, WaveIntro, Fighting, WaveCleared, Reward, AbilityPick, BossIntro, StageCleared, RunOver }
         /// <summary>How many skills a boss offers to pick one from.</summary>
-        const int AbilityChoices = 3;
+        const int AbilityChoices = 2;
 
         struct PlannedSpawn
         {
@@ -386,7 +386,7 @@ namespace SoccerFight
                 OpenReward(true, true);
                 return;
             }
-            // three random skills; the ones not taken go back into the pool
+            // two random skills; the one not taken goes back into the pool
             var choice = new List<Ability>();
             while (choice.Count < Mathf.Min(AbilityChoices, locked.Count))
             {

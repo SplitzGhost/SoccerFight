@@ -47,12 +47,10 @@ namespace SoccerFight
 
         void PickStarter(CharacterCard card)
         {
-            bool changed = starter != card.Def;
             starter = card.Def;
             card.Jiggle = 1f;
             // the title screen's player follows the pick
             Characters.Preview(Characters.IndexOf(card.Def));
-            if (changed) Sfx.Play(Sound.Select, 0.8f);
         }
 
         void StyleStarter(CharacterCard card, MenuTarget t)
@@ -65,13 +63,11 @@ namespace SoccerFight
         {
             if (starter == null)
             {
-                Sfx.Play(Sound.Denied, 0.7f);
                 nav.Say("WÄHLE ERST EINEN SPIELER", go.Root);
                 return;
             }
             Profile.ChooseStarter(starter);
             Characters.Select(Characters.IndexOf(starter));
-            Sfx.Play(Sound.Purchase, 0.8f);
             nav.Open(MenuPage.Main);
             nav.Say("WILLKOMMEN, " + starter.Name + "!  ·  SCHIESS AUF SPIELEN", null);
         }

@@ -102,7 +102,6 @@ namespace SoccerFight
             Post = new PostFx();
             Post.Init(transform);
             EnsureEventSystem();
-            Sfx.Build(transform, Cam.Cam);
             BuildTimer.Mark("camera+post");
 
             EnvironmentArt.End();

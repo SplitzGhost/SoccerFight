@@ -26,15 +26,6 @@ namespace SoccerFight
         GameAction captureAction;
         int captureFrame;
         float lastCaptureEnd = -10f;
-        float lastPreview = -10f;
-
-        /// <summary>A coin chime at the new volume while the slider moves (not on every step).</summary>
-        void PreviewVolume()
-        {
-            if (Time.unscaledTime - lastPreview < 0.18f) return;
-            lastPreview = Time.unscaledTime;
-            Sfx.Play(Sound.CoinChime, 0.7f);
-        }
 
         public void Build(Transform parent, bool withBackButton)
         {
@@ -65,7 +56,7 @@ namespace SoccerFight
 
             UiKit.Section(Root, "TON", new Vector2(lx, -164f), colW);
             UiKit.MakeSlider(Root, "LAUTSTÄRKE", new Vector2(lx, -218f), colW, 0f, 1f,
-                () => GameSettings.Volume, v => { GameSettings.Volume = v; GameSettings.Save(); PreviewVolume(); }, v => Mathf.RoundToInt(v * 100f) + "%");
+                () => GameSettings.Volume, v => { GameSettings.Volume = v; GameSettings.Save(); }, v => Mathf.RoundToInt(v * 100f) + "%");
 
             UiKit.Section(Root, "STEUERUNG", new Vector2(rx, 294f), colW);
             float y = 248f;

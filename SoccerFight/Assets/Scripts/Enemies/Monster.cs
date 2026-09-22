@@ -233,7 +233,9 @@ namespace SoccerFight
             faceT = s.Vel.x >= 0f ? 1f : -1f;
             ApplyLook();
             ResetChains();
-            Show(true);
+            // stays hidden until its first UpdateVisuals: spawned after the monsters' update, it would
+            // otherwise show for a frame wherever the pooled transform was left (or mid-pitch when new)
+            Show(false);
             SetBodyMaterial(false);
         }
 
@@ -1229,6 +1231,9 @@ namespace SoccerFight
             hpFill.size = new Vector2(w, 0.07f);
             hpFill.transform.localPosition = hp + new Vector2(-(barW - w) * 0.5f, 0f);
             hpFill.color = Color.Lerp(Palette.HpA, Palette.HpB, hpDisplay).WithAlpha(ha);
+
+            // a fresh spawn becomes visible only once its transforms are posed at the portal
+            if (!root.gameObject.activeSelf) Show(true);
         }
 
         /// <summary>A small faceted ice crystal, pivot at its base (drawn once, shared by every monster).</summary>
