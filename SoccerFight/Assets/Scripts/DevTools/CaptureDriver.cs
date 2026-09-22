@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills" && scenario != "look")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills" && scenario != "look" && scenario != "meta")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -93,6 +93,7 @@ namespace SoccerFight
             else if (scenario == "menu") yield return MenuTour();
             else if (scenario == "newskills") yield return NewSkills();
             else if (scenario == "look") yield return UpgradeLook();
+            else if (scenario == "meta") yield return MetaTour();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -886,6 +887,18 @@ namespace SoccerFight
             yield return Seconds(1.5f);
         }
 
+        /// <summary>Capture helper: a finished first launch with the three starters owned (scenarios that tour the title screen).</summary>
+        static void SeedProfile()
+        {
+            var seed = new ProfileData { Character = "rio" };
+            seed.Characters.AddRange(new[] { "rio", "bruno", "mira" });
+            seed.Skills.AddRange(new[] { "flick", "stepover", "tackle" });
+            seed.Loadout.AddRange(seed.Skills);
+            seed.Flags.AddRange(new[] { Profile.FlagStarter, Profile.FlagSkills });
+            Profile.UseTransient(seed);
+            Characters.Reload();
+        }
+
         /// <summary>Capture helper: put exactly these abilities into the four slots.</summary>
         void SetSkills(params Ability[] abilities)
         {
@@ -905,6 +918,7 @@ namespace SoccerFight
         IEnumerator MenuTour()
         {
             var menu = G.Menu;
+            SeedProfile();
             int original = Characters.Index;
             G.ToMenu();
             GameInput.AimScreen = menu.ScreenOf(new Vector2(-260f, 160f));
@@ -918,7 +932,7 @@ namespace SoccerFight
             yield return Kick("shop");
             yield return Seconds(0.9f);
             yield return Shot("m02_shop");
-            yield return Kick("buy1");
+            yield return Kick("tabSkills");
             yield return Frames(12);
             yield return Shot("m03_shop_soon");
             yield return Kick("back" + MenuPage.Shop);
@@ -949,7 +963,7 @@ namespace SoccerFight
             yield return Seconds(1.4f);
             yield return Shot("m10_characters");
             int next = (original + 1) % Characters.All.Length;
-            GameInput.AimScreen = menu.TargetScreen("card" + next);
+            GameInput.AimScreen = menu.TargetScreen("card_" + Characters.All[next].Id);
             yield return Seconds(0.8f);
             yield return Shot("m11_card_hover");
             GameInput.ClickPressed = true;
@@ -983,6 +997,172 @@ namespace SoccerFight
             yield return Seconds(2f);
             yield return Shot("m20_title_again");
             Characters.Select(original);
+            yield return Seconds(0.5f);
+        }
+
+        /// <summary>
+        /// Meta progression: the first launch (starter pick, three free skills), the shop (a purchase
+        /// with its confirm kick, a skill that goes straight into a slot, a refusal for too few coins),
+        /// the skill page and the roster; then in a run the coin drops flying into the counter, the
+        /// defender's header, the striker's boosted shot and the skiller's faster trick.
+        /// </summary>
+        IEnumerator MetaTour()
+        {
+            var menu = G.Menu;
+            Profile.UseTransient();
+            Characters.Reload();
+            G.ToMenu();
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(0f, -470f));
+            yield return Seconds(2.8f);   // the three bodies are drawn a quarter per frame
+            yield return Shot("x00_starter");
+            yield return Kick("starter1");
+            yield return Seconds(1.1f);
+            yield return Shot("x01_starter_picked");
+            yield return Kick("starterNext");
+            yield return Seconds(1.1f);
+            yield return Shot("x02_free_skills");
+            yield return Kick("start_header");
+            yield return Kick("start_tackle");
+            yield return Kick("start_wall");
+            yield return Kick("start_flick");   // a fourth is refused
+            yield return Frames(14);
+            yield return Shot("x03_three_picked");
+            yield return Kick("starterGo");
+            yield return Seconds(1.6f);
+            yield return Shot("x04_welcome");
+            Debug.Log($"[Capture] onboarded={Profile.Onboarded} char={Characters.Current.Name} loadout={string.Join(",", Profile.Loadout())}");
+
+            // shop: buy a striker (two kicks), a skill, then fail on one that is too expensive
+            Wallet.Add(Currencies.Coins, 1900);
+            yield return Seconds(0.8f);
+            yield return Shot("x05_wallet");
+            yield return Kick("shop");
+            yield return Seconds(3f);
+            yield return Shot("x06_shop_players");
+            yield return Kick("shop_char_kai");
+            yield return Frames(18);
+            yield return Shot("x07_confirm");
+            yield return Kick("shop_char_kai");
+            yield return Frames(14);
+            yield return Shot("x08_bought");
+            yield return Seconds(1f);
+            yield return Kick("tabSkills");
+            yield return Seconds(1f);
+            yield return Shot("x09_shop_skills");
+            yield return Kick("shop_skill_flick");
+            yield return Kick("shop_skill_flick");
+            yield return Frames(14);
+            yield return Shot("x10_skill_bought");
+            yield return Seconds(0.8f);
+            yield return Kick("tabChars");
+            yield return Seconds(0.8f);
+            yield return Kick("shop_char_zara");
+            yield return Frames(12);
+            yield return Shot("x11_too_expensive");
+            Debug.Log($"[Capture] coins left {Wallet.Get(Currencies.Coins)}, owns kai={Profile.OwnsCharacter("kai")} flick={Profile.OwnsSkill(Ability.Flick)}");
+            yield return Kick("back" + MenuPage.Shop);
+            yield return Seconds(1f);
+
+            // skill page: take the header off its slot, put it back
+            yield return Kick("skills");
+            yield return Seconds(1.1f);
+            yield return Shot("x12_skills");
+            yield return Kick("slot0");
+            yield return Frames(20);
+            yield return Shot("x13_slot_freed");
+            yield return Kick("skill_header");
+            yield return Frames(20);
+            yield return Shot("x14_reequipped");
+            yield return Kick("back" + MenuPage.Skills);
+            yield return Seconds(1f);
+
+            // the roster, first on the defenders, then the strikers
+            yield return Kick("figure");
+            yield return Seconds(2.4f);
+            yield return Shot("x15_roster");
+            yield return Kick("class0");
+            yield return Seconds(2.6f);
+            yield return Shot("x16_roster_strikers");
+            yield return Kick("back" + MenuPage.Characters);
+            yield return Seconds(1f);
+            yield return Shot("x17_title");
+
+            // ---- in a run (BRUNO, the defender): coins, then the header
+            G.Restart();
+            G.Director.Idle();
+            G.Hud.HideStageCard();
+            P.DodgeTime = 999f;
+            yield return Seconds(0.6f);
+            Debug.Log($"[Capture] defender: max hp {P.MaxHp:0}, damage taken x{G.Run.Stats.DamageTaken:0.00}, damage x{G.Run.Stats.DamageMul:0.00}, slots {string.Join(",", G.Run.Skills)}");
+            for (int i = 0; i < 3; i++) G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3f + i * 1.3f, 0f));
+            SpawnSpec(EnemyType.Hopper, P.Pos + new Vector2(7.5f, 0.5f), Rank.Elite, 1, null);
+            yield return Frames(30);
+            int before = Wallet.Get(Currencies.Coins);
+            G.Director.DevKillAll();
+            yield return Frames(5);
+            yield return Shot("x20_coins_burst");
+            yield return Frames(22);
+            yield return Shot("x21_coins_land");
+            yield return Frames(30);
+            yield return Shot("x22_coins_lift");
+            yield return Frames(16);
+            yield return Shot("x23_coins_fly");
+            yield return Frames(22);
+            yield return Shot("x24_coins_arrive");
+            yield return Seconds(1.5f);
+            yield return Shot("x25_counter");
+            Debug.Log($"[Capture] coins: +{Wallet.Get(Currencies.Coins) - before} credited, run earned {CoinRewards.Earned}");
+
+            yield return WaitBallHome();
+            var target = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(4.2f, 0f));
+            Aim(new Vector2(4.2f, 0.6f));
+            yield return Frames(20);
+            GameInput.PressAbility(Ability.Header);
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(1.4f, 1.3f), 1.9f); yield return Frames(2); }
+            EndSheet("x26_header_sheet");
+            yield return Frames(4);
+            yield return Shot("x27_header");
+            Debug.Log($"[Capture] header: target hp {target.Hp:0}/{target.MaxHp:0}, stunned {target.StunTime:0.0}s");
+            yield return Seconds(1.2f);
+
+            // ---- the striker: a boosted shot lands with the impact star
+            Characters.Select(Characters.IndexOf(Characters.Get("kai")));
+            G.Restart();
+            G.Director.Idle();
+            G.Hud.HideStageCard();
+            P.DodgeTime = 999f;
+            yield return Seconds(0.6f);
+            var dummy = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(3.4f, 0f));
+            Monster.Hold = true;
+            Aim(new Vector2(3.4f, 0.4f));
+            yield return Frames(10);
+            GameInput.ShootPressed = true;
+            yield return Frames(9);
+            yield return Shot("x28_striker_star");
+            yield return Frames(4);
+            yield return Shot("x29_striker_star2");
+            Monster.Hold = false;
+            Debug.Log($"[Capture] striker: shot category x{G.Run.Stats.CategoryMul(SkillCategory.Shot):0.00}, dummy hp {dummy.Hp:0}/{dummy.MaxHp:0}");
+            yield return Seconds(1f);
+
+            // ---- the skiller: the step-over plays faster and leaves a sprint
+            Profile.GrantCharacter("mira");
+            Characters.Select(Characters.IndexOf(Characters.Get("mira")));
+            G.Restart();
+            G.Director.Idle();
+            G.Hud.HideStageCard();
+            SetSkills(Ability.StepOver, Ability.Nutmeg);
+            yield return Seconds(0.5f);
+            GameInput.PressAbility(Ability.StepOver);
+            int frames = 0;
+            yield return null;
+            while (P.CurrentAction == Player.Action.StepOver && frames < 120) { frames++; yield return null; }
+            Move(1f);
+            yield return Frames(8);
+            yield return Shot("x30_skiller_rush");
+            Debug.Log($"[Capture] skiller: step-over took {frames} frames (normal {Mathf.RoundToInt(Player.StepOverDuration * 60f)}), rushing={P.Rushing}, speed {P.MaxSpeedNow:0.0}");
+            Move(0f);
             yield return Seconds(0.5f);
         }
 

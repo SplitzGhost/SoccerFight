@@ -83,7 +83,12 @@ namespace SoccerFight
         // whistle: charged by kills, not by a timer
         public const float WhistleDuration = 0.65f, WhistleFreeze = 2f, WhistleBossFreeze = 0.8f;
 
-        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle }
+        // header (defender only): the boot lifts the ball, the player rises into it and heads it at
+        // the cursor — a heavy ball that stuns what it meets and pops back up into the air
+        public const float HeaderToss = 0.16f, HeaderContact = 0.3f, HeaderDuration = 0.56f;
+        public const float HeaderCooldown = 4.5f, HeaderSpeed = 23f, HeaderDamage = 30f, HeaderStun = 1.1f;
+
+        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -112,7 +117,12 @@ namespace SoccerFight
         public float WallCooldownTotal => WallCooldown * S.CooldownMul;
         public float NutmegCooldownTotal => NutmegCooldown * S.CooldownMul;
         public float DecoyCooldownTotal => DecoyCooldown * S.CooldownMul;
-        public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul;
+        public float HeaderCooldownTotal => HeaderCooldown * S.CooldownMul;
+        public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul * (Rushing ? 1f + S.RushSpeed : 1f);
+        /// <summary>The skiller's sprint after a trick.</summary>
+        public bool Rushing => rushT > 0f;
+        /// <summary>Trick moves play faster for the skiller; everything else at normal speed.</summary>
+        float ActionRate => SkillCatalog.CategoryOf(CurrentAction) == SkillCategory.Technique ? S.TechniqueHaste : 1f;
         /// <summary>Captain's shield: blocks one hit, then recharges.</summary>
         public int Shield;
         public float ShieldCharge;
@@ -129,7 +139,9 @@ namespace SoccerFight
         public float ShotCd;
         public float FlickCd;
         public float PowerCd, StepOverCd, BicycleCd;
-        public float TackleCd, PuntCd, WallCd, NutmegCd, DecoyCd;
+        public float TackleCd, PuntCd, WallCd, NutmegCd, DecoyCd, HeaderCd;
+        /// <summary>Where the ball sits during the header's toss (local, facing-relative).</summary>
+        public Vector2 HeaderBallLocal;
         /// <summary>Whistle charge (0..1): filled by kills, spent in one go.</summary>
         public float Ultimate;
         /// <summary>Height of the body's hit point above the feet — a slide ducks under chest-high shots.</summary>
@@ -170,7 +182,10 @@ namespace SoccerFight
         Afterimages ghosts;
 
         float coyote, jumpBuffer, shotBuffer, flickBuffer, juggleBuffer, powerBuffer, stepBuffer, bikeBuffer;
-        float tackleBuffer, puntBuffer, wallBuffer, nutmegBuffer, decoyBuffer, whistleBuffer;
+        float tackleBuffer, puntBuffer, wallBuffer, nutmegBuffer, decoyBuffer, whistleBuffer, headerBuffer;
+        float rushT, rushGhostT;
+        Vector2 headerBallStart;
+        bool headerHopped;
         int slideDir = 1, nutmegDir = 1, decoyDir = 1;
         bool tackleBurst, wallPlaced, whistleBlown;
         Vector2 puntTarget;
@@ -215,13 +230,14 @@ namespace SoccerFight
             shotCount = 0;
             regenAcc = 0f;
             ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
-            TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = 0f;
+            TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = 0f;
             Ultimate = 0f;
             DodgeTime = 0f;
             CurrentAction = Action.None;
             ActionTime = 0f;
             coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = powerBuffer = stepBuffer = bikeBuffer = 0f;
-            tackleBuffer = puntBuffer = wallBuffer = nutmegBuffer = decoyBuffer = whistleBuffer = 0f;
+            tackleBuffer = puntBuffer = wallBuffer = nutmegBuffer = decoyBuffer = whistleBuffer = headerBuffer = 0f;
+            rushT = rushGhostT = 0f;
             airBoosts = 1;
             boostT = boostGhostT = 0f;
             boostRise = false;
@@ -245,6 +261,7 @@ namespace SoccerFight
             nutmegBuffer = Mathf.Max(0f, nutmegBuffer - dt);
             decoyBuffer = Mathf.Max(0f, decoyBuffer - dt);
             whistleBuffer = Mathf.Max(0f, whistleBuffer - dt);
+            headerBuffer = Mathf.Max(0f, headerBuffer - dt);
         }
 
         /// <summary>A skill key was pressed: buffer whatever ability sits in that slot.</summary>
@@ -262,6 +279,7 @@ namespace SoccerFight
                 case Ability.Nutmeg: nutmegBuffer = 0.25f; break;
                 case Ability.Decoy: decoyBuffer = 0.25f; break;
                 case Ability.Whistle: whistleBuffer = 0.25f; break;
+                case Ability.Header: headerBuffer = 0.25f; break;
                 default: Game.I.Hud.OnEmptySlot(slot); break;   // nothing in this slot yet
             }
         }
@@ -325,6 +343,7 @@ namespace SoccerFight
             WallCd = Mathf.Max(0f, WallCd - seconds);
             NutmegCd = Mathf.Max(0f, NutmegCd - seconds);
             DecoyCd = Mathf.Max(0f, DecoyCd - seconds);
+            HeaderCd = Mathf.Max(0f, HeaderCd - seconds);
         }
 
         /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
@@ -350,13 +369,15 @@ namespace SoccerFight
             WallCd = Mathf.Max(0f, WallCd - dt);
             NutmegCd = Mathf.Max(0f, NutmegCd - dt);
             DecoyCd = Mathf.Max(0f, DecoyCd - dt);
+            HeaderCd = Mathf.Max(0f, HeaderCd - dt);
+            rushT = Mathf.Max(0f, rushT - dt);
             InvulnTimer = Mathf.Max(0f, InvulnTimer - dt);
             DodgeTime = Mathf.Max(0f, DodgeTime - dt);
             boostT = Mathf.Max(0f, boostT - dt);
             if (DevMode.NoCooldowns)
             {
                 ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
-                TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = 0f;
+                TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = 0f;
                 Ultimate = 1f;
             }
 
@@ -411,6 +432,7 @@ namespace SoccerFight
                 if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
+                else if (headerBuffer > 0f && HeaderCd <= 0f && TakeBall()) StartHeader();
                 else if (powerBuffer > 0f && PowerCd <= 0f && Grounded && TakeBall()) StartPower();
                 else if (puntBuffer > 0f && PuntCd <= 0f && Grounded && TakeBall()) StartPunt();
                 else if (stepBuffer > 0f && StepOverCd <= 0f && Grounded) StartStepOver();
@@ -435,6 +457,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Power) speedMul = ActionTime < PowerContact ? 0f : 0.3f;
             else if (CurrentAction == Action.StepOver) speedMul = 0.1f;
             else if (CurrentAction == Action.Bicycle) speedMul = 0.4f;
+            else if (CurrentAction == Action.Header) speedMul = 0.35f;
             else if (CurrentAction == Action.Punt) speedMul = ActionTime < PuntContact ? 0f : 0.35f;
             else if (CurrentAction == Action.Wall || CurrentAction == Action.Whistle) speedMul = 0.15f;
             else if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Decoy) speedMul = 0.1f;
@@ -453,11 +476,13 @@ namespace SoccerFight
                 accel = Mathf.Abs(target) > 0.01f ? AirAccel : AirDecel;
                 if (boostT > 0f) accel *= 0.2f;   // let the recoil carry before air control takes over again
             }
-            if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul;
+            // a hasted trick covers the same distance in less time
+            float rate = ActionRate;
+            if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
             // the slide starts fast and runs out of steam — on ice it keeps going much further
             else if (IsSliding) Vel.x = slideDir * TackleSpeed * (1f - 0.72f * MathUtil.EaseInQuad(ActionTime / TackleSlide)) * (s.Slippery ? 1.45f : 1f);
-            else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun);
-            else if (CurrentAction == Action.Decoy && ActionTime < DecoyStep) Vel.x = decoyDir * (DecoyDist / DecoyStep);
+            else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun) * rate;
+            else if (CurrentAction == Action.Decoy && ActionTime < DecoyStep) Vel.x = decoyDir * (DecoyDist / DecoyStep) * rate;
             else Vel.x = Mathf.MoveTowards(Vel.x, target, accel * dt);
 
             // --- facing
@@ -498,6 +523,7 @@ namespace SoccerFight
                 float g = Vel.y > 0f ? (floaty ? RiseGravity : RiseGravity * 2.3f) : FallGravity;
                 if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
                 if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
+                if (CurrentAction == Action.Header && ActionTime < HeaderContact + 0.08f && Vel.y < 2f) g *= 0.3f;
                 g *= s.GravityMul;
                 Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall * Mathf.Sqrt(s.GravityMul));
             }
@@ -750,6 +776,7 @@ namespace SoccerFight
             ghostTimer = 0f;
             dashHits.Clear();
             Game.I.Hud.OnSkillUsed(Ability.StepOver);
+            OnTrick();
         }
 
         void DashBurst()
@@ -840,6 +867,7 @@ namespace SoccerFight
             Ball.BeginScripted();
             Game.I.Cam.SetZoom(0.94f);
             Game.I.Hud.OnFlickUsed();
+            OnTrick();
         }
 
         void ReleaseFlick()
@@ -1003,9 +1031,23 @@ namespace SoccerFight
                 ghostTimer -= dt;
                 if (ghostTimer <= 0f) { ghostTimer = 0.035f; ghosts.Spawn(Palette.ShotCyan, 0.22f, 0.3f); }
             }
+            // the skiller's sprint: faint afterimages in the class colour and streaks off the heels
+            else if (Rushing && CurrentAction == Action.None && Mathf.Abs(Vel.x) > MaxSpeed * 0.5f)
+            {
+                rushGhostT -= dt;
+                if (rushGhostT <= 0f)
+                {
+                    rushGhostT = 0.07f;
+                    ghosts.Spawn(Classes.Skiller.Accent, 0.16f, 0.24f);
+                    if (Grounded)
+                        FxSystem.I.Streak(FxLayer.Front, Pos + new Vector2(-Mathf.Sign(Vel.x) * 0.2f, Random.Range(0.15f, 1.3f)),
+                            new Vector2(-Mathf.Sign(Vel.x) * Random.Range(5f, 9f), 0f), 0.18f, 0.03f, 0.06f,
+                            Color.white.WithAlpha(0.6f), Classes.Skiller.Accent.WithAlpha(0f), 1.8f, 5f);
+                }
+            }
 
             if (CurrentAction == Action.None) return;
-            ActionTime += dt;
+            ActionTime += dt * ActionRate;
 
             if (CurrentAction == Action.Kick)
             {
@@ -1018,7 +1060,7 @@ namespace SoccerFight
                 if (ActionTime < FlickRelease)
                 {
                     float g = MathUtil.Bump(ActionTime / FlickRelease) * 2.1f;
-                    float nx = Mathf.Clamp(Pos.x + Facing * g * dt, -ArenaHalf, ArenaHalf);
+                    float nx = Mathf.Clamp(Pos.x + Facing * g * dt * ActionRate, -ArenaHalf, ArenaHalf);
                     // never glide off the platform in the middle of the move
                     if (OnPlatform != Level.None)
                     {
@@ -1050,6 +1092,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Nutmeg) UpdateNutmeg(dt);
             else if (CurrentAction == Action.Decoy) UpdateDecoy(dt);
             else if (CurrentAction == Action.Whistle) UpdateWhistle(dt);
+            else if (CurrentAction == Action.Header) UpdateHeader(dt);
         }
 
         void UpdatePower(float dt)
@@ -1189,7 +1232,7 @@ namespace SoccerFight
 
         void TackleHit(Monster m)
         {
-            Combat.Hit(m, TackleDamage * S.DamageMul, new Vector2(slideDir, 0.8f), 12f, Src.Tackle, big: true);
+            Combat.Hit(m, TackleDamage, new Vector2(slideDir, 0.8f), 12f, Src.Tackle, big: true);   // Combat applies DamageMul
             m.Stun(TackleStun);
             if (S.TackleHeal > 0f) Heal(S.TackleHeal, true);
             var fx = FxSystem.I;
@@ -1295,6 +1338,7 @@ namespace SoccerFight
             if (StepCarry) Ball.BeginScripted();
             ghostTimer = 0f;
             Game.I.Hud.OnSkillUsed(Ability.Nutmeg);
+            OnTrick();
         }
 
         void UpdateNutmeg(float dt)
@@ -1319,7 +1363,7 @@ namespace SoccerFight
             var s = S;
             m.Expose(NutmegExpose);
             m.Stun(0.7f);
-            Combat.Hit(m, NutmegDamage * s.DamageMul, new Vector2(nutmegDir, 0.2f), 4f, Src.Nutmeg);
+            Combat.Hit(m, NutmegDamage, new Vector2(nutmegDir, 0.2f), 4f, Src.Nutmeg);   // Combat applies DamageMul
             if (s.NutmegRefund > 0f) ReduceCooldowns(s.NutmegRefund);
             var fx = FxSystem.I;
             if (s.NutmegSpread)
@@ -1352,6 +1396,7 @@ namespace SoccerFight
             Decoys.I.Spawn(this, DecoyLife, S.DecoyCount);
             ghostTimer = 0f;
             Game.I.Hud.OnSkillUsed(Ability.Decoy);
+            OnTrick();
         }
 
         void UpdateDecoy(float dt)
@@ -1427,6 +1472,99 @@ namespace SoccerFight
             }
             Rig.OnWhistle();
         }
+
+        // ------------------------------------------------------------------ trick sprint (skiller)
+
+        /// <summary>A trick was played: the skiller's trait gives a short sprint.</summary>
+        void OnTrick()
+        {
+            var s = S;
+            if (s.RushTime <= 0f || s.RushSpeed <= 0f) return;
+            bool fresh = rushT <= 0f;
+            rushT = s.RushTime;
+            rushGhostT = 0f;
+            if (!fresh) return;
+            Color c = Classes.Skiller.Accent;
+            var fx = FxSystem.I;
+            fx.Ring(FxLayer.Front, Pos + new Vector2(0f, 0.12f), 0.15f, 1.2f, 0.1f, 0.01f, 0.24f, Color.white.WithAlpha(0.8f), c.WithAlpha(0f), 2.2f);
+            fx.Sparkles(Pos + new Vector2(0f, 0.4f), 0.5f, 5, c, 2.4f, 0.4f);
+        }
+
+        // ------------------------------------------------------------------ header (defender)
+
+        void StartHeader()
+        {
+            headerBuffer = 0f;
+            float dx = GameInput.AimWorld.x - Pos.x;
+            if (Mathf.Abs(dx) > 0.2f) Facing = dx > 0f ? 1 : -1;
+            CurrentAction = Action.Header;
+            ActionTime = 0f;
+            released = false;
+            headerHopped = false;
+            HeaderCd = HeaderCooldownTotal;
+            headerBallStart = ToLocal(Ball.Pos);
+            HeaderBallLocal = headerBallStart;
+            Ball.BeginScripted();
+            Game.I.Hud.OnSkillUsed(Ability.Header);
+            FxSystem.I.Dust(Pos, new Vector2(Facing * 0.3f, 0.4f), 4, 1.4f, 0.32f, 0.28f);
+        }
+
+        /// <summary>Where the forehead meets the ball (local, facing-relative, relative to the feet).</summary>
+        static Vector2 HeaderContactLocal => new Vector2(0.24f, PlayerDims.StandHip + 0.84f);
+
+        void UpdateHeader(float dt)
+        {
+            if (!released)
+            {
+                // the boot scoops the ball up in a short arc to just in front of the forehead
+                float k = Mathf.Clamp01(ActionTime / HeaderContact);
+                float e = MathUtil.EaseOutCubic(k);
+                HeaderBallLocal = Vector2.Lerp(headerBallStart, HeaderContactLocal, e) + new Vector2(-0.12f * MathUtil.Bump(k), 0.35f * MathUtil.Bump(k));
+                // the player rises into the ball
+                if (!headerHopped && ActionTime >= HeaderToss)
+                {
+                    headerHopped = true;
+                    if (Grounded)
+                    {
+                        Vel.y = 8.5f * S.JumpMul;
+                        Grounded = false;
+                        OnPlatform = Level.None;
+                        boostRise = true;
+                        Rig.OnJump();
+                        FxSystem.I.Dust(Pos, new Vector2(-Facing * 0.2f, 0.2f), 5, 1.6f, 0.36f, 0.3f);
+                    }
+                    else Vel.y = Mathf.Max(Vel.y, 3f);
+                }
+                if (ActionTime >= HeaderContact) { released = true; ReleaseHeader(); }
+            }
+            if (ActionTime >= HeaderDuration || (released && Grounded && ActionTime > HeaderContact + 0.1f)) CurrentAction = Action.None;
+        }
+
+        void ReleaseHeader()
+        {
+            Vector2 from = Ball.Pos;
+            Vector2 dir = AimFrom(from);
+            // a header goes forward: straight back over the head would be a different move
+            if (dir.x * Facing < 0.15f) dir = new Vector2(Facing * 0.35f, dir.y).normalized;
+            var s = S;
+            Ball.Header(dir * HeaderSpeed * s.BallSpeedMul, s.HeaderPierce);
+            Combat.Maestro(this);
+
+            var fx = FxSystem.I;
+            Color c = Palette.Header;
+            fx.Flash(from, 1.9f, c, 0.14f, 3f);
+            fx.Ring(FxLayer.Front, from, 0.12f, 1.1f, 0.18f, 0.01f, 0.22f, Color.white, c.WithAlpha(0f), 2.4f);
+            fx.Sparks(from, dir, 44f, 11, 8f, 17f, c, 2.6f, 0.05f, 0.22f);
+            fx.Sparks(from, -dir, 80f, 4, 3f, 6f, Color.white, 2f, 0.04f, 0.16f);
+            var game = Game.I;
+            game.Cam.Kick(-dir * 0.2f);
+            game.Cam.AddTrauma(0.22f);
+            game.Post.Impact(0.3f);
+            TimeFx.HitStop(0.05f, 0.05f);
+            Vel.x -= dir.x * 2f;
+            Rig.OnHeaderContact();
+        }
+
         /// <summary>Called after the rig pose is computed so the scripted ball follows the leg.</summary>
         public void LateVisuals(float dt)
         {
@@ -1462,9 +1600,12 @@ namespace SoccerFight
 
             AbortJuggle();
             amount *= 1f - Mathf.Min(0.6f, s.Armor);
-            // shin guards: the reduced part of the hit sparks off steel
-            if (s.Armor > 0f)
-                FxSystem.I.Sparks(Pos + new Vector2(0f, 0.35f), new Vector2(-dir, 0.5f), 90f, 3 + Mathf.RoundToInt(s.Armor * 20f), 3f, 7f, new Color(0.75f, 0.85f, 1f), 2.4f, 0.03f, 0.2f, 4f);
+            // the defender's trait takes its share on top of the armour
+            amount *= s.DamageTaken;
+            // shin guards and the defender's toughness: the reduced part of the hit sparks off steel
+            float guard = s.Armor + (1f - s.DamageTaken);
+            if (guard > 0.01f)
+                FxSystem.I.Sparks(Pos + new Vector2(0f, 0.35f), new Vector2(-dir, 0.5f), 90f, 3 + Mathf.RoundToInt(guard * 20f), 3f, 7f, new Color(0.75f, 0.85f, 1f), 2.4f, 0.03f, 0.2f, 4f);
             Hp = Mathf.Max(0f, Hp - amount);
             InvulnTimer = 1.3f + s.InvulnBonus;
             Vel = new Vector2(dir * 7.5f, Grounded ? 6.5f : Mathf.Max(Vel.y, 4f));
@@ -1479,7 +1620,7 @@ namespace SoccerFight
             game.Hud.OnPlayerDamaged(amount);
             if ((CurrentAction == Action.Flick || CurrentAction == Action.Bicycle) && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
             if (CurrentAction == Action.Power && !released) { CurrentAction = Action.None; Ball.Charge = 0f; game.Cam.SetZoom(1f); }
-            if (CurrentAction == Action.Punt && !released) { CurrentAction = Action.None; Ball.Release(); }
+            if ((CurrentAction == Action.Punt || CurrentAction == Action.Header) && !released) { CurrentAction = Action.None; Ball.Release(); }
             // a hit ends a slide or a placement on the spot; the ball simply drops back out
             if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Wall || CurrentAction == Action.Whistle)
             {

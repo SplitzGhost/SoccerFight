@@ -111,6 +111,8 @@ namespace SoccerFight
         public static readonly Color Showboat = Hex("#FF6FD5");    // Tunnel
         public static readonly Color Trick = Hex("#C77DFF");       // Lockvogel
         public static readonly Color Silver = Hex("#BFE9FF");      // Schlusspfiff
+        public static readonly Color Header = Hex("#7CC4FF");      // Kopfball
+        public static readonly Color Coin = Hex("#FFCC5C");        // Münzen
 
         // UI
         public static readonly Color UiGlass = Hex("#0C1522");

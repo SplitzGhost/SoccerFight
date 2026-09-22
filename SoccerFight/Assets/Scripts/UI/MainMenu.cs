@@ -66,6 +66,13 @@ namespace SoccerFight
         Image veil;
         MenuFigure figure;
         CharacterPage characters;
+        SkillPage skills;
+        ShopPage shop;
+        OnboardingPages onboarding;
+        MenuNav nav;
+        TextMeshProUGUI coinAmount, gemAmount;
+        RectTransform coinPill;
+        float coinShown = -1f, coinPop, coinPopVel;
         MenuPages pages;
         readonly SubPage[] subPages = new SubPage[MenuPage.Count];
         readonly List<MenuTarget> targets = new List<MenuTarget>();
@@ -173,12 +180,30 @@ namespace SoccerFight
 
             pagesRoot = UiKit.Node("Pages", content, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(pagesRoot);
+            nav = new MenuNav
+            {
+                Register = Register, Open = Open, Back = Back, Toast = ShowToast,
+                CanvasPos = rt => root.InverseTransformPoint(rt.TransformPoint(Vector3.zero)),
+            };
             characters = new CharacterPage();
-            characters.Build(pagesRoot, Register, Back);
+            characters.Build(pagesRoot, nav);
+            characters.ShowInShop = OpenShop;
             subPages[MenuPage.Characters] = characters.Page;
             pages = new MenuPages();
             pages.Build(pagesRoot, Register, Back);
             foreach (var p in pages.Pages) subPages[p.Id] = p;
+            skills = new SkillPage();
+            skills.Build(pagesRoot, nav);
+            skills.ShowInShop = OpenShop;
+            subPages[MenuPage.Skills] = skills.Page;
+            shop = new ShopPage();
+            shop.Build(pagesRoot, nav);
+            shop.Burst = PurchaseBurst;
+            subPages[MenuPage.Shop] = shop.Page;
+            onboarding = new OnboardingPages();
+            onboarding.Build(pagesRoot, nav);
+            subPages[MenuPage.Starter] = onboarding.StarterPage;
+            subPages[MenuPage.StarterSkills] = onboarding.SkillsPage;
             foreach (var p in subPages) if (p != null) p.Root.gameObject.SetActive(false);
 
             fxRoot = UiKit.Node("Shots", root, Vector2.zero, Vector2.zero);
@@ -305,7 +330,7 @@ namespace SoccerFight
             rightCol = UiKit.Node("Right", main, Vector2.zero, new Vector2(380f, 560f));
 
             // one accent per button, all on the same dark glass: the colours of the game's own lights
-            var shop = new ChunkButton(leftCol, "Shop", new Vector2(0f, 105f), new Vector2(340f, 220f), Gold, "SHOP", 34f, MenuArt.IconShop, 100f).IconTop("TRIKOTS · BÄLLE");
+            var shop = new ChunkButton(leftCol, "Shop", new Vector2(0f, 105f), new Vector2(340f, 220f), Gold, "SHOP", 34f, MenuArt.IconShop, 100f).IconTop("SPIELER · FÄHIGKEITEN");
             stickers.Add(MenuUi.Tag(shop.Face, "NEU", new Vector2(128f, 88f), MenuArt.Accent));
             Move(shop.Root, new Vector2(-600f, 0f), 0.15f, Button(shop, "shop", () => Open(MenuPage.Shop)));
             var rank = new ChunkButton(leftCol, "Ranking", new Vector2(0f, -72f), new Vector2(340f, 92f), new Color(1f, 0.62f, 0.32f), "RANGLISTE", 26f, MenuArt.IconTrophy, 40f).IconLeft(30f);
@@ -313,13 +338,15 @@ namespace SoccerFight
             var friends = new ChunkButton(leftCol, "Friends", new Vector2(0f, -182f), new Vector2(340f, 92f), Palette.DashMint, "FREUNDE", 26f, MenuArt.IconFriends, 40f).IconLeft(30f);
             Move(friends.Root, new Vector2(-600f, 0f), 0.29f, Button(friends, "friends", () => Open(MenuPage.Friends)));
 
-            var events = new ChunkButton(rightCol, "Events", new Vector2(0f, 105f), new Vector2(340f, 220f), new Color(0.82f, 0.5f, 1f), "EVENTS", 34f, MenuArt.IconEvents, 100f).IconTop("BESONDERE LÄUFE");
-            stickers.Add(MenuUi.Tag(events.Face, "BALD", new Vector2(-122f, 88f), Gold));
-            Move(events.Root, new Vector2(600f, 0f), 0.15f, Button(events, "events", () => Open(MenuPage.Events)));
-            var settings = new ChunkButton(rightCol, "Settings", new Vector2(0f, -72f), new Vector2(340f, 92f), MenuArt.Accent, "OPTIONEN", 26f, MenuArt.IconGear, 40f).IconLeft(30f);
-            Move(settings.Root, new Vector2(600f, 0f), 0.22f, Button(settings, "settings", () => Open(MenuPage.Settings)));
-            var info = new ChunkButton(rightCol, "Info", new Vector2(0f, -182f), new Vector2(340f, 92f), new Color(0.5f, 0.72f, 1f), "INFO", 26f, MenuArt.IconInfo, 40f).IconLeft(30f);
-            Move(info.Root, new Vector2(600f, 0f), 0.29f, Button(info, "info", () => Open(MenuPage.Info)));
+            // the loadout is part of every run, so it gets the big tile; events are still a preview
+            var skillTile = new ChunkButton(rightCol, "Skills", new Vector2(0f, 105f), new Vector2(340f, 220f), new Color(0.82f, 0.5f, 1f), "FÄHIGKEITEN", 32f, MenuArt.IconSkills, 100f).IconTop("4 PLÄTZE · AUSRÜSTEN");
+            stickers.Add(MenuUi.Tag(skillTile.Face, "NEU", new Vector2(-122f, 88f), MenuArt.Accent));
+            Move(skillTile.Root, new Vector2(600f, 0f), 0.15f, Button(skillTile, "skills", () => Open(MenuPage.Skills)));
+            var events = new ChunkButton(rightCol, "Events", new Vector2(0f, -72f), new Vector2(340f, 92f), Palette.MonsterGlow, "EVENTS", 26f, MenuArt.IconEvents, 40f).IconLeft(30f);
+            stickers.Add(MenuUi.Tag(events.Face, "BALD", new Vector2(132f, 36f), Gold, 14f));
+            Move(events.Root, new Vector2(600f, 0f), 0.22f, Button(events, "events", () => Open(MenuPage.Events)));
+            var settings = new ChunkButton(rightCol, "Settings", new Vector2(0f, -182f), new Vector2(340f, 92f), MenuArt.Accent, "OPTIONEN", 26f, MenuArt.IconGear, 40f).IconLeft(30f);
+            Move(settings.Root, new Vector2(600f, 0f), 0.29f, Button(settings, "settings", () => Open(MenuPage.Settings)));
         }
 
         void BuildTopBars()
@@ -355,8 +382,12 @@ namespace SoccerFight
             Button(quit, "quit", Quit);
             x = -120f;
 #endif
-            Currency("gems", MenuArt.IconGem, new Vector2(x - 110f, 0f));
-            Currency("coins", MenuArt.IconCoin, new Vector2(x - 330f, 0f));
+            var info = new ChunkButton(wallet, "Info", new Vector2(x - 46f, 0f), new Vector2(84f, 76f), new Color(0.5f, 0.72f, 1f), null, 0f, MenuArt.IconInfo, 36f);
+            Button(info, "info", () => Open(MenuPage.Info));
+            x -= 100f;
+            gemAmount = Currency("gems", MenuArt.IconGem, new Vector2(x - 110f, 0f));
+            coinAmount = Currency("coins", MenuArt.IconCoin, new Vector2(x - 330f, 0f));
+            coinPill = (RectTransform)coinAmount.transform.parent;
             Move(topRight, new Vector2(0f, 220f), 0.1f);
         }
 
@@ -371,7 +402,7 @@ namespace SoccerFight
             return rt;
         }
 
-        void Currency(string id, Sprite icon, Vector2 pos)
+        TextMeshProUGUI Currency(string id, Sprite icon, Vector2 pos)
         {
             var pill = UiKit.Node(id, wallet, pos, new Vector2(200f, 70f));
             Color accent = id == "coins" ? Gold : MenuArt.Accent;
@@ -379,11 +410,67 @@ namespace SoccerFight
             UiKit.Img("Body", pill, UiArt.Pill, MenuArt.Glass, new Vector2(10f, 0f), new Vector2(170f, 50f), Image.Type.Sliced);
             UiKit.Img("Glow", pill, UiArt.Glow, accent.WithAlpha(0.2f), new Vector2(-70f, 0f), new Vector2(110f, 110f));
             UiKit.Img("Icon", pill, icon, Color.white, new Vector2(-70f, 1f), new Vector2(52f, 52f));
-            MenuArt.Label("Amount", pill, "0", 24f, Color.white, new Vector2(8f, 0f), new Vector2(90f, 44f), TextAlignmentOptions.Center, 3f);
+            var amount = MenuArt.Label("Amount", pill, "0", 24f, Color.white, new Vector2(8f, 0f), new Vector2(90f, 44f), TextAlignmentOptions.Center, 3f);
+            amount.enableAutoSizing = true;
+            amount.fontSizeMin = 14f;
+            amount.fontSizeMax = 24f;
             var plus = new ChunkButton(pill, "Plus", new Vector2(76f, 0f), new Vector2(40f, 40f), accent, null, 0f, MenuArt.IconPlus, 18f);
             var t = new MenuTarget { Id = id, Root = pill, Size = pill.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Shop), Accent = plus.Color };
             t.Draw = m => plus.Style(m.Hover, m.Hit, m.Punch, m.Fade, time);
             Register(t);
+            return amount;
+        }
+
+        /// <summary>The wallet pills show the real balances; the coin count rolls and pops when it changes.</summary>
+        void UpdateWallet(float udt)
+        {
+            int coins = Wallet.Get(Currencies.Coins);
+            if (coinShown < 0f) coinShown = coins;
+            if (Mathf.Abs(coinShown - coins) > 0.5f)
+            {
+                coinShown = Mathf.MoveTowards(coinShown, coins, Mathf.Max(40f, Mathf.Abs(coins - coinShown) * 6f) * udt);
+                if (Mathf.Abs(coinShown - coins) <= 0.5f) { coinShown = coins; coinPopVel += 8f; }
+            }
+            coinAmount.text = Currencies.Format(Mathf.RoundToInt(coinShown));
+            gemAmount.text = Currencies.Format(Wallet.Get(Currencies.Gems));
+            MathUtil.Spring(ref coinPop, ref coinPopVel, 0f, 5f, 0.3f, udt);
+            coinPill.localScale = Vector3.one * (1f + coinPop * 0.08f);
+        }
+
+        void OpenShop(ShopItem item)
+        {
+            Open(MenuPage.Shop);
+            shop.Focus(item);
+        }
+
+        /// <summary>Something was bought: a burst of light and coins where the card sits.</summary>
+        void PurchaseBurst(Vector2 at, Color accent)
+        {
+            Bump(MenuArt.Burst, at, 80f, 620f, Color.white.WithAlpha(0.9f), 0.35f, 2f, 40f);
+            Bump(MenuArt.Shock, at, 60f, 560f, Gold.WithAlpha(0.85f), 0.5f, 1.6f, 0f);
+            Bump(MenuArt.Shock, at, 40f, 380f, accent.WithAlpha(0.7f), 0.4f, 1.4f, 0f);
+            for (int i = 0; i < 22; i++)
+            {
+                var b = Take();
+                bool star = i % 3 == 0;
+                b.Img.sprite = star ? MenuArt.Sparkle : CoinArt.Ui;
+                b.Pos = at;
+                b.Vel = MathUtil.Dir(Random.Range(20f, 160f)) * Random.Range(300f, 900f);
+                float sz = star ? Random.Range(30f, 48f) : Random.Range(26f, 40f);
+                b.Size0 = new Vector2(sz, sz);
+                b.Size1 = b.Size0 * (star ? 0.2f : 0.8f);
+                b.Tint = Color.white;
+                b.Life = Random.Range(0.6f, 1f);
+                b.Age = 0f;
+                b.Grav = 1800f;
+                b.Fade = 1.5f;
+                b.Align = false;
+                b.Spin = Random.Range(-360f, 360f);
+                b.Bump = false;
+            }
+            shake = 0.8f;
+            shakeVel = 0f;
+            if (Game.I != null) Game.I.Cam.AddTrauma(0.12f);
         }
 
         void BuildTransition()
@@ -430,7 +517,10 @@ namespace SoccerFight
             IsOpen = true;
             state = State.Menu;
             stateT = 0f;
-            page = MenuPage.Main;
+            // the first launch opens on the starter pick until a starter and three skills are chosen
+            page = Profile.Onboarded ? MenuPage.Main : MenuPage.Starter;
+            if (page == MenuPage.Starter) onboarding.Reset();
+            coinShown = -1f;
             foreach (var p in subPages) if (p != null) { p.T = p.Vel = 0f; p.Root.gameObject.SetActive(false); }
             openT = openVel = 0f;
             hovered = null;
@@ -448,11 +538,9 @@ namespace SoccerFight
         {
             if (state != State.Menu) return;
             page = id;
-            if (id == MenuPage.Characters)
-            {
-                characters.EnsureFigures();   // the other two bodies are drawn the first time they are needed
-                characters.RefreshRecords();
-            }
+            if (id == MenuPage.Characters) characters.Open();
+            else if (id == MenuPage.Skills) skills.Refresh();
+            else if (id == MenuPage.Shop) shop.Refresh();
             else pages.Refresh();
         }
 
@@ -460,12 +548,14 @@ namespace SoccerFight
         {
             if (state != State.Menu) return;
             if (page == MenuPage.Settings && pages.Settings.IsCapturing) pages.Settings.CancelCapture();
+            if (MenuPage.IsOnboarding(page)) return;
             page = MenuPage.Main;
         }
 
         void Play()
         {
             if (state != State.Menu) return;
+            if (!Profile.Onboarded) { Open(MenuPage.Starter); return; }
             state = State.Starting;
             stateT = 0f;
             playFired = false;
@@ -499,6 +589,8 @@ namespace SoccerFight
         public void HandleEscape()
         {
             if (pages.Settings.IsCapturing) pages.Settings.CancelCapture();
+            else if (page == MenuPage.StarterSkills) page = MenuPage.Starter;
+            else if (MenuPage.IsOnboarding(page)) { }   // the first launch has to be finished
             else if (page != MenuPage.Main) page = MenuPage.Main;
         }
 
@@ -678,7 +770,12 @@ namespace SoccerFight
                 p.Content.anchoredPosition += new Vector2((1f - t) * 160f, 0f);
             }
             pages.Update(udt);
-            characters.Update(udt, AimNorm());
+            var aim = AimNorm();
+            characters.Update(udt, aim);
+            skills.Update(udt);
+            shop.Update(udt, aim);
+            onboarding.Update(udt, aim);
+            UpdateWallet(udt);
         }
 
         Vector2 AimNorm()
@@ -730,9 +827,10 @@ namespace SoccerFight
             // targets that don't move on their own follow the page
             figureTarget.Fade = tagTarget.Fade = profileTarget.Fade = (1f - away) * Mathf.Clamp01(openT * 1.4f);
             foreach (var t in targets)
-                if (t.Page == MenuPage.Main && t.Id != null && (t.Id == "coins" || t.Id == "gems" || t.Id == "quit")) t.Fade = (1f - away) * Mathf.Clamp01(openT * 1.4f);
+                if (t.Page == MenuPage.Main && t.Id != null && (t.Id == "coins" || t.Id == "gems" || t.Id == "quit" || t.Id == "info")) t.Fade = (1f - away) * Mathf.Clamp01(openT * 1.4f);
             foreach (var t in targets)
-                if (t.Page != MenuPage.Main && subPages[t.Page] != null) t.Fade = Mathf.Clamp01(subPages[t.Page].T);
+                if (t.Page != MenuPage.Main && subPages[t.Page] != null)
+                    t.Fade = Mathf.Clamp01(subPages[t.Page].T) * (t.Visible != null ? Mathf.Clamp01(t.Visible()) : 1f);
 
             // the centre (figure, pedestal) drops away a little when a page opens
             float centreFade = (1f - away) * Mathf.Clamp01(openT * 1.5f);

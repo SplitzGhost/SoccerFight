@@ -9,13 +9,15 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
   Die Schwierigkeit ist eine durchgehende Kurve (`Difficulty.cs`): Jede Welle +1 Stufe, jede neue Stage beginnt
   0,35 Stufen unter dem Ende der vorigen – die letzte Welle einer Stage ist also etwas härter als die erste der nächsten.
 - **Nach jeder zweiten Runde** (Wellen und Bosskämpfe zählen): 3 zufällige Upgrade-Karten (Gewöhnlich / Selten /
-  Episch / Legendär), eine davon nimmst du (Taste 1/2/3 oder Klick). 71 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
-- **Nach jedem Boss:** die Wahl zwischen 2 von 10 zufälligen Fähigkeiten (höchstens **4 pro Lauf**, danach gibt es stattdessen eine zweite Belohnungskarte) – fällt der Boss auf eine Upgrade-Runde, vorher
-  eine Boss-Belohnung (nur Selten+). Hinter der Fähigkeitswahl entsteht schon die Arena der nächsten Stage.
-  Zu Beginn hast du nur **Schuss** und **Power-Schuss** (der Luft-Rückstoß beim Schießen in der Luft geht immer);
-  Vier der zehn Fähigkeiten (Rainbow Flick, Hochhalten, Übersteiger, Fallrückzieher, Grätsche, Abstoß, Mauer,
-  Tunnel, Lockvogel, Schlusspfiff) füllen Stage für Stage die vier Fähigkeits-Plätze.
-  Die nicht gewählte Fähigkeit kommt zurück in den Pool.
+  Episch / Legendär), eine davon nimmst du (Taste 1/2/3 oder Klick). 74 Upgrades inkl. Synergien, siehe `Upgrades.cs`.
+- **Deine Fähigkeiten bringst du mit:** Neben **Schuss** und **Power-Schuss** (und dem Luft-Rückstoß) startet
+  jeder Lauf mit den bis zu **vier Fähigkeiten, die du im Menü ausgerüstet hast** (siehe „Fortschritt“).
+  Nach jedem Boss gibt es eine Boss-Belohnung (nur Selten+); ist noch ein Platz frei und besitzt du eine nicht
+  ausgerüstete Fähigkeit, darfst du sie für den Rest des Laufs mitnehmen, sonst gibt es eine zweite Belohnungskarte.
+  Hinter der Belohnung entsteht schon die Arena der nächsten Stage.
+- **Münzen:** Jeder besiegte Gegner lässt Münzen fallen (Elite 4, Miniboss 12, Boss 30, pro Stage +12 %), jede
+  geschaffte Stage regnet einen Bonus herab. Sie springen auf den Rasen, glitzern kurz und fliegen dann von selbst in
+  den Zähler oben rechts – siehe „Fortschritt“.
 - **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
   Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
   Glutschmiede (Lavageysire), Frostgipfel (Glatteis), Sternengarten (geringe Schwerkraft), Eklipse (Verstärkungs-Pulse).
@@ -69,9 +71,10 @@ Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchst
 Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler auf dem
 schwebenden Mittelkreis**, der den Ball
 hochhält – wer ihn (oder sein Namensschild) abschießt, landet in der Spielerauswahl. Links **Shop, Rangliste,
-Freunde**, rechts **Events, Optionen, Info**, oben links das Profil, oben rechts Münzen/Edelsteine (und am Desktop
-Beenden), darunter der große **SPIELEN**-Knopf. Shop, Rangliste, Freunde und Events sind Platzhalter-Seiten
-(„kommt bald“), Info erklärt Steuerung und Spielprinzip. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
+Freunde**, rechts **Fähigkeiten, Events, Optionen**, oben links das Profil, oben rechts Münzen und Kristalle, Info (und am
+Desktop Beenden), darunter der große **SPIELEN**-Knopf. Rangliste, Freunde und Events sind Platzhalter-Seiten
+(„kommt bald“), Info erklärt Steuerung und Spielprinzip. **Beim allerersten Start** öffnet das Menü auf der
+Starterwahl (siehe „Fortschritt“) und lässt einen erst danach aufs Hauptmenü. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
 Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitzen beginnt der Lauf. Die Knöpfe und
 Seiten sprechen die Sprache der Karten und Anzeigen im Spiel: dunkles Glas, feine Rahmen und Leuchten in einer
 Akzentfarbe pro Knopf, weiße Symbole, gesperrte Großbuchstaben; nur SPIELEN ist massiv laternengolden.
@@ -87,24 +90,53 @@ geschossen wird nur daneben.
 Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 
 
-## Charaktere
+## Fortschritt: Klassen, Spieler, Fähigkeiten, Münzen
 
-Drei Spieler stehen zur Wahl, jeder in einer Klasse: **RIO** (Stürmer), **BRUNO** (Verteidiger) und
-**MIRA** (Skiller). Ausgewählt wird über den Spieler in der Mitte des Titelbildschirms – drei Karten im
-Stil der Upgrade-Karten: oben Klassen-Raute, Klasse und bester Stage-Rekord dieser Figur, darunter ein
-Porträt, in dem die lebende Figur im Licht ihrer Spielerfarbe steht (sie fängt an zu jonglieren, wenn man auf sie
-zielt), der Name groß über dem Porträt, drei Klassenbalken und ein WÄHLEN/GEWÄHLT-Knopf. Eine Karte wird wie jeder
-andere Menüknopf **mit dem Ball abgeschossen**; die Wahl bleibt gespeichert.
+**Drei Klassen, drei Talente** (`Meta/ClassDefs.cs`, alle Zahlen in `ClassTuning`):
 
-**Die Klassen haben noch keine Sonderfähigkeiten** – heute entscheidet die Wahl nur das Aussehen
-(Trikot, Haut, Haare, Schuh-Leuchten). Die Balken auf den Karten zeigen an, wohin die Klassen später
-gehen sollen.
+| Klasse | Talent | Wirkung |
+|---|---|---|
+| Stürmer | **Schussgewalt** | +30 % Schaden mit allen Schüssen (Schuss, Rückpraller, Echo-Bälle, Power-Schuss, Fallrückzieher, Abstoß). Verstärkte Treffer schlagen mit einem heißen **Wuchtstern** ein, die Schadenszahl leuchtet rot |
+| Skiller | **Technikmeister** | Trick-Fähigkeiten (Rainbow Flick, Übersteiger, Tunnel, Lockvogel) laufen 35 % schneller ab (gleiche Strecke in kürzerer Zeit), machen +25 % Schaden und geben danach 1,6 s lang +30 % Tempo mit violetten Nachbildern |
+| Verteidiger | **Kopfballspezialist** | +40 Leben (160 statt 120), 15 % weniger erlittener Schaden (zusätzlich zu Schienbeinschonern), dafür 10 % weniger Schaden. Nur Verteidiger können den **Kopfball** spielen (+25 % Schaden) |
 
-Technisch ist eine Figur ein **Kit** aus dreizehn Farben plus Haarlänge und Stirnband
-(`Run/Characters.cs`). `PlayerArt` zeichnet damit denselben Körper in drei Fassungen, speichert jede als
-`PlayerLook` und tauscht sie über `PlayerArt.Use` aus; das Skelett, jede Pose und jede Animation bleiben
-identisch. Die beiden nicht gewählten Spieler werden erst gezeichnet, wenn die Auswahl zum ersten Mal
-geöffnet wird, damit der Start nicht länger dauert.
+**Kopfball** (neue Fähigkeit, nur Verteidiger, 4,5 s): Der Fuß lupft den Ball hoch, der Spieler steigt hinein und
+köpft ihn wuchtig Richtung Fadenkreuz. Der Getroffene wird 1,1 s betäubt, der Ball springt von seinem Kopf hoch und
+kommt zurück. Dazu drei Upgrade-Karten: Lufthoheit (+15 % Schaden), Kopfnuss (längere Betäubung), Flugkopfball
+(fliegt durch zwei Gegner).
+
+**Neun Spieler** (`Run/Characters.cs`), drei pro Klasse: die Starter RIO, BRUNO und MIRA und je zwei weitere mit einem
+kleinen persönlichen **Perk** zusätzlich zum Klassen-Talent – KAI (+8 % Krit), ZARA (schnellere Bälle, stärkerer
+Power-Schuss), IVO (+20 Leben), TALA (Schockwelle, wenn sie getroffen wird), LUNA (Tempo, Sprung), NICO (−10 %
+Abklingzeiten).
+
+**Erster Start** (`UI/OnboardingPages.cs`): Das Menü öffnet auf *Wähle deinen Spieler* – drei Starterkarten mit Porträt,
+Klasse, Talent und Stärken; einer ist gratis. Danach *Wähle 3 Fähigkeiten* aus allen, die diese Klasse spielen kann;
+sie gehören dir und liegen auf den ersten drei Plätzen. Erst *Los geht's* speichert beides zusammen.
+
+**Fähigkeiten-Menü** (`UI/SkillPage.cs`): oben die vier Plätze mit ihren Tasten, darunter alle Fähigkeiten. Eine
+gekaufte Fähigkeit abschießen legt sie in den nächsten freien Platz, nochmal (oder ihren Platz) abschießen nimmt sie
+heraus. Nicht gekaufte zeigen ihren Preis und führen in den Shop; was das Talent der Klasse verstärkt, steht in der Ecke.
+
+**Shop** (`UI/ShopPage.cs`, Logik `Meta/Shop.cs`): Reiter *Spieler* (alle neun, eine Reihe pro Klasse) und
+*Fähigkeiten*. Kaufen braucht **zwei Treffer** – der erste macht aus dem Knopf ein pulsierendes KAUFEN?, der zweite
+kauft –, damit kein verirrter Ball Münzen ausgibt. Gekaufte Spieler lassen sich gleich dort wählen, gekaufte
+Fähigkeiten wandern sofort in einen freien Platz.
+
+**Münzen** (`Run/CoinDrops.cs`, `UI/CoinCounter.cs`, Regeln in `Meta/CoinRewards.cs`): Münzen springen aus besiegten
+Gegnern, klingen beim Aufprall, hüpfen, drehen sich und glitzern, heben nach einer halben Sekunde ab und fliegen auf
+einer geschwungenen Bahn mit Funkenschweif in den Zähler oben rechts. Erst dort werden sie gutgeschrieben: der Zähler
+ploppt, zählt hoch, ein Ring und Funken springen vom Symbol, ein Glockenton steigt mit jeder weiteren Münze eine Stufe
+höher. Was bei Laufende noch unterwegs ist, wird sofort ausgezahlt.
+
+**Speicherstand** (`Meta/Profile.cs`): ein JSON-Dokument in PlayerPrefs (im Browser IndexedDB) mit Besitz, Auswahl,
+Loadout, Guthaben und Stufen für spätere Upgrades; gespeichert wird nach Käufen, Wellen, Stages, am Laufende und beim
+Wechsel ins Menü. **Ton** (`Audio/Sfx.cs`): Die Geräusche werden wie die Grafik beim Start synthetisiert,
+Lautstärke unter Optionen → Ton.
+
+Technisch ist eine Figur ein **Kit** aus dreizehn Farben plus Haarlänge und Stirnband. `PlayerArt` zeichnet damit
+denselben Körper in neun Fassungen; welche ein Menü zum ersten Mal braucht, entsteht über einige Frames verteilt
+(`PlayerArt.Request/Pump`, ein Viertel des Körpers pro Frame), damit nichts ruckelt.
 
 ## Steuerung
 
@@ -115,7 +147,7 @@ geöffnet wird, damit der Start nicht länger dauert.
 | S | Durch die Plattform unter dir nach unten fallen (in der Luft gehalten: durch alle Plattformen) |
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). **Gedrückt halten = Dauerfeuer:** geschossen wird, sobald der Ball zurück ist und der Cooldown abläuft. In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
 | Rechtsklick | Power-Schuss (nur im Stand, Cooldown 3,5 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (12 statt 18) |
-| E / Q / R / F | **Fähigkeit 1 bis 4** – die vier Plätze, die der Lauf füllt (siehe unten) |
+| E / Q / R / F | **Fähigkeit 1 bis 4** – die vier Plätze deines Loadouts (siehe unten) |
 | 1 / 2 / 3 | Upgrade- bzw. Fähigkeitskarte wählen |
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Hauptmenü, Beenden) |
 | F1 | FPS-Anzeige an/aus |
@@ -126,10 +158,10 @@ geöffnet wird, damit der Start nicht länger dauert.
 ### Die vier Fähigkeits-Plätze
 
 Schuss und Power-Schuss liegen fest auf den Maustasten. Alles andere wird **nicht einzeln belegt**: Es gibt
-vier Plätze auf **E, Q, R und F**, und was ein Lauf freischaltet, landet der Reihe nach darin – die erste
-Fähigkeit auf Platz 1, die zweite auf Platz 2 und so weiter. **Mehr als vier gibt es pro Lauf nicht**; danach
-bringt jeder Boss stattdessen eine zweite Belohnungskarte. Zehn Fähigkeiten stehen zur Auswahl, jeder Lauf
-bekommt also eine andere Viererkombination:
+vier Plätze auf **E, Q, R und F**, und das Loadout aus dem Fähigkeiten-Menü liegt der Reihe nach darin – die erste
+Fähigkeit auf Platz 1, die zweite auf Platz 2 und so weiter. **Mehr als vier gibt es pro Lauf nicht**; ist das
+Loadout voll, bringt jeder Boss eine zweite Belohnungskarte. Elf Fähigkeiten gibt es (eine davon nur für
+Verteidiger), drei suchst du dir beim ersten Start aus, die anderen kaufst du im Shop:
 
 | Fähigkeit | Was sie tut |
 |---|---|
@@ -142,11 +174,12 @@ bekommt also eine andere Viererkombination:
 | Mauer | Drei Geister-Spieler stellen sich 4 s lang in den Weg (12 s): sie schlucken Geschosse, halten Gegner auf, und dein eigener Ball prallt von ihnen ab |
 | Tunnel | Der Ball geht durch die Beine (6 s): Der Getunnelte taumelt und nimmt 3 s lang 40 % mehr Schaden von allem |
 | Lockvogel | Körpertäuschung zur Seite (7 s). Das Nachbild bleibt stehen, die Gegner greifen es an und es platzt am Ende mit einem Stoß |
-| Schlusspfiff | Keine Abklingzeit, sondern eine Leiste, die sich mit jedem Sieg füllt: Ein Pfiff friert alle Gegner 2 s ein und lässt ihre Geschosse aus der Luft fallen |
+| Schlusspfiff | Keine Abklingzeit, sondern eine Leiste, die sich mit jedem Sieg füllt: Ein Pfiff friert alle Gegner 2 s ein und lässt ihre Geschosse aus der Luft fallen (nur im Shop) |
+| Kopfball | Nur Verteidiger (4,5 s): Ball hochlupfen, hineinsteigen, wuchtig aufs Fadenkreuz köpfen – der Getroffene ist 1,1 s betäubt, der Ball springt zurück |
 
 Bewegung, die beiden Schüsse und die vier Fähigkeits-Plätze lassen sich im Pausemenü unter
 **Einstellungen → Steuerung** frei belegen (auch Maustasten). Dort gibt es außerdem Vollbild (nur im Build),
-VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt. Alles wird automatisch gespeichert.
+VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und die Lautstärke. Alles wird automatisch gespeichert.
 
 ## Arena
 
@@ -173,11 +206,13 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
-| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Spielerfiguren und ihre Farb-Kits (`Characters`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
+| `Meta/` | Fortschritt über Läufe hinweg, alles datengetrieben: Währungen (`Currencies`), Speicherstand und Geldbörse (`Profile`, `Wallet`), Klassen und ihre Talente (`ClassDefs`, Zahlen in `ClassTuning`), dauerhafte Passive aus Talent/Perk/gekauften Stufen (`Passives`), Fähigkeiten mit Kategorie, Preis und Klassen-Sperre (`SkillCatalog`), Shop-Katalog und Kasse (`Shop`), Münz-Regeln (`CoinRewards`) |
+| `Audio/` | Synthetisierte Geräusche und ihr Stimmen-Pool (`Sfx`) |
+| `Run/` | Roguelite-Lauf: Zustandsautomat (`RunDirector`), Spielerfiguren mit Klasse, Perk, Preis und Farb-Kit (`Characters`), Münzen im Spiel (`CoinDrops`), Lauf-Zustand (`RunState`), Schwierigkeitskurve (`Difficulty`), Upgrade-Datenbank und Kartenziehung (`Upgrades`), Werte des Builds (`PlayerStats`), Fähigkeiten (`Abilities`), Stage-Themen (`StageThemes`), Spezialregeln und Gefahren (`StageMechanics`), Arena und Körper einer Stage vorbereiten und eintauschen (`StageArt`) |
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne, Freistoß-Mauer (`Barrier`), Lockvogel (`Decoys`) |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
-| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Charakterauswahl (`CharacterPage`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Spieler-Kader (`CharacterPage`), erster Start (`OnboardingPages`), Fähigkeiten-Menü (`SkillPage`), Shop (`ShopPage`), deren Karten, Kacheln und Preisschilder (`MetaWidgets`), Münzzähler mit einfliegenden Münzen (`CoinCounter`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
 | `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
@@ -201,7 +236,11 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom) und den Farbsaum-Effekt.
 - **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
 - **Spieler-Look:** Formen in `PlayerArt.cs` (Farben kommen aus dem Kit des gewählten Charakters), Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
-- **Charaktere:** Namen, Klassen, Sprüche und alle Farben in `Run/Characters.cs`; das Kartenlayout in `UI/CharacterPage.cs` (`CardW/CardH`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
+- **Charaktere:** Namen, Klassen, Perks, Preise und alle Farben in `Run/Characters.cs` (neue Figur = neuer Eintrag, hinten anhängen); das Kartenlayout in `UI/MetaWidgets.cs` (`CharacterCard`, `ShopCharacterCard`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
+- **Klassen-Talente:** alle Zahlen in `ClassTuning` (`Meta/ClassDefs.cs`); eine neue Klasse = Enum-Wert + `ClassDef` mit Talent (`PassiveDef`)
+- **Fähigkeiten-Preise, Gratis-Wahl, Klassen-Sperre:** `SkillCatalog.All` (`Meta/SkillCatalog.cs`); Kopfball-Werte `Header*` oben in `Player.cs`, Pose `PoseHeader` in `PlayerRig.cs`
+- **Münzen:** Werte pro Rang, Stage-Aufschlag und Stage-Bonus in `Meta/CoinRewards.cs`; Sprung, Zeigezeit und Flug in `Run/CoinDrops.cs` (`ShowTime`) und `UI/CoinCounter.cs`
+- **Neue Shop-Artikel / Währungen / Upgrades:** `ShopKind` + Eintrag in `Shop.Build`; Währung = Eintrag in `Currencies`; kaufbare Stufen = `PassiveDef` mit `MaxLevel` in `MetaPassives.Leveled` (Stufe liegt in `Profile.Level`)
 - **Hauptmenü:** Aufbau und Knöpfe in `MainMenu.Build*` (`BuildColumns`, `BuildTopBars`, `BuildPlay`); Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Szene in `World/MenuVista.cs` (Aufbau, Mondposition, Flutlicht, Portal, Augen), ihre neuen Grafiken in `Art/MenuScenery.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`

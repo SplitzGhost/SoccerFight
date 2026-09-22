@@ -128,7 +128,21 @@ namespace SoccerFight
             Btn(c, -152f, "ALLE FÄHIGKEITEN FREISCHALTEN", () => { Director.DevUnlockAll(); Say("Alle Fähigkeiten frei"); });
             Btn(c, -204f, "+5 ZUFÄLLIGE UPGRADES", () => { Director.DevAddRandomUpgrades(5); RefreshRows(); Say("5 zufällige Upgrades genommen"); });
             Btn(c, -256f, "BUILD LEEREN", () => { Director.DevClearBuild(); RefreshRows(); Say("Alle Upgrades entfernt"); });
-            buildInfo = UiKit.Label("BuildInfo", panel, "", 12f, Palette.UiMuted, TextAlignmentOptions.Center, c + new Vector2(0f, -300f), new Vector2(ColW, 20f), true, 3f);
+            // meta progression: coins for testing the shop, and a way back to the first launch
+            float hw = (ColW - 8f) * 0.5f;
+            PlainBtn(c + new Vector2(-hw * 0.5f - 4f, -308f), new Vector2(hw, 44f), "+500 MÜNZEN", 13f, 3f, () =>
+            {
+                Wallet.Add(Currencies.Coins, 500);
+                Profile.Save();
+                Say("+500 Münzen · jetzt " + Currencies.Format(Wallet.Get(Currencies.Coins)));
+            });
+            PlainBtn(c + new Vector2(hw * 0.5f + 4f, -308f), new Vector2(hw, 44f), "PROFIL LÖSCHEN", 13f, 3f, () =>
+            {
+                Profile.Reset();
+                Characters.Reload();
+                Say("Profil gelöscht · das Hauptmenü startet mit der Starterwahl");
+            });
+            buildInfo = UiKit.Label("BuildInfo", panel, "", 12f, Palette.UiMuted, TextAlignmentOptions.Center, c + new Vector2(0f, -350f), new Vector2(ColW, 20f), true, 3f);
         }
 
         void BuildRun(Vector2 c)

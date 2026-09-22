@@ -225,7 +225,11 @@ namespace SoccerFight
     /// <summary>Pages of the title screen.</summary>
     public static class MenuPage
     {
-        public const int Main = 0, Characters = 1, Settings = 2, Shop = 3, Ranking = 4, Friends = 5, Events = 6, Info = 7, Count = 8;
+        public const int Main = 0, Characters = 1, Settings = 2, Shop = 3, Ranking = 4, Friends = 5, Events = 6, Info = 7,
+            Skills = 8, Starter = 9, StarterSkills = 10, Count = 11;
+
+        /// <summary>The first-launch pages: no way back to the title screen until they are done.</summary>
+        public static bool IsOnboarding(int page) => page == Starter || page == StarterSkills;
     }
 
     /// <summary>
@@ -246,6 +250,8 @@ namespace SoccerFight
         /// <summary>Placeholder: the hit bounces off with a "coming soon" note instead of acting.</summary>
         public string Soon;
         public float Hover, HoverVel, Punch, PunchVel, Hit;
+        /// <summary>Extra visibility inside the page (a tab that is not shown): multiplied onto the page fade.</summary>
+        public System.Func<float> Visible;
         /// <summary>Visibility the page (or an entrance animation) gives this target.</summary>
         public float Fade = 1f;
     }

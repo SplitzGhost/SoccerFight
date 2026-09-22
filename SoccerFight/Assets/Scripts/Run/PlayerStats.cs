@@ -62,6 +62,24 @@ namespace SoccerFight
         public int DecoyCount;         // Doppelgänger: extra decoys
         public bool DecoyBlast;        // Ablenkungsmanöver: the decoy bursts hard
 
+        // ---- the header (defender only)
+        public float HeaderStunBonus;  // Kopfnuss
+        public int HeaderPierce;       // Flugkopfball: monsters the header passes through before it bounces
+
+        // ---- class traits and character perks (MetaPassives)
+        /// <summary>Damage multiplier per SkillCategory, on top of DamageMul.</summary>
+        public readonly float[] CategoryDamage = new float[System.Enum.GetValues(typeof(SkillCategory)).Length];
+        /// <summary>Speed at which trick moves play out (1 = normal).</summary>
+        public float TechniqueHaste;
+        /// <summary>Extra run speed (fraction) for RushTime seconds after a trick.</summary>
+        public float RushSpeed, RushTime;
+        /// <summary>Multiplier on every hit the player takes (after armour).</summary>
+        public float DamageTaken;
+        /// <summary>Boosted shots land with the striker's impact star.</summary>
+        public bool ShotImpactFx;
+
+        public float CategoryMul(SkillCategory c) => CategoryDamage[(int)c];
+
         public void Reset()
         {
             DamageMul = ShotDamageMul = PowerDamageMul = FlickDamageMul = BlastDamageMul = 1f;
@@ -91,6 +109,13 @@ namespace SoccerFight
             TackleWave = false; TackleHeal = 0f; PuntExtra = 0; PuntFire = false;
             WallLifeBonus = 0f; WallBounce = false; NutmegSpread = false; NutmegRefund = 0f;
             WhistleBonus = 0f; RedCard = false; DecoyCount = 0; DecoyBlast = false;
+            HeaderStunBonus = 0f; HeaderPierce = 0;
+
+            for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = 1f;
+            TechniqueHaste = 1f;
+            RushSpeed = RushTime = 0f;
+            DamageTaken = 1f;
+            ShotImpactFx = false;
         }
     }
 }

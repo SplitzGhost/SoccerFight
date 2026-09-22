@@ -2,15 +2,15 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Player abilities. A run starts with Shot + Power Shot (the air-kick recoil always works); the rest are unlocked one per stage.</summary>
-    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle }
+    /// <summary>Player abilities. Shot + Power Shot are always there (the air-kick recoil always works); the rest come from the loadout equipped in the menu.</summary>
+    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header }
 
     public static class Abilities
     {
         public static readonly Ability[] Unlockable =
         {
             Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle,
-            Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle
+            Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle, Ability.Header
         };
 
         public static string Name(Ability a)
@@ -30,6 +30,7 @@ namespace SoccerFight
                 case Ability.Nutmeg: return "TUNNEL";
                 case Ability.Decoy: return "LOCKVOGEL";
                 case Ability.Whistle: return "SCHLUSSPFIFF";
+                case Ability.Header: return "KOPFBALL";
                 default: return "";
             }
         }
@@ -49,6 +50,7 @@ namespace SoccerFight
                 case Ability.Nutmeg: return "Spielt den Ball durch die Beine: Der Getunnelte taumelt und nimmt mehr Schaden.";
                 case Ability.Decoy: return "Körpertäuschung zur Seite. Das Nachbild bindet die Gegner und platzt mit einem Stoß.";
                 case Ability.Whistle: return "Aufgeladen durch Siege: Ein Pfiff friert alle Gegner ein und stoppt ihre Geschosse.";
+                case Ability.Header: return "Lupft den Ball hoch und köpft ihn wuchtig aufs Ziel: betäubt den Getroffenen und springt zurück.";
                 default: return "";
             }
         }
@@ -70,6 +72,7 @@ namespace SoccerFight
                 case Ability.Nutmeg: return UiArt.IconNutmeg;
                 case Ability.Decoy: return UiArt.IconDecoy;
                 case Ability.Whistle: return UiArt.IconWhistle;
+                case Ability.Header: return UiArt.IconHeader;
                 default: return UiArt.IconShot;
             }
         }
@@ -90,6 +93,7 @@ namespace SoccerFight
                 case Ability.Nutmeg: return Palette.Showboat;
                 case Ability.Decoy: return Palette.Trick;
                 case Ability.Whistle: return Palette.Silver;
+                case Ability.Header: return Palette.Header;
                 default: return Palette.ShotCyan;
             }
         }

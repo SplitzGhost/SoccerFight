@@ -11,14 +11,14 @@ namespace SoccerFight
     {
         // Pierce: power shot that flies straight through every monster. Blast: bicycle kick that
         // explodes on the first thing it touches.
-        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor }
+        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor, Header }
 
         public State St { get; private set; } = State.Held;
         public Vector2 Pos;
         public Vector2 Vel;
         public bool IsHeld => St == State.Held || St == State.Scripted;
         public bool IsHeldFree => St == State.Held;
-        public bool IsDangerous => St == State.Shot || St == State.Rainbow || St == State.Pierce || St == State.Blast
+        public bool IsDangerous => St == State.Shot || St == State.Rainbow || St == State.Pierce || St == State.Blast || St == State.Header
                                    || (St == State.Returning && Vel.magnitude > (Game.I.Run.Stats.Boomerang ? 4f : 9f));
         public bool IsRainbow => St == State.Rainbow;
         /// <summary>Scripted by the player's keep-ups: drawn in front and spun by each touch.</summary>
@@ -40,7 +40,9 @@ namespace SoccerFight
         SpriteRenderer pattern, shade, highlight, glow, shadow, core;
         SpriteRenderer markerRing, markerGlow;
         TrailRenderer shotTrail, rainbowTrail, heavyTrail;
-        Gradient pierceGradient, blastGradient, shotGradient;
+        Gradient pierceGradient, blastGradient, shotGradient, headerGradient;
+        /// <summary>Header: monsters it may still pass through before it pops up.</summary>
+        public int HeaderPierceLeft;
         float shotTrailTime = 0.17f;
         float spin, spinVel;
         float stateTime;
@@ -107,6 +109,7 @@ namespace SoccerFight
             heavyTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.35f, 0.7f), new Keyframe(1f, 0f));
             pierceGradient = TrailGradient(Color.white, Palette.PowerGold, new Color(1f, 0.45f, 0.2f));
             blastGradient = TrailGradient(new Color(1f, 0.95f, 0.8f), Palette.BlastOrange, new Color(0.75f, 0.15f, 0.2f));
+            headerGradient = TrailGradient(Color.white, Palette.Header, new Color(0.2f, 0.35f, 0.9f));
         }
 
         /// <summary>The normal shot's trail colour and length (elemental upgrades recolour it).</summary>
@@ -319,6 +322,25 @@ namespace SoccerFight
             Enter(State.Blast);
             heavyTrail.colorGradient = blastGradient;
             heavyTrail.Clear();
+        }
+
+        /// <summary>Header: a heavy, flat ball. It stuns what it meets and then pops up into the air (Waves.BallHit).</summary>
+        public void Header(Vector2 velocity, int pierce)
+        {
+            Kick(velocity);
+            Enter(State.Header);
+            HeaderPierceLeft = pierce;
+            heavyTrail.colorGradient = headerGradient;
+            heavyTrail.Clear();
+            squashVel += 5f;
+        }
+
+        /// <summary>The header met a monster: straight up off the head of the victim, then home.</summary>
+        public void HeaderPop()
+        {
+            Vel = new Vector2(Mathf.Sign(Vel.x) * -1.2f, 11f);
+            Enter(State.Loose);
+            squashVel -= 9f;
         }
 
         public void BeginScripted() { Enter(State.Scripted); }
@@ -541,6 +563,15 @@ namespace SoccerFight
                     UpdateMarker(dt);
                     break;
                 }
+                case State.Header:
+                {
+                    // heavier than a kick: dips a little over its flight, bounces off floors, then comes home
+                    Vel.y -= 7f * Gravity * dt;
+                    Pos += Vel * dt;
+                    CollideWorld(0.5f);
+                    if (stateTime > 0.55f || Vel.sqrMagnitude < 36f) StartReturn();
+                    break;
+                }
                 case State.Blast:
                 {
                     Vel.y -= 20f * Gravity * dt;
@@ -712,6 +743,7 @@ namespace SoccerFight
                 case State.Loose: glowCol = Palette.ShotCyan; glowA = 0.28f; glowSize = 1f; break;
                 case State.Pierce: glowCol = Palette.PowerGold; glowA = 0.85f; glowSize = 1.6f; coreA = 0.7f; break;
                 case State.Blast: glowCol = Palette.BlastOrange; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
+                case State.Header: glowCol = Palette.Header; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
                 case State.Meteor: glowCol = Palette.Amber; glowA = 0.9f; glowSize = 1.7f; coreA = 0.75f; break;
                 default: glowCol = Palette.ShotCyan; glowA = 0.06f + 0.03f * Mathf.Sin(Time.time * 3f); glowSize = 0.85f; break;
             }
@@ -732,12 +764,12 @@ namespace SoccerFight
             if (St != State.Meteor) HideMarker();
             shotTrail.emitting = St == State.Shot || (St == State.Returning && speed > 7f) || (St == State.Loose && speed > 7f);
             rainbowTrail.emitting = St == State.Rainbow;
-            heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor;
+            heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header;
 
             // heavy shots shed embers along their path
-            if ((St == State.Pierce || St == State.Blast || St == State.Meteor) && Random.value < dt * 45f && speed > 1f)
+            if ((St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header) && Random.value < dt * 45f && speed > 1f)
             {
-                Color c = St == State.Pierce ? Palette.PowerGold : St == State.Meteor ? Palette.Amber : Palette.BlastOrange;
+                Color c = St == State.Pierce ? Palette.PowerGold : St == State.Meteor ? Palette.Amber : St == State.Header ? Palette.Header : Palette.BlastOrange;
                 FxSystem.I.Sparks(Pos, -delta.normalized, 35f, 1, 1.5f, 4.5f, c, 2.4f, 0.035f, 0.2f, St == State.Blast ? 6f : 0f);
             }
 

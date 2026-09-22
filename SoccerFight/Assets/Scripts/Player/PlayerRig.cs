@@ -197,6 +197,9 @@ namespace SoccerFight
 
         public void OnWhistle() { squashXVel -= 1.6f; squashYVel += 2.6f; tuftVel -= 120f; }
 
+        /// <summary>The forehead snaps through the ball: the whole upper body whips forward.</summary>
+        public void OnHeaderContact() { leanVel -= 700f; headTiltVel -= 500f; squashXVel += 1.8f; squashYVel -= 1.2f; tuftVel += 220f; }
+
         public void OnJuggleTouch(Player.Touch part)
         {
             touchAt = player.JuggleBallLocal;
@@ -517,6 +520,12 @@ namespace SoccerFight
             {
                 PoseWhistle(t, ref nearFoot, ref nearFlat, ref farFoot, ref farFlat,
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+            }
+            else if (player.CurrentAction == Player.Action.Header)
+            {
+                PoseHeader(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
             }
 
             // --- springs for the upper body
@@ -893,6 +902,74 @@ namespace SoccerFight
             if (!player.ActionReleased)
             {
                 ballLocal = player.BikeBallLocal;
+                BallIsScripted = true;
+            }
+        }
+
+        // ------------------------------------------------------------------ header
+
+        /// <summary>
+        /// The header: the near boot scoops the ball up off the turf, the body rises and arches back
+        /// with both arms thrown behind for balance, then the forehead snaps through the ball
+        /// (OnHeaderContact whips the lean and the head) and the body settles back.
+        /// </summary>
+        void PoseHeader(float t, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY, ref Vector2 ballLocal)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            float tT = Player.HeaderToss, tC = Player.HeaderContact, tE = Player.HeaderDuration;
+            float w = MathUtil.Smooth01(t / 0.05f) * (1f - MathUtil.Smooth01((t - (tE - 0.12f)) / 0.12f));
+            Vector2 nf, ff; float np, lean, head, nsh, nel, fsh, fel, dip;
+            if (t < tT)
+            {
+                // the scoop: toes under the ball, a quick flick up, knees bending for the jump
+                float k = MathUtil.EaseOutCubic(t / tT);
+                nf = Vector2.Lerp(new Vector2(0.3f, A), new Vector2(0.34f, A + 0.34f), k); np = Mathf.Lerp(0.2f, 0.05f, k);
+                ff = new Vector2(-0.1f, A);
+                lean = Mathf.Lerp(-4f, 6f, k); head = Mathf.Lerp(0f, 14f, k);
+                nsh = Mathf.Lerp(10f, -30f, k); nel = 40f; fsh = Mathf.Lerp(-10f, -45f, k); fel = 35f;
+                dip = -0.08f * MathUtil.Bump(k);
+            }
+            else if (t < tC)
+            {
+                // rising and cocked: arched back, eyes on the ball, arms behind
+                float k = MathUtil.EaseInOutSine((t - tT) / (tC - tT));
+                nf = Vector2.Lerp(new Vector2(0.34f, A + 0.34f), new Vector2(0.1f, hipY - 0.52f), k); np = 0.5f;
+                ff = Vector2.Lerp(new Vector2(-0.1f, A), new Vector2(-0.18f, hipY - 0.66f), k);
+                lean = Mathf.Lerp(6f, 20f, k); head = Mathf.Lerp(14f, 26f, k);
+                nsh = Mathf.Lerp(-30f, -70f, k); nel = Mathf.Lerp(40f, 55f, k);
+                fsh = Mathf.Lerp(-45f, -95f, k); fel = Mathf.Lerp(35f, 50f, k);
+                dip = 0f;
+            }
+            else
+            {
+                // through the ball and down: bent forward, arms swinging through, legs reaching for the ground
+                float k = MathUtil.EaseOutCubic(Mathf.Clamp01((t - tC) / 0.12f));
+                float k2 = MathUtil.EaseInOutSine(Mathf.Clamp01((t - tC - 0.08f) / (tE - tC - 0.08f)));
+                nf = Vector2.Lerp(new Vector2(0.1f, hipY - 0.52f), new Vector2(0.26f, hipY - 0.64f), k); np = 0.6f;
+                ff = Vector2.Lerp(new Vector2(-0.18f, hipY - 0.66f), new Vector2(-0.2f, hipY - 0.7f), k);
+                lean = Mathf.Lerp(Mathf.Lerp(20f, -26f, k), -6f, k2); head = Mathf.Lerp(Mathf.Lerp(26f, -18f, k), -4f, k2);
+                nsh = Mathf.Lerp(Mathf.Lerp(-70f, 55f, k), 20f, k2); nel = Mathf.Lerp(55f, 30f, k);
+                fsh = Mathf.Lerp(Mathf.Lerp(-95f, 30f, k), -10f, k2); fel = Mathf.Lerp(50f, 25f, k);
+                dip = 0f;
+            }
+
+            // on the ground (the start of the move, or a header that lands early) the legs keep the stance
+            float air = player.Grounded ? 0f : 1f;
+            if (t < tT) air = 1f;   // the scoop is posed explicitly
+            nearFoot = Vector2.Lerp(nearFoot, Vector2.Lerp(nearFoot, nf, air), w); nearFlat *= 1f - w * air; nearPoint = Mathf.Lerp(nearPoint, np, w * air);
+            farFoot = Vector2.Lerp(farFoot, Vector2.Lerp(farFoot, ff, air), w); farFlat *= 1f - w * air; farPoint = Mathf.Lerp(farPoint, 0.6f, w * air);
+            nearShoulder = Mathf.Lerp(nearShoulder, nsh, w); nearElbow = Mathf.Lerp(nearElbow, nel, w);
+            farShoulder = Mathf.Lerp(farShoulder, fsh, w); farElbow = Mathf.Lerp(farElbow, fel, w);
+            leanTarget = Mathf.Lerp(leanTarget, lean, w);
+            headTarget = Mathf.Lerp(headTarget, head, w);
+            extraHipY += dip * w;
+
+            if (!player.ActionReleased)
+            {
+                ballLocal = player.HeaderBallLocal;
                 BallIsScripted = true;
             }
         }

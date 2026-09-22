@@ -45,10 +45,68 @@ namespace SoccerFight
 
         /// <summary>Colours of the character currently being drawn.</summary>
         static CharacterKit K;
-        static readonly PlayerLook[] looks = new PlayerLook[8];
+        static readonly PlayerLook[] looks = new PlayerLook[Characters.All.Length];
+
+        // bodies asked for by the menus, drawn a quarter at a time (legs, arms, body, head) so a
+        // page full of new characters never freezes a frame for long
+        static readonly System.Collections.Generic.List<int> requested = new System.Collections.Generic.List<int>();
+        static PlayerLook building;
+        static int buildingIndex = -1, buildingStep;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { for (int i = 0; i < looks.Length; i++) looks[i] = null; }
+        static void ResetStatics()
+        {
+            for (int i = 0; i < looks.Length; i++) looks[i] = null;
+            requested.Clear();
+            building = null;
+            buildingIndex = -1;
+            buildingStep = 0;
+        }
+
+        public static bool Ready(int index) => index >= 0 && index < looks.Length && looks[index] != null;
+
+        /// <summary>The look if it is built, else null (and it is queued).</summary>
+        public static PlayerLook Peek(int index)
+        {
+            if (Ready(index)) return looks[index];
+            Request(index);
+            return null;
+        }
+
+        /// <summary>Queue a character's body; Pump draws it over the next frames.</summary>
+        public static void Request(int index)
+        {
+            if (index < 0 || index >= looks.Length || Ready(index) || index == buildingIndex || requested.Contains(index)) return;
+            requested.Add(index);
+        }
+
+        /// <summary>Draws one quarter of the next queued body. Call once per frame while a menu waits for bodies.</summary>
+        public static void Pump()
+        {
+            if (buildingIndex < 0)
+            {
+                while (requested.Count > 0 && Ready(requested[0])) requested.RemoveAt(0);
+                if (requested.Count == 0) return;
+                buildingIndex = requested[0];
+                requested.RemoveAt(0);
+                building = new PlayerLook();
+                buildingStep = 0;
+            }
+            var previous = Snapshot();
+            K = Characters.All[buildingIndex].Kit;
+            switch (buildingStep)
+            {
+                case 0: BuildLegs(); building.Thigh = Thigh; building.Shin = Shin; building.Boot = Boot; building.BootGlow = BootGlow; break;
+                case 1: BuildArms(); building.UpperArm = UpperArm; building.Forearm = Forearm; building.Hand = Hand; break;
+                case 2: BuildBody(); building.Torso = Torso; building.Pelvis = Pelvis; building.Neck = Neck; break;
+                default: BuildHead(); building.Head = Head; building.HairTuft = HairTuft; break;
+            }
+            Restore(previous);
+            if (++buildingStep < 4) return;
+            looks[buildingIndex] = building;
+            building = null;
+            buildingIndex = -1;
+        }
 
         /// <summary>Builds the chosen character (the others are drawn when the select screen asks for them).</summary>
         public static void Build()
@@ -65,6 +123,8 @@ namespace SoccerFight
         {
             index = Mathf.Clamp(index, 0, Characters.All.Length - 1);
             if (looks[index] != null) return looks[index];
+            if (buildingIndex == index) { building = null; buildingIndex = -1; }   // finish it in one go instead
+            requested.Remove(index);
 
             var previous = Snapshot();
             K = Characters.All[index].Kit;

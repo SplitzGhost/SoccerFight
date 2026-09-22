@@ -126,6 +126,7 @@ namespace SoccerFight
             Deaths++;
             if (m == Boss) Boss = null;
             Combat.OnKill(m);
+            CoinDrops.I?.Drop(m);
             if (m.Type == EnemyType.Splitter)
                 for (int i = 0; i < 2; i++) SpawnMinion(EnemyType.Spawnling, m.Center + new Vector2((i - 0.5f) * 0.5f, 0.1f), m);
             m.OnDeathEffects();
@@ -222,6 +223,20 @@ namespace SoccerFight
                 case Ball.State.Returning:
                     Combat.Hit(m, Player.ShotDamage * (s.Boomerang ? 1f : 0.6f), dir, 6.5f, Src.Returning);
                     break;
+                case Ball.State.Header:
+                {
+                    Vector2 at = ball.Pos;
+                    Combat.Hit(m, Player.HeaderDamage, dir, 11f, Src.Header, big: true);
+                    if (m.Alive) m.Stun(Player.HeaderStun + s.HeaderStunBonus);
+                    var fx = FxSystem.I;
+                    fx.Ring(FxLayer.Front, at, 0.1f, 1.3f, 0.2f, 0.01f, 0.26f, Color.white, Palette.Header.WithAlpha(0f), 2.6f);
+                    fx.Sparkles(m.Center + new Vector2(0f, m.Radius), 0.45f, 6, Palette.Header, 2.6f, 0.6f);
+                    Game.I.Cam.AddTrauma(0.14f);
+                    // Flugkopfball carries on through; otherwise it pops up off the victim's head
+                    if (ball.HeaderPierceLeft > 0) ball.HeaderPierceLeft--;
+                    else ball.HeaderPop();
+                    break;
+                }
                 default:
                     Combat.Hit(m, Player.ShotDamage * ball.ShotMul, dir, 6.5f, Src.Shot, ball.GoldenShot);
                     ball.GoldenShot = false;

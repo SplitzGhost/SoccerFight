@@ -196,6 +196,14 @@ namespace SoccerFight
                 (s, n) => s.DecoyBlast = true, ab: Ability.Decoy);
             U("doppelganger", "DOPPELGÄNGER", E, UpIcon.Echo, 2, n => "Die Körpertäuschung lässt " + V(n.ToString()) + " zusätzliche Nachbilder stehen.",
                 (s, n) => s.DecoyCount += n, ab: Ability.Decoy);
+
+            // ------------------------------------------------------------------ the header (defender)
+            U("air_power", "LUFTHOHEIT", C, UpIcon.Damage, 4, n => "Kopfball +" + P(0.15f) + " Schaden.",
+                (s, n) => s.CategoryDamage[(int)SkillCategory.Header] += 0.15f * n, ab: Ability.Header);
+            U("headbutt", "KOPFNUSS", R, UpIcon.Time, 2, n => "Der Kopfball betäubt " + N(0.8f) + " s länger.",
+                (s, n) => s.HeaderStunBonus += 0.8f * n, ab: Ability.Header);
+            U("diving_header", "FLUGKOPFBALL", E, UpIcon.Trident, 1, n => "Der Kopfball fliegt durch " + V("2") + " Gegner hindurch, bevor er abprallt.",
+                (s, n) => s.HeaderPierce += 2, ab: Ability.Header);
         }
 
         public static int Count(Rarity r) { int c = 0; foreach (var u in All) if (u.Rarity == r) c++; return c; }

@@ -122,7 +122,7 @@ namespace SoccerFight
             accent = Palette.Gold;
             kicker.text = "STAGE " + stage + " GESCHAFFT";
             title.text = "NEUE FÄHIGKEIT";
-            sub.text = "Wähle eine für den Rest des Laufs – die andere kehrt in den Pool zurück.";
+            sub.text = "Ein Platz ist frei: Nimm eine deiner Fähigkeiten für den Rest des Laufs mit.";
             BuildAbilityCards();
             Open(shown);
         }

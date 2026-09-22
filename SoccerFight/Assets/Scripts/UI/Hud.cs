@@ -81,7 +81,7 @@ namespace SoccerFight
         readonly List<BuildIcon> buildIcons = new List<BuildIcon>();
 
         Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
-        Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot;
+        Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot;
         const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
 
@@ -145,6 +145,9 @@ namespace SoccerFight
         float devTimer;
 
         Number[] numbers;
+
+        /// <summary>The coin counter (top right) and the coins flying into it.</summary>
+        public CoinCounter Coins { get; private set; }
         int numberCursor;
 
         CanvasGroup deathGroup;
@@ -261,8 +264,9 @@ namespace SoccerFight
             nutmegSlot = BuildSlot("Nutmeg", Vector2.zero, SkillSlotSize, UiArt.IconNutmeg, UiArt.RingThick, Palette.Showboat, GameAction.Skill1, Ability.Nutmeg);
             decoySlot = BuildSlot("Decoy", Vector2.zero, SkillSlotSize, UiArt.IconDecoy, UiArt.RingThick, Palette.Trick, GameAction.Skill1, Ability.Decoy);
             whistleSlot = BuildSlot("Whistle", Vector2.zero, SkillSlotSize, UiArt.IconWhistle, UiArt.RingThick, Palette.Silver, GameAction.Skill1, Ability.Whistle);
+            headerSlot = BuildSlot("Header", Vector2.zero, SkillSlotSize, UiArt.IconHeader, UiArt.RingThick, Palette.Header, GameAction.Skill1, Ability.Header);
             slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
-                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot };
+                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot };
             foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
@@ -270,6 +274,8 @@ namespace SoccerFight
             BuildStageCard();
             BuildJuggle();
             BuildMisc();
+            Coins = new CoinCounter();
+            Coins.Build(canvasRect, WorldToCanvas);
         }
 
         void BuildJuggle()
@@ -390,7 +396,7 @@ namespace SoccerFight
                     + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  POWER-SCHUSS    ESC  PAUSE\n"
                     + "FÄHIGKEITEN  " + KeyBindings.DisplayName(GameAction.Skill1) + "  " + KeyBindings.DisplayName(GameAction.Skill2)
                     + "  " + KeyBindings.DisplayName(GameAction.Skill3) + "  " + KeyBindings.DisplayName(GameAction.Skill4)
-                    + "   ·   NACH JEDEM BOSS EINE NEUE, HÖCHSTENS " + RunState.MaxSkills;
+                    + "   ·   AUSRÜSTEN IM MENÜ, HÖCHSTENS " + RunState.MaxSkills;
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -515,21 +521,21 @@ namespace SoccerFight
             fpsText = Text("FPS", canvasRect, "", 15f, Palette.UiMuted, TextAlignmentOptions.Right, Vector2.zero, new Vector2(200f, 22f), true, true, 2f);
             var fr = fpsText.rectTransform;
             fr.anchorMin = fr.anchorMax = new Vector2(1f, 1f);
-            fr.anchoredPosition = new Vector2(-124f, -30f);
+            fr.anchoredPosition = new Vector2(-364f, -46f);   // left of the coin counter
 
             devBadge = Text("DevBadge", canvasRect, "", 13f, Palette.Gold, TextAlignmentOptions.Right, Vector2.zero, new Vector2(1000f, 20f), true, true, 3f);
             devBadge.rectTransform.anchorMin = devBadge.rectTransform.anchorMax = new Vector2(1f, 1f);
-            devBadge.rectTransform.anchoredPosition = new Vector2(-524f, -56f);
+            devBadge.rectTransform.anchoredPosition = new Vector2(-524f, -114f);
             // the info block sits on dark glass: the moon behind the top-right corner would swallow white text
             devInfoBack = Img("DevInfoBack", canvasRect, UiArt.Pill, Palette.UiGlass.WithAlpha(0.82f), Vector2.zero, new Vector2(560f, 84f), Image.Type.Sliced);
             var bRt = devInfoBack.rectTransform;
             bRt.anchorMin = bRt.anchorMax = bRt.pivot = new Vector2(1f, 1f);
-            bRt.anchoredPosition = new Vector2(-20f, -70f);
+            bRt.anchoredPosition = new Vector2(-20f, -130f);
             devInfoBack.enabled = false;
             devInfo = Text("DevInfo", canvasRect, "", 13f, Palette.UiText, TextAlignmentOptions.TopRight, Vector2.zero, new Vector2(760f, 72f), false, false, 0.5f);
             var iRt = devInfo.rectTransform;
             iRt.anchorMin = iRt.anchorMax = iRt.pivot = new Vector2(1f, 1f);
-            iRt.anchoredPosition = new Vector2(-40f, -80f);
+            iRt.anchoredPosition = new Vector2(-40f, -140f);
             devInfo.lineSpacing = 6f;
 
             toast = Text("Toast", canvasRect, "", 18f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 300f), new Vector2(900f, 30f), true, true, 4f);
@@ -586,7 +592,7 @@ namespace SoccerFight
         {
             var run = Game.I.Run;
             ShowToast(run.CanUnlockMore
-                ? "PLATZ " + (slot + 1) + " IST NOCH LEER  ·  FÄHIGKEIT NACH DEM NÄCHSTEN BOSS"
+                ? "PLATZ " + (slot + 1) + " IST LEER  ·  RÜSTE IM MENÜ UNTER FÄHIGKEITEN AUS"
                 : "PLATZ " + (slot + 1) + " BLEIBT LEER  ·  " + RunState.MaxSkills + " FÄHIGKEITEN SIND DAS MAXIMUM");
         }
 
@@ -677,10 +683,12 @@ namespace SoccerFight
 
         public void DamageNumber(Vector2 world, float amount, bool big) => DamageNumber(world, amount, big, false);
 
-        public void DamageNumber(Vector2 world, float amount, bool big, bool crit)
+        public void DamageNumber(Vector2 world, float amount, bool big, bool crit, bool boosted = false)
         {
             int n = Mathf.Max(1, Mathf.RoundToInt(amount));
-            if (crit) Popup(world, n + "!", new Color(1f, 0.55f, 0.25f), 52f, true);
+            if (crit) Popup(world, n + "!", new Color(1f, 0.55f, 0.25f), boosted ? 58f : 52f, true);
+            // the striker's boosted shots: hot red numbers, a size up, always the punchy pop
+            else if (boosted) Popup(world, n.ToString(), Color.Lerp(Classes.Striker.Accent, Color.white, 0.25f), big ? 48f : 40f, true);
             else Popup(world, n.ToString(), big ? Palette.Gold : Color.white, big ? 44f : 32f, big);
         }
 
@@ -747,6 +755,7 @@ namespace SoccerFight
             foreach (var t in tags) { t.target = null; t.alpha = 0f; t.rt.gameObject.SetActive(false); }
             jugEndT = 99f;
             jugGroup.alpha = 0f;
+            Coins?.Reset();
             SyncBuild();
         }
 
@@ -817,6 +826,7 @@ namespace SoccerFight
             UpdateSlot(decoySlot, player.DecoyCd, player.DecoyCooldownTotal, free, dt, false, true);
             // the whistle has no timer: its ring is the charge that kills build up
             UpdateSlot(whistleSlot, 1f - player.Ultimate, 1f, free, dt, false, true);
+            UpdateSlot(headerSlot, player.HeaderCd, player.HeaderCooldownTotal, withBall, dt, false, true);
             UpdateCrosshair(dt);
             UpdateWave(dt, run);
             UpdateBoss(dt);
@@ -826,6 +836,7 @@ namespace SoccerFight
             UpdateJuggle(dt);
             UpdateNumbers(dt);
             UpdateMisc(dt, run);
+            Coins.Update(dt);
             if (paused) bannerGroup.alpha = 0f;
         }
 
@@ -1337,7 +1348,7 @@ namespace SoccerFight
                 string wave = run.IsBossWave ? "BOSSKAMPF" : "WELLE " + Mathf.Max(1, run.Wave) + " / " + run.WavesInStage;
                 deathSub.text = "STAGE " + run.Stage + "  ·  " + StageThemes.Title(run.Stage) + "  ·  " + wave;
                 int ups = run.PickOrder.Count;
-                deathStats.text = "GEGNER BESIEGT  " + run.Kills + "      ZEIT  " + Clock(run.Time) + "      UPGRADES  " + ups + "      FÄHIGKEITEN  " + run.Unlocked.Count;
+                deathStats.text = "GEGNER BESIEGT  " + run.Kills + "      ZEIT  " + Clock(run.Time) + "      UPGRADES  " + ups + "      <color=#FFCC5C>MÜNZEN  +" + Currencies.Format(CoinRewards.Earned) + "</color>";
                 int best = RunState.BestStage;
                 deathBest.text = DevMode.UsedThisRun ? "DEV-LAUF  ·  ZÄHLT NICHT FÜR DEN REKORD"
                     : run.Stage >= best ? "NEUER REKORD  ·  STAGE " + run.Stage : "BESTER LAUF  ·  STAGE " + best;

@@ -40,6 +40,7 @@ namespace SoccerFight
         int planIndex;
         bool bossPending, bossSeen, rewardDone;
         bool stageHealed;
+        Vector2 lastBossPos;
 
         public void Build(RunState state, WaveDirector w, Player p, RewardScreen r)
         {
@@ -56,6 +57,7 @@ namespace SoccerFight
         public void StartRun()
         {
             run.Reset();
+            CoinRewards.ResetRun();
             Combat.Reset();
             player.ApplyStats(true);
             waves.Restart();
@@ -94,11 +96,13 @@ namespace SoccerFight
             StageMechanics.I.SetRunning(false);
             int reached = run.Stage;
             if (!DevMode.UsedThisRun) RunState.RecordStage(reached);
+            Profile.OnRunFinished();
             Enter(Phase.RunOver);
         }
 
         public void OnMonsterDied(Monster m)
         {
+            if (m.Rank == Rank.Boss) lastBossPos = m.Center;
             if (m.Rank == Rank.Boss && P == Phase.Fighting && run.IsBossWave) BossDefeated();
         }
 
@@ -276,6 +280,7 @@ namespace SoccerFight
             player.Heal(heal, true);
             run.RoundsCleared++;
             Game.I.Hud.OnWaveCleared(run.Wave, run.WavesInStage, run.UpgradeDue);
+            Profile.SaveIfDirty();
             Enter(Phase.WaveCleared);
         }
 
@@ -288,6 +293,7 @@ namespace SoccerFight
             EnemyType type = boss.Body == Monster.Kind.Wisp ? EnemyType.Lantern : EnemyType.Brute;
             float side = player.Pos.x > 0f ? -1f : 1f;
             Vector2 at = new Vector2(side * 7f, boss.Body == Monster.Kind.Wisp ? 5.5f : 8f);
+            lastBossPos = at;
             waves.Spawn(new Monster.SpawnSpec
             {
                 Type = type, At = at, Vel = new Vector2(-side * 1.5f, boss.Body == Monster.Kind.Wisp ? 0f : -2f),
@@ -334,6 +340,9 @@ namespace SoccerFight
             if (!DevMode.UsedThisRun) RunState.RecordStage(run.Stage + 1);
             run.RoundsCleared++;
             Game.I.Hud.OnStageCleared(run.Stage, run.Theme);
+            // the stage pays out: a shower of coins where the boss fell
+            CoinDrops.I?.Shower(lastBossPos, CoinRewards.ForStageClear(run.Stage));
+            Profile.SaveIfDirty();
             // start drawing the next arena and its monsters now (threads) or behind the reward screens (WebGL)
             StageArt.Prepare(run.Stage + 1, run.Seed);
             Enter(Phase.StageCleared);
@@ -496,6 +505,17 @@ namespace SoccerFight
             else waves.SpawnFromPortal(pick.Type, run.Level, rank, rank == Rank.Elite ? affixes : 0, pick.Name);
         }
 
+        /// <summary>Every skill this character could use that isn't in a slot yet — owned or not (developer tools only).</summary>
+        List<Ability> DevPool()
+        {
+            var list = new List<Ability>();
+            if (!run.CanUnlockMore) return list;
+            var cls = Characters.Current.Class;
+            foreach (var s in SkillCatalog.All)
+                if (!run.Unlocked.Contains(s.Ability) && s.UsableBy(cls)) list.Add(s.Ability);
+            return list;
+        }
+
         void DevAfterPick()
         {
             player.ApplyStats(false);
@@ -513,7 +533,7 @@ namespace SoccerFight
         public void DevOfferAbility()
         {
             DevMode.MarkRun();
-            var locked = run.LockedAbilities();
+            var locked = DevPool();
             if (locked.Count == 0) { Game.I.Hud.ShowToast("ALLE VIER PLÄTZE SIND BELEGT"); return; }
             var choice = new List<Ability>();
             while (choice.Count < Mathf.Min(2, locked.Count))
@@ -549,7 +569,7 @@ namespace SoccerFight
         public void DevUnlockAll()
         {
             DevMode.MarkRun();
-            foreach (var a in run.LockedAbilities()) run.Unlock(a);
+            foreach (var a in DevPool()) run.Unlock(a);
             player.ApplyStats(false);
             foreach (var a in Abilities.Unlockable) Game.I.Hud.OnAbilityUnlocked(a);
             Game.I.Hud.ShowToast("FÄHIGKEITS-PLÄTZE GEFÜLLT");
@@ -572,9 +592,10 @@ namespace SoccerFight
         public void DebugJump(int stage, int wave, int upgrades, bool spawn)
         {
             run.Reset();
+            CoinRewards.ResetRun();
             for (int s = 2; s <= stage; s++)
             {
-                var locked = run.LockedAbilities();
+                var locked = DevPool();
                 if (locked.Count > 0) run.Unlock(locked[Random.Range(0, locked.Count)]);
             }
             run.Stage = stage;

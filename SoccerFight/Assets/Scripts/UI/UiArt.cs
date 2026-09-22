@@ -10,7 +10,7 @@ namespace SoccerFight
         public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
         public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
-        public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle;
+        public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle, IconHeader;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -365,6 +365,21 @@ namespace SoccerFight
                 wh.Fill(p => Sdf.Intersect(Sdf.Ring(p, new Vector2(30f, 26f), r, 4f), p.x - 32f), silver.WithAlpha(0.9f - i * 0.3f));
             }
             IconWhistle = ToUi(wh, "UiIconWhistle");
+
+            // Header: a head in profile snaps forward, the ball leaves the forehead with a burst
+            var hd = new SdfCanvas(rect, D);
+            Color blue = new Color(0.55f, 0.8f, 1f);
+            hd.Fill(p => Sdf.Union(Sdf.Circle(p, new Vector2(-18f, 4f), 25f),
+                                   Sdf.Capsule(p, new Vector2(-24f, -18f), new Vector2(-30f, -46f), 11f)), Color.white);
+            hd.Fill(p => Sdf.Intersect(Sdf.Circle(p, new Vector2(-18f, 4f), 25f), -(p.y - 14f)), blue.WithAlpha(0.55f));
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 18f - i * 13f;
+                hd.Fill(p => Sdf.Tapered(p, new Vector2(-56f, y + 4f), 1f, new Vector2(-44f, y), 3f), blue.WithAlpha(0.85f - i * 0.2f));
+            }
+            hd.Fill(p => Sdf.Star4(p, new Vector2(12f, 14f), 13f, 0.45f), new Color(1f, 0.95f, 0.75f));
+            IconBall(hd, new Vector2(34f, 26f), 17f);
+            IconHeader = ToUi(hd, "UiIconHeader");
         }
 
         static void IconWhiteSparks(SdfCanvas c, Vector2 at, Color col)

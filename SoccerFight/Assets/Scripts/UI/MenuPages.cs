@@ -19,6 +19,7 @@ namespace SoccerFight
         public float T, Vel;
         readonly RectTransform title;
 
+        /// <param name="back">What the back button does (null: the page has no back button — the first-launch screens).</param>
         public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back)
         {
             Id = id;
@@ -36,11 +37,14 @@ namespace SoccerFight
             MenuArt.Label("Title", title, heading, 60f, Color.white, new Vector2(0f, -4f), new Vector2(1200f, 80f), TextAlignmentOptions.Center, 18f);
             UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.5f), new Vector2(0f, -54f), new Vector2(760f, 2f));
 
-            var holder = UiKit.Node("BackHolder", Root, Vector2.zero, new Vector2(110f, 96f));
-            MenuUi.Pin(holder, new Vector2(0f, 1f), new Vector2(96f, -78f));
-            var button = new ChunkButton(holder, "Back", Vector2.zero, new Vector2(96f, 84f), MenuArt.Accent, null, 0f, MenuArt.IconBack, 46f);
-            Back = new MenuTarget { Id = "back" + id, Root = button.Root, Size = button.Size, Page = id, Action = back, Button = button, Accent = MenuArt.Accent };
-            register(Back);
+            if (back != null)
+            {
+                var holder = UiKit.Node("BackHolder", Root, Vector2.zero, new Vector2(110f, 96f));
+                MenuUi.Pin(holder, new Vector2(0f, 1f), new Vector2(96f, -78f));
+                var button = new ChunkButton(holder, "Back", Vector2.zero, new Vector2(96f, 84f), MenuArt.Accent, null, 0f, MenuArt.IconBack, 46f);
+                Back = new MenuTarget { Id = "back" + id, Root = button.Root, Size = button.Size, Page = id, Action = back, Button = button, Accent = MenuArt.Accent };
+                register(Back);
+            }
 
             Content = UiKit.Node("Content", Root, new Vector2(0f, -40f), new Vector2(1600f, 900f));
         }
@@ -56,7 +60,7 @@ namespace SoccerFight
         }
     }
 
-    /// <summary>The placeholder pages (shop, ranking, friends, events) and the info page.</summary>
+    /// <summary>The placeholder pages (ranking, friends, events), the info page and the settings page.</summary>
     public sealed class MenuPages
     {
         public readonly List<SubPage> Pages = new List<SubPage>();
@@ -78,7 +82,6 @@ namespace SoccerFight
         {
             register = reg;
             back = goBack;
-            BuildShop(parent);
             BuildRanking(parent);
             BuildFriends(parent);
             BuildEvents(parent);
@@ -122,29 +125,6 @@ namespace SoccerFight
             img.preserveAspect = true;
             bobbers.Add(img.rectTransform);
             return img;
-        }
-
-        // ------------------------------------------------------------------ shop
-
-        void BuildShop(RectTransform parent)
-        {
-            var page = NewPage(parent, MenuPage.Shop, "SHOP", "TRIKOTS · BÄLLE · KRISTALLE", Gold);
-            string[] names = { "STARTERPAKET", "GOLDENER BALL", "TRIKOT-SET", "KRISTALLE" };
-            string[] lines = { "Ein Schwung Münzen und ein Trikot für den Anfang.", "Ein Ball, der golden leuchtet und Funken zieht.", "Neue Farben für alle drei Spieler.", "Die seltene Währung aus den Ruinen." };
-            Sprite[] icons = { MenuArt.IconShop, MenuArt.IconCoin, MenuArt.IconStar, MenuArt.IconGem };
-            Color[] cols = { MenuArt.Accent, Gold, new Color(1f, 0.45f, 0.42f), new Color(0.45f, 0.9f, 1f) };
-            for (int i = 0; i < names.Length; i++)
-            {
-                var tile = UiKit.Node("Offer" + i, page.Content, new Vector2((i - 1.5f) * 345f, 30f), new Vector2(310f, 470f));
-                MenuUi.Plate(tile, "Card", Vector2.zero, new Vector2(310f, 470f), cols[i], 0.35f);
-                Emblem(tile, icons[i], new Vector2(0f, 95f), 150f, cols[i], i == 1 || i == 3);
-                MenuArt.Label("Name", tile, names[i], 26f, Color.white, new Vector2(0f, -38f), new Vector2(300f, 40f), TextAlignmentOptions.Center, 4f);
-                UiKit.Img("Line", tile, UiArt.LineFade, cols[i].WithAlpha(0.4f), new Vector2(0f, -66f), new Vector2(220f, 2f));
-                Body(tile, lines[i], new Vector2(0f, -108f), new Vector2(260f, 60f), 19f);
-                SoonButton(tile, MenuPage.Shop, "buy" + i, new Vector2(0f, -186f), new Vector2(240f, 66f), cols[i], "BALD", 26f, "DER SHOP ÖFFNET BALD");
-                if (i == 0) MenuUi.Tag(tile, "NEU", new Vector2(110f, 214f), MenuArt.Accent);
-            }
-            MenuUi.Banner(page.Content, "Soon", "DER SHOP ÖFFNET IN EINEM SPÄTEREN UPDATE", new Vector2(0f, -300f), 1100f, Muted, 22f);
         }
 
         // ------------------------------------------------------------------ ranking
@@ -239,12 +219,12 @@ namespace SoccerFight
             string[] tips =
             {
                 "Schieß dich mit dem Ball durch Wellen von Monstern — jede Stage endet mit einem Boss.",
-                "Nach jeder zweiten Runde wählst du ein Upgrade, nach jedem Boss eine neue Fähigkeit (höchstens vier).",
-                "Deine Upgrades siehst du am Ball: mehr Schaden macht ihn größer, Feuer, Frost und Blitze färben ihn.",
+                "Nach jeder zweiten Runde wählst du ein Upgrade. Deine vier Fähigkeiten rüstest du im Menü aus.",
+                "Besiegte Monster lassen Münzen fallen — damit kaufst du im Shop neue Spieler und Fähigkeiten.",
+                "Jede Klasse hat ein Talent: Stürmer schießen härter, Skiller tricksen schneller, Verteidiger halten mehr aus.",
                 "Rote Markierungen am Boden zeigen, wohin ein Boss springt oder stürmt.",
-                "Hochhalten heilt dich — aber nur, wenn du den Ball im richtigen Takt triffst.",
             };
-            Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconStar, MenuArt.IconCoin, MenuArt.IconDefender, MenuArt.IconSkiller };
+            Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconStar, MenuArt.IconCoin, MenuArt.IconSkiller, MenuArt.IconDefender };
             float ty = 206f;
             for (int i = 0; i < tips.Length; i++)
             {

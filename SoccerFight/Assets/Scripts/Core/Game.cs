@@ -40,6 +40,7 @@ namespace SoccerFight
         TwinSun twinSun;
         BossTells bossTells;
         UpgradeVisuals upgradeLook;
+        CoinDrops coins;
 
         float envTime;
 
@@ -78,6 +79,10 @@ namespace SoccerFight
             }
             TimeFx.ResetAll();
             Combat.Reset();
+            // the profile first: the selected character, its class and the loadout shape the run
+            if (CaptureMode) Profile.UseTransient();
+            else Profile.Load();
+            Characters.Load();
             Run = new RunState();
             Run.Reset();
 
@@ -97,6 +102,7 @@ namespace SoccerFight
             Post = new PostFx();
             Post.Init(transform);
             EnsureEventSystem();
+            Sfx.Build(transform, Cam.Cam);
             BuildTimer.Mark("camera+post");
 
             EnvironmentArt.End();
@@ -135,6 +141,8 @@ namespace SoccerFight
             decoys.Build(transform, Player.Rig);
             twinSun = new TwinSun();
             twinSun.Build(transform);
+            coins = new CoinDrops();
+            coins.Build(transform);
             BuildTimer.Mark("actors");
             Hud = new Hud();
             Hud.Build(transform, Cam.Cam, Player, Waves, CaptureMode);
@@ -177,6 +185,10 @@ namespace SoccerFight
             Time.timeScale = 1f;
         }
 
+        // coins that arrived since the last checkpoint are not lost when the game closes
+        void OnApplicationQuit() => Profile.SaveIfDirty();
+        void OnApplicationPause(bool paused) { if (paused) Profile.SaveIfDirty(); }
+
         /// <summary>A fresh run from stage 1.</summary>
         public void Restart()
         {
@@ -199,6 +211,9 @@ namespace SoccerFight
         void Begin(bool startRun)
         {
             TimeFx.ResetAll();
+            // whatever the last run dropped and didn't deliver yet is paid out now
+            coins.Flush();
+            Profile.Save();
             FxSystem.I.Clear();
             Rewards.Cancel();
             enemyShots.Clear();
@@ -296,6 +311,7 @@ namespace SoccerFight
             Mechanics.Update(dt, Player, Ball, Waves);
             lightning.Update(dt);
             Combat.Update(dt);
+            coins.Update(dt);
             Director.Update(dt);
 
             if (GameInput.Scripted) GameInput.ClearEdges();

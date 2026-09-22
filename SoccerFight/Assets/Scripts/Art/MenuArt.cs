@@ -22,7 +22,7 @@ namespace SoccerFight
         public static Sprite Vignette, Body, Edge, Frame, Gloss, CardBody, Round, RoundEdge, RoundFrame, Badge, Beam, Sparkle, Shine;
         // icons (white glyphs, tinted per use) and the two currencies in colour
         public static Sprite IconShop, IconTrophy, IconFriends, IconGear, IconInfo, IconEvents, IconCoin, IconGem, IconPower;
-        public static Sprite IconBack, IconSwap, IconCheck, IconLock, IconPlay, IconStriker, IconDefender, IconSkiller, IconPlus, IconStar;
+        public static Sprite IconBack, IconSwap, IconCheck, IconLock, IconPlay, IconStriker, IconDefender, IconSkiller, IconPlus, IconStar, IconSkills;
         // text
         public static TMP_FontAsset FontHeavy;
         public static Material TextHeavy, TextHeavySoft, TextPlate;
@@ -272,6 +272,22 @@ namespace SoccerFight
             ev.Erase(p => Mathf.Min(Sdf.Box(p, new Vector2(-22f, 30f), new Vector2(8f, 3f)), Sdf.Box(p, new Vector2(22f, 30f), new Vector2(8f, 3f))));
             Glyph(ev, p => Star5(p, new Vector2(0f, -14f), 21f, 9f));
             Ui(ev, "IconEvents", x => IconEvents = x);
+
+            // skills: the four loadout slots, the first one lit with a star
+            var sk = IconCanvas(D);
+            Glyph(sk, p =>
+            {
+                float d = 99f;
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2 c = new Vector2(i % 2 == 0 ? -25f : 25f, i < 2 ? 25f : -25f);
+                    float box = Sdf.Box(p, c, new Vector2(20f, 20f), 7f);
+                    d = Mathf.Min(d, i == 0 ? box : Mathf.Abs(box) - 3.2f);
+                }
+                return d;
+            });
+            sk.Erase(p => Star5(p, new Vector2(-25f, 24f), 13f, 5.5f));
+            Ui(sk, "IconSkills", x => IconSkills = x);
 
             // coin: lantern gold, struck with a ball
             var cn = IconCanvas(D);

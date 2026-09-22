@@ -27,8 +27,8 @@ namespace SoccerFight
         /// <summary>Unlocked abilities in the order they were gained (the skill bar grows leftwards in this order).</summary>
         public readonly List<Ability> UnlockOrder = new List<Ability>();
         /// <summary>
-        /// The four skill slots. Shot and Power are always there on the mouse buttons; everything a run
-        /// unlocks fills slot 1 to 4 in order and is played with that slot's key.
+        /// The four skill slots. Shot and Power are always there on the mouse buttons; the loadout
+        /// equipped in the menu fills slot 1 to 4 in order and each is played with that slot's key.
         /// </summary>
         public readonly List<Ability> Skills = new List<Ability>();
         public const int MaxSkills = 4;
@@ -57,15 +57,25 @@ namespace SoccerFight
             set { PlayerPrefs.SetInt("sf_best_stage", value); PlayerPrefs.Save(); }
         }
 
+        static string BestKey(CharacterDef c) => "sf_best_" + c.Id;
+
         /// <summary>Best stage reached with one character (shown on the character cards).</summary>
-        public static int BestStageOf(int character) => PlayerPrefs.GetInt("sf_best_stage_" + character, 0);
+        public static int BestStageOf(CharacterDef c)
+        {
+            int best = PlayerPrefs.GetInt(BestKey(c), 0);
+            // records from before the character ids: the three starters were stored by position
+            int index = Characters.IndexOf(c);
+            if (c.Starter && index >= 0) best = Mathf.Max(best, PlayerPrefs.GetInt("sf_best_stage_" + index, 0));
+            return best;
+        }
 
         /// <summary>A run got this far: keeps the overall and the per-character record.</summary>
         public static void RecordStage(int reached)
         {
+            if (Profile.IsTransient) return;   // captures play on a throwaway profile
             if (reached > BestStage) BestStage = reached;
-            string key = "sf_best_stage_" + Characters.Index;
-            if (reached > PlayerPrefs.GetInt(key, 0)) { PlayerPrefs.SetInt(key, reached); PlayerPrefs.Save(); }
+            var c = Characters.Current;
+            if (reached > BestStageOf(c)) { PlayerPrefs.SetInt(BestKey(c), reached); PlayerPrefs.Save(); }
         }
 
         public void Reset()
@@ -78,17 +88,29 @@ namespace SoccerFight
             Skills.Clear();
             Unlock(Ability.Shot);
             Unlock(Ability.Power);
+            // the loadout from the menu is there from the first second
+            var cls = Characters.Current.Class;
+            foreach (var a in Profile.Loadout())
+            {
+                var def = SkillCatalog.Get(a);
+                if (def != null && def.UsableBy(cls)) Unlock(a);
+            }
         }
 
         public bool Has(Ability a) => a == Ability.None || Unlocked.Contains(a);
         public int Stacks(string id) => Owned.TryGetValue(id, out int n) ? n : 0;
 
-        /// <summary>What a boss could still hand out — nothing once all four slots are taken.</summary>
+        /// <summary>
+        /// What a boss can add to a free slot: skills the player owns but didn't equip (and the
+        /// class can use). Nothing once all four slots are taken — the boss then pays a second card.
+        /// </summary>
         public List<Ability> LockedAbilities()
         {
             var list = new List<Ability>();
             if (!CanUnlockMore) return list;
-            foreach (var a in Abilities.Unlockable) if (!Unlocked.Contains(a)) list.Add(a);
+            var cls = Characters.Current.Class;
+            foreach (var s in SkillCatalog.All)
+                if (!Unlocked.Contains(s.Ability) && s.UsableBy(cls) && Profile.OwnsSkill(s.Ability)) list.Add(s.Ability);
             return list;
         }
 
@@ -112,10 +134,14 @@ namespace SoccerFight
             Rebuild();
         }
 
-        /// <summary>Base stats, then every owned upgrade in database order (so results never depend on pick order).</summary>
+        /// <summary>
+        /// Base stats, then the class trait and character perk, then every owned upgrade in database
+        /// order (so results never depend on pick order).
+        /// </summary>
         public void Rebuild()
         {
             Stats.Reset();
+            MetaPassives.Apply(Stats, Characters.Current);
             foreach (var u in UpgradeDb.All)
             {
                 int n = Stacks(u.Id);

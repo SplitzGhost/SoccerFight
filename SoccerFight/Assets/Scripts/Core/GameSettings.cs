@@ -11,6 +11,7 @@ namespace SoccerFight
         public static bool ChromaticAberration = true;
         public static float ScreenShake = 1f;
         public static float Bloom = 1f;
+        public static float Volume = 0.8f;
 
         static bool loaded;
 
@@ -34,6 +35,7 @@ namespace SoccerFight
             ChromaticAberration = PlayerPrefs.GetInt("sf_chroma", 1) == 1;
             ScreenShake = PlayerPrefs.GetFloat("sf_shake", 1f);
             Bloom = PlayerPrefs.GetFloat("sf_bloom", 1f);
+            Volume = PlayerPrefs.GetFloat("sf_volume", 0.8f);
         }
 
         public static void Save()
@@ -44,6 +46,7 @@ namespace SoccerFight
             PlayerPrefs.SetInt("sf_chroma", ChromaticAberration ? 1 : 0);
             PlayerPrefs.SetFloat("sf_shake", ScreenShake);
             PlayerPrefs.SetFloat("sf_bloom", Bloom);
+            PlayerPrefs.SetFloat("sf_volume", Volume);
             PlayerPrefs.Save();
         }
 

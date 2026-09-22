@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Where a hit came from. Primary sources scale with the build; derived ones (chains, explosions, burn) carry already-scaled damage.</summary>
-    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
+    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
 
     /// <summary>
     /// Every player hit on a monster goes through here: damage multipliers, crits, then the build's
@@ -61,7 +61,19 @@ namespace SoccerFight
             if (m == null || !m.Alive) return false;
             var s = S;
             float d = baseDmg;
-            if (Primary(src)) d *= s.DamageMul * SourceMul(src, s) * (1f + 0.06f * frenzyStacks);
+            bool boosted = false;
+            if (Primary(src))
+            {
+                d *= s.DamageMul * SourceMul(src, s) * (1f + 0.06f * frenzyStacks);
+                // class traits: the striker's shots, the skiller's tricks, the defender's header
+                var cat = SkillCatalog.CategoryOf(src);
+                if (cat != null)
+                {
+                    float cm = s.CategoryMul(cat.Value);
+                    d *= cm;
+                    boosted = cm > 1.01f && cat.Value == SkillCategory.Shot && s.ShotImpactFx;
+                }
+            }
             d *= m.DamageTakenMul;
             if (m.Slowed && s.FrostVuln > 0f && src != Src.Burn) d *= 1f + s.FrostVuln;
 
@@ -79,7 +91,8 @@ namespace SoccerFight
             bool direct = Direct(src);
             bool shock = direct && s.ThermalShock && m.Burning && m.Slowed;
             Vector2 at = m.Center;
-            bool killed = m.Hit(d, dir, knock, big || crit, crit);
+            bool killed = m.Hit(d, dir, knock, big || crit, crit, boosted);
+            if (boosted) PowerStar(at, dir, m.Radius, crit || big);
             // heavier kicks (knockback upgrades) land with a visible punch ring
             if (direct && s.KnockbackMul > 1f)
                 FxSystem.I.Ring(FxLayer.Front, at, 0.1f, 0.45f + 0.55f * (s.KnockbackMul - 1f), 0.1f, 0.01f, 0.18f,
@@ -105,6 +118,30 @@ namespace SoccerFight
                 }
             }
             return killed;
+        }
+
+        /// <summary>
+        /// The striker's shot lands with extra weight: a hot four-point star at the impact, a tight
+        /// ring and a spray of sparks carried on in the direction of the shot.
+        /// </summary>
+        static void PowerStar(Vector2 at, Vector2 dir, float radius, bool heavy)
+        {
+            var fx = FxSystem.I;
+            // saturated reds and ambers, never white: the monster's own hit flash is already white
+            Color hot = Classes.Striker.Accent;
+            Color core = Palette.Gold;
+            float k = heavy ? 1.3f : 1f;
+            Vector2 n = dir.sqrMagnitude > 0.001f ? dir.normalized : Vector2.right;
+            Vector2 p = at - n * Mathf.Min(radius * 0.6f, 0.5f);
+            float ang = MathUtil.Angle(n);
+            // an eight-point star: a big four-point one along the shot, a smaller one turned 45°
+            fx.Spawn(FxLayer.Front, true, Art.CellSparkle, p, Vector2.zero, 0.24f, 2.1f * k, 0.5f * k, core, hot.WithAlpha(0f), 2.4f,
+                0f, 0f, ang, 0f, false);
+            fx.Spawn(FxLayer.Front, true, Art.CellSparkle, p, Vector2.zero, 0.2f, 1.3f * k, 0.3f * k, hot, hot.WithAlpha(0f), 2.2f,
+                0f, 0f, ang + 45f, 0f, false);
+            fx.Flash(p, 1.5f * k, hot, 0.12f, 2.2f);
+            fx.Ring(FxLayer.Front, p, 0.15f, 1.15f * k, 0.18f, 0.01f, 0.24f, core, hot.WithAlpha(0f), 2.2f);
+            fx.Sparks(p, n, 40f, heavy ? 9 : 6, 8f, 18f, hot, 2.4f, 0.06f, 0.22f);
         }
 
         static void OnCrit(Vector2 at)

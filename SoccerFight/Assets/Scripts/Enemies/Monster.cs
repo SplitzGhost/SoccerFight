@@ -331,7 +331,7 @@ namespace SoccerFight
         // ------------------------------------------------------------------ damage and status
 
         /// <summary>Applies damage (already scaled by the caller). Returns true if this killed the monster.</summary>
-        public bool Hit(float dmg, Vector2 dir, float knock, bool big, bool crit = false)
+        public bool Hit(float dmg, Vector2 dir, float knock, bool big, bool crit = false, bool boosted = false)
         {
             if (!Alive) return false;
             Hp -= dmg;
@@ -350,7 +350,7 @@ namespace SoccerFight
             fx.Flash(c, (big ? 2.2f : 1.4f) * Mathf.Sqrt(sizeMul), Color.white, 0.12f, 2.6f);
             Color spark = look.Glow;
             fx.Sparks(c, dir, 110f, big ? 14 : 8, 5f, 12f, spark, 2.6f, 0.05f, 0.25f, 2f);
-            Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big, crit);
+            Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big, crit, boosted);
             if (Hp <= 0f) { Die(dir); return true; }
             if (Rank != Rank.Boss) TimeFx.HitStop(big ? 0.05f : 0.03f, 0.06f);
             return false;
