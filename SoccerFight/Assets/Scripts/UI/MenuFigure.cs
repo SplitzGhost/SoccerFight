@@ -29,7 +29,7 @@ namespace SoccerFight
 
         const float A = PlayerDims.AnkleHeight;
 
-        public void Build(Transform parent, Vector2 feet, float unitScale, PlayerLook body, CharacterDef character)
+        public void Build(Transform parent, Vector2 feet, float unitScale, PlayerLook body, CharacterDef character, bool hiResBall = false)
         {
             scale = unitScale;
             Root = UiKit.Node("Figure", parent, feet, Vector2.zero);
@@ -45,9 +45,11 @@ namespace SoccerFight
             float bs = Art.BallRadius * 2.24f * scale;
             ball = UiKit.Node("Ball", Root, Vector2.zero, Vector2.one * bs);
             ballSpin = UiKit.Node("Spin", ball, Vector2.zero, Vector2.one * bs);
-            UiKit.Img("Pattern", ballSpin, Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
-            UiKit.Img("Shade", ball, Art.BallShade, Color.white, Vector2.zero, Vector2.one * bs);
-            UiKit.Img("Hi", ball, Art.BallHighlight, Color.white.WithAlpha(0.85f), Vector2.zero, Vector2.one * bs);
+            // the big title figure takes the hi-res ball of the kick-off transition
+            bool hi = hiResBall && MenuScenery.HeroBall != null;
+            UiKit.Img("Pattern", ballSpin, hi ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
+            UiKit.Img("Shade", ball, hi ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * bs);
+            UiKit.Img("Hi", ball, hi ? MenuScenery.HeroHighlight : Art.BallHighlight, Color.white.WithAlpha(0.85f), Vector2.zero, Vector2.one * bs);
             SetLook(body, character);
             phase = Random.value;
         }

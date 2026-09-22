@@ -6,44 +6,48 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Frame every title-screen sub page shares, laid out like the in-game upgrade screen: the scene
-    /// dimmed to night blue, a small accent overline, a big tracked title with a fading line under
-    /// it, and a glass back button in the top-left corner.
+    /// Frame every title-screen sub page shares. Pages reached from the top bar are named by their
+    /// tab, so they only carry a small accent overline under the bar; the scene behind is dimmed to
+    /// night blue. The first-launch pages have no bar: they keep a big tracked title instead.
     /// </summary>
     public sealed class SubPage
     {
+        /// <summary>Height of the title screen's top bar and bottom strip (canvas px) — pages stay between them.</summary>
+        public const float TopBar = 84f, BottomBar = 46f;
+
         public readonly int Id;
         public readonly RectTransform Root, Content;
         public readonly CanvasGroup Group;
-        public readonly MenuTarget Back;
+        public readonly bool InBar;
         public float T, Vel;
         readonly RectTransform title;
 
-        /// <param name="back">What the back button does (null: the page has no back button — the first-launch screens).</param>
+        /// <param name="back">null for the first-launch screens: they stand alone, without the top bar.</param>
         public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back)
         {
             Id = id;
+            InBar = back != null;
             Root = UiKit.Node("Page " + heading, parent, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(Root);
             Group = Root.gameObject.AddComponent<CanvasGroup>();
 
-            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, 0.72f), Vector2.zero, Vector2.zero).rectTransform);
+            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
             var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, 0.55f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(vignette.rectTransform);
 
             title = UiKit.Node("Heading", Root, Vector2.zero, new Vector2(1200f, 150f));
-            MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -92f));
-            MenuArt.Label("Overline", title, overline, 22f, accent, new Vector2(0f, 46f), new Vector2(1000f, 32f), TextAlignmentOptions.Center, 9f, MenuArt.TextHeavySoft);
-            MenuArt.Label("Title", title, heading, 60f, Color.white, new Vector2(0f, -4f), new Vector2(1200f, 80f), TextAlignmentOptions.Center, 18f);
-            UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.5f), new Vector2(0f, -54f), new Vector2(760f, 2f));
-
-            if (back != null)
+            if (InBar)
             {
-                var holder = UiKit.Node("BackHolder", Root, Vector2.zero, new Vector2(110f, 96f));
-                MenuUi.Pin(holder, new Vector2(0f, 1f), new Vector2(96f, -78f));
-                var button = new ChunkButton(holder, "Back", Vector2.zero, new Vector2(96f, 84f), MenuArt.Accent, null, 0f, MenuArt.IconBack, 46f);
-                Back = new MenuTarget { Id = "back" + id, Root = button.Root, Size = button.Size, Page = id, Action = back, Button = button, Accent = MenuArt.Accent };
-                register(Back);
+                MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -TopBar - 34f));
+                MenuArt.Label("Overline", title, overline, 19f, accent, new Vector2(0f, 0f), new Vector2(1100f, 30f), TextAlignmentOptions.Center, 8f, MenuArt.TextHeavySoft);
+                UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.4f), new Vector2(0f, -22f), new Vector2(620f, 2f));
+            }
+            else
+            {
+                MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -92f));
+                MenuArt.Label("Overline", title, overline, 22f, accent, new Vector2(0f, 46f), new Vector2(1000f, 32f), TextAlignmentOptions.Center, 9f, MenuArt.TextHeavySoft);
+                MenuArt.Label("Title", title, heading, 60f, Color.white, new Vector2(0f, -4f), new Vector2(1200f, 80f), TextAlignmentOptions.Center, 18f);
+                UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.5f), new Vector2(0f, -54f), new Vector2(760f, 2f));
             }
 
             Content = UiKit.Node("Content", Root, new Vector2(0f, -40f), new Vector2(1600f, 900f));
@@ -52,10 +56,22 @@ namespace SoccerFight
         public void Update(float udt)
         {
             Rect r = Root.rect;
+            if (InBar)
+            {
+                // the page content (its top edge sits ~400 above its centre, the bottom ~470 below)
+                // fits between the overline and the bottom strip
+                float top = r.height * 0.5f - TopBar - 62f;
+                float room = r.height - TopBar - 62f - BottomBar - 12f;
+                float s = Mathf.Min(1f, Mathf.Min(r.width / 1700f, room / 870f));
+                Content.localScale = new Vector3(s, s, 1f);
+                Content.anchoredPosition = new Vector2(0f, top - 400f * s);
+                title.localScale = Vector3.one * Mathf.Min(1f, r.width / 1300f);
+                return;
+            }
             // the whole page fits the window: content shrinks on small canvases
-            float s = Mathf.Min(1f, Mathf.Min(r.width / 1700f, (r.height - 60f) / 1000f));
-            Content.localScale = new Vector3(s, s, 1f);
-            Content.anchoredPosition = new Vector2(0f, -40f * s);
+            float k = Mathf.Min(1f, Mathf.Min(r.width / 1700f, (r.height - 60f) / 1000f));
+            Content.localScale = new Vector3(k, k, 1f);
+            Content.anchoredPosition = new Vector2(0f, -40f * k);
             title.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, T) * Mathf.Min(1f, r.width / 1300f);
         }
     }

@@ -5,9 +5,10 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// A title-screen button in the language of the in-game cards: a dark glass body lit from the
-    /// top, a hairline frame and an under-glow in the button's accent colour, a white icon and a
-    /// tracked label; a thin dark lip underneath that the body sinks into when the ball hits it.
+    /// A title-screen button: a shard of dark night glass (top-left and bottom-right corners cut),
+    /// lit from the top, with a thin bar of the button's accent colour along its bottom edge that
+    /// swells into a wash of light when the pointer is on it, a hairline frame, a white icon and a
+    /// tracked label; a darker base underneath that the body sinks into when the ball hits it.
     /// Filled buttons (SPIELEN) are solid accent with dark print. Drawn by the menu every frame
     /// through Style(hover, hit, punch, fade) — buttons are hit by the kicked ball, not by uGUI,
     /// so they carry no Button component.
@@ -15,7 +16,7 @@ namespace SoccerFight
     public sealed class ChunkButton
     {
         public RectTransform Root, Face;
-        public Image Glow, Shadow, Lip, Body, Wash, Gloss, Rim, Flash, Icon, Ring;
+        public Image Glow, Shadow, Lip, Body, Wash, Gloss, Rim, Flash, Icon, Ring, Bar;
         public TextMeshProUGUI Label, Sub;
         public Color Color;
         public Vector2 Size;
@@ -26,7 +27,7 @@ namespace SoccerFight
         float shineT;
         readonly float lip;
 
-        public const float LipHeight = 6f;
+        public const float LipHeight = 5f;
 
         public ChunkButton(Transform parent, string name, Vector2 pos, Vector2 size, Color color, string label, float fontSize,
             Sprite icon = null, float iconSize = 0f, bool shiny = false, bool filled = false)
@@ -42,9 +43,12 @@ namespace SoccerFight
             Face = UiKit.Node("Face", Root, Vector2.zero, size);
             Body = UiKit.Img("Body", Face, MenuArt.Body, BodyColor(color), Vector2.zero, size, Image.Type.Sliced);
             // the accent light welling up from the bottom of the glass
-            Wash = UiKit.Img("Wash", Face, MenuArt.Gloss, color.WithAlpha(0f), new Vector2(0f, -size.y * 0.25f), new Vector2(size.x - 4f, size.y * 0.5f), Image.Type.Sliced);
+            Wash = UiKit.Img("Wash", Face, MenuArt.Gloss, color.WithAlpha(0f), new Vector2(0f, -size.y * 0.25f), new Vector2(size.x - 2f, size.y * 0.5f), Image.Type.Sliced);
             Wash.rectTransform.localRotation = Quaternion.Euler(0f, 0f, 180f);
-            Gloss = UiKit.Img("Gloss", Face, MenuArt.Gloss, Color.white.WithAlpha(0f), new Vector2(0f, size.y * 0.25f), new Vector2(size.x - 4f, size.y * 0.5f), Image.Type.Sliced);
+            Gloss = UiKit.Img("Gloss", Face, MenuArt.Gloss, Color.white.WithAlpha(0f), new Vector2(0f, size.y * 0.25f), new Vector2(size.x - 2f, size.y * 0.5f), Image.Type.Sliced);
+            // the accent bar runs along the bottom edge up to the cut corner
+            float barW = Mathf.Max(8f, size.x - MenuArt.Cut - 14f);
+            Bar = UiKit.Img("Bar", Face, null, color, new Vector2(-size.x * 0.5f + 7f + barW * 0.5f, -size.y * 0.5f + 2.5f), new Vector2(barW, 3f));
             if (shiny)
             {
                 // a glint sweeps over the body every few seconds (clipped to the body's shape)
@@ -120,12 +124,16 @@ namespace SoccerFight
             Color c = Disabled ? Color.Lerp(Color, new Color(0.45f, 0.52f, 0.58f), 0.6f) : Color;
             Color bright = Color.Lerp(c, Color.white, 0.45f);
 
-            Body.color = (Filled ? Color.Lerp(c, Color.white, h * 0.12f) : Color.Lerp(BodyColor(c), new Color(0.1f, 0.17f, 0.24f, 0.96f), h * 0.5f)).WithAlpha((Filled ? 1f : 0.94f) * fade);
+            // hovered, the glass takes a breath of the accent and the bar at the bottom lights up
+            Color hoverGlass = new Color(Mathf.Lerp(0.07f, c.r, 0.16f), Mathf.Lerp(0.12f, c.g, 0.16f), Mathf.Lerp(0.18f, c.b, 0.16f), 0.97f);
+            Body.color = (Filled ? Color.Lerp(c, Color.white, h * 0.12f) : Color.Lerp(BodyColor(c), hoverGlass, h)).WithAlpha((Filled ? 1f : 0.93f) * fade);
             Lip.color = LipColor(c).WithAlpha(fade);
             Shadow.color = new Color(0f, 0.01f, 0.03f, 0.5f * fade);
-            Wash.color = (Filled ? Color.white : c).WithAlpha(fade * (Filled ? 0f : 0.012f + 0.06f * h));
-            Gloss.color = Color.white.WithAlpha(fade * (Filled ? 0.3f : 0.05f + 0.04f * h));
-            Rim.color = (Filled ? Color.Lerp(c, Color.white, 0.6f) : bright).WithAlpha(fade * (Filled ? 0.7f : 0.35f + 0.55f * h));
+            Wash.color = (Filled ? Color.white : c).WithAlpha(fade * (Filled ? 0f : 0.01f + 0.09f * h));
+            Gloss.color = Color.white.WithAlpha(fade * (Filled ? 0.32f : 0.045f + 0.035f * h));
+            Bar.color = (Filled ? new Color(c.r * 0.5f, c.g * 0.38f, c.b * 0.22f, 1f) : Color.Lerp(c, Color.white, 0.2f * h)).WithAlpha(fade * (Filled ? 0.55f : Disabled ? 0.3f : 0.55f + 0.45f * h));
+            Bar.rectTransform.sizeDelta = new Vector2(Bar.rectTransform.sizeDelta.x, Filled ? 3f : 2f + 2f * h + 2f * press);
+            Rim.color = (Filled ? Color.Lerp(c, Color.white, 0.6f) : Color.Lerp(Color.white, bright, 0.35f + 0.65f * h)).WithAlpha(fade * (Filled ? 0.7f : 0.12f + 0.6f * h));
             Glow.color = c.WithAlpha(fade * (0.1f * h + 0.45f * hit + (Filled ? 0.08f : 0f)));
             Flash.color = Color.white.WithAlpha(fade * hit * 0.5f);
             if (Icon != null) Icon.color = (Filled ? MenuArt.Ink : Color.Lerp(bright, Color.white, 0.25f + 0.5f * h)).WithAlpha(fade * (Disabled ? 0.7f : 1f));
@@ -146,6 +154,59 @@ namespace SoccerFight
                 shine.anchoredPosition = new Vector2(Mathf.Lerp(-Size.x * 0.7f, Size.x * 0.7f, MathUtil.EaseInOutSine(u)), 0f);
                 shineImg.color = Color.white.WithAlpha(fade * 0.35f * (u < 1f ? 1f : 0f));
             }
+        }
+    }
+
+    /// <summary>
+    /// One tab of the title screen's top bar: tracked text on the bar, a sliver of accent light
+    /// under it when aimed at, and a moonlit plate with dark print when its page is open.
+    /// </summary>
+    public sealed class NavTab
+    {
+        public readonly RectTransform Root;
+        public readonly Vector2 Size;
+        public readonly int Page;
+        readonly Image plate, glow, under, flash;
+        readonly TextMeshProUGUI label;
+        readonly RectTransform face;
+        float active, activeVel;
+
+        public static readonly Color Moon = new Color(0.9f, 0.97f, 1f, 1f);
+
+        public NavTab(Transform parent, string text, int page, float fontSize, float height)
+        {
+            Page = page;
+            var probe = MenuArt.Label("Label", null, text, fontSize, Color.white, Vector2.zero, new Vector2(600f, height), TextAlignmentOptions.Center, fontSize * 0.16f);
+            float w = probe.GetPreferredValues(text).x + fontSize * 1.7f;
+            Size = new Vector2(w, height);
+            Root = UiKit.Node("Tab " + text, parent, Vector2.zero, Size);
+            glow = UiKit.Img("Glow", Root, UiArt.Glow, MenuArt.Accent.WithAlpha(0f), new Vector2(0f, -height * 0.3f), new Vector2(w + 80f, height * 1.6f));
+            face = UiKit.Node("Face", Root, Vector2.zero, Size);
+            plate = UiKit.Img("Plate", face, MenuArt.Body, Moon.WithAlpha(0f), Vector2.zero, new Vector2(w, height - 16f), Image.Type.Sliced);
+            under = UiKit.Img("Under", face, MenuArt.Sliver, MenuArt.Accent.WithAlpha(0f), new Vector2(0f, -height * 0.5f + 7f), new Vector2(w - 12f, 6f));
+            probe.transform.SetParent(face, false);
+            label = probe;
+            label.rectTransform.sizeDelta = new Vector2(w, height);
+            label.rectTransform.anchoredPosition = new Vector2(0f, 1f);
+            flash = UiKit.Img("Flash", face, MenuArt.Body, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(w, height - 16f), Image.Type.Sliced);
+        }
+
+        public void Style(float hover, float hit, float punch, float fade, bool isActive, float udt)
+        {
+            MathUtil.Spring(ref active, ref activeVel, isActive ? 1f : 0f, 7f, 0.8f, udt);
+            float a = Mathf.Clamp01(active);
+            float h = hover * (1f - a);
+            float s = 1f + hover * 0.04f + punch * 0.07f;
+            Root.localScale = new Vector3(s, 1f + hover * 0.04f - punch * 0.06f, 1f);
+            face.anchoredPosition = new Vector2(0f, -hit * 3f);
+            plate.color = Color.Lerp(new Color(0.5f, 0.75f, 0.9f, 0.08f * h), Moon, a).WithAlpha(fade * Mathf.Max(a, 0.09f * h));
+            under.color = MenuArt.Accent.WithAlpha(fade * h * 0.9f);
+            under.rectTransform.localScale = new Vector3(0.4f + 0.6f * h, 1f, 1f);
+            glow.color = MenuArt.Accent.WithAlpha(fade * (0.1f * h + 0.35f * hit));
+            flash.color = Color.white.WithAlpha(fade * hit * 0.45f);
+            var mat = a > 0.5f ? MenuArt.TextPlate : MenuArt.TextHeavy;
+            if (mat != null && label.fontSharedMaterial != mat) label.fontSharedMaterial = mat;
+            label.color = Color.Lerp(Color.Lerp(new Color(0.74f, 0.84f, 0.9f), Color.white, h), MenuArt.Ink, a).WithAlpha(fade);
         }
     }
 
@@ -227,6 +288,8 @@ namespace SoccerFight
     {
         public const int Main = 0, Characters = 1, Settings = 2, Shop = 3, Ranking = 4, Friends = 5, Events = 6, Info = 7,
             Skills = 8, Starter = 9, StarterSkills = 10, Count = 11;
+        /// <summary>Targets in the top bar: shootable on every page the bar is shown on.</summary>
+        public const int Global = -1;
 
         /// <summary>The first-launch pages: no way back to the title screen until they are done.</summary>
         public static bool IsOnboarding(int page) => page == Starter || page == StarterSkills;

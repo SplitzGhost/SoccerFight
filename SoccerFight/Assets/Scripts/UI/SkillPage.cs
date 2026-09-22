@@ -42,7 +42,9 @@ namespace SoccerFight
             nav = menu;
             page = new SubPage(parent, MenuPage.Skills, "FÄHIGKEITEN", "4 PLÄTZE  ·  AUSRÜSTEN UND ABLEGEN", MetaUi.Gold, nav.Register, nav.Back);
             var content = page.Content;
+            // the coins sit in the top bar now; the chip stays as the page's own counter but hidden
             wallet = new WalletChip(page.Root, new Vector2(1f, 1f), new Vector2(-150f, -78f));
+            wallet.Root.gameObject.SetActive(false);
 
             // the loadout: four slots in a row, like the skill bar in the game
             var bar = UiKit.Node("Loadout", content, new Vector2(0f, 312f), new Vector2(1000f, 150f));

@@ -9,12 +9,14 @@ namespace SoccerFight
     /// the arenas. It lives on its own layer — while the menu covers the screen the camera draws only
     /// this layer (and the menu), otherwise never.
     ///
-    /// The scene: a big moon rising in a valley between moonlit ranges, the ruined stadium below it,
-    /// a stretch of pitch torn open by a chasm full of crystal light, the centre circle floating in
-    /// the gap as the player's pedestal (MainMenu keeps it under the player's feet), the last
-    /// floodlight leaning over it, floating rocks, a goal with a monster portal flickering in it,
-    /// eyes in the dark, trees and lanterns framing the corners, fireflies, mist and leaves.
-    /// Every layer leans with the pointer by its depth.
+    /// The scene (art in MenuScenery): a mountain valley after the catastrophe. The moon hangs over
+    /// the valley's low saddle; far back a massif with its summit split open, crystal light welling
+    /// out of the cleft, and a peak sheared flat; burnt ridges in front of it with embers still
+    /// smoking in a blast crater; a wrecked plain with a glowing rift, smouldering craters, tilted
+    /// slabs of bedrock and dead trees; and the cracked plateau the player stands on (MainMenu keeps
+    /// it under the boots). Alive with smoke columns,
+    /// embers, falling ash, crystal motes, drifting mist, sheet lightning far behind the peaks and
+    /// eyes in the dark. Every layer leans with the pointer by its depth.
     /// </summary>
     public sealed class MenuVista
     {
@@ -25,39 +27,42 @@ namespace SoccerFight
         const float ViewHalfH = 4.9f;
         /// <summary>Content reaches this far to each side before the view has to scale up.</summary>
         const float CoverHalfW = 10.4f;
-        static readonly Vector2 MoonPos = new Vector2(0f, -0.45f);
-        const float MoonRadius = 1.45f;
+        const float MoonRadius = 1.0f;
 
         sealed class Part { public Transform T; public Vector2 Home; public float Lean; }
-        struct Blink { public SpriteRenderer Sr; public Color Color; public float Base, Phase, Speed, Dead; }
-        sealed class Floater { public Transform T; public Vector2 Home; public float Phase, Amp, Speed, Tilt; }
-        struct Firefly { public SpriteRenderer Sr; public Vector2 Home; public float Phase, Fx, Fy, Ax, Ay, Alpha; }
-        sealed class Speck { public SpriteRenderer Sr; public Vector2 Pos; public float Age, Life, Speed, Size, Phase; }
+        struct Blink { public SpriteRenderer Sr; public Color Color; public float Base, Phase, Speed; }
+        sealed class Puff { public SpriteRenderer Sr; public float Age, Life, Size, Spin, Drift; public Vector2 Pos; }
+        sealed class Plume { public Transform Parent; public Vector2 Source; public float Scale, Rate, Timer, Light; public int Order; public readonly List<Puff> Puffs = new List<Puff>(); }
+        sealed class Mote { public SpriteRenderer Sr; public Vector2 Pos, Vel; public float Age, Life, Size, Phase; public int Kind; }
         struct Fog { public SpriteRenderer Sr; public float Speed, Offset; }
         sealed class Eyes { public Transform T; public Transform L, R; public SpriteRenderer GlowL, GlowR; public int Spot; public float Timer, Open, Target, Blink; }
 
         readonly List<Part> parts = new List<Part>();
         readonly List<Blink> blinks = new List<Blink>();
-        readonly List<Floater> floaters = new List<Floater>();
-        readonly List<Firefly> fireflies = new List<Firefly>();
-        readonly List<Speck> specks = new List<Speck>();
+        readonly List<Plume> plumes = new List<Plume>();
+        readonly List<Mote> embers = new List<Mote>();
+        readonly List<Mote> ash = new List<Mote>();
+        readonly List<Mote> motes = new List<Mote>();
         readonly List<Fog> fogs = new List<Fog>();
         readonly List<SpriteRenderer> rays = new List<SpriteRenderer>();
         readonly List<float> rayAlpha = new List<float>();
+        readonly List<Vector2> emberSources = new List<Vector2>();   // vista units, where embers rise from
+        readonly List<Vector2> moteSources = new List<Vector2>();
+        readonly List<(Transform t, float speed)> hazes = new List<(Transform, float)>();
         readonly Ambient ambient = new Ambient();
         readonly Eyes[] eyes = new Eyes[2];
 
+        /// <summary>Dark places on the plain where eyes can turn up (vista units).</summary>
         static readonly Vector2[] EyeSpots =
         {
-            new Vector2(-4.55f, -2.05f), new Vector2(-8.05f, -4.35f), new Vector2(8.25f, -4.15f), new Vector2(3.95f, -2.1f),
+            new Vector2(-6.1f, -2.62f), new Vector2(2.45f, -2.12f), new Vector2(-2.35f, -1.88f), new Vector2(-7.7f, -2.95f),
         };
 
-        Transform root, pedestal, portal, mastHead;
-        SpriteRenderer portalGlow, portalSwirl, spot, flicker;
-        readonly List<SpriteRenderer> cones = new List<SpriteRenderer>();
+        Transform root, ground, peaksT;
+        SpriteRenderer flashSky, flashPeaks;
         System.Random rng;
         Vector2 lean, drift;
-        float time, speckTimer, flickerT;
+        float time, groundY = -3.56f, flashT = 5f, flashA;
         bool built;
 
         public bool Ready => built;
@@ -74,14 +79,6 @@ namespace SoccerFight
             t.SetParent(root, false);
             t.localPosition = home;
             parts.Add(new Part { T = t, Home = home, Lean = lean });
-            return t;
-        }
-
-        static Transform Child(string name, Transform parent, Vector2 pos)
-        {
-            var t = new GameObject(name).transform;
-            t.SetParent(parent, false);
-            t.localPosition = pos;
             return t;
         }
 
@@ -105,6 +102,23 @@ namespace SoccerFight
             fogs.Add(new Fog { Sr = sr, Speed = speed, Offset = R() * 8f });
         }
 
+        /// <summary>A column of smoke rising from a point of a layer (layer-local), puffs cycling through it.</summary>
+        void AddPlume(Transform parent, Vector2 source, float scale, float light, int order, int count, float rate)
+        {
+            var p = new Plume { Parent = parent, Source = source, Scale = scale, Rate = rate, Light = light, Order = order, Timer = 0f };
+            for (int i = 0; i < count; i++)
+            {
+                var sr = Art.MakeSprite("Smoke", parent, MenuScenery.Smoke, order, Art.SpriteMat, Color.clear);
+                // spread over the column's life so it is already standing when the menu opens
+                var puff = new Puff { Sr = sr, Life = Range(5f, 7.5f), Spin = Range(-12f, 12f), Drift = Range(0.8f, 1.2f) };
+                puff.Age = puff.Life * i / count;
+                puff.Pos = source;
+                puff.Size = scale * Range(0.45f, 0.6f);
+                p.Puffs.Add(puff);
+            }
+            plumes.Add(p);
+        }
+
         // ------------------------------------------------------------------ build
 
         public void Build(Transform parent)
@@ -112,15 +126,13 @@ namespace SoccerFight
             root = new GameObject("Menu Vista").transform;
             root.SetParent(parent, false);
             rng = new System.Random(4242);
-            if (MenuScenery.Moon == null || EnvironmentArt.Sky == null) return;
+            if (MenuScenery.Moon == null || MenuScenery.Peaks == null || EnvironmentArt.Sky == null) return;
 
             BuildSky();
-            BuildValley();
-            BuildIslands();
-            BuildMast();
+            BuildPeaks();
+            BuildRidge();
+            BuildWaste();
             BuildGround();
-            BuildPedestal();
-            BuildFrame();
             BuildLife();
 
             SetLayer(root, Layer);
@@ -141,15 +153,33 @@ namespace SoccerFight
 
             var stars = Group("Stars", new Vector2(0f, -1.4f), 0.02f);
             Art.MakeSprite("Stars", stars, EnvironmentArt.Stars, -995, Art.SpriteAddMat, new Color(1f, 1f, 1f, 0.85f)).transform.localScale = new Vector3(1.15f, 1f, 1f);
-            var twinkles = Child("Twinkles", stars, new Vector2(0f, -1.2f));
+            var twinkles = new GameObject("Twinkles").transform;
+            twinkles.SetParent(stars, false);
+            twinkles.localPosition = new Vector3(0f, -1.2f, 0f);
             var clouds = Group("Clouds", new Vector2(0f, -3.9f), 0.04f);
             var bats = Group("Bats", Vector2.zero, 0.05f);
             ambient.BuildSky(twinkles, clouds, bats);
 
-            // the moon rises in the valley, right behind the player
-            var moon = Group("Moon", MoonPos, 0.03f);
-            Art.MakeSprite("Halo Wide", moon, Art.SoftGlow, -986, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.16f)).transform.localScale = Vector3.one * 22f;
-            Art.MakeSprite("Halo", moon, Art.SoftGlow, -985, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.34f)).transform.localScale = Vector3.one * 9f;
+            // the smoke of the catastrophe hangs over the valley in long dark banks, drifting slowly
+            var haze = Group("Haze", Vector2.zero, 0.05f);
+            for (int i = 0; i < 7; i++)
+            {
+                var sr = Art.MakeSprite("Haze", haze, MenuScenery.Smoke, -981, Art.SpriteMat, new Color(0.1f, 0.15f, 0.19f, 0.26f));
+                float s = Range(3.5f, 6f);
+                sr.transform.localScale = new Vector3(s * 1.8f, s * 0.55f, 1f);
+                sr.transform.localPosition = new Vector3(Range(-12f, 12f), Range(1.2f, 3.6f), 0f);
+                hazes.Add((sr.transform, Range(0.04f, 0.1f)));
+            }
+
+            // sheet lightning far behind the mountains: the sky lights up for a moment
+            var storm = Group("Storm", new Vector2(-5.5f, 1.2f), 0.04f);
+            flashSky = Art.MakeSprite("Sky Flash", storm, Art.SoftGlow, -990, Art.SpriteAddMat, new Color(0.6f, 0.8f, 1f, 0f));
+            flashSky.transform.localScale = new Vector3(16f, 7f, 1f);
+
+            // the moon over the valley's saddle, up to the right of the player
+            var moon = Group("Moon", MenuScenery.MoonPos, 0.03f);
+            Art.MakeSprite("Halo Wide", moon, Art.SoftGlow, -986, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.15f)).transform.localScale = Vector3.one * 17f;
+            Art.MakeSprite("Halo", moon, Art.SoftGlow, -985, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.32f)).transform.localScale = Vector3.one * 6.2f;
             float disc = MoonRadius / 0.55f;
             var body = Art.MakeSprite("Disc", moon, MenuScenery.Moon, -983, Art.SpriteEmissiveMat, Color.white);
             body.sharedMaterial = Art.MakeSpriteMaterial("SF Menu Moon", 1.3f, false);
@@ -165,387 +195,153 @@ namespace SoccerFight
                 r.transform.localRotation = Quaternion.Euler(0f, 0f, angles[i]);
                 r.transform.localScale = new Vector3(widths[i], 1.5f, 1f);
                 rays.Add(r);
-                rayAlpha.Add(0.05f + 0.025f * (i % 3));
+                rayAlpha.Add(0.045f + 0.02f * (i % 3));
             }
         }
 
-        void BuildValley()
+        void BuildPeaks()
         {
-            // far ranges opening into the valley
-            var valley = Group("Valley", new Vector2(0f, -1.25f), 0.08f);
-            Art.MakeSprite("Ranges", valley, MenuScenery.Valley, -950, Art.SpriteMat, WorldEnvironment.DepthTint(0.92f));
-            AddFog(valley, 0.05f, 1.4f, 0.16f, 0.07f, 0.95f, -945);
-
-            // the mountains with the waterfall, flattened into the distance
-            var far = Group("Far", new Vector2(4.3f, -2.05f), 0.12f);
-            far.localScale = new Vector3(1f, 0.55f, 1f);
-            Color farTint = WorldEnvironment.DepthTint(0.84f);
-            Art.MakeSprite("Mountains", far, EnvironmentArt.Far, -900, Art.SpriteMat, farTint);
-            ambient.BuildWaterfall(far, farTint.b);
-            AddFog(far, 0.35f, 2.4f, 0.13f, 0.12f, 0.84f, -880);
-
-            // the forest hill with the ruined stadium straight below the moon
-            var forest = Group("Forest", new Vector2(6.4f, -2.3f), 0.17f);
-            Color forestTint = WorldEnvironment.DepthTint(0.7f);
-            Art.MakeSprite("Forest", forest, DepthArt.FarForest, -850, Art.SpriteMat, forestTint);
-            foreach (var li in DepthArt.ForestLights)
-            {
-                bool flood = li.z > 0.8f;
-                Glow("Light", forest, new Vector2(li.x, li.y), flood ? 0.34f : li.z * 0.5f, flood ? new Color(0.78f, 0.93f, 1f) : Palette.Lantern, flood ? 0.34f : 0.5f, -849, Range(1.5f, 3.5f));
-                if (!flood) continue;
-                var beam = Art.MakeSprite("Flood Beam", forest, Art.LightRay, -848, Art.SpriteAddMat, new Color(0.7f, 0.9f, 1f, 0.07f));
-                beam.transform.localPosition = new Vector2(li.x, li.y);
-                beam.transform.localRotation = Quaternion.Euler(0f, 0f, -48f);
-                beam.transform.localScale = new Vector3(0.5f, 0.45f, 1f);
-            }
-            AddFog(forest, 0.05f, 1.6f, 0.13f, -0.1f, 0.7f, -830);
+            peaksT = Group("Peaks", new Vector2(0f, MenuScenery.PeaksY), 0.08f);
+            Color tint = WorldEnvironment.DepthTint(0.74f);
+            Art.MakeSprite("Massif", peaksT, MenuScenery.Peaks, -950, Art.SpriteMat, tint);
+            // the flash lights the crests from behind
+            flashPeaks = Art.MakeSprite("Flash", peaksT, Art.SoftGlow, -951, Art.SpriteAddMat, new Color(0.65f, 0.85f, 1f, 0f));
+            flashPeaks.transform.localPosition = new Vector3(-5.5f, 2.4f, 0f);
+            flashPeaks.transform.localScale = new Vector3(9f, 4f, 1f);
+            // crystal light out of the split summit
+            foreach (var g in MenuScenery.CleftGlows)
+                Glow("Cleft", peaksT, new Vector2(g.x, g.y), g.z, Palette.Crystal, g.z > 0.5f ? 0.22f : 0.2f, -948, Range(0.8f, 2f));
+            var beam = Art.MakeSprite("Cleft Beam", peaksT, Art.LightRay, -949, Art.SpriteAddMat, Palette.Crystal.WithAlpha(0.06f));
+            beam.transform.localPosition = new Vector3(6.1f, 1.75f, 0f);
+            beam.transform.localRotation = Quaternion.Euler(0f, 0f, 180f);
+            beam.transform.localScale = new Vector3(0.9f, 0.55f, 1f);
+            // thin smoke from far fires behind the front range
+            AddPlume(peaksT, new Vector2(-2.2f, 0.75f), 0.9f, 0.6f, -947, 6, 1f);
+            AddPlume(peaksT, new Vector2(8.3f, 1.35f), 0.8f, 0.6f, -947, 6, 1f);
+            AddFog(peaksT, 0.1f, 1.5f, 0.17f, 0.07f, 0.95f, -945);
         }
 
-        void BuildIslands()
+        void BuildRidge()
         {
-            Vector2[] homes = { new Vector2(-4.45f, 0.8f), new Vector2(5.55f, 3.1f), new Vector2(-5.85f, 2.55f) };
-            float[] scales = { 0.78f, 0.6f, 0.46f };
-            float[] depths = { 0.34f, 0.44f, 0.56f };
-            for (int i = 0; i < homes.Length && i < MenuScenery.Islands.Length; i++)
+            var ridge = Group("Ridge", new Vector2(0f, MenuScenery.RidgeY), 0.15f);
+            Color tint = WorldEnvironment.DepthTint(0.6f);
+            Art.MakeSprite("Ridge", ridge, MenuScenery.Ridge, -900, Art.SpriteMat, tint);
+            foreach (var f in MenuScenery.RidgeFires)
             {
-                var spec = MenuScenery.IslandSpecs[i];
-                var look = MenuScenery.IslandLooks[i];
-                var part = Group("Island" + i, homes[i], 0.2f + (1f - depths[i]) * 0.2f);
-                var t = Child("Float", part, Vector2.zero);
-                t.localScale = Vector3.one * scales[i];
-                Color tint = WorldEnvironment.DepthTint(depths[i]);
-                int o = -730 + i * -6;
-                DressRock(t, MenuScenery.Islands[i], MenuScenery.IslandCenters[i], look, spec.Kind, spec.HalfW, tint, o, i == 0);
-                floaters.Add(new Floater { T = t, Home = Vector2.zero, Phase = R() * 10f, Amp = 0.06f + 0.03f * i, Speed = 0.5f + 0.15f * i, Tilt = 1.5f });
+                Vector2 at = new Vector2(f.x, f.y);
+                Glow("Embers", ridge, at, 0.5f * f.z, Palette.BlastOrange, 0.3f, -899, 3f);
+                Glow("Ember Core", ridge, at + new Vector2(0f, -0.02f), 0.18f * f.z, Palette.Lantern, 0.5f, -898, 5f);
+                AddPlume(ridge, at + new Vector2(0f, 0.05f), 1.5f * f.z, 0.45f, -897, 9, 1f);
+                emberSources.Add(new Vector2(f.x, f.y + MenuScenery.RidgeY));
             }
+            AddFog(ridge, -0.55f, 1.2f, 0.15f, -0.1f, 0.6f, -880);
         }
 
-        /// <summary>Grass, hanging roots, crystal glow and floating pebbles around a rock body (like the arena's platforms).</summary>
-        void DressRock(Transform t, Sprite body, Vector2 center, PlatformLook look, Level.Style kind, float half, Color tint, int order, bool pebbles)
+        void BuildWaste()
         {
-            bool rock = kind == Level.Style.Rock;
-            var hang = new FoliageLayer();
-            foreach (var h in look.Hangs)
-                hang.Add(R() > 0.3f ? Pick(FoliageArt.Roots) : Pick(FoliageArt.Moss), h, Range(0.75f, 1.15f), Color.white, 1f, 0f, R() > 0.5f);
-            if (hang.Count > 0) hang.Build(t, "Hangings", order - 2, FoliageLayer.MakeMaterial("SF Menu Hangings", 0f, 0.8f, false, 1f, tint));
-
-            if (body != null) Art.MakeSprite("Body", t, body, order, Art.SpriteMat, tint).transform.localPosition = center;
-
-            var top = new FoliageLayer();
-            if (rock)
+            var waste = Group("Plain", new Vector2(0f, MenuScenery.WasteY), 0.26f);
+            Color tint = WorldEnvironment.DepthTint(0.3f);
+            Art.MakeSprite("Plain", waste, MenuScenery.Waste, -850, Art.SpriteMat, tint);
+            foreach (var g in MenuScenery.RiftGlows)
             {
-                for (float x = -half + 0.05f; x < half - 0.05f; x += Range(0.08f, 0.2f))
-                {
-                    float roll = R();
-                    var v = roll < 0.8f ? Pick(FoliageArt.Grass) : roll < 0.9f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Flowers);
-                    top.Add(v, new Vector2(x, Range(0.05f, 0.12f)), Range(0.42f, 0.8f), Color.white, 1f, 0f, R() > 0.5f);
-                }
-                for (int i = 0; i < 2; i++)
-                    top.Add(Pick(FoliageArt.Mushrooms), new Vector2(Range(-half + 0.3f, half - 0.3f), 0.1f), Range(0.5f, 0.72f), Color.white, 1f, 0f, R() > 0.5f);
+                Glow("Rift", waste, new Vector2(g.x, g.y), g.z * 0.55f, Palette.Crystal, 0.22f, -848, Range(1f, 2.5f));
+                moteSources.Add(new Vector2(g.x, g.y + MenuScenery.WasteY));
             }
-            else
+            foreach (var cr in MenuScenery.Craters)
             {
-                for (float x = -half + 0.2f; x < half - 0.2f; x += Range(0.5f, 1.1f))
-                    top.Add(Pick(FoliageArt.Crystals), new Vector2(x, Range(0.06f, 0.1f)), Range(0.3f, 0.48f), Color.white, 0f, 0f, R() > 0.5f, Range(-20f, 20f));
-                for (float x = -half + 0.1f; x < half - 0.1f; x += Range(0.35f, 0.8f))
-                    top.Add(Pick(FoliageArt.Grass), new Vector2(x, Range(0.05f, 0.1f)), Range(0.35f, 0.55f), new Color(0.85f, 1f, 1f, 1f), 1f, 0f, R() > 0.5f);
+                Vector2 at = new Vector2(cr.x, cr.y);
+                Glow("Crater Glow", waste, at, cr.z * 0.8f, Palette.BlastOrange, 0.16f, -847, 2.5f);
+                AddPlume(waste, at + new Vector2(0f, 0.04f), 1.1f + cr.z * 0.9f, 0.3f, -846, 9, 1f);
+                emberSources.Add(new Vector2(cr.x, cr.y + MenuScenery.WasteY));
             }
-            if (top.Count > 0)
-                top.Build(t, "Top", order + 2, FoliageLayer.MakeMaterial("SF Menu Rock Top", 0f, 1f, false, 1f, tint),
-                    FoliageLayer.MakeMaterial("SF Menu Rock Glow", 0f, 1f, true, 0.8f), order + 3);
+            AddFog(waste, 0.05f, 0.9f, 0.14f, 0.16f, 0.35f, -840);
+            AddFog(waste, -0.8f, 1.1f, 0.08f, -0.12f, 0.25f, -839);
 
-            foreach (var c in look.Crystals)
-                Glow("Crystal", t, c, kind == Level.Style.Crystal ? 0.3f : 0.42f, Palette.Crystal, kind == Level.Style.Crystal ? 0.24f : 0.34f, order + 4, Range(1.5f, 3.5f));
-            if (kind == Level.Style.Crystal)
-                Glow("Crystal Light", t, new Vector2(0f, -0.9f), half * 3f, Palette.Crystal, 0.08f, order - 3, 0.6f, true);
-            if (!rock) return;
-
-            var pool = Art.MakeSprite("Rock Light", t, Art.SoftGlow, order - 3, Art.SpriteAddMat, Palette.Crystal.WithAlpha(0.08f));
-            pool.transform.localPosition = new Vector3(0f, -1f, 0f);
-            pool.transform.localScale = new Vector3(half * 2.6f, 2.2f, 1f);
-            if (!pebbles) return;
-            for (int i = 0; i < 3; i++)
+            // something watches from the dark between the slabs
+            for (int i = 0; i < eyes.Length; i++)
             {
-                var peb = Art.MakeSprite("Pebble", t, DepthArt.Pebbles[i % DepthArt.Pebbles.Length], order - 1, Art.SpriteMat, tint);
-                float s = Range(0.6f, 1f);
-                peb.transform.localScale = new Vector3(s, s, 1f);
-                var home = new Vector2(Mathf.Lerp(-half + 0.4f, half - 0.4f, (i + 0.5f) / 3f) + Range(-0.2f, 0.2f), -Range(1.45f, 1.9f));
-                floaters.Add(new Floater { T = peb.transform, Home = home, Phase = R() * 10f, Amp = Range(0.05f, 0.1f), Speed = Range(0.7f, 1.2f), Tilt = Range(-14f, 14f) * 10f });
-            }
-        }
-
-        void BuildMast()
-        {
-            // the last floodlight stands on the right lip and leans out over the gap
-            var part = Group("Floodlight", new Vector2(4.8f, MenuScenery.GroundTop - 0.22f), 0.36f);
-            Color tint = WorldEnvironment.DepthTint(0.16f);
-            var mast = Art.MakeSprite("Mast", part, MenuScenery.Mast, -660, Art.SpriteMat, tint);
-            const float leanDeg = 16f;
-            mast.transform.localRotation = Quaternion.Euler(0f, 0f, leanDeg);
-
-            mastHead = Child("Head", mast.transform, MenuScenery.MastHead);
-            // lamps: the live ones glow, one of them stutters; the beam falls on the centre circle
-            foreach (var l in MenuScenery.MastLamps)
-            {
-                Vector2 at = new Vector2(l.x, l.y) - MenuScenery.MastHead;
-                if (l.z > 0.5f)
-                {
-                    var g = Glow("Lamp", mastHead, at, 0.34f, new Color(0.85f, 0.96f, 1f), 0.75f, -659, Range(2f, 4f));
-                    if (flicker == null) flicker = g;
-                }
-                else Glow("Dead Lamp", mastHead, at, 0.2f, new Color(0.7f, 0.85f, 1f), 0.05f, -659, 6f);
-            }
-            Glow("Head Halo", mastHead, Vector2.zero, 2.2f, new Color(0.7f, 0.9f, 1f), 0.16f, -661, 1.2f, true);
-
-            // aim the cones from the head (world) at the pedestal
-            Vector2 headWorld = (Vector2)part.localPosition + MathUtil.Rotate(MenuScenery.MastHead, leanDeg);
-            Vector2 target = new Vector2(0f, MenuScenery.GroundTop + 0.05f);
-            Vector2 dir = (target - headWorld).normalized;
-            float angle = Mathf.Atan2(dir.x, -dir.y) * Mathf.Rad2Deg;
-            float dist = Vector2.Distance(target, headWorld);
-            float[] widths = { 3.2f, 1.6f };
-            float[] alphas = { 0.06f, 0.08f };
-            for (int i = 0; i < widths.Length; i++)
-            {
-                var cone = Art.MakeSprite("Cone" + i, mastHead, Art.LightRay, -655, Art.SpriteAddMat, new Color(0.75f, 0.92f, 1f, alphas[i]));
-                cone.transform.localRotation = Quaternion.Euler(0f, 0f, angle - leanDeg);
-                cone.transform.localScale = new Vector3(widths[i], dist * 1.25f / 8f, 1f);
-                cones.Add(cone);
+                var e = new Eyes { Spot = i == 0 ? 0 : 1, Timer = 2f + i * 3.5f, Blink = R() * 3f };
+                e.T = new GameObject("Eyes").transform;
+                e.T.SetParent(root, false);
+                e.T.localPosition = EyeSpots[e.Spot];
+                e.GlowL = Art.MakeSprite("GlowL", e.T, Art.SoftGlow, -843, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0f));
+                e.GlowR = Art.MakeSprite("GlowR", e.T, Art.SoftGlow, -843, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0f));
+                e.GlowL.transform.localPosition = new Vector3(-0.06f, 0f, 0f);
+                e.GlowR.transform.localPosition = new Vector3(0.06f, 0f, 0f);
+                e.GlowL.transform.localScale = e.GlowR.transform.localScale = Vector3.one * 0.22f;
+                e.L = Art.MakeSprite("L", e.T, Art.Circle, -842, Art.SpriteEmissiveMat, Palette.MonsterEye).transform;
+                e.R = Art.MakeSprite("R", e.T, Art.Circle, -842, Art.SpriteEmissiveMat, Palette.MonsterEye).transform;
+                eyes[i] = e;
             }
         }
 
         void BuildGround()
         {
-            var ground = Group("Ground", Vector2.zero, 0.5f);
-            Color tint = WorldEnvironment.DepthTint(0.03f);
-
-            // light welling up from deep in the chasm, mist and specks drifting up in it
-            Glow("Chasm Light", ground, new Vector2(0f, -5.1f), 7f, Palette.Crystal, 0.3f, -640, 0.5f, true);
-            Glow("Chasm Core", ground, new Vector2(0f, -5.6f), 3.4f, new Color(0.7f, 1f, 1f), 0.35f, -639, 0.8f, true);
-            var chasmMist = Art.MakeSprite("Chasm Mist", ground, EnvironmentArt.FogBand, -638, Art.SpriteMat, Palette.Fog.WithAlpha(0.12f));
-            chasmMist.drawMode = SpriteDrawMode.Tiled;
-            chasmMist.size = new Vector2(8f, 2f);
-            chasmMist.transform.localPosition = new Vector3(-4f, -4.4f, 0f);
-            chasmMist.transform.localScale = new Vector3(1f, 1.2f, 1f);
-
-            var sr = Art.MakeSprite("Torn Pitch", ground, MenuScenery.Ground, -600, Art.SpriteMat, tint);
-            sr.transform.localPosition = new Vector3(0f, -4f, 0f);
-
-            foreach (var c in MenuScenery.GroundCrystals) Glow("Wall Crystal", ground, c, 0.5f, Palette.Crystal, 0.36f, -596, Range(1.5f, 3.2f));
-            foreach (var c in MenuScenery.GroundCracks) Glow("Crack", ground, new Vector2(c.x, c.y), c.z, Palette.Crystal, 0.12f, -596, 0.9f, true);
-
-            // plants along the back edge of the pitch (they stop where the ground broke away)
-            var back = new FoliageLayer();
-            var front = new FoliageLayer();
-            for (float x = -11.5f; x < 11.5f; x += Range(0.1f, 0.26f))
+            // pinned under the player's boots every frame (PlaceGround); it does not lean
+            ground = new GameObject("Plateau").transform;
+            ground.SetParent(root, false);
+            ground.localPosition = new Vector3(0f, groundY, 0f);
+            Color tint = WorldEnvironment.DepthTint(0.02f);
+            Art.MakeSprite("Plateau", ground, MenuScenery.Ground, -600, Art.SpriteMat, tint);
+            foreach (var g in MenuScenery.GroundGlows)
             {
-                float edge = MenuScenery.GapTop + (x > 0f ? 0.06f : 0f);
-                if (Mathf.Abs(x) < edge + 0.12f) continue;
-                float y = MenuScenery.SurfaceAt(x) + Range(-0.04f, 0.04f);
+                Glow("Crack", ground, new Vector2(g.x, g.y), g.z, Palette.Crystal, 0.2f, -596, Range(0.8f, 2f), true);
+                moteSources.Add(new Vector2(g.x, g.y));   // ground-local: offset by the ground's height when used
+            }
+
+            // dry, sparse grass and a few crystal shards along the plateau (they sway in the wind)
+            var tufts = new FoliageLayer();
+            var shards = new FoliageLayer();
+            for (float x = -12f; x < 12f; x += Range(0.25f, 0.7f))
+            {
+                if (Mathf.Abs(x) < 1.5f) continue;
+                if (Noise.Perlin(x * 0.7f, 5.5f) < 0.38f) continue;
+                float v = Range(0.02f, MenuScenery.GroundBand - 0.08f);
+                float y = MenuScenery.GroundTop(x) - v;
                 float roll = R();
-                bool near = Mathf.Abs(x) < edge + 1.2f;
-                FoliageArt.Variant v;
-                float s;
-                if (roll < 0.62f) { v = Pick(FoliageArt.Grass); s = Range(0.55f, 1f); }
-                else if (roll < 0.72f) { v = Pick(FoliageArt.Clover); s = Range(0.5f, 0.7f); }
-                else if (roll < 0.8f) { v = Pick(FoliageArt.Ferns); s = Range(0.5f, 0.8f); }
-                else if (roll < 0.87f) { v = Pick(FoliageArt.Flowers); s = Range(0.45f, 0.65f); }
-                else if (roll < 0.93f) { v = Pick(FoliageArt.Mushrooms); s = Range(0.6f, 0.95f); }
-                else { v = near ? Pick(FoliageArt.Stones) : Pick(FoliageArt.TallGrass); s = Range(0.6f, 1f); }
-                back.Add(v, new Vector2(x, y), s, Color.white, v == FoliageArt.Stones[0] || v == FoliageArt.Stones[FoliageArt.Stones.Length - 1] ? 0f : 1f, 0f, R() > 0.5f);
+                if (roll < 0.8f) tufts.Add(Pick(FoliageArt.Grass), new Vector2(x, y), Range(0.35f, 0.7f) * (0.7f + 0.6f * v / MenuScenery.GroundBand),
+                    new Color(0.62f, 0.72f, 0.7f, 1f), 1f, 0f, R() > 0.5f);
+                else if (roll < 0.9f) tufts.Add(Pick(FoliageArt.TallGrass), new Vector2(x, y), Range(0.45f, 0.7f), new Color(0.55f, 0.65f, 0.64f, 1f), 1f, 0f, R() > 0.5f);
+                else shards.Add(Pick(FoliageArt.Crystals), new Vector2(x, y), Range(0.45f, 0.8f), Color.white, 0f, 0f, R() > 0.5f, Range(-25f, 25f));
             }
-            // bushes and reeds further out, where the columns of the menu stand
-            for (float x = -11f; x < 11f; x += Range(1.1f, 2.2f))
-            {
-                if (Mathf.Abs(x) < 5.4f) continue;
-                back.Add(R() > 0.4f ? Pick(FoliageArt.Bushes) : Pick(FoliageArt.Reeds), new Vector2(x, MenuScenery.GroundTop + Range(0.02f, 0.1f)), Range(0.7f, 1.05f),
-                    new Color(0.8f, 0.9f, 0.92f, 1f), 1f, 0f, R() > 0.5f);
-            }
-            for (float x = -11.5f; x < 11.5f; x += Range(0.16f, 0.38f))
-            {
-                float y = MenuScenery.SurfaceAt(x) - MenuScenery.PitchBand;
-                if (Mathf.Abs(x) < MenuScenery.GapEdge(y, Mathf.Sign(x)) + 0.1f) continue;
-                front.Add(R() > 0.85f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Grass), new Vector2(x, y + Range(-0.02f, 0.03f)), Range(0.4f, 0.72f),
-                    new Color(0.95f, 1f, 1f, 1f), 1f, 0f, R() > 0.5f);
-            }
-            back.Build(ground, "Edge Plants", -598, FoliageLayer.MakeMaterial("SF Menu Edge", 0f, 1f, false, 1f, tint),
-                FoliageLayer.MakeMaterial("SF Menu Edge Glow", 0f, 1f, true, 0.85f), -597);
-            front.Build(ground, "Lip Plants", -594, FoliageLayer.MakeMaterial("SF Menu Lip", 0f, 1f, false, 1f, tint));
-
-            // crystals and stones in the earth wall
-            var earth = new FoliageLayer();
-            for (int i = 0; i < 22; i++)
-            {
-                float x = Range(-11f, 11f);
-                float y = Range(-5.2f, -3.6f);
-                if (Mathf.Abs(x) < MenuScenery.GapEdge(y, Mathf.Sign(x)) + 0.4f) continue;
-                earth.Add(Pick(FoliageArt.Stones), new Vector2(x, y), Range(0.8f, 1.5f), new Color(0.72f, 0.82f, 0.86f, 1f));
-            }
-            for (int i = 0; i < 8; i++)
-            {
-                float x = Range(-10f, 10f);
-                float y = Range(-5f, -3.8f);
-                if (Mathf.Abs(x) < MenuScenery.GapEdge(y, Mathf.Sign(x)) + 0.4f) continue;
-                earth.Add(Pick(FoliageArt.Crystals), new Vector2(x, y), Range(1f, 1.4f), Color.white, 0f, 0f, R() > 0.5f, Range(-25f, 25f));
-            }
-            earth.Build(ground, "Earth Decor", -592, FoliageLayer.MakeMaterial("SF Menu Earth", 0f, 0f),
-                FoliageLayer.MakeMaterial("SF Menu Earth Glow", 0f, 0f, true, 0.45f), -591);
-
-            // the left goal: a monster portal flickers between its posts
-            var goal = Child("Goal", ground, new Vector2(-2.62f, MenuScenery.GroundTop - 0.22f));
-            goal.localScale = new Vector3(0.78f, 0.78f, 1f);
-            Art.MakeSprite("Frame", goal, EnvironmentArt.Goal, -586, Art.SpriteMat, new Color(0.82f, 0.9f, 0.93f, 1f));
-            portal = Child("Portal", goal, new Vector2(-0.95f, 1.2f));
-            portalGlow = Art.MakeSprite("Glow", portal, Art.SoftGlow, -588, Art.SpriteAddMat, Palette.MonsterGlow.WithAlpha(0f));
-            portalGlow.transform.localScale = new Vector3(1.8f, 2.8f, 1f);
-            portalSwirl = Art.MakeSprite("Swirl", portal, MonsterArt.Portal, -587, Art.SpriteAddMat, Palette.MonsterGlow.WithAlpha(0f));
-            portalSwirl.transform.localScale = new Vector3(0.7f, 0.7f, 1f);
-
-            AddFog(ground, MenuScenery.GroundTop - 0.2f, 0.9f, 0.07f, 0.28f, 0.05f, -593);
-        }
-
-        void BuildPedestal()
-        {
-            // positioned every frame by the menu, straight under the player's feet
-            pedestal = Child("Pedestal", root, Vector2.zero);
-            var look = MenuScenery.PedestalLook;
-            float half = MenuScenery.PedestalHalf;
-            const int o = -560;
-
-            var hang = new FoliageLayer();
-            foreach (var h in look.Hangs)
-                hang.Add(R() > 0.3f ? Pick(FoliageArt.Roots) : Pick(FoliageArt.Moss), h, Range(0.8f, 1.2f), Color.white, 1f, 0f, R() > 0.5f);
-            hang.Build(pedestal, "Roots", o - 2, FoliageLayer.MakeMaterial("SF Menu Pedestal Roots", 0f, 0.8f));
-            Art.MakeSprite("Body", pedestal, MenuScenery.Pedestal, o).transform.localPosition = MenuScenery.PedestalCenter;
-
-            var grass = new FoliageLayer();
-            for (float x = -half + 0.05f; x < half - 0.05f; x += Range(0.07f, 0.16f))
-            {
-                // the middle stays low so the player's boots are not hidden in it
-                bool middle = Mathf.Abs(x) < 0.7f;
-                float roll = R();
-                var v = roll < 0.85f ? Pick(FoliageArt.Grass) : roll < 0.93f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Flowers);
-                grass.Add(v, new Vector2(x, Range(0.08f, 0.13f)), middle ? Range(0.3f, 0.45f) : Range(0.45f, 0.78f), Color.white, 1f, 0f, R() > 0.5f);
-            }
-            grass.Add(Pick(FoliageArt.Mushrooms), new Vector2(-half + 0.35f, 0.1f), 0.7f, Color.white, 1f, 0f, false);
-            grass.Add(Pick(FoliageArt.Mushrooms), new Vector2(half - 0.45f, 0.1f), 0.55f, Color.white, 1f, 0f, true);
-            grass.Build(pedestal, "Grass", o + 2, FoliageLayer.MakeMaterial("SF Menu Pedestal Grass", 0f, 1f),
-                FoliageLayer.MakeMaterial("SF Menu Pedestal Glow", 0f, 1f, true, 0.8f), o + 3);
-            var lip = new FoliageLayer();
-            for (float x = -half; x < half; x += Range(0.12f, 0.3f))
-                lip.Add(Pick(FoliageArt.Grass), new Vector2(x, -Range(0.1f, 0.15f)), Range(0.3f, 0.5f), new Color(0.95f, 1f, 1f, 1f), 1f, 0f, R() > 0.5f);
-            lip.Build(pedestal, "Lip", o + 4, FoliageLayer.MakeMaterial("SF Menu Pedestal Lip", 0f, 1f));
-
-            foreach (var c in look.Crystals) Glow("Crystal", pedestal, c, 0.5f, Palette.Crystal, 0.4f, o + 5, Range(1.5f, 3.5f));
-            Glow("Under Light", pedestal, new Vector2(0f, -1.1f), 5.5f, Palette.Crystal, 0.1f, o - 3, 0.6f, true);
-            // the floodlight's pool of light on the circle
-            spot = Art.MakeSprite("Spot", pedestal, Art.SoftGlow, o + 1, Art.SpriteAddMat, new Color(0.8f, 0.95f, 1f, 0.16f));
-            spot.transform.localPosition = new Vector3(0.15f, 0.05f, 0f);
-            spot.transform.localScale = new Vector3(4.4f, 0.9f, 1f);
-            for (int i = 0; i < 3; i++)
-            {
-                var peb = Art.MakeSprite("Pebble", pedestal, DepthArt.Pebbles[i % DepthArt.Pebbles.Length], o - 1);
-                float s = Range(0.8f, 1.2f);
-                peb.transform.localScale = new Vector3(s, s, 1f);
-                var home = new Vector2(-1.1f + i * 1.1f + Range(-0.2f, 0.2f), -Range(1.55f, 2.05f));
-                floaters.Add(new Floater { T = peb.transform, Home = home, Phase = R() * 10f, Amp = Range(0.05f, 0.1f), Speed = Range(0.7f, 1.2f), Tilt = Range(-140f, 140f) });
-            }
-        }
-
-        void BuildFrame()
-        {
-            // trees at the far edges, their crowns and hanging moss framing the top corners
-            var frame = Group("Frame", Vector2.zero, 0.75f);
-            Color tint = WorldEnvironment.DepthTint(0.08f);
-            var trunkL = Art.MakeSprite("Trunk", frame, DepthArt.Trunk, -520, Art.SpriteMat, tint);
-            trunkL.transform.localPosition = new Vector3(-9.0f, -3.9f, 0f);
-            var trunkR = Art.MakeSprite("Trunk", frame, DepthArt.Trunk, -520, Art.SpriteMat, tint);
-            trunkR.transform.localPosition = new Vector3(9.15f, -4.1f, 0f);
-            trunkR.flipX = true;
-
-            var crowns = new FoliageLayer();
-            Vector3[] spots =
-            {
-                new Vector3(-8.7f, 4.35f, 4.4f), new Vector3(-6.2f, 4.95f, 3.9f), new Vector3(-4.2f, 5.4f, 3.0f), new Vector3(-10.1f, 2.9f, 3.2f),
-                new Vector3(8.8f, 4.3f, 4.4f), new Vector3(6.3f, 5.0f, 3.8f), new Vector3(4.4f, 5.45f, 2.9f), new Vector3(10.2f, 2.8f, 3.2f),
-            };
-            foreach (var c in spots)
-            {
-                var v = Pick(FoliageArt.Canopies);
-                float scale = c.z / Mathf.Max(0.1f, v.Units.width * 0.85f);
-                crowns.Add(v, new Vector2(c.x, c.y), scale, new Color(0.9f, 1f, 1f, 1f), 1f, 0f, R() > 0.5f);
-            }
-            var hang = new FoliageLayer();
-            for (int side = -1; side <= 1; side += 2)
-                for (float x = 4.3f; x < 10.5f; x += Range(0.35f, 0.8f))
-                {
-                    float y = 4.95f + 0.25f * (x - 4.3f) / 6f + Range(-0.2f, 0.25f);
-                    var v = R() > 0.45f ? Pick(FoliageArt.Moss) : Pick(FoliageArt.Ivy);
-                    hang.Add(v, new Vector2(side * x, y), Range(0.8f, 1.35f), new Color(0.9f, 1f, 1f, 1f), 1f, 0f, R() > 0.5f);
-                }
-            hang.Build(frame, "Hanging Moss", -517, FoliageLayer.MakeMaterial("SF Menu Moss", 0.05f, 0.9f, false, 1f, tint));
-            crowns.Build(frame, "Crowns", -515, FoliageLayer.MakeMaterial("SF Menu Crowns", 0.1f, 0.7f, false, 1f, tint));
-
-            // lanterns hanging into the corners (warm light against the cold night, like in the ruins)
-            ambient.AddLantern(frame, new Vector2(-3.9f, 5.2f), -512, 2.05f, 3.3f);
-            ambient.AddLantern(frame, new Vector2(6.55f, 5.3f), -512, 2.3f, 11.7f);
-
-            // foreground fronds in the bottom corners
-            var front = Group("Front", Vector2.zero, 1f);
-            var fronds = new FoliageLayer();
-            float[] xs = { -10.2f, -8.6f, -7.2f, 7.4f, 8.8f, 10.3f };
-            foreach (float x in xs)
-            {
-                int n = 2 + rng.Next(2);
-                for (int k = 0; k < n; k++)
-                    fronds.Add(Pick(FoliageArt.FgLeaves), new Vector2(x + Range(-0.8f, 0.8f), Range(-5.9f, -5.3f)), Range(0.6f, 0.85f),
-                        new Color(1f, 1f, 1f, 0.97f), 1f, 0f, R() > 0.5f, Range(-14f, 14f) + (x < 0f ? -8f : 8f));
-            }
-            fronds.Build(front, "Fronds", 600, FoliageLayer.MakeMaterial("SF Menu Fronds", 0f, 0.5f));
-
-            // something is watching from the dark
-            for (int i = 0; i < eyes.Length; i++)
-            {
-                var e = new Eyes { Spot = i == 0 ? 0 : 2, Timer = 2f + i * 3f, Blink = R() * 3f };
-                e.T = Child("Eyes", front, EyeSpots[e.Spot]);
-                e.GlowL = Art.MakeSprite("GlowL", e.T, Art.SoftGlow, 598, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0f));
-                e.GlowR = Art.MakeSprite("GlowR", e.T, Art.SoftGlow, 598, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0f));
-                e.GlowL.transform.localPosition = new Vector3(-0.09f, 0f, 0f);
-                e.GlowR.transform.localPosition = new Vector3(0.09f, 0f, 0f);
-                e.GlowL.transform.localScale = e.GlowR.transform.localScale = Vector3.one * 0.32f;
-                e.L = Art.MakeSprite("L", e.T, Art.Circle, 599, Art.SpriteEmissiveMat, Palette.MonsterEye).transform;
-                e.R = Art.MakeSprite("R", e.T, Art.Circle, 599, Art.SpriteEmissiveMat, Palette.MonsterEye).transform;
-                e.L.localPosition = new Vector3(-0.09f, 0f, 0f);
-                e.R.localPosition = new Vector3(0.09f, 0f, 0f);
-                eyes[i] = e;
-            }
+            tufts.Build(ground, "Tufts", -594, FoliageLayer.MakeMaterial("SF Menu Tufts", 0f, 1f, false, 1f, tint));
+            shards.Build(ground, "Shards", -593, FoliageLayer.MakeMaterial("SF Menu Shards", 0f, 0f), FoliageLayer.MakeMaterial("SF Menu Shards Glow", 0f, 0f, true, 0.8f), -592);
+            AddFog(ground, -0.1f, 0.7f, 0.06f, 0.26f, 0.05f, -590);
         }
 
         void BuildLife()
         {
-            // fireflies over the ground, the rocks and the corners; a few big ones right at the lens
-            for (int i = 0; i < 34; i++)
+            // embers rising out of the fires and craters, and drifting across the whole scene
+            for (int i = 0; i < 46; i++)
             {
-                bool front = i < 5;
-                var sr = Art.MakeSprite("Firefly", root, Art.SoftGlow, front ? 610 : -590, Art.SpriteGlowMat, Palette.Firefly.WithAlpha(0f));
-                sr.transform.localScale = Vector3.one * (front ? Range(0.35f, 0.6f) : Range(0.1f, 0.24f));
-                Vector2 home = front ? new Vector2(Range(-9f, 9f), Range(-4.5f, 3f))
-                    : i < 22 ? new Vector2(Range(-10f, 10f), Range(-2.5f, 1.2f))
-                    : new Vector2(Range(-10f, 10f), Range(1f, 4.5f));
-                fireflies.Add(new Firefly
-                {
-                    Sr = sr, Home = home, Phase = R() * 50f,
-                    Fx = Range(0.12f, 0.3f), Fy = Range(0.15f, 0.35f), Ax = Range(0.5f, 1.5f), Ay = Range(0.3f, 0.8f),
-                    Alpha = front ? 0.35f : 0.9f,
-                });
+                var sr = Art.MakeSprite("Ember", root, Art.SoftGlow, i < 8 ? 610 : -560, Art.SpriteGlowMat, Palette.BlastOrange.WithAlpha(0f));
+                embers.Add(new Mote { Sr = sr, Life = 0f, Age = Range(0f, 4f), Kind = i < 8 ? 1 : 0 });
             }
-            // crystal specks rising out of the chasm
-            for (int i = 0; i < 18; i++)
+            // ash falling slowly, some of it right in front of the lens
+            for (int i = 0; i < 60; i++)
             {
-                var sr = Art.MakeSprite("Speck", root, Art.SoftGlow, -637, Art.SpriteGlowMat, Palette.Crystal.WithAlpha(0f));
-                specks.Add(new Speck { Sr = sr, Age = 1f, Life = 0f });
+                bool front = i < 8;
+                var sr = Art.MakeSprite("Ash", root, Art.SoftGlow, front ? 611 : -570, Art.SpriteMat, new Color(0.7f, 0.8f, 0.85f, 0f));
+                var m = new Mote { Sr = sr, Kind = front ? 1 : 0, Phase = R() * 10f };
+                Respawn(m, true);
+                ash.Add(m);
             }
-            ambient.BuildLeaves(root);
+            // crystal motes rising out of the rift and the cracks
+            for (int i = 0; i < 26; i++)
+            {
+                var sr = Art.MakeSprite("Mote", root, Art.SoftGlow, -589, Art.SpriteGlowMat, Palette.Crystal.WithAlpha(0f));
+                motes.Add(new Mote { Sr = sr, Life = 0f, Age = Range(0f, 3f) });
+            }
+        }
+
+        void Respawn(Mote m, bool anywhere)
+        {
+            bool front = m.Kind == 1;
+            m.Pos = new Vector2(Range(-11f, 11f), anywhere ? Range(-5f, 5f) : Range(5f, 5.8f));
+            m.Vel = new Vector2(Range(0.12f, 0.35f), -Range(0.12f, 0.3f)) * (front ? 2.2f : 1f);
+            m.Size = front ? Range(0.07f, 0.13f) : Range(0.025f, 0.055f);
+            m.Age = 0f;
+            m.Life = 99f;
         }
 
         // ------------------------------------------------------------------ update
@@ -573,23 +369,16 @@ namespace SoccerFight
             lean = Vector2.Lerp(lean, aim, Mathf.Clamp01(dt * 2.2f));
             drift = Vector2.Lerp(drift, shift, Mathf.Clamp01(dt * 4f));
             foreach (var p in parts)
-                p.T.localPosition = p.Home - lean * (0.08f + p.Lean * 0.42f) + drift * (0.3f + p.Lean);
-
-            foreach (var f in floaters)
             {
-                float t = time * f.Speed + f.Phase;
-                f.T.localPosition = f.Home + new Vector2(Mathf.Sin(t * 0.7f) * 0.05f, Mathf.Sin(t) * f.Amp);
-                f.T.localRotation = Quaternion.Euler(0f, 0f, Mathf.Abs(f.Tilt) > 10f ? time * f.Tilt * 0.1f + f.Phase * 30f : Mathf.Sin(t * 0.8f) * f.Tilt);
+                p.T.localPosition = p.Home - lean * (0.08f + p.Lean * 0.42f) + drift * (0.3f + p.Lean);
             }
 
             for (int i = 0; i < blinks.Count; i++)
             {
                 var b = blinks[i];
-                float k = 0.72f + 0.28f * Mathf.PerlinNoise(time * b.Speed, b.Phase);
-                b.Sr.color = b.Color.WithAlpha(b.Base * k);
+                float k = 0.7f + 0.3f * Mathf.PerlinNoise(time * b.Speed, b.Phase);
+                b.Sr.color = b.Color.WithAlpha(b.Base * k * (1f + flashA * 0.6f));
             }
-            UpdateFlicker(dt);
-
             for (int i = 0; i < rays.Count; i++)
             {
                 float a = rayAlpha[i] * (0.65f + 0.35f * Mathf.Sin(time * (0.35f + i * 0.07f) + i * 1.7f));
@@ -604,70 +393,132 @@ namespace SoccerFight
                 fogs[i] = f;
             }
 
-            // the portal breathes and turns
-            float pulse = 0.6f + 0.4f * Mathf.Sin(time * 1.7f) * Mathf.Sin(time * 0.63f + 1f);
-            portalGlow.color = Palette.MonsterGlow.WithAlpha(0.07f + 0.05f * pulse);
-            portalSwirl.color = Palette.MonsterGlow.WithAlpha(0.14f + 0.1f * pulse);
-            portalSwirl.transform.localRotation = Quaternion.Euler(0f, 0f, -time * 40f);
-            portal.localScale = new Vector3(1f + 0.04f * pulse, 1f + 0.04f * pulse, 1f);
-
-            UpdateLife(dt);
+            foreach (var (t, speed) in hazes)
+            {
+                var hp = t.localPosition;
+                hp.x += speed * dt;
+                if (hp.x > 13f) hp.x -= 26f;
+                t.localPosition = hp;
+            }
+            UpdateLightning(dt);
+            UpdatePlumes(dt, wind);
+            UpdateParticles(dt, wind);
             UpdateEyes(dt);
             ambient.Update(dt, time, center, wind);
         }
 
-        /// <summary>The floodlight: one lamp stutters, and with it the beam.</summary>
-        void UpdateFlicker(float dt)
+        /// <summary>Now and then a flash far behind the peaks, sometimes a double one.</summary>
+        void UpdateLightning(float dt)
         {
-            flickerT -= dt;
-            float k = 1f;
-            if (flickerT < 0f)
+            flashT -= dt;
+            if (flashT <= 0f)
             {
-                // a short burst of stutter every few seconds
-                float burst = -flickerT;
-                k = Mathf.PerlinNoise(time * 30f, 7f) > 0.45f ? 1f : 0.15f;
-                if (burst > 0.6f) flickerT = Range(3f, 7f);
+                flashA = Range(0.55f, 1f);
+                flashT = R() < 0.35f ? Range(0.12f, 0.22f) : Range(7f, 14f);
+                flashPeaks.transform.localPosition = new Vector3(Range(-9f, 1f), 2.4f, 0f);
+                // the storm group sits at x = -5.5: move the sky glow inside it to the same spot
+                flashSky.transform.localPosition = new Vector3(flashPeaks.transform.localPosition.x + 5.5f, 0f, 0f);
             }
-            if (flicker != null) flicker.color = new Color(0.85f, 0.96f, 1f, 0.75f * k);
-            float hum = 0.85f + 0.15f * Mathf.PerlinNoise(time * 2f, 3f);
-            for (int i = 0; i < cones.Count; i++)
-                cones[i].color = new Color(0.75f, 0.92f, 1f, (i == 0 ? 0.06f : 0.085f) * hum * (0.75f + 0.25f * k));
-            spot.color = new Color(0.8f, 0.95f, 1f, 0.16f * hum * (0.8f + 0.2f * k));
+            flashA = Mathf.MoveTowards(flashA, 0f, dt * 4.5f);
+            float a = flashA * flashA;
+            flashSky.color = new Color(0.6f, 0.8f, 1f, 0.14f * a);
+            flashPeaks.color = new Color(0.65f, 0.85f, 1f, 0.3f * a);
         }
 
-        void UpdateLife(float dt)
+        void UpdatePlumes(float dt, float wind)
         {
-            for (int i = 0; i < fireflies.Count; i++)
+            foreach (var p in plumes)
             {
-                var f = fireflies[i];
-                float t = time + f.Phase;
-                Vector2 pos = f.Home + new Vector2(Mathf.Sin(t * f.Fx * MathUtil.Tau) * f.Ax + Mathf.Sin(t * 0.37f) * 0.3f, Mathf.Sin(t * f.Fy * MathUtil.Tau + 1.3f) * f.Ay);
-                pos -= lean * (f.Alpha < 0.5f ? 0.6f : 0.25f);
-                float blink = Mathf.Clamp01(0.35f + 0.65f * Mathf.Sin(t * 1.1f + f.Phase * 3f)) * (0.6f + 0.4f * Mathf.PerlinNoise(t * 2f, f.Phase));
-                f.Sr.transform.localPosition = pos;
-                f.Sr.color = Palette.Firefly.WithAlpha(blink * f.Alpha);
+                foreach (var f in p.Puffs)
+                {
+                    f.Age += dt;
+                    if (f.Age >= f.Life)
+                    {
+                        f.Age -= f.Life;
+                        f.Life = Range(5f, 7.5f);
+                        f.Size = p.Scale * Range(0.45f, 0.6f);
+                        f.Drift = Range(0.8f, 1.2f);
+                    }
+                    float u = f.Age / f.Life;
+                    // rises, slows, spreads and bends away with the wind
+                    float rise = p.Scale * (1.6f * u - 0.45f * u * u);
+                    float bend = p.Scale * (0.9f + wind * 0.8f) * u * u * f.Drift;
+                    Vector2 pos = p.Source + new Vector2(bend + Mathf.Sin(u * 5f + f.Spin) * 0.06f * p.Scale, rise);
+                    f.Sr.transform.localPosition = pos;
+                    float s = f.Size * (0.5f + 1.9f * u);
+                    f.Sr.transform.localScale = new Vector3(s, s, 1f);
+                    f.Sr.transform.localRotation = Quaternion.Euler(0f, 0f, f.Spin * time + f.Spin * 10f);
+                    float a = MathUtil.Bump(Mathf.Clamp01(u * 1.25f)) * 0.5f;
+                    // lit warm by the fire at its foot, a dark column against the moonlit rock higher up
+                    Color col = Color.Lerp(new Color(0.45f, 0.26f, 0.16f), new Color(0.1f, 0.13f, 0.16f), S01(u * 2.5f));
+                    f.Sr.color = new Color(col.r * (0.8f + 0.8f * p.Light), col.g * (0.8f + 0.8f * p.Light), col.b * (0.8f + 0.8f * p.Light), a);
+                }
+            }
+        }
+
+        static float S01(float v) => MathUtil.Smooth01(v);
+
+        void UpdateParticles(float dt, float wind)
+        {
+            // embers: born at a fire, rising in a wobbling line, winking out
+            foreach (var m in embers)
+            {
+                m.Age += dt;
+                if (m.Age >= m.Life)
+                {
+                    bool fromFire = emberSources.Count > 0 && R() < 0.7f;
+                    Vector2 src = fromFire ? emberSources[rng.Next(emberSources.Count)] : new Vector2(Range(-10f, 10f), Range(-4.6f, -3f));
+                    m.Pos = src + new Vector2(Range(-0.25f, 0.25f), Range(0f, 0.1f));
+                    m.Vel = new Vector2(Range(0.05f, 0.3f), Range(0.25f, 0.6f)) * (m.Kind == 1 ? 1.8f : 1f);
+                    m.Life = Range(2.5f, 5f);
+                    m.Age = 0f;
+                    m.Size = m.Kind == 1 ? Range(0.07f, 0.12f) : Range(0.025f, 0.05f);
+                    m.Phase = R() * 10f;
+                    if (m.Kind == 1) m.Pos = new Vector2(Range(-9f, 9f), Range(-5.2f, -4.2f));
+                }
+                m.Vel.x += (wind * 0.3f + Mathf.Sin(time * 2.3f + m.Phase) * 0.35f) * dt;
+                m.Pos += m.Vel * dt;
+                float u = m.Age / m.Life;
+                float flick = 0.65f + 0.35f * Mathf.Sin(time * 13f + m.Phase * 7f);
+                m.Sr.transform.localPosition = m.Pos - lean * (m.Kind == 1 ? 0.7f : 0.2f);
+                m.Sr.transform.localScale = Vector3.one * m.Size * (1f - 0.5f * u);
+                m.Sr.color = Color.Lerp(Palette.Lantern, Palette.BlastOrange, u).WithAlpha(MathUtil.Bump(u) * flick * (m.Kind == 1 ? 0.45f : 0.9f));
             }
 
-            speckTimer -= dt;
-            foreach (var s in specks)
+            // ash: drifting down and sideways, tumbling
+            foreach (var m in ash)
             {
-                if (s.Age >= s.Life)
+                m.Pos += (m.Vel + new Vector2(wind * 0.2f + Mathf.Sin(time * 0.9f + m.Phase) * 0.08f, Mathf.Sin(time * 1.7f + m.Phase) * 0.05f)) * dt;
+                if (m.Pos.y < -5.4f || m.Pos.x > 11.5f) Respawn(m, false);
+                m.Sr.transform.localPosition = m.Pos - lean * (m.Kind == 1 ? 0.8f : 0.3f);
+                float flat = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(time * 2f + m.Phase));
+                m.Sr.transform.localScale = new Vector3(m.Size, m.Size * flat, 1f);
+                m.Sr.color = new Color(0.7f, 0.8f, 0.85f, m.Kind == 1 ? 0.22f : 0.45f);
+            }
+
+            // crystal motes rising out of the rift and the cracks in the plateau
+            int waste = MenuScenery.RiftGlows.Count;
+            foreach (var m in motes)
+            {
+                m.Age += dt;
+                if (m.Age >= m.Life)
                 {
-                    if (speckTimer > 0f) { s.Sr.color = Palette.Crystal.WithAlpha(0f); continue; }
-                    speckTimer = Range(0.2f, 0.5f);
-                    s.Pos = new Vector2(Range(-1.8f, 1.8f), Range(-5.6f, -4.2f));
-                    s.Age = 0f;
-                    s.Life = Range(3f, 5.5f);
-                    s.Speed = Range(0.35f, 0.7f);
-                    s.Size = Range(0.07f, 0.14f);
-                    s.Phase = R() * 10f;
+                    if (moteSources.Count == 0) continue;
+                    int k = rng.Next(moteSources.Count);
+                    Vector2 src = moteSources[k];
+                    if (k >= waste) src.y += groundY;   // plateau cracks are ground-local
+                    m.Pos = src + new Vector2(Range(-0.2f, 0.2f), 0f);
+                    m.Vel = new Vector2(Range(-0.05f, 0.05f), Range(0.2f, 0.45f));
+                    m.Life = Range(2.5f, 4.5f);
+                    m.Age = 0f;
+                    m.Size = Range(0.04f, 0.09f) * (k >= waste ? 1.4f : 1f);
+                    m.Phase = R() * 10f;
                 }
-                s.Age += dt;
-                s.Pos += new Vector2(Mathf.Sin(time * 1.3f + s.Phase) * 0.15f, s.Speed) * dt;
-                float u = s.Age / s.Life;
-                s.Sr.transform.localPosition = s.Pos - lean * 0.2f;
-                s.Sr.transform.localScale = Vector3.one * s.Size * (1f - u * 0.5f);
-                s.Sr.color = Palette.Crystal.WithAlpha(MathUtil.Bump(u) * 0.8f);
+                m.Pos += new Vector2(m.Vel.x + Mathf.Sin(time * 1.3f + m.Phase) * 0.12f, m.Vel.y) * dt;
+                float u = m.Age / m.Life;
+                m.Sr.transform.localPosition = m.Pos - lean * 0.25f;
+                m.Sr.transform.localScale = Vector3.one * m.Size * (1f - u * 0.5f);
+                m.Sr.color = Palette.Crystal.WithAlpha(MathUtil.Bump(u) * 0.75f);
             }
         }
 
@@ -690,11 +541,11 @@ namespace SoccerFight
                         int next = e.Spot;
                         for (int k = 0; k < 4 && (next == e.Spot || SpotTaken(next, e)); k++) next = rng.Next(EyeSpots.Length);
                         if (!SpotTaken(next, e)) e.Spot = next;
-                        e.T.localPosition = EyeSpots[e.Spot];
                         e.Target = 1f;
                         e.Timer = Range(4f, 9f);
                     }
                 }
+                e.T.localPosition = EyeSpots[e.Spot] - lean * 0.2f;
                 e.Open = Mathf.MoveTowards(e.Open, e.Target, dt * (e.Target > e.Open ? 1.2f : 3f));
                 e.Blink -= dt;
                 float lid = 1f;
@@ -704,14 +555,13 @@ namespace SoccerFight
                     if (e.Blink < -0.14f) e.Blink = Range(1.5f, 4.5f);
                 }
                 float open = MathUtil.Smooth01(e.Open);
-                var sc = new Vector3(0.07f, 0.045f * Mathf.Clamp01(lid) * open + 0.001f, 1f);
+                var sc = new Vector3(0.05f, 0.032f * Mathf.Clamp01(lid) * open + 0.001f, 1f);
                 e.L.localScale = e.R.localScale = sc;
                 // they glance around a little
-                float look = Mathf.Sin(time * 0.7f + e.Spot) * 0.02f;
-                e.L.localPosition = new Vector3(-0.09f + look, 0f, 0f);
-                e.R.localPosition = new Vector3(0.09f + look, 0f, 0f);
-                var gc = Palette.MonsterGlow.WithAlpha(0.3f * open);
-                e.GlowL.color = e.GlowR.color = gc;
+                float look = Mathf.Sin(time * 0.7f + e.Spot) * 0.015f;
+                e.L.localPosition = new Vector3(-0.06f + look, 0f, 0f);
+                e.R.localPosition = new Vector3(0.06f + look, 0f, 0f);
+                e.GlowL.color = e.GlowR.color = Palette.MonsterGlow.WithAlpha(0.3f * open);
             }
         }
 
@@ -721,17 +571,14 @@ namespace SoccerFight
             return false;
         }
 
-        /// <summary>
-        /// Keeps the floating centre circle under the player: world position of the feet, and the
-        /// scale the menu's centre stack is drawn at (1 = composed size).
-        /// </summary>
-        public void PlacePedestal(Vector2 feetWorld, float scale, float alpha)
+        /// <summary>Keeps the plateau's surface right under the player's boots (world position of the feet).</summary>
+        public void PlaceGround(Vector2 feetWorld)
         {
             if (!built) return;
             Vector3 local = root.InverseTransformPoint(new Vector3(feetWorld.x, feetWorld.y, 0f));
-            float s = scale / Mathf.Max(1e-4f, root.localScale.x);
-            pedestal.localPosition = new Vector3(local.x, local.y, 0f);
-            pedestal.localScale = new Vector3(s, s, 1f);
+            // the boots stand a little in front of the plateau's back edge
+            groundY = local.y + MenuScenery.GroundBand * 0.3f;
+            ground.localPosition = new Vector3(0f, groundY, 0f);
         }
     }
 }

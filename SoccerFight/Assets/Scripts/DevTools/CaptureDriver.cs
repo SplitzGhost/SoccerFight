@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "newskills" && scenario != "look" && scenario != "meta")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -91,6 +91,7 @@ namespace SoccerFight
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
+            else if (scenario == "vista") yield return VistaShots();
             else if (scenario == "newskills") yield return NewSkills();
             else if (scenario == "look") yield return UpgradeLook();
             else if (scenario == "meta") yield return MetaTour();
@@ -928,24 +929,30 @@ namespace SoccerFight
             GameInput.AimScreen = menu.TargetScreen("play");
             yield return Seconds(0.7f);
             yield return Shot("m01_hover_play");
+            yield return Kick("mode");
+            yield return Frames(12);
+            yield return Shot("m01b_mode_soon");
+            GameInput.AimScreen = menu.TargetScreen("tab_skills");
+            yield return Seconds(0.6f);
+            yield return Shot("m01c_hover_tab");
 
-            yield return Kick("shop");
+            yield return Kick("tab_shop");
             yield return Seconds(0.9f);
             yield return Shot("m02_shop");
             yield return Kick("tabSkills");
             yield return Frames(12);
             yield return Shot("m03_shop_soon");
-            yield return Kick("back" + MenuPage.Shop);
+            yield return Kick("tab_home");
             yield return Seconds(0.9f);
 
-            string[] ids = { "ranking", "friends", "events", "info", "settings" };
+            string[] ids = { "tab_ranking", "friends", "tab_events", "info", "tab_settings" };
             int[] pages = { MenuPage.Ranking, MenuPage.Friends, MenuPage.Events, MenuPage.Info, MenuPage.Settings };
             for (int i = 0; i < ids.Length; i++)
             {
                 yield return Kick(ids[i]);
                 yield return Seconds(0.9f);
                 yield return Shot("m0" + (4 + i) + "_" + ids[i]);
-                if (i < ids.Length - 1) yield return Kick("back" + pages[i]);
+                if (i < ids.Length - 1) yield return Kick("tab_home");
                 else GameInput.PausePressed = true;   // Esc also leads back
                 yield return Seconds(0.9f);
             }
@@ -972,7 +979,7 @@ namespace SoccerFight
             yield return Seconds(1.2f);
             yield return Shot("m13_picked");
             Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
-            yield return Kick("back" + MenuPage.Characters);
+            yield return Kick("tab_home");
             yield return Seconds(1.2f);
             yield return Shot("m14_title_new_player");
 
@@ -998,6 +1005,23 @@ namespace SoccerFight
             yield return Shot("m20_title_again");
             Characters.Select(original);
             yield return Seconds(0.5f);
+        }
+
+        /// <summary>Only the title screen's home page: a few frames of the scene, the pointer in different places.</summary>
+        IEnumerator VistaShots()
+        {
+            var menu = G.Menu;
+            SeedProfile();
+            G.ToMenu();
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(-140f, 200f));
+            yield return Seconds(2.6f);
+            yield return Shot("v00_home");
+            GameInput.AimScreen = menu.ScreenOf(new Vector2(700f, 300f));
+            yield return Seconds(1.5f);
+            yield return Shot("v01_home_right");
+            GameInput.AimScreen = menu.TargetScreen("quests");
+            yield return Seconds(1.2f);
+            yield return Shot("v02_quests_hover");
         }
 
         /// <summary>
@@ -1036,7 +1060,7 @@ namespace SoccerFight
             Wallet.Add(Currencies.Coins, 1900);
             yield return Seconds(0.8f);
             yield return Shot("x05_wallet");
-            yield return Kick("shop");
+            yield return Kick("tab_shop");
             yield return Seconds(3f);
             yield return Shot("x06_shop_players");
             yield return Kick("shop_char_kai");
@@ -1060,11 +1084,11 @@ namespace SoccerFight
             yield return Frames(12);
             yield return Shot("x11_too_expensive");
             Debug.Log($"[Capture] coins left {Wallet.Get(Currencies.Coins)}, owns kai={Profile.OwnsCharacter("kai")} flick={Profile.OwnsSkill(Ability.Flick)}");
-            yield return Kick("back" + MenuPage.Shop);
+            yield return Kick("tab_home");
             yield return Seconds(1f);
 
             // skill page: take the header off its slot, put it back
-            yield return Kick("skills");
+            yield return Kick("tab_skills");
             yield return Seconds(1.1f);
             yield return Shot("x12_skills");
             yield return Kick("slot0");
@@ -1073,7 +1097,7 @@ namespace SoccerFight
             yield return Kick("skill_header");
             yield return Frames(20);
             yield return Shot("x14_reequipped");
-            yield return Kick("back" + MenuPage.Skills);
+            yield return Kick("tab_home");
             yield return Seconds(1f);
 
             // the roster, first on the defenders, then the strikers
@@ -1083,7 +1107,7 @@ namespace SoccerFight
             yield return Kick("class0");
             yield return Seconds(2.6f);
             yield return Shot("x16_roster_strikers");
-            yield return Kick("back" + MenuPage.Characters);
+            yield return Kick("tab_home");
             yield return Seconds(1f);
             yield return Shot("x17_title");
 

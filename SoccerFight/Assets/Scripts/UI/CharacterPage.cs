@@ -45,7 +45,7 @@ namespace SoccerFight
                 var cls = Classes.All[g];
                 var grp = new Group { Class = cls };
                 int index = g;
-                grp.Tab = new ChunkButton(content, "Tab" + cls.Name, new Vector2((g - 1) * 300f, 360f), new Vector2(280f, 60f), cls.Accent, cls.Name, 22f, cls.Icon(), 26f);
+                grp.Tab = new ChunkButton(content, "Tab" + cls.Name, new Vector2((g - 1) * 300f, 372f), new Vector2(280f, 60f), cls.Accent, cls.Name, 22f, cls.Icon(), 26f);
                 grp.Tab.IconLeft(30f);
                 nav.Register(new MenuTarget
                 {
@@ -70,9 +70,9 @@ namespace SoccerFight
                 }
                 groups.Add(grp);
             }
-            talent = MenuArt.Label("Talent", content, "", 17f, Color.white, new Vector2(0f, 304f), new Vector2(1500f, 26f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
+            talent = MenuArt.Label("Talent", content, "", 17f, Color.white, new Vector2(0f, 322f), new Vector2(1500f, 26f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
             owned = MenuArt.Label("Owned", page.Root, "", 16f, MetaUi.Muted, Vector2.zero, new Vector2(400f, 24f), TextAlignmentOptions.Right, 3f, MenuArt.TextHeavySoft);
-            MenuUi.Pin(owned.rectTransform, new Vector2(1f, 1f), new Vector2(-240f, -80f));
+            MenuUi.Pin(owned.rectTransform, new Vector2(1f, 1f), new Vector2(-250f, -SubPage.TopBar - 34f));
         }
 
         void SetTab(int g)

@@ -39,7 +39,9 @@ namespace SoccerFight
             nav = menu;
             page = new SubPage(parent, MenuPage.Shop, "SHOP", "SPIELER  ·  FÄHIGKEITEN  ·  BEZAHLT MIT MÜNZEN", MetaUi.Gold, nav.Register, nav.Back);
             var content = page.Content;
+            // the coins sit in the top bar now; the chip stays as the page's own counter but hidden
             wallet = new WalletChip(page.Root, new Vector2(1f, 1f), new Vector2(-150f, -78f));
+            wallet.Root.gameObject.SetActive(false);
 
             tabChars = new ChunkButton(content, "TabChars", new Vector2(-175f, 356f), new Vector2(330f, 62f), MetaUi.Gold, "SPIELER", 24f, MenuArt.IconFriends, 26f);
             tabChars.IconLeft(40f);

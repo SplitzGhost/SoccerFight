@@ -19,9 +19,9 @@ namespace SoccerFight
         // shots and cursor
         public static Sprite Bracket, Spark, Shock, Burst;
         // widgets
-        public static Sprite Vignette, Body, Edge, Frame, Gloss, CardBody, Round, RoundEdge, RoundFrame, Badge, Beam, Sparkle, Shine;
+        public static Sprite Vignette, Body, Edge, Frame, Gloss, CardBody, Round, RoundEdge, RoundFrame, Badge, Beam, Sparkle, Shine, Sliver;
         // icons (white glyphs, tinted per use) and the two currencies in colour
-        public static Sprite IconShop, IconTrophy, IconFriends, IconGear, IconInfo, IconEvents, IconCoin, IconGem, IconPower;
+        public static Sprite IconShop, IconTrophy, IconFriends, IconGear, IconInfo, IconEvents, IconCoin, IconGem, IconPower, IconQuest, IconMode;
         public static Sprite IconBack, IconSwap, IconCheck, IconLock, IconPlay, IconStriker, IconDefender, IconSkiller, IconPlus, IconStar, IconSkills;
         // text
         public static TMP_FontAsset FontHeavy;
@@ -130,7 +130,22 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ widgets
 
-        const float R = 14f;   // corner radius of buttons and panels (UI px)
+        /// <summary>Size of the cut on the top-left and bottom-right corners of buttons and panels (UI px).</summary>
+        public const float Cut = 13f;
+        const float R = 3f;   // the two remaining corners are only eased
+
+        /// <summary>
+        /// The menu's one shape: a box with the top-left and bottom-right corners cut off at 45° —
+        /// the shape of a shard, the way the crystals in the ruins break. Nine-sliced, so the cut
+        /// keeps its size on every button.
+        /// </summary>
+        public static float Shard(Vector2 p, Vector2 half, float cut, float r = R)
+        {
+            float d = Sdf.Box(p, Vector2.zero, half, r);
+            float tl = (-(p.x + half.x - cut) + (p.y - half.y)) * 0.70710678f;
+            float br = ((p.x - half.x + cut) - (p.y + half.y)) * 0.70710678f;
+            return Mathf.Max(d, Mathf.Max(tl, br));
+        }
 
         static void BuildWidgets(float D)
         {
@@ -138,31 +153,36 @@ namespace SoccerFight
             vg.Field(p => new Color(0f, 0f, 0f, Mathf.Pow(Mathf.Clamp01(p.magnitude / 64f), 2.4f)));
             Ui(vg, "MenuVignette", x => Vignette = x);
 
-            // body: lit from the top like the upgrade cards, a hairline of light along the top edge
+            float border = (Cut + 6f) * D;
+            // body: lit from the top, a hairline of light along the top edge (it starts after the cut)
             var body = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            SdfCanvas.SdfFn box = p => Sdf.Box(p, Vector2.zero, new Vector2(31.5f, 31.5f), R);
-            body.Fill(box, p => Mul(Color.white, Mathf.Lerp(0.74f, 1f, S01((p.y + 30f) / 60f))));
-            body.Paint(p => Sdf.Box(p, new Vector2(0f, 29.6f), new Vector2(24f, 0.9f), 0.9f), new Color(1f, 1f, 1f, 1f), 0.8f);
-            Ui(body, "MenuBody", x => Body = x, (R + 4f) * D);
+            body.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut), p => Mul(Color.white, Mathf.Lerp(0.7f, 1f, S01((p.y + 30f) / 60f))));
+            body.Paint(p => Sdf.Box(p, new Vector2(Cut * 0.5f, 30f), new Vector2(31.5f - Cut * 0.5f - 3f, 0.8f), 0.8f), new Color(1f, 1f, 1f, 1f), 0.6f);
+            Ui(body, "MenuBody", x => Body = x, border);
 
             var edge = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            edge.Fill(p => Sdf.Box(p, Vector2.zero, new Vector2(31.5f, 31.5f), R + 1.5f), Color.white);
-            Ui(edge, "MenuEdge", x => Edge = x, (R + 4f) * D);
+            edge.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut + 0.6f, R + 1f), Color.white);
+            Ui(edge, "MenuEdge", x => Edge = x, border);
 
             // hairline frame (hollow), so a translucent body never shows a rim through itself
             var frame = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            frame.Fill(p => Mathf.Abs(Sdf.Box(p, Vector2.zero, new Vector2(30.5f, 30.5f), R)) - 1.1f, Color.white);
-            Ui(frame, "MenuFrame", x => Frame = x, (R + 4f) * D);
+            frame.Fill(p => Mathf.Abs(Shard(p, new Vector2(30.6f, 30.6f), Cut - 0.4f)) - 1.05f, Color.white);
+            Ui(frame, "MenuFrame", x => Frame = x, border);
 
-            // soft sheen over the top of a body
+            // soft sheen over the top of a body (only the top-left cut shows in it)
             var gloss = new SdfCanvas(new Rect(-32, -16, 64, 32), D);
             gloss.Field(p => new Color(1f, 1f, 1f, S01((p.y + 14f) / 30f) * 0.8f));
-            gloss.Clip(p => Sdf.Box(p, Vector2.zero, new Vector2(31f, 15f), R - 2f));
-            Ui(gloss, "MenuGloss", x => Gloss = x, (R + 2f) * D);
+            gloss.Clip(p => Mathf.Max(Sdf.Box(p, Vector2.zero, new Vector2(31f, 15f), R), (-(p.x + 31f - Cut) + (p.y - 15f)) * 0.70710678f));
+            Ui(gloss, "MenuGloss", x => Gloss = x, border);
 
             var card = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            card.Fill(p => Sdf.Box(p, Vector2.zero, new Vector2(31.5f, 31.5f), 12f), p => Mul(Color.white, Mathf.Lerp(0.82f, 1f, S01((p.y + 30f) / 60f))));
-            Ui(card, "MenuCard", x => CardBody = x, 14f * D);
+            card.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut + 3f), p => Mul(Color.white, Mathf.Lerp(0.8f, 1f, S01((p.y + 30f) / 60f))));
+            Ui(card, "MenuCard", x => CardBody = x, (Cut + 9f) * D);
+
+            // a sliver of light for the edges of bars and active tabs
+            var bar = new SdfCanvas(new Rect(-32, -4, 64, 8), D);
+            bar.Field(p => new Color(1f, 1f, 1f, Mathf.Exp(-p.y * p.y / 2.2f) * S01((31f - Mathf.Abs(p.x)) / 12f)));
+            Ui(bar, "MenuSliver", x => Sliver = x);
 
             var round = new SdfCanvas(new Rect(-64, -64, 128, 128), D);
             round.Fill(p => Sdf.Circle(p, Vector2.zero, 62f), p => Mul(Color.white, Mathf.Lerp(0.78f, 1f, S01((p.y + 50f) / 100f))));
@@ -288,6 +308,23 @@ namespace SoccerFight
             });
             sk.Erase(p => Star5(p, new Vector2(-25f, 24f), 13f, 5.5f));
             Ui(sk, "IconSkills", x => IconSkills = x);
+
+            // quests: a list with a tick on the first line
+            var qu = IconCanvas(D);
+            SdfCanvas.SdfFn board = p => Sdf.Box(p, new Vector2(0f, -4f), new Vector2(40f, 50f), 8f);
+            Glyph(qu, p => Mathf.Min(Mathf.Abs(board(p)) - 5f, Sdf.Box(p, new Vector2(0f, 46f), new Vector2(18f, 8f), 4f)));
+            Glyph(qu, p => Mathf.Min(Sdf.Union(Sdf.Capsule(p, new Vector2(-24f, 18f), new Vector2(-16f, 10f), 4.5f), Sdf.Capsule(p, new Vector2(-16f, 10f), new Vector2(-4f, 26f), 4.5f)),
+                Mathf.Min(Sdf.Capsule(p, new Vector2(6f, 18f), new Vector2(24f, 18f), 4.5f),
+                    Mathf.Min(Sdf.Capsule(p, new Vector2(-22f, -8f), new Vector2(24f, -8f), 4.5f), Sdf.Capsule(p, new Vector2(-22f, -30f), new Vector2(12f, -30f), 4.5f)))));
+            Ui(qu, "IconQuest", x => IconQuest = x);
+
+            // game mode: a broken peak with a flag on the summit (a run is a climb through the stages)
+            var md = IconCanvas(D);
+            SdfCanvas.SdfFn peak = p => Sdf.Triangle(p, new Vector2(-54f, -40f), new Vector2(54f, -40f), new Vector2(2f, 34f)) - 3f;
+            Glyph(md, peak);
+            md.Erase(p => Mathf.Abs(p.y - 4f + Mathf.Abs(p.x - 2f) * 0.35f) - 3.2f, 1f, 0f, new Rect(-40f, -20f, 80f, 40f));
+            Glyph(md, p => Mathf.Min(Sdf.Box(p, new Vector2(2f, 46f), new Vector2(2.6f, 16f), 1f), Sdf.Triangle(p, new Vector2(4f, 60f), new Vector2(4f, 42f), new Vector2(30f, 52f))));
+            Ui(md, "IconMode", x => IconMode = x);
 
             // coin: lantern gold, struck with a ball
             var cn = IconCanvas(D);
