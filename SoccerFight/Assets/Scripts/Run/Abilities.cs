@@ -2,16 +2,22 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Player abilities. Shot + Power Shot are always there (the air-kick recoil always works); the rest come from the loadout equipped in the menu.</summary>
-    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header }
+    /// <summary>
+    /// Player abilities. The shot and the class move on the right mouse button (Power / Dash / Header)
+    /// are always there, the air-kick recoil always works; up to four more are picked after boss fights.
+    /// </summary>
+    public enum Ability { None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash }
 
     public static class Abilities
     {
         public static readonly Ability[] Unlockable =
         {
             Ability.Flick, Ability.Juggle, Ability.StepOver, Ability.Bicycle,
-            Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle, Ability.Header
+            Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle
         };
+
+        /// <summary>The right-mouse-button move of a class (never in one of the four skill slots).</summary>
+        public static bool IsClassMove(Ability a) => a == Ability.Power || a == Ability.Dash || a == Ability.Header;
 
         public static string Name(Ability a)
         {
@@ -31,6 +37,7 @@ namespace SoccerFight
                 case Ability.Decoy: return "LOCKVOGEL";
                 case Ability.Whistle: return "SCHLUSSPFIFF";
                 case Ability.Header: return "KOPFBALL";
+                case Ability.Dash: return "ANTRITT";
                 default: return "";
             }
         }
@@ -51,6 +58,8 @@ namespace SoccerFight
                 case Ability.Decoy: return "Körpertäuschung zur Seite. Das Nachbild bindet die Gegner und platzt mit einem Stoß.";
                 case Ability.Whistle: return "Aufgeladen durch Siege: Ein Pfiff friert alle Gegner ein und stoppt ihre Geschosse.";
                 case Ability.Header: return "Lupft den Ball hoch und köpft ihn wuchtig aufs Ziel: betäubt den Getroffenen und springt zurück.";
+                case Ability.Power: return "Langer Anlauf, dann ein Strahl von einem Schuss: fliegt durch jeden Gegner in seiner Bahn.";
+                case Ability.Dash: return "Blitzschneller Antritt in Laufrichtung, auch in der Luft: kurz unverwundbar, der Ball bleibt am Fuß.";
                 default: return "";
             }
         }
@@ -73,6 +82,7 @@ namespace SoccerFight
                 case Ability.Decoy: return UiArt.IconDecoy;
                 case Ability.Whistle: return UiArt.IconWhistle;
                 case Ability.Header: return UiArt.IconHeader;
+                case Ability.Dash: return UiArt.IconDash;
                 default: return UiArt.IconShot;
             }
         }
@@ -94,6 +104,7 @@ namespace SoccerFight
                 case Ability.Decoy: return Palette.Trick;
                 case Ability.Whistle: return Palette.Silver;
                 case Ability.Header: return Palette.Header;
+                case Ability.Dash: return Palette.Trick;
                 default: return Palette.ShotCyan;
             }
         }

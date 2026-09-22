@@ -4,58 +4,48 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// What kind of move a skill is. The class traits hang off these: the striker hits harder with
-    /// every Shot, the skiller plays Technique faster and harder, the defender owns the Header.
+    /// What kind of move a skill is. The class traits hang off these: the striker hits harder and
+    /// recharges faster with every Shot, the skiller plays Technique faster and harder, the
+    /// defender's header is its own kind.
     /// </summary>
     public enum SkillCategory { Shot, Technique, Defense, Header, Utility }
 
     /// <summary>
-    /// A skill as the meta game sees it: the ability it plays, its category, its shop price, whether
-    /// a new player may take it for free, and which class may use it (null = everyone). Name, text,
-    /// icon and colour come from Abilities so the run and the menus always agree.
+    /// A skill of the boss pool: the ability it plays and its category. Every player has all of
+    /// them — nothing is bought — and a run picks up at most four, one after each boss fight.
+    /// Name, text, icon and colour come from Abilities so the run and the menus always agree.
     /// </summary>
     public sealed class SkillDef
     {
         public Ability Ability;
-        /// <summary>Stable save key — never rename.</summary>
+        /// <summary>Stable key — never rename.</summary>
         public string Id;
         public SkillCategory Category;
-        public Price Cost;
-        /// <summary>One of the three free picks of a new player.</summary>
-        public bool StarterPick = true;
-        /// <summary>Only this class can equip it (null: every class).</summary>
-        public CharacterClass? ClassLock;
 
         public string Name => Abilities.Name(Ability);
         public string Description => Abilities.Description(Ability);
         public Sprite Icon => Abilities.Icon(Ability);
         public Color Accent => Abilities.Accent(Ability);
-
-        public bool UsableBy(CharacterClass c) => ClassLock == null || ClassLock.Value == c;
     }
 
     public static class SkillCatalog
     {
-        static SkillDef S(Ability a, SkillCategory cat, int price, bool starter = true, CharacterClass? only = null)
-            => new SkillDef { Ability = a, Id = a.ToString().ToLowerInvariant(), Category = cat, Cost = Price.Coins(price), StarterPick = starter, ClassLock = only };
+        static SkillDef S(Ability a, SkillCategory cat)
+            => new SkillDef { Ability = a, Id = a.ToString().ToLowerInvariant(), Category = cat };
 
-        /// <summary>
-        /// Every skill in menu order. Prices climb with how much a skill changes a fight: small tools
-        /// first, the big finishers last, the whistle (an ultimate) is the most expensive and never free.
-        /// </summary>
+        /// <summary>Every skill a boss can offer. The class moves on the right mouse button are not in here.</summary>
         public static readonly IReadOnlyList<SkillDef> All = new[]
         {
-            S(Ability.Tackle,   SkillCategory.Defense,   150),
-            S(Ability.Juggle,   SkillCategory.Technique, 150),
-            S(Ability.Decoy,    SkillCategory.Technique, 200),
-            S(Ability.StepOver, SkillCategory.Technique, 250),
-            S(Ability.Nutmeg,   SkillCategory.Technique, 250),
-            S(Ability.Flick,    SkillCategory.Technique, 300),
-            S(Ability.Wall,     SkillCategory.Defense,   300),
-            S(Ability.Header,   SkillCategory.Header,    300, true, CharacterClass.Defender),
-            S(Ability.Bicycle,  SkillCategory.Shot,      400),
-            S(Ability.Punt,     SkillCategory.Shot,      400),
-            S(Ability.Whistle,  SkillCategory.Utility,   600, false),
+            S(Ability.Tackle,   SkillCategory.Defense),
+            S(Ability.Juggle,   SkillCategory.Utility),     // heals, no damage: nothing for a talent to boost
+            S(Ability.Decoy,    SkillCategory.Technique),
+            S(Ability.StepOver, SkillCategory.Technique),
+            S(Ability.Nutmeg,   SkillCategory.Technique),
+            S(Ability.Flick,    SkillCategory.Technique),
+            S(Ability.Wall,     SkillCategory.Defense),
+            S(Ability.Bicycle,  SkillCategory.Shot),
+            S(Ability.Punt,     SkillCategory.Shot),
+            S(Ability.Whistle,  SkillCategory.Utility),
         };
 
         static readonly Dictionary<Ability, SkillDef> byAbility = new Dictionary<Ability, SkillDef>();
@@ -68,6 +58,20 @@ namespace SoccerFight
 
         public static SkillDef Get(Ability a) => byAbility.TryGetValue(a, out var s) ? s : null;
         public static SkillDef Get(string id) => id != null && byId.TryGetValue(id, out var s) ? s : null;
+
+        /// <summary>The category of any ability, class moves included (null: none, e.g. the air kick).</summary>
+        public static SkillCategory? CategoryOf(Ability a)
+        {
+            switch (a)
+            {
+                case Ability.Shot: case Ability.Power: return SkillCategory.Shot;
+                case Ability.Dash: return SkillCategory.Technique;
+                case Ability.Header: return SkillCategory.Header;
+                default:
+                    var s = Get(a);
+                    return s != null ? s.Category : (SkillCategory?)null;
+            }
+        }
 
         public static string CategoryName(SkillCategory c)
         {
@@ -121,6 +125,7 @@ namespace SoccerFight
             switch (a)
             {
                 case Player.Action.Flick: case Player.Action.StepOver: case Player.Action.Nutmeg: case Player.Action.Decoy:
+                case Player.Action.Dash:
                     return SkillCategory.Technique;
                 case Player.Action.Bicycle: case Player.Action.Punt:
                     return SkillCategory.Shot;

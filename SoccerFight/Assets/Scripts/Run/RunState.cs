@@ -27,8 +27,8 @@ namespace SoccerFight
         /// <summary>Unlocked abilities in the order they were gained (the skill bar grows leftwards in this order).</summary>
         public readonly List<Ability> UnlockOrder = new List<Ability>();
         /// <summary>
-        /// The four skill slots. Shot and Power are always there on the mouse buttons; the loadout
-        /// equipped in the menu fills slot 1 to 4 in order and each is played with that slot's key.
+        /// The four skill slots. The shot and the class move are always there on the mouse buttons;
+        /// every boss fight adds one pick to the next free slot and each is played with that slot's key.
         /// </summary>
         public readonly List<Ability> Skills = new List<Ability>();
         public const int MaxSkills = 4;
@@ -39,11 +39,13 @@ namespace SoccerFight
         /// <summary>Which key plays this ability right now.</summary>
         public GameAction ActionFor(Ability a)
         {
-            if (a == Ability.Power) return GameAction.PowerShot;
+            if (a == Primary) return GameAction.PowerShot;
             int i = SlotOf(a);
             return i < 0 ? GameAction.Shoot : (GameAction)((int)GameAction.Skill1 + i);
         }
-        public static bool IsSkill(Ability a) => a != Ability.None && a != Ability.Shot && a != Ability.Power && a != Ability.AirKick;
+        public static bool IsSkill(Ability a) => a != Ability.None && a != Ability.Shot && a != Ability.AirKick && !Abilities.IsClassMove(a);
+        /// <summary>The class move on the right mouse button (power shot, dash or header).</summary>
+        public Ability Primary = Ability.Power;
         public readonly PlayerStats Stats = new PlayerStats();
 
         public StageTheme Theme => StageThemes.For(Stage);
@@ -86,31 +88,25 @@ namespace SoccerFight
             Unlocked.Clear();
             UnlockOrder.Clear();
             Skills.Clear();
+            // the shot and the class move are there from the first second; skills come from the bosses
+            Primary = Characters.Current.ClassDef.Primary;
             Unlock(Ability.Shot);
-            Unlock(Ability.Power);
-            // the loadout from the menu is there from the first second
-            var cls = Characters.Current.Class;
-            foreach (var a in Profile.Loadout())
-            {
-                var def = SkillCatalog.Get(a);
-                if (def != null && def.UsableBy(cls)) Unlock(a);
-            }
+            Unlock(Primary);
         }
 
         public bool Has(Ability a) => a == Ability.None || Unlocked.Contains(a);
         public int Stacks(string id) => Owned.TryGetValue(id, out int n) ? n : 0;
 
         /// <summary>
-        /// What a boss can add to a free slot: skills the player owns but didn't equip (and the
-        /// class can use). Nothing once all four slots are taken — the boss then pays a second card.
+        /// What a boss can add to a free slot: every skill not in a slot yet — all of them belong to
+        /// every player. Nothing once all four slots are taken — the boss then pays a second card.
         /// </summary>
         public List<Ability> LockedAbilities()
         {
             var list = new List<Ability>();
             if (!CanUnlockMore) return list;
-            var cls = Characters.Current.Class;
             foreach (var s in SkillCatalog.All)
-                if (!Unlocked.Contains(s.Ability) && s.UsableBy(cls) && Profile.OwnsSkill(s.Ability)) list.Add(s.Ability);
+                if (!Unlocked.Contains(s.Ability)) list.Add(s.Ability);
             return list;
         }
 

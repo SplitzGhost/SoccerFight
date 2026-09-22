@@ -31,8 +31,8 @@ namespace SoccerFight
         public bool Boomerang, DoubleRainbow, BulletTime, Perpetual, Maestro;
 
         // ---- mobility
-        public float MoveSpeedMul, JumpMul, DashDistanceMul, DashDamageFrac;
-        public int AirBoosts;
+        public float MoveSpeedMul, JumpMul, DashDistanceMul, DashDamageFrac, DashCooldownMul;
+        public int AirBoosts, AirDashes;
         public float AdrenalineTime;
         public bool Slippery;          // ice stage
         public float GravityMul;       // astral stage
@@ -69,6 +69,8 @@ namespace SoccerFight
         // ---- class traits and character perks (MetaPassives)
         /// <summary>Damage multiplier per SkillCategory, on top of DamageMul.</summary>
         public readonly float[] CategoryDamage = new float[System.Enum.GetValues(typeof(SkillCategory)).Length];
+        /// <summary>Cooldown multiplier per SkillCategory, on top of CooldownMul.</summary>
+        public readonly float[] CategoryCooldown = new float[System.Enum.GetValues(typeof(SkillCategory)).Length];
         /// <summary>Speed at which trick moves play out (1 = normal).</summary>
         public float TechniqueHaste;
         /// <summary>Extra run speed (fraction) for RushTime seconds after a trick.</summary>
@@ -79,6 +81,8 @@ namespace SoccerFight
         public bool ShotImpactFx;
 
         public float CategoryMul(SkillCategory c) => CategoryDamage[(int)c];
+        /// <summary>Everything that shortens the cooldown of a move of this category.</summary>
+        public float CooldownOf(SkillCategory c) => CooldownMul * CategoryCooldown[(int)c];
 
         public void Reset()
         {
@@ -97,8 +101,8 @@ namespace SoccerFight
             BloodFrenzy = GoldenBoot = TwinSun = Singularity = Trident = EchoFlip = CycloneStep = false;
             Boomerang = DoubleRainbow = BulletTime = Perpetual = Maestro = false;
 
-            MoveSpeedMul = JumpMul = DashDistanceMul = 1f; DashDamageFrac = 0f;
-            AirBoosts = 1; AdrenalineTime = 0f; Slippery = false; GravityMul = 1f;
+            MoveSpeedMul = JumpMul = DashDistanceMul = DashCooldownMul = 1f; DashDamageFrac = 0f;
+            AirBoosts = AirDashes = 1; AdrenalineTime = 0f; Slippery = false; GravityMul = 1f;
 
             MaxHpBonus = 0f; Armor = 0f; RegenPerSec = 0f; HealOnWave = 0f; LifeOnKill = 0f; InvulnBonus = 0f;
             ShieldCharges = 0; ShieldRecharge = 16f; CounterStomp = 0f; Revives = 0;
@@ -111,7 +115,7 @@ namespace SoccerFight
             WhistleBonus = 0f; RedCard = false; DecoyCount = 0; DecoyBlast = false;
             HeaderStunBonus = 0f; HeaderPierce = 0;
 
-            for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = 1f;
+            for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = CategoryCooldown[i] = 1f;
             TechniqueHaste = 1f;
             RushSpeed = RushTime = 0f;
             DamageTaken = 1f;

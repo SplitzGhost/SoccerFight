@@ -3,12 +3,13 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    public enum ShopKind { Character, Skill }
+    public enum ShopKind { Character }
 
     /// <summary>
     /// Something that can be bought once and then belongs to the player. The shop knows nothing
-    /// about characters or skills beyond this: a new kind of item (a ball skin, a skill upgrade
-    /// level, a bundle) is a new ShopKind plus the three delegates.
+    /// about characters beyond this: a new kind of item (a ball skin, a character upgrade level, a
+    /// bundle) is a new ShopKind plus the three delegates. Skills are never sold — every player has
+    /// all of them and picks them up after boss fights.
     /// </summary>
     public sealed class ShopItem
     {
@@ -22,7 +23,6 @@ namespace SoccerFight
         /// <summary>Why it can't be bought right now (null: it can).</summary>
         public System.Func<string> Blocked;
         public CharacterDef Character;
-        public SkillDef Skill;
     }
 
     /// <summary>
@@ -63,26 +63,6 @@ namespace SoccerFight
                     Grant = () => Profile.GrantCharacter(def.Id),
                 });
             }
-            foreach (var s in SkillCatalog.All)
-            {
-                var def = s;
-                items.Add(new ShopItem
-                {
-                    Id = "skill_" + def.Id, Kind = ShopKind.Skill, Price = def.Cost, Name = def.Name,
-                    Description = def.Description, Accent = def.Accent, Skill = def,
-                    Owned = () => Profile.OwnsSkill(def.Ability),
-                    Grant = () => Profile.GrantSkill(def.Ability),
-                    Blocked = () => def.ClassLock != null && !OwnsClass(def.ClassLock.Value)
-                        ? "NUR " + Classes.Of(def.ClassLock.Value).Name : null,
-                });
-            }
-        }
-
-        /// <summary>A class-locked skill is only sold once the player owns someone who can use it.</summary>
-        static bool OwnsClass(CharacterClass c)
-        {
-            foreach (var ch in Characters.All) if (ch.Class == c && Profile.OwnsCharacter(ch.Id)) return true;
-            return false;
         }
 
         public static ShopItem Find(string id)
@@ -92,7 +72,6 @@ namespace SoccerFight
         }
 
         public static ShopItem ForCharacter(CharacterDef c) => Find("char_" + c.Id);
-        public static ShopItem ForSkill(Ability a) { var s = SkillCatalog.Get(a); return s == null ? null : Find("skill_" + s.Id); }
 
         public static IEnumerable<ShopItem> OfKind(ShopKind kind)
         {

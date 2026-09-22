@@ -88,7 +88,12 @@ namespace SoccerFight
         public const float HeaderToss = 0.16f, HeaderContact = 0.3f, HeaderDuration = 0.56f;
         public const float HeaderCooldown = 4.5f, HeaderSpeed = 23f, HeaderDamage = 30f, HeaderStun = 1.1f;
 
-        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header }
+        // dash (the skiller's right mouse button): a short flat burst along the run direction, on the
+        // ground or once per jump, invulnerable while it runs; the ball stays at the boot
+        public const float DashRun = 0.15f, DashDuration = 0.3f, DashCooldown = 2f;
+        const float DashRunSpeed = 23f;   // ≈ 3.5 units in DashRun
+
+        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -108,16 +113,17 @@ namespace SoccerFight
         static RunState Run => Game.I.Run;
         static PlayerStats S => Game.I.Run.Stats;
         public float ShotCooldownTotal => ShotCooldown * S.ShotCooldownMul / Combat.AdrenalineMul;
-        public float PowerCooldownTotal => PowerCooldown * S.CooldownMul;
-        public float FlickCooldownTotal => FlickCooldown * S.CooldownMul;
-        public float StepOverCooldownTotal => StepOverCooldown * S.CooldownMul;
-        public float BicycleCooldownTotal => BicycleCooldown * S.CooldownMul;
-        public float TackleCooldownTotal => TackleCooldown * S.CooldownMul;
-        public float PuntCooldownTotal => PuntCooldown * S.CooldownMul;
-        public float WallCooldownTotal => WallCooldown * S.CooldownMul;
-        public float NutmegCooldownTotal => NutmegCooldown * S.CooldownMul;
-        public float DecoyCooldownTotal => DecoyCooldown * S.CooldownMul;
-        public float HeaderCooldownTotal => HeaderCooldown * S.CooldownMul;
+        public float PowerCooldownTotal => PowerCooldown * S.CooldownOf(SkillCategory.Shot);
+        public float FlickCooldownTotal => FlickCooldown * S.CooldownOf(SkillCategory.Technique);
+        public float StepOverCooldownTotal => StepOverCooldown * S.CooldownOf(SkillCategory.Technique);
+        public float BicycleCooldownTotal => BicycleCooldown * S.CooldownOf(SkillCategory.Shot);
+        public float TackleCooldownTotal => TackleCooldown * S.CooldownOf(SkillCategory.Defense);
+        public float PuntCooldownTotal => PuntCooldown * S.CooldownOf(SkillCategory.Shot);
+        public float WallCooldownTotal => WallCooldown * S.CooldownOf(SkillCategory.Defense);
+        public float NutmegCooldownTotal => NutmegCooldown * S.CooldownOf(SkillCategory.Technique);
+        public float DecoyCooldownTotal => DecoyCooldown * S.CooldownOf(SkillCategory.Technique);
+        public float HeaderCooldownTotal => HeaderCooldown * S.CooldownOf(SkillCategory.Header);
+        public float DashCooldownTotal => DashCooldown * S.CooldownOf(SkillCategory.Technique) * S.DashCooldownMul;
         public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul * (Rushing ? 1f + S.RushSpeed : 1f);
         /// <summary>The skiller's sprint after a trick.</summary>
         public bool Rushing => rushT > 0f;
@@ -139,7 +145,7 @@ namespace SoccerFight
         public float ShotCd;
         public float FlickCd;
         public float PowerCd, StepOverCd, BicycleCd;
-        public float TackleCd, PuntCd, WallCd, NutmegCd, DecoyCd, HeaderCd;
+        public float TackleCd, PuntCd, WallCd, NutmegCd, DecoyCd, HeaderCd, DashCd;
         /// <summary>Where the ball sits during the header's toss (local, facing-relative).</summary>
         public Vector2 HeaderBallLocal;
         /// <summary>Whistle charge (0..1): filled by kills, spent in one go.</summary>
@@ -155,7 +161,9 @@ namespace SoccerFight
         /// <summary>Bicycle kick: ball position relative to the player (facing-local, not rotated with the body).</summary>
         public Vector2 BikeBallLocal;
         public bool ActionReleased => released;
-        public bool IsDashing => CurrentAction == Action.StepOver && ActionTime >= StepOverTime && ActionTime < StepOverTime + DashTime;
+        /// <summary>A dash is running: the step-over's burst or the skiller's own.</summary>
+        public bool IsDashing => (CurrentAction == Action.StepOver && ActionTime >= StepOverTime && ActionTime < StepOverTime + DashTime)
+            || (CurrentAction == Action.Dash && ActionTime < DashRun);
         public Action CurrentAction;
         public float ActionTime;
         public Vector2 KickAimLocal = Vector2.right;
@@ -182,7 +190,9 @@ namespace SoccerFight
         Afterimages ghosts;
 
         float coyote, jumpBuffer, shotBuffer, flickBuffer, juggleBuffer, powerBuffer, stepBuffer, bikeBuffer;
-        float tackleBuffer, puntBuffer, wallBuffer, nutmegBuffer, decoyBuffer, whistleBuffer, headerBuffer;
+        float tackleBuffer, puntBuffer, wallBuffer, nutmegBuffer, decoyBuffer, whistleBuffer, headerBuffer, dashBuffer;
+        /// <summary>Dashes left before the next landing (the skiller dashes once per airtime).</summary>
+        int airDashes = 1;
         float rushT, rushGhostT;
         Vector2 headerBallStart;
         bool headerHopped;
@@ -230,13 +240,14 @@ namespace SoccerFight
             shotCount = 0;
             regenAcc = 0f;
             ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
-            TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = 0f;
+            TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = DashCd = 0f;
             Ultimate = 0f;
             DodgeTime = 0f;
             CurrentAction = Action.None;
             ActionTime = 0f;
             coyote = jumpBuffer = shotBuffer = flickBuffer = juggleBuffer = powerBuffer = stepBuffer = bikeBuffer = 0f;
-            tackleBuffer = puntBuffer = wallBuffer = nutmegBuffer = decoyBuffer = whistleBuffer = headerBuffer = 0f;
+            tackleBuffer = puntBuffer = wallBuffer = nutmegBuffer = decoyBuffer = whistleBuffer = headerBuffer = dashBuffer = 0f;
+            airDashes = 1;
             rushT = rushGhostT = 0f;
             airBoosts = 1;
             boostT = boostGhostT = 0f;
@@ -262,6 +273,8 @@ namespace SoccerFight
             decoyBuffer = Mathf.Max(0f, decoyBuffer - dt);
             whistleBuffer = Mathf.Max(0f, whistleBuffer - dt);
             headerBuffer = Mathf.Max(0f, headerBuffer - dt);
+            dashBuffer = Mathf.Max(0f, dashBuffer - dt);
+            powerBuffer = Mathf.Max(0f, powerBuffer - dt);
         }
 
         /// <summary>A skill key was pressed: buffer whatever ability sits in that slot.</summary>
@@ -279,8 +292,18 @@ namespace SoccerFight
                 case Ability.Nutmeg: nutmegBuffer = 0.25f; break;
                 case Ability.Decoy: decoyBuffer = 0.25f; break;
                 case Ability.Whistle: whistleBuffer = 0.25f; break;
-                case Ability.Header: headerBuffer = 0.25f; break;
                 default: Game.I.Hud.OnEmptySlot(slot); break;   // nothing in this slot yet
+            }
+        }
+
+        /// <summary>The right mouse button: buffer the class move (power shot, dash or header).</summary>
+        void PressClassMove(Ability a)
+        {
+            switch (a)
+            {
+                case Ability.Power: powerBuffer = 0.3f; break;
+                case Ability.Dash: dashBuffer = 0.2f; break;
+                case Ability.Header: headerBuffer = 0.25f; break;
             }
         }
 
@@ -344,6 +367,7 @@ namespace SoccerFight
             NutmegCd = Mathf.Max(0f, NutmegCd - seconds);
             DecoyCd = Mathf.Max(0f, DecoyCd - seconds);
             HeaderCd = Mathf.Max(0f, HeaderCd - seconds);
+            DashCd = Mathf.Max(0f, DashCd - seconds);
         }
 
         /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
@@ -370,6 +394,7 @@ namespace SoccerFight
             NutmegCd = Mathf.Max(0f, NutmegCd - dt);
             DecoyCd = Mathf.Max(0f, DecoyCd - dt);
             HeaderCd = Mathf.Max(0f, HeaderCd - dt);
+            DashCd = Mathf.Max(0f, DashCd - dt);
             rushT = Mathf.Max(0f, rushT - dt);
             InvulnTimer = Mathf.Max(0f, InvulnTimer - dt);
             DodgeTime = Mathf.Max(0f, DodgeTime - dt);
@@ -377,7 +402,7 @@ namespace SoccerFight
             if (DevMode.NoCooldowns)
             {
                 ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
-                TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = 0f;
+                TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = DashCd = 0f;
                 Ultimate = 1f;
             }
 
@@ -419,9 +444,9 @@ namespace SoccerFight
             // runs out right after the release, so letting go never fires a late extra shot
             shotBuffer = Dead ? 0f : GameInput.ShootPressed ? 0.35f
                 : GameInput.ShootHeld ? Mathf.Max(shotBuffer - dt, 0.06f) : Mathf.Max(0f, shotBuffer - dt);
-            powerBuffer = GameInput.PowerPressed && !Dead ? 0.3f : Mathf.Max(0f, powerBuffer - dt);
-            // the four skill keys play whatever the run has put into their slot
+            // the right mouse button plays the class move, the four skill keys whatever the run has put into their slot
             DecaySkillBuffers(dt);
+            if (GameInput.PowerPressed && !Dead) PressClassMove(run.Primary);
             if (!Dead)
                 for (int i = 0; i < GameInput.Slots; i++)
                     if (GameInput.SkillPressed[i]) PressSkill(run.SkillAt(i), i);
@@ -430,6 +455,7 @@ namespace SoccerFight
             if (CurrentAction == Action.None && !Dead)
             {
                 if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
+                else if (dashBuffer > 0f && DashCd <= 0f && (Grounded || airDashes > 0)) StartDash();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
                 else if (headerBuffer > 0f && HeaderCd <= 0f && TakeBall()) StartHeader();
@@ -458,6 +484,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.StepOver) speedMul = 0.1f;
             else if (CurrentAction == Action.Bicycle) speedMul = 0.4f;
             else if (CurrentAction == Action.Header) speedMul = 0.35f;
+            else if (CurrentAction == Action.Dash) speedMul = 0.6f;
             else if (CurrentAction == Action.Punt) speedMul = ActionTime < PuntContact ? 0f : 0.35f;
             else if (CurrentAction == Action.Wall || CurrentAction == Action.Whistle) speedMul = 0.15f;
             else if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Decoy) speedMul = 0.1f;
@@ -478,7 +505,8 @@ namespace SoccerFight
             }
             // a hasted trick covers the same distance in less time
             float rate = ActionRate;
-            if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
+            if (CurrentAction == Action.Dash && ActionTime < DashRun) Vel.x = dashDir * DashRunSpeed * s.DashDistanceMul * rate;
+            else if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
             // the slide starts fast and runs out of steam — on ice it keeps going much further
             else if (IsSliding) Vel.x = slideDir * TackleSpeed * (1f - 0.72f * MathUtil.EaseInQuad(ActionTime / TackleSlide)) * (s.Slippery ? 1.45f : 1f);
             else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun) * rate;
@@ -553,6 +581,7 @@ namespace SoccerFight
                 OnPlatform = floorIndex;
                 platformVersion = Level.Version;
                 airBoosts = s.AirBoosts;
+                airDashes = s.AirDashes;
                 boostRise = false;
             }
             else if (Pos.y > floor + 0.001f)
@@ -1093,6 +1122,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Decoy) UpdateDecoy(dt);
             else if (CurrentAction == Action.Whistle) UpdateWhistle(dt);
             else if (CurrentAction == Action.Header) UpdateHeader(dt);
+            else if (CurrentAction == Action.Dash) UpdateDash(dt);
         }
 
         void UpdatePower(float dt)
@@ -1565,6 +1595,58 @@ namespace SoccerFight
             Rig.OnHeaderContact();
         }
 
+        // ------------------------------------------------------------------ dash (skiller)
+
+        void StartDash()
+        {
+            dashBuffer = 0f;
+            // along the run direction; standing still it goes where the player faces
+            if (Mathf.Abs(GameInput.MoveX) > 0.01f) Facing = GameInput.MoveX > 0f ? 1 : -1;
+            dashDir = Facing;
+            if (!Grounded) airDashes--;
+            AbortJuggle();
+            CurrentAction = Action.Dash;
+            ActionTime = 0f;
+            DashCd = DashCooldownTotal;
+            DodgeTime = Mathf.Max(DodgeTime, DashRun + 0.08f);
+            StepCarry = Grounded && Ball.IsHeldFree;
+            if (StepCarry) Ball.BeginScripted();
+            ghostTimer = 0f;
+            dashHits.Clear();
+            Game.I.Hud.OnSkillUsed(Ability.Dash);
+
+            var fx = FxSystem.I;
+            Color c = Palette.Trick;
+            Vector2 back = new Vector2(-dashDir, 0f);
+            if (Grounded) fx.Dust(Pos, new Vector2(-dashDir, 0.25f), 6, 2.4f, 0.38f, 0.32f);
+            fx.Ring(FxLayer.Front, Pos + new Vector2(-dashDir * 0.2f, 0.85f), 0.2f, 1f, 0.1f, 0.01f, 0.2f, Color.white, c.WithAlpha(0f), 2f);
+            for (int i = 0; i < 5; i++)
+            {
+                Vector2 p = Pos + new Vector2(0f, Random.Range(0.2f, 1.7f));
+                fx.Streak(FxLayer.Front, p, back * Random.Range(8f, 14f), Random.Range(0.14f, 0.22f), 0.03f, 0.06f,
+                    Color.white.WithAlpha(0.8f), c.WithAlpha(0f), 2f, 5f);
+            }
+            Game.I.Cam.Kick(new Vector2(dashDir * 0.14f, 0f));
+            Game.I.Cam.AddTrauma(0.05f);
+            Rig.OnDash();
+        }
+
+        void UpdateDash(float dt)
+        {
+            if (ActionTime < DashRun)
+            {
+                ghostTimer -= dt;
+                if (ghostTimer <= 0f) { ghostTimer = 0.024f; ghosts.Spawn(Palette.Trick, 0.24f, 0.32f); }
+            }
+            else if (Mathf.Abs(Vel.x) > MaxSpeedNow) Vel.x = dashDir * MaxSpeedNow;   // carry the momentum out of the burst
+            if (ActionTime >= DashDuration)
+            {
+                CurrentAction = Action.None;
+                if (StepCarry) Ball.EndScripted();
+                StepCarry = false;
+            }
+        }
+
         /// <summary>Called after the rig pose is computed so the scripted ball follows the leg.</summary>
         public void LateVisuals(float dt)
         {
@@ -1622,7 +1704,7 @@ namespace SoccerFight
             if (CurrentAction == Action.Power && !released) { CurrentAction = Action.None; Ball.Charge = 0f; game.Cam.SetZoom(1f); }
             if ((CurrentAction == Action.Punt || CurrentAction == Action.Header) && !released) { CurrentAction = Action.None; Ball.Release(); }
             // a hit ends a slide or a placement on the spot; the ball simply drops back out
-            if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Wall || CurrentAction == Action.Whistle)
+            if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Wall || CurrentAction == Action.Whistle || CurrentAction == Action.Dash)
             {
                 CurrentAction = Action.None;
                 if (StepCarry) { Ball.EndScripted(); StepCarry = false; }

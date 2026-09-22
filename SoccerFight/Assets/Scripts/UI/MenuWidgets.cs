@@ -287,12 +287,12 @@ namespace SoccerFight
     public static class MenuPage
     {
         public const int Main = 0, Characters = 1, Settings = 2, Shop = 3, Ranking = 4, Friends = 5, Events = 6, Info = 7,
-            Skills = 8, Starter = 9, StarterSkills = 10, Count = 11;
+            Starter = 8, Count = 9;
         /// <summary>Targets in the top bar: shootable on every page the bar is shown on.</summary>
         public const int Global = -1;
 
-        /// <summary>The first-launch pages: no way back to the title screen until they are done.</summary>
-        public static bool IsOnboarding(int page) => page == Starter || page == StarterSkills;
+        /// <summary>The first-launch page: no way back to the title screen until it is done.</summary>
+        public static bool IsOnboarding(int page) => page == Starter;
     }
 
     /// <summary>

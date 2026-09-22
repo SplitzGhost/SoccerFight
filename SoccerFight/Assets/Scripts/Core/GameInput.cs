@@ -64,7 +64,7 @@ namespace SoccerFight
         {
             int slot = Game.I != null ? Game.I.Run.SlotOf(a) : -1;
             if (slot >= 0 && slot < SkillPressed.Length) SkillPressed[slot] = true;
-            else if (a == Ability.Power) PowerPressed = true;
+            else if (Game.I != null && a == Game.I.Run.Primary) PowerPressed = true;   // the class move on the right mouse button
             else if (a == Ability.Shot) ShootPressed = true;
         }
 

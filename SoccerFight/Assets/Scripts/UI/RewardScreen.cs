@@ -122,7 +122,7 @@ namespace SoccerFight
             accent = Palette.Gold;
             kicker.text = "STAGE " + stage + " GESCHAFFT";
             title.text = "NEUE FÄHIGKEIT";
-            sub.text = "Ein Platz ist frei: Nimm eine deiner Fähigkeiten für den Rest des Laufs mit.";
+            sub.text = "Platz " + (Game.I.Run.SkillCount + 1) + " von " + RunState.MaxSkills + " ist frei: Nimm eine Fähigkeit für den Rest des Laufs mit.";
             BuildAbilityCards();
             Open(shown);
         }
@@ -140,7 +140,10 @@ namespace SoccerFight
             rootGroup.interactable = true;
             aura.color = accent.WithAlpha(0.07f);
             kicker.color = accent;
-            hint.text = abilityMode ? "[ 1 ]  [ 2 ]  ODER KLICKEN" : "[ 1 ]  [ 2 ]  [ 3 ]  ODER KLICKEN";
+            int n = abilityMode ? abilities.Count : offer.Count;
+            var keys = new System.Text.StringBuilder();
+            for (int i = 1; i <= n; i++) keys.Append("[ ").Append(i).Append(" ]  ");
+            hint.text = keys + "ODER KLICKEN";
         }
 
         // ------------------------------------------------------------------ cards
@@ -254,7 +257,13 @@ namespace SoccerFight
                 if (a == Ability.Flick) ac = new Color(1f, 0.85f, 0.55f);
                 var c = MakeCard(i, abilities.Count, size, ac, true, false);
                 var ct = c.content;
-                UiKit.Label("Kind", ct, "FÄHIGKEIT", 13f, ac, TextAlignmentOptions.Center, new Vector2(0f, 232f), new Vector2(380f, 20f), true, 10f);
+                // the category, and whether the class trait makes this one stronger
+                var cat = SkillCatalog.CategoryOf(a);
+                var cls = Characters.Current.ClassDef;
+                bool classBonus = cat != null && cat.Value == cls.Specialty;
+                string kind = cat != null ? SkillCatalog.CategoryName(cat.Value) : "FÄHIGKEIT";
+                if (classBonus) kind += "  ·  " + cls.Name + "-BONUS";
+                UiKit.Label("Kind", ct, kind, 13f, classBonus ? cls.Accent : ac, TextAlignmentOptions.Center, new Vector2(0f, 232f), new Vector2(400f, 20f), true, classBonus ? 6f : 10f);
                 Medallion(c, ct, new Vector2(0f, 110f), 170f, Abilities.Icon(a), 0.74f);
                 UiKit.Label("Name", ct, Abilities.Name(a), 34f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, -8f), new Vector2(420f, 44f), true, 5f);
                 UiKit.Img("Divider", ct, UiArt.LineFade, Color.white.WithAlpha(0.14f), new Vector2(0f, -42f), new Vector2(300f, 2f));

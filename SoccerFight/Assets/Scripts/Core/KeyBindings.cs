@@ -44,7 +44,7 @@ namespace SoccerFight
                 case GameAction.Jump: return "SPRINGEN";
                 case GameAction.Shoot: return "SCHUSS";
                 case GameAction.Down: return "DURCHFALLEN";
-                case GameAction.PowerShot: return "POWER-SCHUSS";
+                case GameAction.PowerShot: return "KLASSEN-FÄHIGKEIT";
                 case GameAction.Skill1: return "FÄHIGKEIT 1";
                 case GameAction.Skill2: return "FÄHIGKEIT 2";
                 case GameAction.Skill3: return "FÄHIGKEIT 3";

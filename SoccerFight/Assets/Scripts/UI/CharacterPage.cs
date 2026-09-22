@@ -7,7 +7,7 @@ namespace SoccerFight
     /// <summary>
     /// SPIELER: the roster, one tab per class. Each tab shows the class talent and its three
     /// characters as tall cards in the in-game card style (portrait with the live figure, class,
-    /// talent, personal perk, bars). Owned characters are picked by kicking the card; locked ones
+    /// talent, personal perk, bars); the line above names the class move on the right mouse button. Owned characters are picked by kicking the card; locked ones
     /// sit behind a veil with their price and lead to the shop.
     /// </summary>
     public sealed class CharacterPage
@@ -71,6 +71,9 @@ namespace SoccerFight
                 groups.Add(grp);
             }
             talent = MenuArt.Label("Talent", content, "", 17f, Color.white, new Vector2(0f, 322f), new Vector2(1500f, 26f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
+            talent.enableAutoSizing = true;
+            talent.fontSizeMin = 12f;
+            talent.fontSizeMax = 17f;
             owned = MenuArt.Label("Owned", page.Root, "", 16f, MetaUi.Muted, Vector2.zero, new Vector2(400f, 24f), TextAlignmentOptions.Right, 3f, MenuArt.TextHeavySoft);
             MenuUi.Pin(owned.rectTransform, new Vector2(1f, 1f), new Vector2(-250f, -SubPage.TopBar - 34f));
         }
@@ -104,10 +107,8 @@ namespace SoccerFight
             }
             card.Jiggle = 1f;
             if (Characters.Current == def) return;
-            bool hadHeader = Profile.IsEquipped(Ability.Header);
             Characters.Select(Characters.IndexOf(def));
             Sfx.Play(Sound.Select, 0.8f);
-            if (hadHeader && !Profile.IsEquipped(Ability.Header)) nav.Say("KOPFBALL ABGELEGT  ·  NUR FÜR VERTEIDIGER", card.Root);
         }
 
         void StyleTab(Group grp, MenuTarget t, int index)
@@ -134,7 +135,7 @@ namespace SoccerFight
             if (page.T < 0.01f) return;
             PlayerArt.Pump();
             var cls = groups[tab].Class;
-            talent.text = "TALENT  " + cls.TraitName + "  ·  " + cls.Trait.Text;
+            talent.text = "TALENT  " + cls.TraitName + "  ·  " + cls.Trait.Text + "  ·  RECHTSKLICK: " + Abilities.Name(cls.Primary);
             talent.color = MetaUi.Soft(cls.Accent);
             for (int g = 0; g < groups.Count; g++)
             {

@@ -13,14 +13,16 @@ namespace SoccerFight
     {
         // Stürmer · Schussgewalt
         public const float StrikerShotBonus = 0.30f;      // +30 % damage for every shot-type move
+        public const float StrikerShotCooldown = 0.8f;    // shot skills recharge 20 % faster
 
         // Skiller · Technikmeister
         public const float SkillerHaste = 1.35f;          // trick moves play 35 % faster
         public const float SkillerTechBonus = 0.25f;      // +25 % damage for tricks
+        public const float SkillerTechCooldown = 0.8f;    // trick skills (and the dash) recharge 20 % faster
         public const float SkillerRushSpeed = 0.30f;      // +30 % run speed ...
         public const float SkillerRushTime = 1.6f;        // ... for this long after every trick
 
-        // Verteidiger · Kopfballspezialist
+        // Verteidiger · Bollwerk
         public const float DefenderHp = 40f;              // 120 → 160 max health
         public const float DefenderDamageTaken = 0.85f;   // takes 15 % less from every hit
         public const float DefenderDamageMul = 0.9f;      // deals 10 % less overall
@@ -28,8 +30,9 @@ namespace SoccerFight
     }
 
     /// <summary>
-    /// One class: its identity on the cards (name, colour, icon, description, strengths) and its
-    /// trait, a passive that is always on while a character of this class plays.
+    /// One class: its identity on the cards (name, colour, icon, description, strengths), its move
+    /// on the right mouse button and its trait, a passive that is always on while a character of
+    /// this class plays.
     /// </summary>
     public sealed class ClassDef
     {
@@ -44,8 +47,10 @@ namespace SoccerFight
         public string Drawback;
         public Color Accent;
         public System.Func<Sprite> Icon;
-        /// <summary>The skill category the class is built around.</summary>
+        /// <summary>The skill category the class is built around (boss offers mark it as boosted).</summary>
         public SkillCategory Specialty;
+        /// <summary>The class move on the right mouse button, there from the first second of a run.</summary>
+        public Ability Primary;
         public PassiveDef Trait;
         /// <summary>Card bars 1..5.</summary>
         public int Attack, Defence, Tech;
@@ -60,23 +65,24 @@ namespace SoccerFight
         {
             Class = CharacterClass.Striker, Name = "STÜRMER", TraitName = "SCHUSSGEWALT",
             Tagline = "Wuchtige Schüsse, hoher Schaden",
-            Description = "Lebt vom Abschluss: Jeder Schuss trifft härter, verstärkte Treffer schlagen mit einem sichtbaren Wuchtstern ein.",
+            Description = "Lebt vom Abschluss: Jeder Schuss trifft härter, Schuss-Fähigkeiten laden schneller, verstärkte Treffer schlagen mit einem Wuchtstern ein.",
             Strengths = new[]
             {
                 "+" + Pct(ClassTuning.StrikerShotBonus) + " SCHADEN MIT SCHÜSSEN",
-                "AUCH POWER-SCHUSS, ABSTOSS & CO.",
-                "VERSTÄRKTE TREFFER MIT WUCHTSTERN",
+                "SCHUSS-FÄHIGKEITEN LADEN " + Pct(1f - ClassTuning.StrikerShotCooldown) + " SCHNELLER",
+                "RECHTSKLICK: POWER-SCHUSS",
             },
             Drawback = "",
-            Accent = Hex("#FF5A4A"), Icon = () => MenuArt.IconStriker, Specialty = SkillCategory.Shot,
+            Accent = Hex("#FF5A4A"), Icon = () => MenuArt.IconStriker, Specialty = SkillCategory.Shot, Primary = Ability.Power,
             Attack = 5, Defence = 2, Tech = 3,
             Trait = new PassiveDef
             {
                 Id = "trait_striker", Name = "SCHUSSGEWALT",
-                Text = "+" + Pct(ClassTuning.StrikerShotBonus) + " Schaden mit allen Schüssen.",
+                Text = "+" + Pct(ClassTuning.StrikerShotBonus) + " Schaden mit allen Schüssen, Schuss-Fähigkeiten laden " + Pct(1f - ClassTuning.StrikerShotCooldown) + " schneller.",
                 Apply = (s, n) =>
                 {
                     s.CategoryDamage[(int)SkillCategory.Shot] += ClassTuning.StrikerShotBonus;
+                    s.CategoryCooldown[(int)SkillCategory.Shot] *= ClassTuning.StrikerShotCooldown;
                     s.ShotImpactFx = true;
                 },
             },
@@ -86,23 +92,24 @@ namespace SoccerFight
         {
             Class = CharacterClass.Skiller, Name = "SKILLER", TraitName = "TECHNIKMEISTER",
             Tagline = "Schnell, wendig, trickreich",
-            Description = "Tricks statt Kraft: Trick-Fähigkeiten laufen schneller ab, treffen härter und geben nach jedem Einsatz einen kurzen Sprint.",
+            Description = "Tricks statt Kraft: Trick-Fähigkeiten laufen schneller ab, laden schneller, treffen härter und geben nach jedem Einsatz einen kurzen Sprint.",
             Strengths = new[]
             {
-                "TRICKS " + Pct(ClassTuning.SkillerHaste - 1f) + " SCHNELLER",
                 "+" + Pct(ClassTuning.SkillerTechBonus) + " SCHADEN MIT TRICKS",
-                "+" + Pct(ClassTuning.SkillerRushSpeed) + " TEMPO NACH JEDEM TRICK",
+                "TRICKS " + Pct(ClassTuning.SkillerHaste - 1f) + " SCHNELLER, LADEN " + Pct(1f - ClassTuning.SkillerTechCooldown) + " SCHNELLER",
+                "RECHTSKLICK: ANTRITT (DASH)",
             },
             Drawback = "",
-            Accent = Hex("#C77DFF"), Icon = () => MenuArt.IconSkiller, Specialty = SkillCategory.Technique,
+            Accent = Hex("#C77DFF"), Icon = () => MenuArt.IconSkiller, Specialty = SkillCategory.Technique, Primary = Ability.Dash,
             Attack = 2, Defence = 3, Tech = 5,
             Trait = new PassiveDef
             {
                 Id = "trait_skiller", Name = "TECHNIKMEISTER",
-                Text = "Tricks laufen " + Pct(ClassTuning.SkillerHaste - 1f) + " schneller, machen +" + Pct(ClassTuning.SkillerTechBonus) + " Schaden und geben einen Sprint.",
+                Text = "Tricks laufen " + Pct(ClassTuning.SkillerHaste - 1f) + " schneller, laden " + Pct(1f - ClassTuning.SkillerTechCooldown) + " schneller, machen +" + Pct(ClassTuning.SkillerTechBonus) + " Schaden und geben einen Sprint.",
                 Apply = (s, n) =>
                 {
                     s.CategoryDamage[(int)SkillCategory.Technique] += ClassTuning.SkillerTechBonus;
+                    s.CategoryCooldown[(int)SkillCategory.Technique] *= ClassTuning.SkillerTechCooldown;
                     s.TechniqueHaste *= ClassTuning.SkillerHaste;
                     s.RushSpeed = Mathf.Max(s.RushSpeed, ClassTuning.SkillerRushSpeed);
                     s.RushTime = Mathf.Max(s.RushTime, ClassTuning.SkillerRushTime);
@@ -112,22 +119,22 @@ namespace SoccerFight
 
         public static readonly ClassDef Defender = new ClassDef
         {
-            Class = CharacterClass.Defender, Name = "VERTEIDIGER", TraitName = "KOPFBALLSPEZIALIST",
+            Class = CharacterClass.Defender, Name = "VERTEIDIGER", TraitName = "BOLLWERK",
             Tagline = "Zäh, standfest, kopfballstark",
-            Description = "Stellt sich dazwischen: mehr Leben, weniger Schaden durch Treffer und als einziger Zugang zum wuchtigen Kopfball.",
+            Description = "Stellt sich dazwischen: mehr Leben, weniger Schaden durch Treffer und ein wuchtiger Kopfball auf der rechten Maustaste.",
             Strengths = new[]
             {
                 "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " MAXIMALES LEBEN",
                 Pct(1f - ClassTuning.DefenderDamageTaken) + " WENIGER ERLITTENER SCHADEN",
-                "EXKLUSIV: KOPFBALL (+" + Pct(ClassTuning.DefenderHeaderBonus) + ")",
+                "RECHTSKLICK: KOPFBALL (+" + Pct(ClassTuning.DefenderHeaderBonus) + ")",
             },
             Drawback = Pct(1f - ClassTuning.DefenderDamageMul) + " WENIGER SCHADEN",
-            Accent = Hex("#5B8CFF"), Icon = () => MenuArt.IconDefender, Specialty = SkillCategory.Header,
+            Accent = Hex("#5B8CFF"), Icon = () => MenuArt.IconDefender, Specialty = SkillCategory.Header, Primary = Ability.Header,
             Attack = 3, Defence = 5, Tech = 2,
             Trait = new PassiveDef
             {
-                Id = "trait_defender", Name = "KOPFBALLSPEZIALIST",
-                Text = "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " Leben, " + Pct(1f - ClassTuning.DefenderDamageTaken) + " weniger erlittener Schaden, Kopfball. " + Pct(1f - ClassTuning.DefenderDamageMul) + " weniger Schaden.",
+                Id = "trait_defender", Name = "BOLLWERK",
+                Text = "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " Leben, " + Pct(1f - ClassTuning.DefenderDamageTaken) + " weniger erlittener Schaden, starker Kopfball. " + Pct(1f - ClassTuning.DefenderDamageMul) + " weniger Schaden.",
                 Apply = (s, n) =>
                 {
                     s.MaxHpBonus += ClassTuning.DefenderHp;

@@ -31,7 +31,7 @@ namespace SoccerFight
         public bool Starter;
         /// <summary>Shop price in coins (a starter costs this once another starter was picked).</summary>
         public int CoinPrice;
-        /// <summary>A small personal passive on top of the class trait (null: none).</summary>
+        /// <summary>The personal passive on top of the class trait: every character has one, fitting the class.</summary>
         public PassiveDef Perk;
         /// <summary>Card bars, 1..5.</summary>
         public int Attack, Defence, Tech;
@@ -43,8 +43,8 @@ namespace SoccerFight
 
     /// <summary>
     /// The playable characters. Order matters only for display (and the sprite cache index), so new
-    /// characters are appended. Each belongs to a class (the class trait always applies) and may
-    /// carry a small perk of its own; the three starters are free on the first launch.
+    /// characters are appended. Each belongs to a class (the class trait always applies) and carries
+    /// a perk of its own that plays into that class; the three starters are free on the first launch.
     /// </summary>
     public static class Characters
     {
@@ -67,7 +67,7 @@ namespace SoccerFight
 
         public static readonly CharacterDef[] All =
         {
-            // ---- the three starters: one per class, no perk, the first one is free
+            // ---- the three starters: one per class, the first one is free
             new CharacterDef
             {
                 Id = "rio", Name = "RIO", Class = CharacterClass.Striker, Starter = true, CoinPrice = 500,
@@ -75,6 +75,8 @@ namespace SoccerFight
                 Accent = Hex("#FF5A4A"), Attack = 5, Defence = 2, Tech = 3,
                 Kit = Kit("#D6443A", "#862439", "#F07A5C", "#ECE7DB", "#98ACB5", "#D9A07C", "#9E6A5C", "#F2C6A4",
                           "#1C1720", "#545066", "#151C28", "#35465C", "#3DF2FF", 1f, true),
+                Perk = Perk("rio", "TORRIECHER", "Normale Schüsse: +15 % Schaden, 10 % schneller bereit.",
+                    (s, n) => { s.ShotDamageMul += 0.15f; s.ShotCooldownMul *= 0.9f; }),
             },
             new CharacterDef
             {
@@ -83,6 +85,8 @@ namespace SoccerFight
                 Accent = Hex("#5B8CFF"), Attack = 3, Defence = 5, Tech = 2,
                 Kit = Kit("#2E4E82", "#16274A", "#5480BE", "#DCE4EE", "#7F91A8", "#8C5C3E", "#5D3A28", "#B9855C",
                           "#17110F", "#4B3B32", "#1A1412", "#48382E", "#FFB03A", 0.45f, false),
+                Perk = Perk("bruno", "SCHUTZWALL", "Ein Schild blockt einen Treffer und lädt alle 20 s neu.",
+                    (s, n) => { s.ShieldCharges = System.Math.Max(s.ShieldCharges, 1); s.ShieldRecharge = 20f; }),
             },
             new CharacterDef
             {
@@ -91,6 +95,8 @@ namespace SoccerFight
                 Accent = Hex("#C77DFF"), Attack = 2, Defence = 3, Tech = 5,
                 Kit = Kit("#7B3FBF", "#45226C", "#AC77EC", "#E8F2EC", "#8CB3AB", "#EFC6A4", "#C08C6E", "#FFE2C6",
                           "#2A1B33", "#7A5E8C", "#1C1726", "#4A3D60", "#FF6FD5", 1.75f, true),
+                Perk = Perk("mira", "BALLZAUBER", "Antritt: 25 % weiter, lädt 20 % schneller, trifft Gegner.",
+                    (s, n) => { s.DashDistanceMul += 0.25f; s.DashCooldownMul *= 0.8f; s.DashDamageFrac = System.Math.Max(s.DashDamageFrac, 0.4f); }),
             },
 
             // ---- shop characters: two per class, each with a small perk

@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace SoccerFight
 {
-    /// <summary>Shared colours and small pieces of the progression screens (starter pick, skills, shop).</summary>
+    /// <summary>Shared colours and small pieces of the progression screens (starter pick, roster, shop).</summary>
     public static class MetaUi
     {
         public static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
@@ -145,118 +145,6 @@ namespace SoccerFight
     }
 
     /// <summary>
-    /// A skill as a tile: icon in a ring, name, category chip, description and a status line at the
-    /// bottom — a price, "AUSGERÜSTET", "IM BESITZ" or a lock. Selected tiles (start picks, equipped
-    /// skills) get a gold frame and the slot number on the icon. Hit by the kicked ball like any
-    /// menu button; the owning page decides what a hit does.
-    /// </summary>
-    public sealed class SkillTile
-    {
-        public const float W = 360f, H = 180f;
-
-        public readonly SkillDef Skill;
-        public readonly RectTransform Root;
-        public Vector2 Home;
-        public float Selected, SelectedVel, Jiggle;
-        public bool IsSelected, Dimmed, Locked;
-        public int SlotNumber = -1;
-
-        readonly Image frame, frameGlow, ring, lockIcon, dim, slotBadge;
-        readonly TextMeshProUGUI status, slotText, boost;
-        readonly PriceTag price;
-        float time;
-
-        public SkillTile(Transform parent, SkillDef skill, Vector2 pos)
-        {
-            Skill = skill;
-            Home = pos;
-            var size = new Vector2(W, H);
-            Root = UiKit.Node(skill.Id, parent, pos, size);
-            frameGlow = UiKit.Img("FrameGlow", Root, UiArt.Glow, MetaUi.Gold.WithAlpha(0f), Vector2.zero, size + new Vector2(200f, 170f));
-            MenuUi.Plate(Root, "Card", Vector2.zero, size, skill.Accent, 0f);
-            frame = UiKit.Img("Frame", Root, MenuArt.Frame, MetaUi.Soft(skill.Accent).WithAlpha(0.35f), Vector2.zero, size + new Vector2(4f, 4f), Image.Type.Sliced);
-            UiKit.Img("Wash", Root, UiArt.Glow, skill.Accent.WithAlpha(0.12f), new Vector2(-W * 0.5f + 60f, 30f), new Vector2(260f, 220f));
-
-            var iconAt = new Vector2(-W * 0.5f + 56f, 38f);
-            MetaUi.Emblem(Root, skill.Icon, iconAt, 76f, skill.Accent, out ring);
-            slotBadge = UiKit.Img("Slot", Root, MenuArt.Round, MetaUi.Gold, iconAt + new Vector2(28f, 28f), new Vector2(30f, 30f));
-            slotText = MenuArt.Label("SlotText", slotBadge.transform, "1", 17f, MenuArt.Ink, new Vector2(0f, 1f), new Vector2(30f, 30f), TextAlignmentOptions.Center, 0f, MenuArt.TextPlate);
-
-            MenuArt.Label("Name", Root, skill.Name, 23f, Color.white, new Vector2(30f, 54f), new Vector2(W - 150f, 32f), TextAlignmentOptions.Left, 3f)
-                .enableAutoSizing = true;
-            var cat = SkillCatalog.CategoryColor(skill.Category);
-            string chip = SkillCatalog.CategoryName(skill.Category);
-            MetaUi.Chip(Root, "Category", chip, cat, Vector2.zero, 12f, out var chipRt);
-            chipRt.anchoredPosition = new Vector2(-W * 0.5f + 104f + chipRt.sizeDelta.x * 0.5f, 22f);
-
-            var desc = MetaUi.Text(Root, "Desc", skill.Description, 15f, MetaUi.Body, new Vector2(0f, -28f), new Vector2(W - 36f, 54f), TextAlignmentOptions.TopLeft);
-            desc.enableAutoSizing = true;
-            desc.fontSizeMin = 12f;
-            desc.fontSizeMax = 15f;
-            desc.rectTransform.anchoredPosition = new Vector2(0f, -30f);
-
-            UiKit.Img("Line", Root, UiArt.LineFade, skill.Accent.WithAlpha(0.25f), new Vector2(0f, -61f), new Vector2(W - 40f, 2f));
-            status = MenuArt.Label("Status", Root, "", 16f, Color.white, new Vector2(0f, -76f), new Vector2(W - 40f, 26f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
-            price = new PriceTag(Root, new Vector2(0f, -76f), 18f);
-            lockIcon = UiKit.Img("Lock", Root, UiArt.IconLock, Color.white.WithAlpha(0.7f), new Vector2(-W * 0.5f + 26f, -76f), new Vector2(20f, 20f));
-            boost = MenuArt.Label("Boost", Root, "", 13f, Color.white, new Vector2(W * 0.5f - 88f, 22f), new Vector2(150f, 22f), TextAlignmentOptions.Right, 2f, MenuArt.TextHeavySoft);
-            dim = UiKit.Img("Dim", Root, MenuArt.CardBody, new Color(0.01f, 0.03f, 0.05f, 0f), Vector2.zero, size, Image.Type.Sliced);
-            dim.raycastTarget = false;
-        }
-
-        /// <summary>Status text at the bottom (hides the price).</summary>
-        public void SetStatus(string text, Color color)
-        {
-            price.SetActive(false);
-            status.gameObject.SetActive(true);
-            status.text = text;
-            status.color = color;
-        }
-
-        /// <summary>A small note in the top-right corner (the class talent that boosts this skill), empty to hide.</summary>
-        public void SetBoost(string text, Color color)
-        {
-            if (boost.text != text) boost.text = text;
-            boost.color = color;
-        }
-
-        /// <summary>A price at the bottom.</summary>
-        public void SetPrice(Price p)
-        {
-            status.gameObject.SetActive(false);
-            price.SetActive(true);
-            price.Set(p, Wallet.CanAfford(p));
-        }
-
-        public void Style(MenuTarget t, float udt)
-        {
-            time += udt;
-            MathUtil.Spring(ref Selected, ref SelectedVel, IsSelected ? 1f : 0f, 5f, 0.6f, udt);
-            Jiggle = Mathf.Max(0f, Jiggle - udt * 2f);
-            float sel = Mathf.Clamp01(Selected);
-            float h = Mathf.Clamp01(t.Hover) * (Dimmed ? 0.4f : 1f);
-            float wob = Mathf.Sin(time * 24f) * Jiggle * 5f;
-            Root.anchoredPosition = Home + new Vector2(wob, h * 6f + sel * 4f);
-            float s = 1f + h * 0.025f + t.Punch * 0.04f;
-            Root.localScale = new Vector3(s + t.Punch * 0.015f, s - t.Punch * 0.04f, 1f);
-            float pulse = 0.75f + 0.25f * Mathf.Sin(time * 2.6f);
-            frame.color = Color.Lerp(MetaUi.Soft(Skill.Accent), MetaUi.Gold, sel).WithAlpha(Mathf.Lerp(0.35f + 0.45f * h, 0.95f, sel));
-            frameGlow.color = MetaUi.Gold.WithAlpha(sel * 0.2f * pulse + t.Hit * 0.3f);
-            ring.color = Color.Lerp(MetaUi.Soft(Skill.Accent), MetaUi.Gold, sel).WithAlpha(0.85f);
-            bool badge = SlotNumber >= 0;
-            if (slotBadge.gameObject.activeSelf != badge) slotBadge.gameObject.SetActive(badge);
-            if (badge)
-            {
-                string n = (SlotNumber + 1).ToString();
-                if (slotText.text != n) slotText.text = n;
-                slotBadge.rectTransform.localScale = Vector3.one * (0.9f + 0.1f * sel);
-            }
-            if (lockIcon.gameObject.activeSelf != Locked) lockIcon.gameObject.SetActive(Locked);
-            dim.color = new Color(0.01f, 0.03f, 0.05f, Dimmed ? 0.55f : 0f);
-        }
-    }
-
-    /// <summary>
     /// A player card in the language of the in-game cards: header with class diamond and class name,
     /// a tall portrait with the live figure standing in its own coloured light, the name over the
     /// portrait, and a body that either shows the class strengths (the starter pick) or flavour,
@@ -338,9 +226,9 @@ namespace SoccerFight
 
         void BuildStarterBody(ClassDef cls)
         {
-            MenuArt.Label("Tagline", Root, cls.Tagline.ToUpperInvariant(), 19f, Color.white, new Vector2(0f, -72f), new Vector2(W - 40f, 30f), TextAlignmentOptions.Center, 3f);
-            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, -100f), new Vector2(W - 40f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
-            float y = -134f;
+            MenuArt.Label("Tagline", Root, cls.Tagline.ToUpperInvariant(), 19f, Color.white, new Vector2(0f, -70f), new Vector2(W - 40f, 30f), TextAlignmentOptions.Center, 3f);
+            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, -96f), new Vector2(W - 40f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
+            float y = -121f;
             foreach (var s in cls.Strengths)
             {
                 UiKit.Img("Check", Root, MenuArt.IconCheck, MetaUi.Soft(Def.Accent), new Vector2(-W * 0.5f + 40f, y), new Vector2(20f, 20f));
@@ -348,10 +236,20 @@ namespace SoccerFight
                 t.enableAutoSizing = true;
                 t.fontSizeMin = 11f;
                 t.fontSizeMax = 15f;
-                y -= 28f;
+                y -= 23f;
+            }
+            // the character's own perk on top of the class talent: its name, then what it does
+            if (Def.Perk != null)
+            {
+                MenuArt.Label("Perk", Root, "PERK  ·  " + Def.Perk.Name, 13f, MetaUi.Gold, new Vector2(0f, y), new Vector2(W - 40f, 20f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
+                var perk = MenuArt.Label("PerkText", Root, Def.Perk.Text, 13f, MetaUi.Soft(MetaUi.Gold), new Vector2(0f, y - 19f), new Vector2(W - 40f, 20f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
+                perk.enableAutoSizing = true;
+                perk.fontSizeMin = 10f;
+                perk.fontSizeMax = 13f;
+                y -= 40f;
             }
             if (!string.IsNullOrEmpty(cls.Drawback))
-                MenuArt.Label("Drawback", Root, "DAFÜR: " + cls.Drawback, 14f, MetaUi.Danger, new Vector2(0f, y - 2f), new Vector2(W - 40f, 22f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
+                MenuArt.Label("Drawback", Root, "DAFÜR: " + cls.Drawback, 14f, MetaUi.Danger, new Vector2(0f, y - 1f), new Vector2(W - 40f, 22f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
         }
 
         void BuildRosterBody(ClassDef cls)
@@ -361,8 +259,9 @@ namespace SoccerFight
             flavour.fontSizeMin = 12f;
             flavour.fontSizeMax = 16f;
             MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, -114f), new Vector2(W - 40f, 24f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
-            var perk = MenuArt.Label("Perk", Root, Def.Perk != null ? "PERK  ·  " + Def.Perk.Name + ":  " + Def.Perk.Text : "STARTER  ·  NUR DAS KLASSEN-TALENT", 13f,
-                Def.Perk != null ? MetaUi.Gold : MetaUi.Muted, new Vector2(0f, -138f), new Vector2(W - 40f, 22f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
+            var perk = MenuArt.Label("Perk", Root, Def.Perk != null ? "PERK  ·  " + Def.Perk.Name + ":  " + Def.Perk.Text : "NUR DAS KLASSEN-TALENT", 13f,
+                Def.Perk != null ? MetaUi.Gold : MetaUi.Muted, new Vector2(0f, -141f), new Vector2(W - 40f, 30f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
+            perk.textWrappingMode = TextWrappingModes.Normal;
             perk.enableAutoSizing = true;
             perk.fontSizeMin = 10f;
             perk.fontSizeMax = 13f;
@@ -482,7 +381,8 @@ namespace SoccerFight
             badge.preserveAspect = true;
             MenuArt.Label("Class", Root, cls.Name + (def.Starter ? "  ·  STARTER" : ""), 14f, MetaUi.Soft(def.Accent), new Vector2(cx + 14f, 48f), new Vector2(tw - 28f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
             var perk = MenuArt.Label("Perk", Root, def.Perk != null ? def.Perk.Name + ":  " + def.Perk.Text : "TALENT  ·  " + cls.TraitName, 13f,
-                def.Perk != null ? MetaUi.Gold : MetaUi.Soft(def.Accent), new Vector2(cx, 20f), new Vector2(tw, 22f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
+                def.Perk != null ? MetaUi.Gold : MetaUi.Soft(def.Accent), new Vector2(cx, 20f), new Vector2(tw, 34f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
+            perk.textWrappingMode = TextWrappingModes.Normal;   // up to two lines between the class and the description
             perk.enableAutoSizing = true;
             perk.fontSizeMin = 10f;
             perk.fontSizeMax = 13f;
@@ -525,7 +425,7 @@ namespace SoccerFight
         }
     }
 
-    /// <summary>The player's coins in a pinned pill (shop and skill pages), counting up and popping on change.</summary>
+    /// <summary>The player's coins in a pinned pill (shop), counting up and popping on change.</summary>
     public sealed class WalletChip
     {
         public readonly RectTransform Root;

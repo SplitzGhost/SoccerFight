@@ -81,7 +81,7 @@ namespace SoccerFight
         readonly List<BuildIcon> buildIcons = new List<BuildIcon>();
 
         Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
-        Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot;
+        Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot;
         const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
 
@@ -251,7 +251,10 @@ namespace SoccerFight
             // skill bar: the normal shot (a little bigger) always far right, every other ability the same
             // size, shown only once unlocked and lined up leftwards in the order they were gained (LayoutSlots)
             shotSlot = BuildSlot("Shot", Vector2.zero, ShotSlotSize, UiArt.IconShot, UiArt.RingThick, Palette.ShotCyan, GameAction.Shoot, Ability.Shot);
+            // the class move on the right mouse button: only the one of the current class is shown
             powerSlot = BuildSlot("Power", Vector2.zero, SkillSlotSize, UiArt.IconPower, UiArt.RingThick, Palette.PowerGold, GameAction.PowerShot, Ability.Power);
+            headerSlot = BuildSlot("Header", Vector2.zero, SkillSlotSize, UiArt.IconHeader, UiArt.RingThick, Palette.Header, GameAction.PowerShot, Ability.Header);
+            dashSlot = BuildSlot("Dash", Vector2.zero, SkillSlotSize, UiArt.IconDash, UiArt.RingThick, Palette.Trick, GameAction.PowerShot, Ability.Dash);
             // one slot object per unlockable ability; only the four a run picks up are ever shown,
             // and each takes the key of the slot it landed in (LayoutSlots assigns the action)
             flickSlot = BuildSlot("Flick", Vector2.zero, SkillSlotSize, UiArt.IconFlick, UiArt.RingRainbow, Color.white, GameAction.Skill1, Ability.Flick);
@@ -264,9 +267,8 @@ namespace SoccerFight
             nutmegSlot = BuildSlot("Nutmeg", Vector2.zero, SkillSlotSize, UiArt.IconNutmeg, UiArt.RingThick, Palette.Showboat, GameAction.Skill1, Ability.Nutmeg);
             decoySlot = BuildSlot("Decoy", Vector2.zero, SkillSlotSize, UiArt.IconDecoy, UiArt.RingThick, Palette.Trick, GameAction.Skill1, Ability.Decoy);
             whistleSlot = BuildSlot("Whistle", Vector2.zero, SkillSlotSize, UiArt.IconWhistle, UiArt.RingThick, Palette.Silver, GameAction.Skill1, Ability.Whistle);
-            headerSlot = BuildSlot("Header", Vector2.zero, SkillSlotSize, UiArt.IconHeader, UiArt.RingThick, Palette.Header, GameAction.Skill1, Ability.Header);
             slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
-                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot };
+                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot };
             foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
@@ -393,10 +395,10 @@ namespace SoccerFight
             if (hintText != null)
                 hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN    "
                     + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN    " + KeyBindings.DisplayName(GameAction.Down) + "  RUNTER    "
-                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  POWER-SCHUSS    ESC  PAUSE\n"
+                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  " + Abilities.Name(Game.I != null && Game.I.Run != null ? Game.I.Run.Primary : Ability.Power) + "    ESC  PAUSE\n"
                     + "FÄHIGKEITEN  " + KeyBindings.DisplayName(GameAction.Skill1) + "  " + KeyBindings.DisplayName(GameAction.Skill2)
                     + "  " + KeyBindings.DisplayName(GameAction.Skill3) + "  " + KeyBindings.DisplayName(GameAction.Skill4)
-                    + "   ·   AUSRÜSTEN IM MENÜ, HÖCHSTENS " + RunState.MaxSkills;
+                    + "   ·   EINE NEUE NACH JEDEM BOSS, HÖCHSTENS " + RunState.MaxSkills;
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -592,7 +594,7 @@ namespace SoccerFight
         {
             var run = Game.I.Run;
             ShowToast(run.CanUnlockMore
-                ? "PLATZ " + (slot + 1) + " IST LEER  ·  RÜSTE IM MENÜ UNTER FÄHIGKEITEN AUS"
+                ? "PLATZ " + (slot + 1) + " IST LEER  ·  NACH JEDEM BOSS WÄHLST DU EINE FÄHIGKEIT"
                 : "PLATZ " + (slot + 1) + " BLEIBT LEER  ·  " + RunState.MaxSkills + " FÄHIGKEITEN SIND DAS MAXIMUM");
         }
 
@@ -756,6 +758,7 @@ namespace SoccerFight
             jugEndT = 99f;
             jugGroup.alpha = 0f;
             Coins?.Reset();
+            RefreshBindings();   // the right mouse button names the class move of this run's player
             SyncBuild();
         }
 
@@ -827,6 +830,7 @@ namespace SoccerFight
             // the whistle has no timer: its ring is the charge that kills build up
             UpdateSlot(whistleSlot, 1f - player.Ultimate, 1f, free, dt, false, true);
             UpdateSlot(headerSlot, player.HeaderCd, player.HeaderCooldownTotal, withBall, dt, false, true);
+            UpdateSlot(dashSlot, player.DashCd, player.DashCooldownTotal, free, dt, false, true);
             UpdateCrosshair(dt);
             UpdateWave(dt, run);
             UpdateBoss(dt);
@@ -904,7 +908,8 @@ namespace SoccerFight
         {
             float x = -SlotRight;
             Place(shotSlot, ref x, dt);
-            Place(powerSlot, ref x, dt);
+            var primary = SlotFor(run.Primary);
+            if (primary != null) Place(primary, ref x, dt);
             bool rebind = false;
             for (int i = 0; i < run.Skills.Count; i++)
             {
@@ -918,7 +923,7 @@ namespace SoccerFight
             if (rebind) RefreshBindings();
             foreach (var s in slots)
             {
-                bool show = s.ability == Ability.Shot || s.ability == Ability.Power ? run.Has(s.ability) : run.SlotOf(s.ability) >= 0;
+                bool show = s.ability == Ability.Shot || s.ability == run.Primary ? run.Has(s.ability) : run.SlotOf(s.ability) >= 0;
                 if (s.root.gameObject.activeSelf != show) s.root.gameObject.SetActive(show);
                 if (!show) s.placed = false;
             }

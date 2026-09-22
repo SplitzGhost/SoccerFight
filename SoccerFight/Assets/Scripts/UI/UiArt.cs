@@ -10,7 +10,7 @@ namespace SoccerFight
         public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
         public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
-        public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle, IconHeader;
+        public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle, IconHeader, IconDash;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -380,6 +380,23 @@ namespace SoccerFight
             hd.Fill(p => Sdf.Star4(p, new Vector2(12f, 14f), 13f, 0.45f), new Color(1f, 0.95f, 0.75f));
             IconBall(hd, new Vector2(34f, 26f), 17f);
             IconHeader = ToUi(hd, "UiIconHeader");
+
+            // Dash (the skiller's burst): a double chevron shooting forward out of three speed lines
+            var ds = new SdfCanvas(rect, D);
+            Color violet = new Color(0.82f, 0.6f, 1f);
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 18f - i * 18f, len = i == 1 ? 40f : 28f;
+                ds.Fill(p => Sdf.Tapered(p, new Vector2(-58f, y), 1.2f, new Vector2(-58f + len, y), 4f), violet.WithAlpha(0.9f - Mathf.Abs(i - 1) * 0.3f));
+            }
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -10f + i * 26f;
+                ds.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(x, 28f), new Vector2(x + 24f, 0f), 6.5f),
+                                       Sdf.Capsule(p, new Vector2(x + 24f, 0f), new Vector2(x, -28f), 6.5f)), i == 0 ? violet : Color.white);
+            }
+            IconBall(ds, new Vector2(42f, -40f), 14f);
+            IconDash = ToUi(ds, "UiIconDash");
         }
 
         static void IconWhiteSparks(SdfCanvas c, Vector2 at, Color col)

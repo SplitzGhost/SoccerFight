@@ -12,6 +12,8 @@ namespace SoccerFight
     public sealed class RunDirector
     {
         public enum Phase { Idle, StageIntro, WaveIntro, Fighting, WaveCleared, Reward, AbilityPick, BossIntro, StageCleared, RunOver }
+        /// <summary>How many skills a boss offers to pick one from.</summary>
+        const int AbilityChoices = 3;
 
         struct PlannedSpawn
         {
@@ -384,9 +386,9 @@ namespace SoccerFight
                 OpenReward(true, true);
                 return;
             }
-            // two random abilities; the one not taken goes back into the pool
+            // three random skills; the ones not taken go back into the pool
             var choice = new List<Ability>();
-            while (choice.Count < Mathf.Min(2, locked.Count))
+            while (choice.Count < Mathf.Min(AbilityChoices, locked.Count))
             {
                 var a = locked[Random.Range(0, locked.Count)];
                 if (!choice.Contains(a)) choice.Add(a);
@@ -505,16 +507,8 @@ namespace SoccerFight
             else waves.SpawnFromPortal(pick.Type, run.Level, rank, rank == Rank.Elite ? affixes : 0, pick.Name);
         }
 
-        /// <summary>Every skill this character could use that isn't in a slot yet — owned or not (developer tools only).</summary>
-        List<Ability> DevPool()
-        {
-            var list = new List<Ability>();
-            if (!run.CanUnlockMore) return list;
-            var cls = Characters.Current.Class;
-            foreach (var s in SkillCatalog.All)
-                if (!run.Unlocked.Contains(s.Ability) && s.UsableBy(cls)) list.Add(s.Ability);
-            return list;
-        }
+        /// <summary>Every skill that isn't in a slot yet (developer tools).</summary>
+        List<Ability> DevPool() => run.LockedAbilities();
 
         void DevAfterPick()
         {
@@ -536,7 +530,7 @@ namespace SoccerFight
             var locked = DevPool();
             if (locked.Count == 0) { Game.I.Hud.ShowToast("ALLE VIER PLÄTZE SIND BELEGT"); return; }
             var choice = new List<Ability>();
-            while (choice.Count < Mathf.Min(2, locked.Count))
+            while (choice.Count < Mathf.Min(AbilityChoices, locked.Count))
             {
                 var a = locked[Random.Range(0, locked.Count)];
                 if (!choice.Contains(a)) choice.Add(a);

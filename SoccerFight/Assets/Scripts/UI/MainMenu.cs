@@ -71,7 +71,6 @@ namespace SoccerFight
         Image veil;
         MenuFigure figure;
         CharacterPage characters;
-        SkillPage skills;
         ShopPage shop;
         OnboardingPages onboarding;
         MenuNav nav;
@@ -203,10 +202,6 @@ namespace SoccerFight
             pages = new MenuPages();
             pages.Build(pagesRoot, Register, Back);
             foreach (var p in pages.Pages) subPages[p.Id] = p;
-            skills = new SkillPage();
-            skills.Build(pagesRoot, nav);
-            skills.ShowInShop = OpenShop;
-            subPages[MenuPage.Skills] = skills.Page;
             shop = new ShopPage();
             shop.Build(pagesRoot, nav);
             shop.Burst = PurchaseBurst;
@@ -214,7 +209,6 @@ namespace SoccerFight
             onboarding = new OnboardingPages();
             onboarding.Build(pagesRoot, nav);
             subPages[MenuPage.Starter] = onboarding.StarterPage;
-            subPages[MenuPage.StarterSkills] = onboarding.SkillsPage;
             foreach (var p in subPages) if (p != null) p.Root.gameObject.SetActive(false);
 
             // the bar and the strip sit above every page
@@ -412,7 +406,7 @@ namespace SoccerFight
             tabsRoot.anchorMin = tabsRoot.anchorMax = new Vector2(0.5f, 0.5f);
             (string label, int page, string id)[] list =
             {
-                ("SPIELEN", MenuPage.Main, "tab_home"), ("SPIELER", MenuPage.Characters, "tab_chars"), ("FÄHIGKEITEN", MenuPage.Skills, "tab_skills"),
+                ("SPIELEN", MenuPage.Main, "tab_home"), ("SPIELER", MenuPage.Characters, "tab_chars"),
                 ("SHOP", MenuPage.Shop, "tab_shop"), ("EVENTS", MenuPage.Events, "tab_events"), ("RANGLISTE", MenuPage.Ranking, "tab_ranking"),
                 ("OPTIONEN", MenuPage.Settings, "tab_settings"),
             };
@@ -435,7 +429,7 @@ namespace SoccerFight
                 x += tab.Size.x + gap;
             }
             // the shop is new: a small tag on its tab, drawn above every tab so an open page never covers it
-            var shopTab = tabs[3].tab;
+            var shopTab = tabs[2].tab;
             var neu = MenuUi.Tag(tabsRoot, "NEU", shopTab.Root.anchoredPosition + new Vector2(shopTab.Size.x * 0.5f - 6f, 26f), MenuArt.Accent, 11f);
             neu.SetAsLastSibling();
             stickers.Add(neu);
@@ -646,7 +640,7 @@ namespace SoccerFight
             IsOpen = true;
             state = State.Menu;
             stateT = 0f;
-            // the first launch opens on the starter pick until a starter and three skills are chosen
+            // the first launch opens on the starter pick until a starter is chosen
             page = Profile.Onboarded ? MenuPage.Main : MenuPage.Starter;
             if (page == MenuPage.Starter) onboarding.Reset();
             coinShown = -1f;
@@ -672,7 +666,6 @@ namespace SoccerFight
             page = id;
             if (id == MenuPage.Main) return;
             if (id == MenuPage.Characters) characters.Open();
-            else if (id == MenuPage.Skills) skills.Refresh();
             else if (id == MenuPage.Shop) shop.Refresh();
             else pages.Refresh();
         }
@@ -723,7 +716,6 @@ namespace SoccerFight
         public void HandleEscape()
         {
             if (pages.Settings.IsCapturing) pages.Settings.CancelCapture();
-            else if (page == MenuPage.StarterSkills) page = MenuPage.Starter;
             else if (MenuPage.IsOnboarding(page)) { }   // the first launch has to be finished
             else if (page != MenuPage.Main) Back();
         }
@@ -906,7 +898,6 @@ namespace SoccerFight
             pages.Update(udt);
             var aim = AimNorm();
             characters.Update(udt, aim);
-            skills.Update(udt);
             shop.Update(udt, aim);
             onboarding.Update(udt, aim);
             UpdateWallet(udt);

@@ -89,7 +89,7 @@ namespace SoccerFight
             U("shin_guards", "SCHIENBEINSCHONER", C, UpIcon.Armor, 6, n => V("−4%") + " erlittener Schaden.", (s, n) => s.Armor += 0.04f * n);
             U("magnet_soles", "MAGNETSOHLEN", C, UpIcon.Magnet, 4, n => "Ball kehrt " + P(0.25f) + " schneller zurück, One-Touch-Radius +" + P(0.2f) + ".",
                 (s, n) => { s.ReturnSpeedMul += 0.25f * n; s.CatchRadiusMul += 0.2f * n; });
-            U("power_training", "KRAFTTRAINING", C, UpIcon.Power, 5, n => "Power-Schuss +" + P(0.15f) + " Schaden.", (s, n) => s.PowerDamageMul += 0.15f * n);
+            U("power_training", "KRAFTTRAINING", C, UpIcon.Power, 5, n => "Power-Schuss +" + P(0.15f) + " Schaden.", (s, n) => s.PowerDamageMul += 0.15f * n, ab: Ability.Power);
             U("rainbow_bloom", "REGENBOGENPRACHT", C, UpIcon.Rainbow, 5, n => "Rainbow Flick +" + P(0.15f) + " Schaden und +" + P(0.08f) + " Radius.",
                 (s, n) => { s.FlickDamageMul += 0.15f * n; s.FlickRadiusMul += 0.08f * n; }, ab: Ability.Flick);
             U("spring_legs", "SPRUNGFEDERN", C, UpIcon.Jump, 4, n => "+" + P(0.07f) + " Sprunghöhe.", (s, n) => s.JumpMul += 0.07f * n);
@@ -114,7 +114,7 @@ namespace SoccerFight
             U("counter_stomp", "KONTER-STAMPFER", R, UpIcon.Shockwave, 2, n => "Wirst du getroffen, entlädt sich eine Schockwelle: " + N(40 * n) + " Schaden, starker Rückstoß.",
                 (s, n) => s.CounterStomp = 40f * n);
             U("overcharge", "ÜBERLADUNG", R, UpIcon.Power, 2, n => "Power-Schuss holt " + P(0.3f) + " schneller aus und macht +" + P(0.2f) + " Schaden.",
-                (s, n) => { s.PowerChargeMul *= Mathf.Pow(0.7f, n); s.PowerDamageMul += 0.2f * n; });
+                (s, n) => { s.PowerChargeMul *= Mathf.Pow(0.7f, n); s.PowerDamageMul += 0.2f * n; }, ab: Ability.Power);
             U("captain_shield", "KAPITÄNSSCHILD", R, UpIcon.Shield, 2, n => "Ein Schild blockt einen Treffer und lädt alle " + N(16 - 4 * (n - 1)) + " s neu.",
                 (s, n) => { s.ShieldCharges = 1; s.ShieldRecharge = 16f - 4f * (n - 1); });
             U("adrenaline", "ADRENALIN", R, UpIcon.Adrenaline, 2, n => "Nach jedem Sieg: +" + P(0.2f) + " Tempo und Schussrate für " + N(2.5f * n) + " s.",
@@ -136,7 +136,7 @@ namespace SoccerFight
                 req: new[] { "one_two", "ricochet" });
 
             // ------------------------------------------------------------------ epic
-            U("trident", "DREIZACK", E, UpIcon.Trident, 1, n => "Der Power-Schuss teilt sich in " + V("3") + " durchschlagende Schüsse.", (s, n) => s.Trident = true);
+            U("trident", "DREIZACK", E, UpIcon.Trident, 1, n => "Der Power-Schuss teilt sich in " + V("3") + " durchschlagende Schüsse.", (s, n) => s.Trident = true, ab: Ability.Power);
             U("fan_volley", "FÄCHERSCHUSS", E, UpIcon.Fan, 1, n => "Jeder Schuss feuert " + V("+2") + " Echo-Bälle im Fächer. Echo-Schaden " + P(0.7f) + ".",
                 (s, n) => { s.EchoBalls += 2; s.EchoDamageFrac = Mathf.Max(s.EchoDamageFrac, 0.7f); s.EchoSpread = 12f; }, tag: "echo");
             U("storm_chain", "GEWITTERKETTE", E, UpIcon.Storm, 1, n => "Kettenfunken springen bis zu " + V("5-mal") + " weiter, können kritisch treffen und machen " + P(0.6f) + " Schaden.",
@@ -165,7 +165,7 @@ namespace SoccerFight
             U("phoenix", "PHÖNIX", L, UpIcon.Phoenix, 1, n => "Einmal pro Lauf: Tödlicher Schaden belebt dich mit " + P(0.5f) + " Leben in einer Feuerexplosion wieder.",
                 (s, n) => s.Revives += 1);
             U("singularity", "SINGULARITÄT", L, UpIcon.BlackHole, 1, n => "Der Power-Schuss öffnet dort, wohin du zielst, ein schwarzes Loch, das Gegner " + N(2.5f) + " s einsaugt und dann implodiert.",
-                (s, n) => s.Singularity = true);
+                (s, n) => s.Singularity = true, ab: Ability.Power);
             U("perpetual", "PERPETUUM MOBILE", L, UpIcon.Infinity, 1, n => "Jeder Sieg verkürzt alle Abklingzeiten um " + N(0.5f) + " s, jeder Krit um " + N(0.2f) + " s.",
                 (s, n) => s.Perpetual = true);
             U("maestro", "MAESTRO", L, UpIcon.Maestro, 1, n => "Jede Fähigkeit macht dich " + N(1) + " s unverwundbar und feuert eine Echo-Salve auf nahe Gegner.",
@@ -204,6 +204,14 @@ namespace SoccerFight
                 (s, n) => s.HeaderStunBonus += 0.8f * n, ab: Ability.Header);
             U("diving_header", "FLUGKOPFBALL", E, UpIcon.Trident, 1, n => "Der Kopfball fliegt durch " + V("2") + " Gegner hindurch, bevor er abprallt.",
                 (s, n) => s.HeaderPierce += 2, ab: Ability.Header);
+
+            // ------------------------------------------------------------------ the dash (skiller)
+            U("sprint_spikes", "SPRINTSPIKES", C, UpIcon.Dash, 3, n => "Antritt lädt " + V("−12%") + " schneller und reicht +" + P(0.1f) + " weiter.",
+                (s, n) => { s.DashCooldownMul *= Mathf.Pow(0.88f, n); s.DashDistanceMul += 0.1f * n; }, ab: Ability.Dash);
+            U("breakthrough", "DURCHBRUCH", R, UpIcon.Dash, 2, n => "Der Antritt trifft jeden durchquerten Gegner (" + P(0.6f * n) + " Schaden).",
+                (s, n) => s.DashDamageFrac = Mathf.Max(s.DashDamageFrac, 0.6f * n), ab: Ability.Dash);
+            U("zigzag", "ZICKZACK", E, UpIcon.Speed, 1, n => V("+1") + " Antritt in der Luft, und der Antritt lädt " + V("−25%") + " schneller.",
+                (s, n) => { s.AirDashes += 1; s.DashCooldownMul *= 0.75f; }, ab: Ability.Dash);
         }
 
         public static int Count(Rarity r) { int c = 0; foreach (var u in All) if (u.Rarity == r) c++; return c; }

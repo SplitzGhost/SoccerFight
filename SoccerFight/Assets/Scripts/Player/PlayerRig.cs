@@ -511,6 +511,19 @@ namespace SoccerFight
                 PoseRush(t, Player.DecoyStep, -1f, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
             }
+            else if (player.CurrentAction == Player.Action.Dash)
+            {
+                PoseRush(t, Player.DashRun, 1f, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY);
+                if (player.StepCarry)
+                {
+                    // the ball is pushed along just ahead of the boot, then eases back into the dribble
+                    float k = Mathf.Clamp01(t / Player.DashRun);
+                    float back = MathUtil.Smooth01((t - Player.DashRun) / (Player.DashDuration - Player.DashRun));
+                    ballLocal = Vector2.Lerp(new Vector2(Mathf.Lerp(0.55f, 0.85f, k), Art.BallRadius), ballLocal, back);
+                    BallIsScripted = true;
+                }
+            }
             else if (player.CurrentAction == Player.Action.Wall)
             {
                 PoseWall(t, ref nearFoot, ref nearFlat, ref farFoot, ref farFlat,
