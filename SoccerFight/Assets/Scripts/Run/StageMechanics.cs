@@ -87,6 +87,7 @@ namespace SoccerFight
 
         void Add(HazardKind kind, float x, float dmg, float delay)
         {
+            if (Coop.IsHost) Coop.SendHazard((int)kind, x, dmg, delay);
             var h = Get();
             h.kind = kind;
             h.x = Mathf.Clamp(x, -Player.ArenaHalf + 0.5f, Player.ArenaHalf - 0.5f);
@@ -96,13 +97,35 @@ namespace SoccerFight
             h.root.position = new Vector3(h.x, h.floor + 0.05f, 0f);
         }
 
+        /// <summary>Duo partner's screen: a hazard the host placed.</summary>
+        public void AddNet(int kind, float x, float dmg, float delay) => Add((HazardKind)kind, x, dmg, delay);
+
+        /// <summary>A gust starts blowing (the host decides, both screens blow).</summary>
+        public void StartGust(float dir)
+        {
+            if (Coop.IsHost) Coop.SendGust(dir);
+            gustDur = gustT = 3.6f;
+            gustDir = dir;
+            Game.I.Hud.ShowToast(gustDir < 0f ? "←  WINDBÖE" : "WINDBÖE  →");
+        }
+
+        /// <summary>The eclipse pulse starts (the host decides, both screens darken).</summary>
+        public void StartEclipse()
+        {
+            if (Coop.IsHost) Coop.SendEclipse();
+            eclipseT = 4.5f;
+            Game.I.Hud.ShowToast("EKLIPSE  ·  GEGNER GESTÄRKT");
+            var theme = Game.I.Run.Theme;
+            FxSystem.I.Ring(FxLayer.Front, Game.I.Player.Pos + new Vector2(0f, 1f), 1f, 14f, 0.6f, 0.05f, 1.2f, theme.Accent, theme.Accent.WithAlpha(0f), 2f);
+        }
+
         public void Strike(float x, float dmg, float delay = 1.1f) => Add(HazardKind.Strike, x, dmg, delay);
         public void Geyser(float x, float dmg, float delay = 1.1f) => Add(HazardKind.Geyser, x, dmg, delay);
 
         public void Update(float dt, Player player, Ball ball, WaveDirector waves)
         {
             Wind = 0f;
-            if (running && !player.Dead) Tick(dt, player);
+            if (running && (!player.Dead || Coop.Active)) Tick(dt, player);
             UpdateHazards(dt, player, waves);
             // wind pushes everything that isn't nailed down
             if (Wind != 0f)
@@ -132,27 +155,25 @@ namespace SoccerFight
                                 0.025f, 0.08f, new Color(1f, 0.92f, 0.8f, 0.35f), new Color(1f, 0.85f, 0.6f, 0f), 1.2f, 0.5f);
                         }
                     }
-                    else if ((timer -= dt) <= 0f)
+                    else if (!Coop.IsClient && (timer -= dt) <= 0f)
                     {
                         timer = Random.Range(7f, 10f);
-                        gustDur = gustT = 3.6f;
-                        gustDir = Random.value < 0.5f ? -1f : 1f;
-                        Game.I.Hud.ShowToast(gustDir < 0f ? "←  WINDBÖE" : "WINDBÖE  →");
+                        StartGust(Random.value < 0.5f ? -1f : 1f);
                     }
                     break;
                 case StageMechanic.Lightning:
-                    if ((timer -= dt) <= 0f)
+                    if (!Coop.IsClient && (timer -= dt) <= 0f)
                     {
                         timer = Random.Range(4.5f, 7f);
                         int n = Random.value < 0.35f ? 2 : 1;
-                        for (int i = 0; i < n; i++) Strike(player.Pos.x + Random.Range(-4f, 4f), 18f * Difficulty.DamageMul(Game.I.Run.Level), 1.2f + i * 0.3f);
+                        for (int i = 0; i < n; i++) Strike(Coop.HazardTarget(player).x + Random.Range(-4f, 4f), 18f * Difficulty.DamageMul(Game.I.Run.Level), 1.2f + i * 0.3f);
                     }
                     break;
                 case StageMechanic.Geysers:
-                    if ((timer -= dt) <= 0f)
+                    if (!Coop.IsClient && (timer -= dt) <= 0f)
                     {
                         timer = Random.Range(4f, 6f);
-                        Geyser(player.Pos.x + Random.Range(-3.5f, 3.5f), 16f * Difficulty.DamageMul(Game.I.Run.Level), 1.1f);
+                        Geyser(Coop.HazardTarget(player).x + Random.Range(-3.5f, 3.5f), 16f * Difficulty.DamageMul(Game.I.Run.Level), 1.1f);
                         if (Random.value < 0.5f) Geyser(Random.Range(-Player.ArenaHalf, Player.ArenaHalf), 16f * Difficulty.DamageMul(Game.I.Run.Level), 1.4f);
                     }
                     break;
@@ -166,12 +187,10 @@ namespace SoccerFight
                         Game.I.Post.SetEclipse(k);
                         if (eclipseT <= 0f) { EnemySpeedBoost = EnemyDamageBoost = 1f; Game.I.Post.SetEclipse(0f); }
                     }
-                    else if ((timer -= dt) <= 0f)
+                    else if (!Coop.IsClient && (timer -= dt) <= 0f)
                     {
                         timer = Random.Range(11f, 14f);
-                        eclipseT = 4.5f;
-                        Game.I.Hud.ShowToast("EKLIPSE  ·  GEGNER GESTÄRKT");
-                        FxSystem.I.Ring(FxLayer.Front, player.Pos + new Vector2(0f, 1f), 1f, 14f, 0.6f, 0.05f, 1.2f, theme.Accent, theme.Accent.WithAlpha(0f), 2f);
+                        StartEclipse();
                     }
                     break;
             }

@@ -16,6 +16,8 @@ namespace SoccerFight
             public Vector2 pos;
             public float radius, life, age, dps, implodeDmg, tick;
             public bool implode, active;
+            /// <summary>The duo partner's: it pulls here too, its damage is the partner's.</summary>
+            public bool partner;
             public Color color;
             public Transform root;
             public SpriteRenderer glow, core, ringA, ringB, rim;
@@ -53,9 +55,11 @@ namespace SoccerFight
         }
 
         /// <summary>dps and implodeDmg are base damage (the build multiplier is applied by Combat).</summary>
-        public void Spawn(Vector2 at, float radius, float life, float dps, float implodeDmg, bool implode, Color c)
+        public void Spawn(Vector2 at, float radius, float life, float dps, float implodeDmg, bool implode, Color c, bool partner = false)
         {
+            if (!partner) Coop.SendVortex(at, radius, life, implode, c);
             var v = Get();
+            v.partner = partner;
             LastPos = at;
             Spawned++;
             v.pos = at; v.radius = radius; v.life = life; v.age = 0f; v.dps = dps; v.implodeDmg = implodeDmg;
@@ -99,7 +103,7 @@ namespace SoccerFight
                     if (dist > r * 1.25f + m.Radius) continue;
                     m.PullStrength = Mathf.Max(m.PullStrength, v.implode ? 5f : 3.5f);
                     m.PullTo = v.pos;
-                    if (tick && dist < r + m.Radius) Combat.Hit(m, v.dps * 0.25f, d.normalized, 0.5f, Src.Vortex);
+                    if (tick && !v.partner && dist < r + m.Radius) Combat.Hit(m, v.dps * 0.25f, d.normalized, 0.5f, Src.Vortex);
                 }
 
                 // visuals: two counter-rotating rings, motes spiralling in
@@ -148,6 +152,7 @@ namespace SoccerFight
             fx.Sparks(v.pos, Vector2.up, 360f, 24, 6f, 16f, v.color, 2.6f, 0.05f, 0.4f);
             Game.I.Cam.AddTrauma(0.45f);
             Game.I.Post.Impact(0.7f);
+            if (v.partner) return;
             var list = Game.I.Waves.Monsters;
             for (int i = 0; i < list.Count; i++)
             {

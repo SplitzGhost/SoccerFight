@@ -73,6 +73,8 @@ namespace SoccerFight
         CharacterPage characters;
         ShopPage shop;
         OnboardingPages onboarding;
+        DuoPage duo;
+        TextMeshProUGUI modeName, modeSub;
         MenuNav nav;
         TextMeshProUGUI coinAmount, gemAmount;
         RectTransform coinPill;
@@ -209,6 +211,10 @@ namespace SoccerFight
             onboarding = new OnboardingPages();
             onboarding.Build(pagesRoot, nav);
             subPages[MenuPage.Starter] = onboarding.StarterPage;
+            duo = new DuoPage();
+            duo.Build(pagesRoot, nav);
+            duo.StartRequested = Play;
+            subPages[MenuPage.Friends] = duo.Page;
             foreach (var p in subPages) if (p != null) p.Root.gameObject.SetActive(false);
 
             // the bar and the strip sit above every page
@@ -357,13 +363,13 @@ namespace SoccerFight
             UiKit.Img("EmblemRing", face, MenuArt.RoundFrame, MetaUi.Soft(MenuArt.Accent).WithAlpha(0.9f), new Vector2(-160f, 16f), new Vector2(104f, 104f));
             UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(60f, 60f)).preserveAspect = true;
             MenuArt.Label("Overline", face, "SPIELMODUS", 15f, MenuArt.Accent, new Vector2(66f, 52f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
-            MenuArt.Label("Name", face, "ROGUELITE-LAUF", 30f, Color.white, new Vector2(66f, 20f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
-            MenuArt.Label("Sub", face, "8 STAGES  ·  WELLEN  ·  BOSSE", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
+            modeName = MenuArt.Label("Name", face, "ROGUELITE-LAUF", 30f, Color.white, new Vector2(66f, 20f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
+            modeSub = MenuArt.Label("Sub", face, "8 STAGES  ·  WELLEN  ·  BOSSE", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
             var change = UiKit.Node("Change", face, new Vector2(0f, -62f), new Vector2(440f, 38f));
             UiKit.Img("Strip", change, MenuArt.CardBody, new Color(0.3f, 0.8f, 0.95f, 0.14f), Vector2.zero, new Vector2(440f, 38f), Image.Type.Sliced);
             UiKit.Img("SwapIcon", change, MenuArt.IconSwap, MenuArt.Accent, new Vector2(-100f, 0f), new Vector2(20f, 20f));
-            MenuArt.Label("Text", change, "MODUS WECHSELN", 16f, new Color(0.75f, 0.96f, 1f), new Vector2(18f, 0f), new Vector2(240f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
-            Move(mode.Root, new Vector2(700f, 0f), 0.22f, Button(mode, "mode", null, "WEITERE MODI KOMMEN BALD"));
+            MenuArt.Label("Text", change, "SOLO ODER DUO", 16f, new Color(0.75f, 0.96f, 1f), new Vector2(18f, 0f), new Vector2(240f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
+            Move(mode.Root, new Vector2(700f, 0f), 0.22f, Button(mode, "mode", () => Open(MenuPage.Friends)));
 
             // the one warm, solid thing on the screen: lantern gold, like the power shot's ring
             playHalo = UiKit.Img("PlayHalo", rightCol, UiArt.Glow, Gold.WithAlpha(0.3f), new Vector2(0f, -100f), new Vector2(720f, 260f));
@@ -656,6 +662,8 @@ namespace SoccerFight
             RefreshCharacter(true);
             RefreshRecord();
             canvas.gameObject.SetActive(true);
+            // why a duo run ended (the partner left, the connection broke)
+            if (Coop.S != null && !string.IsNullOrEmpty(Coop.S.Notice)) { ShowToast(Coop.S.Notice.ToUpperInvariant(), Vector2.zero); Coop.S.Notice = null; }
         }
 
         void Open(int id)
@@ -667,6 +675,7 @@ namespace SoccerFight
             if (id == MenuPage.Main) return;
             if (id == MenuPage.Characters) characters.Open();
             else if (id == MenuPage.Shop) shop.Refresh();
+            else if (id == MenuPage.Friends) duo.OnOpened();
             else pages.Refresh();
         }
 
@@ -683,6 +692,13 @@ namespace SoccerFight
         {
             if (state != State.Menu) return;
             if (!Profile.Onboarded) { Open(MenuPage.Starter); return; }
+            // in a duo room the host starts for both; alone in an open room there is nobody to play with yet
+            var room = Coop.S;
+            if (room != null)
+            {
+                if (!room.Link.IsHost) { ShowToast(room.Link.Connected ? "DER HOST STARTET DEN LAUF" : "DU BIST NOCH IN KEINEM RAUM", Vector2.zero); return; }
+                if (!room.Link.Connected || !room.PartnerHello) { ShowToast("WARTE AUF DEINEN MITSPIELER  ·  ODER SCHLIESS DEN RAUM", Vector2.zero); Open(MenuPage.Friends); return; }
+            }
             state = State.Starting;
             stateT = 0f;
             playFired = false;
@@ -900,11 +916,28 @@ namespace SoccerFight
             characters.Update(udt, aim);
             shop.Update(udt, aim);
             onboarding.Update(udt, aim);
+            duo.Update(udt, aim);
+            UpdateMode();
             UpdateWallet(udt);
             // after the pages have laid themselves out: a page rises into place as it opens
             foreach (var p in subPages)
                 if (p != null && p.Root.gameObject.activeSelf)
                     p.Content.anchoredPosition += new Vector2(0f, -(1f - Mathf.Clamp01(p.T)) * 50f);
+        }
+
+        /// <summary>Capture tool: type a room code on the duo page.</summary>
+        public void DebugDuoType(string code) => duo.DebugType(code);
+
+        /// <summary>The mode card names the run SPIELEN starts: alone, or the duo with the partner in the room.</summary>
+        void UpdateMode()
+        {
+            var room = Coop.S;
+            bool duoReady = room != null && room.Link.Connected && room.PartnerHello;
+            string name = duoReady ? "DUO-LAUF" : room != null ? "DUO-RAUM OFFEN" : "ROGUELITE-LAUF";
+            string sub = duoReady ? "MIT " + (room.PartnerName ?? "").ToUpperInvariant() + (room.Link.IsHost ? "  ·  DU BIST HOST" : "")
+                : room != null ? "WARTE AUF MITSPIELER" : "8 STAGES  ·  WELLEN  ·  BOSSE";
+            if (modeName.text != name) modeName.text = name;
+            if (modeSub.text != sub) modeSub.text = sub;
         }
 
         Vector2 AimNorm()

@@ -17,6 +17,8 @@ namespace SoccerFight
             public float dmg, age, life;
             public Src src;
             public bool active, pierce, explosive, ricochet;
+            /// <summary>The duo partner's echo: drawn here, its hits happen on the partner's screen.</summary>
+            public bool partner;
             public int bounces;
             public Color color;
             public float spin;
@@ -63,9 +65,11 @@ namespace SoccerFight
         }
 
         /// <summary>dmg is the base (unscaled) damage; Combat applies the build and the echo fraction.</summary>
-        public void Fire(Vector2 from, Vector2 dir, float speed, float dmg, Src src, Color color, bool pierce = false, bool explosive = false, bool ricochet = false)
+        public void Fire(Vector2 from, Vector2 dir, float speed, float dmg, Src src, Color color, bool pierce = false, bool explosive = false, bool ricochet = false, bool partner = false)
         {
+            if (!partner) Coop.SendEcho(from, dir, speed, color, pierce, explosive);
             var e = Get();
+            e.partner = partner;
             e.pos = from; e.vel = dir.normalized * speed; e.dmg = dmg; e.src = src; e.color = color;
             e.age = 0f; e.life = pierce ? 0.8f : 0.7f; e.pierce = pierce; e.explosive = explosive; e.ricochet = ricochet;
             e.bounces = ricochet ? Mathf.Max(1, Game.I.Run.Stats.Ricochets) : 0;
@@ -100,8 +104,7 @@ namespace SoccerFight
 
         void Detonate(Echo e)
         {
-            var s = Game.I.Run.Stats;
-            Game.I.Waves.Blast(e.pos, Player.BlastRadius * 0.6f, Player.BlastDamage * 0.6f, Src.Blast);
+            if (!e.partner) Game.I.Waves.Blast(e.pos, Player.BlastRadius * 0.6f, Player.BlastDamage * 0.6f, Src.Blast);
             FxSystem.I.Flash(e.pos, 2.5f, Palette.BlastOrange, 0.16f, 2.6f);
             Kill(e, false);
         }
@@ -126,6 +129,7 @@ namespace SoccerFight
                     if ((m.Center - e.pos).sqrMagnitude > r * r) continue;
                     e.hit.Add(m.Id);
                     if (e.explosive) { Detonate(e); done = true; break; }
+                    if (e.partner) { if (!e.pierce) { Kill(e, true); done = true; } continue; }
                     Combat.Hit(m, e.dmg, e.vel.normalized, 4.5f, e.src, big: e.src == Src.Power);
                     if (e.pierce) continue;
                     if (e.bounces > 0)

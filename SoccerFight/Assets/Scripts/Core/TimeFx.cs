@@ -42,6 +42,8 @@ namespace SoccerFight
         /// <summary>Slow motion: hold at scale, then ease back to 1 over recover seconds.</summary>
         public static void SlowMo(float scale, float hold, float recover)
         {
+            // a duo shares one world: slowing it down for one player would slow it for both
+            if (Coop.Active) return;
             slowScale = scale;
             slowHold = hold;
             slowRecover = slowRecoverTotal = recover;

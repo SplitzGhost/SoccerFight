@@ -10,7 +10,7 @@ namespace SoccerFight
     /// and follow the player, chains that trail behind. All motion is spring-based squash & stretch;
     /// hits flash white, knock back and pop a damage number. Stats come from the difficulty level.
     /// </summary>
-    public sealed class Monster
+    public sealed partial class Monster
     {
         public enum Kind { Blob, Wisp }
 
@@ -187,6 +187,8 @@ namespace SoccerFight
         public void Spawn(in SpawnSpec s)
         {
             Id = ++nextId;
+            Ghost = false;
+            netCount = 0;
             Type = s.Type;
             Rank = s.Rank;
             Boss = s.Boss;
@@ -209,6 +211,8 @@ namespace SoccerFight
             sizeMul = def.Size * rankSize * jitter;
             float baseHp = Rank == Rank.Boss ? Difficulty.BossBaseHealth : Rank == Rank.MiniBoss ? Difficulty.MiniBaseHealth : def.Hp * rankHp;
             MaxHp = baseHp * Difficulty.HealthMul(DifficultyLevel);
+            // two players hit twice as often: a duo's monsters are tougher (the partner's ghost takes the host's number)
+            if (Coop.IsHost) MaxHp *= Rank == Rank.Boss ? Difficulty.DuoBossHealth : Difficulty.DuoHealth;
             Hp = MaxHp;
             float baseDmg = Rank == Rank.Boss ? Difficulty.BossBaseDamage : Rank == Rank.MiniBoss ? Difficulty.MiniBaseDamage : def.Damage;
             ContactDamage = baseDmg * Difficulty.DamageMul(DifficultyLevel) * rankDmg;
@@ -336,6 +340,8 @@ namespace SoccerFight
         public bool Hit(float dmg, Vector2 dir, float knock, bool big, bool crit = false, bool boosted = false)
         {
             if (!Alive) return false;
+            // duo partner's screen: show the hit now, the host decides what it does
+            if (Ghost) { GhostHit(dmg, dir, knock, big, crit, boosted); return false; }
             Hp -= dmg;
             HitCount++;
             regenDelay = 1.2f;
@@ -354,13 +360,15 @@ namespace SoccerFight
             fx.Sparks(c, dir, 110f, big ? 14 : 8, 5f, 12f, spark, 2.6f, 0.05f, 0.25f, 2f);
             Game.I.Hud.DamageNumber(c + new Vector2(0f, Radius + 0.3f), dmg, big, crit, boosted);
             if (Hp <= 0f) { Die(dir); return true; }
-            if (Rank != Rank.Boss) TimeFx.HitStop(big ? 0.05f : 0.03f, 0.06f);
+            // the partner's hits don't freeze this screen
+            if (Rank != Rank.Boss && !ApplyingRemote) TimeFx.HitStop(big ? 0.05f : 0.03f, 0.06f);
             return false;
         }
 
         public void Ignite(float dps, float time)
         {
             if (!Alive) return;
+            if (Ghost) Coop.SendStatus(this, StatusKind.Ignite, dps, time);
             BurnDps = Mathf.Max(BurnDps, dps);
             BurnTime = Mathf.Max(BurnTime, time);
         }
@@ -368,6 +376,7 @@ namespace SoccerFight
         public void Chill(float amount, float time)
         {
             if (!Alive) return;
+            if (Ghost) Coop.SendStatus(this, StatusKind.Chill, amount, time);
             SlowAmount = Mathf.Max(SlowAmount, amount);
             SlowTime = Mathf.Max(SlowTime, time);
         }
@@ -375,6 +384,7 @@ namespace SoccerFight
         public void Freeze(float time)
         {
             if (!Alive || Rank == Rank.Boss) return;
+            if (Ghost) Coop.SendStatus(this, StatusKind.Freeze, time, 0f);
             FreezeTime = Mathf.Max(FreezeTime, Rank == Rank.MiniBoss ? time * 0.4f : time);
             FxSystem.I.Ring(FxLayer.Front, Center, 0.1f, Radius * 2.4f, 0.12f, 0.01f, 0.25f, Color.white, new Color(0.6f, 0.9f, 1f, 0f), 2f);
         }
@@ -383,6 +393,7 @@ namespace SoccerFight
         public void Stun(float time)
         {
             if (!Alive) return;
+            if (Ghost) Coop.SendStatus(this, StatusKind.Stun, time, 0f);
             if (Rank == Rank.Boss) time = Mathf.Min(time, 1.2f);
             StunTime = Mathf.Max(StunTime, time);
             windup = 0f;
@@ -396,6 +407,7 @@ namespace SoccerFight
         public void Expose(float time)
         {
             if (!Alive) return;
+            if (Ghost) Coop.SendStatus(this, StatusKind.Expose, time, 0f);
             ExposeTime = Mathf.Max(ExposeTime, time);
         }
 
@@ -414,9 +426,12 @@ namespace SoccerFight
                 fx.Sparkles(c, 0.8f * sizeMul, Rank == Rank.Boss ? 30 : 12, Palette.Gold, 2.8f, 0.9f);
             }
             var game = Game.I;
-            game.Cam.AddTrauma(Rank == Rank.Boss ? 0.8f : Named ? 0.4f : 0.22f);
-            game.Post.Impact(Rank == Rank.Boss ? 1f : 0.3f);
-            TimeFx.HitStop(Rank == Rank.Boss ? 0.14f : 0.06f, 0.05f);
+            // the partner's kills land softer on this screen (a boss always shakes everything)
+            bool mine = Ghost ? GhostKilledHere : !ApplyingRemote;
+            float feel = mine || Rank == Rank.Boss ? 1f : 0.35f;
+            game.Cam.AddTrauma((Rank == Rank.Boss ? 0.8f : Named ? 0.4f : 0.22f) * feel);
+            game.Post.Impact((Rank == Rank.Boss ? 1f : 0.3f) * feel);
+            if (mine || Rank == Rank.Boss) TimeFx.HitStop(Rank == Rank.Boss ? 0.14f : 0.06f, 0.05f);
             if (Rank == Rank.Boss) TimeFx.SlowMo(0.25f, 0.5f, 0.8f);
             Show(false);
             game.Waves.OnDied(this);
@@ -441,6 +456,7 @@ namespace SoccerFight
 
         public void Update(float dt, Player player)
         {
+            if (Ghost) { UpdateGhost(dt, player); return; }
             t += dt;
             spawnT = Mathf.Min(1f, spawnT + dt / (Rank == Rank.Boss ? 0.9f : 0.45f));
             scaleNow = MathUtil.EaseOutBack(spawnT, 2.2f) * sizeMul;
@@ -1137,7 +1153,8 @@ namespace SoccerFight
             float sq = Mathf.Clamp(squash * 0.05f, -0.35f, 0.35f);
             float flipScale = Mathf.Sin(faceT * Mathf.PI * 0.5f);
             float side = flipScale >= 0f ? 1f : -1f;
-            float shiver = primeTime > 0f ? 1f + 0.05f * Mathf.Sin(t * 70f) : 1f;
+            Acting(out float charge, out float lunge, out float primed);
+            float shiver = primed > 0f ? 1f + 0.05f * Mathf.Sin(t * 70f) : 1f;
             body.localScale = new Vector3(flipScale * (1f - sq) * scaleNow * shiver, (1f + sq) * scaleNow * shiver, 1f);
             // flyers lean into their flight (nose up when rising, down when diving)
             float lean = look.Tilt > 0f ? Mathf.Clamp(Mathf.Atan2(Vel.y, Mathf.Abs(Vel.x) + 0.6f) * Mathf.Rad2Deg, -55f, 55f) * look.Tilt * side : 0f;
@@ -1146,9 +1163,6 @@ namespace SoccerFight
             root.position = new Vector3(Pos.x, Pos.y, 0f);
 
             // what the body is doing: winding up, lunging, airborne, fuse lit
-            float charge = Mathf.Clamp01(Mathf.Max(windup * 2f, attackWind > 0f ? 1f : 0f, moveActive && moveT < 0.7f ? 1f : 0f));
-            float lunge = diveTime > 0f || chargeTime > 0f || (moveActive && moveT >= 0.7f && (move == BossMove.Charge || move == BossMove.LeapSlam)) ? 1f : 0f;
-            float primed = primeTime > 0f ? 1f : 0f;
             float speed01 = Mathf.Clamp01(Vel.magnitude / 8f);
             float faceVx = Vel.x * side;
             bool air = K == Kind.Blob && !grounded;

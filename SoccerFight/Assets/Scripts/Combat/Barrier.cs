@@ -10,6 +10,11 @@ namespace SoccerFight
     public sealed class Barrier
     {
         public static Barrier I { get; private set; }
+        /// <summary>Duo: the partner's wall, standing in this arena as well.</summary>
+        public static Barrier Partner { get; private set; }
+
+        /// <summary>Does either wall swallow a shot at this point?</summary>
+        public static bool Blocking(Vector2 p) => (I != null && I.Blocks(p)) || (Partner != null && Partner.Blocks(p));
 
         public const float Half = 0.28f;      // half thickness of the slab
         public const float Width = 1.25f;     // half width of the line of defenders
@@ -27,13 +32,13 @@ namespace SoccerFight
         public float X => x;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { I = null; figure = null; }
+        static void ResetStatics() { I = null; Partner = null; figure = null; }
 
         // ------------------------------------------------------------------ build
 
-        public void Build(Transform parent)
+        public void Build(Transform parent, bool partner = false)
         {
-            I = this;
+            if (partner) Partner = this; else I = this;
             if (figure == null) figure = BuildFigure();
 
             root = new GameObject("Barrier").transform;

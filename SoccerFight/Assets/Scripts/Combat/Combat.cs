@@ -186,6 +186,7 @@ namespace SoccerFight
         /// <summary>Area burst: falloff damage, outward shove, no further on-hit effects (kills can still chain).</summary>
         public static void Explosion(Vector2 at, float radius, float dmg, Color c, Src src = Src.Explosion)
         {
+            CoopFx.Send(CoopFx.Kind.Explosion, at, radius, c);
             var fx = FxSystem.I;
             fx.Flash(at, radius * 1.4f, c, 0.16f, 2.6f);
             fx.Ring(FxLayer.Front, at, 0.1f, radius, 0.25f, 0.01f, 0.28f, Color.white, c.WithAlpha(0f), 2.4f);
@@ -263,6 +264,7 @@ namespace SoccerFight
             var s = S;
             Vector2 at = p.Pos + new Vector2(0f, 0.9f);
             float r = 3f * s.AreaMul;
+            CoopFx.Send(CoopFx.Kind.Nova, at, r, Palette.ShotCyan);
             var fx = FxSystem.I;
             fx.Flash(at, r * 1.2f, Palette.ShotCyan, 0.2f, 2.8f);
             fx.Ring(FxLayer.Front, at, 0.3f, r, 0.35f, 0.02f, 0.35f, Color.white, Palette.ShotCyan.WithAlpha(0f), 2.6f);

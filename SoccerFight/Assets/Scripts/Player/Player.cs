@@ -6,7 +6,7 @@ namespace SoccerFight
     /// Player movement, abilities and health. Feel tricks: acceleration curves with a fast turn-around,
     /// coyote time, jump buffering, variable jump height, apex hang, input buffering for shots.
     /// </summary>
-    public sealed class Player
+    public sealed partial class Player
     {
         // movement tuning
         public const float MaxSpeed = 7.2f;
@@ -183,7 +183,7 @@ namespace SoccerFight
         public Vector2 JuggleBallLocal;
         public Vector2 JuggleContactLocal;
         public float JuggleWindow { get; private set; }
-        public float JuggleTimeToContact => jugTc - jugT;
+        public float JuggleTimeToContact => Puppet ? netJugTtc : jugTc - jugT;
 
         public PlayerRig Rig;
         public Ball Ball;
@@ -216,10 +216,10 @@ namespace SoccerFight
         bool boostRise;
         float jugT, jugTc, jugVy0, jugY0, jugX0, jugVx;
 
-        public void Build(Transform parent, Ball ball)
+        public void Build(Transform parent, Ball ball, int orderShift = 0)
         {
             Ball = ball;
-            Rig = new PlayerRig(this);
+            Rig = new PlayerRig(this) { OrderBase = PlayerRig.BaseOrder + orderShift };
             Rig.Build(parent);
             ghosts = new Afterimages(parent, Rig);
             Rig.Ghosts = ghosts;
@@ -258,6 +258,7 @@ namespace SoccerFight
             Rig.ResetPose();
             Rig.SetVisible(true);
             ghosts.Clear();
+            Ball.SetVisible(true);
         }
 
         void DecaySkillBuffers(float dt)
@@ -1347,6 +1348,7 @@ namespace SoccerFight
                 wallPlaced = true;
                 float x = Mathf.Clamp(Pos.x + Facing * 1.8f, -ArenaHalf + 0.6f, ArenaHalf - 0.6f);
                 Barrier.I.Spawn(x, GroundY, WallLife + S.WallLifeBonus);
+                Coop.SendWall(x, GroundY, WallLife + S.WallLifeBonus);
             }
             if (ActionTime >= WallDuration) CurrentAction = Action.None;
         }
@@ -1484,6 +1486,7 @@ namespace SoccerFight
             var fx = FxSystem.I;
             var game = Game.I;
             Vector2 c = Pos + new Vector2(0f, 1.6f);
+            CoopFx.Send(CoopFx.Kind.Whistle, c, 15f, Palette.Silver);
             for (int i = 0; i < 3; i++)
                 fx.Ring(FxLayer.Front, c, 0.4f + i * 0.5f, 15f + i * 4f, 0.26f, 0.015f, 0.5f + i * 0.12f, i == 0 ? Color.white : Palette.Silver, Palette.Silver.WithAlpha(0f), 2.2f);
             fx.Flash(c, 3.4f, Palette.Silver, 0.2f, 3f);

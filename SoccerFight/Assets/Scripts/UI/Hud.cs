@@ -11,7 +11,7 @@ namespace SoccerFight
     /// bar with radial cooldown sweeps and locks (bottom-right), crosshair, banners, stage and boss
     /// intro cards, damage numbers and the run summary. Animates on unscaled time.
     /// </summary>
-    public sealed class Hud
+    public sealed partial class Hud
     {
         sealed class Slot
         {
@@ -278,6 +278,7 @@ namespace SoccerFight
             BuildMisc();
             Coins = new CoinCounter();
             Coins.Build(canvasRect, WorldToCanvas);
+            BuildCoop();
         }
 
         void BuildJuggle()
@@ -1345,7 +1346,9 @@ namespace SoccerFight
             toastT += dt;
             toast.alpha = toastT < 1.8f && !paused ? 1f - MathUtil.Smooth01((toastT - 1.3f) / 0.5f) : 0f;
 
-            float deathTarget = player.Dead && player.DeadTime > 0.9f ? 1f : 0f;
+            // a duo run is lost only when both players are down
+            bool runLost = Coop.Active ? Game.I.Director.P == RunDirector.Phase.RunOver : player.Dead;
+            float deathTarget = runLost && player.DeadTime > 0.9f ? 1f : 0f;
             deathGroup.alpha = MathUtil.Damp(deathGroup.alpha, deathTarget, 5f, dt);
             if (player.Dead && !deathTextSet)
             {
@@ -1373,6 +1376,8 @@ namespace SoccerFight
 
             hintGroup.alpha = 1f - MathUtil.Smooth01((time - 9f) / 1.5f);
             UpdateDev(dt, run);
+
+            UpdateCoop(dt);
 
             // fade in from black on start / restart (also hides first-frame shader warm-up)
             fadeT += dt;

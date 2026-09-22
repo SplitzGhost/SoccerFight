@@ -8,7 +8,7 @@ namespace SoccerFight
     /// resolves ball and contact collisions through Combat, and handles deaths (splitters, bombers,
     /// kill effects). Area helpers for the blast, the rainbow impact, wind and stage hazards live here.
     /// </summary>
-    public sealed class WaveDirector
+    public sealed partial class WaveDirector
     {
         readonly List<Monster> monsters = new List<Monster>();
         Transform parent;
@@ -67,6 +67,8 @@ namespace SoccerFight
             m.Spawn(spec);
             AliveCount++;
             if (spec.Rank == Rank.Boss) Boss = m;
+            if (Coop.IsHost) Coop.SendSpawn(m, spec, pendingPortal);
+            pendingPortal = -1;
             return m;
         }
 
@@ -91,6 +93,7 @@ namespace SoccerFight
             bool wisp = EnemyDef.Get(type).Body == Monster.Kind.Wisp;
             Vector2 v = wisp ? new Vector2(inward * 3f, 1.5f) : new Vector2(inward * Random.Range(3.5f, 5f), Random.Range(2.5f, 4f));
             if (rank >= Rank.MiniBoss) v *= 0.8f;
+            pendingPortal = left ? 0 : 1;
             var m = Spawn(new Monster.SpawnSpec
             {
                 Type = type, At = at, Vel = v, Level = level, Rank = rank, Affixes = affixes,
@@ -125,12 +128,14 @@ namespace SoccerFight
             AliveCount = Mathf.Max(0, AliveCount - 1);
             Deaths++;
             if (m == Boss) Boss = null;
+            if (Coop.IsHost) Coop.SendDeath(m, Monster.ApplyingRemote);
             Combat.OnKill(m);
             CoinDrops.I?.Drop(m);
-            if (m.Type == EnemyType.Splitter)
+            // the partner's screen gets the splitter's young from the host like any other spawn
+            if (m.Type == EnemyType.Splitter && !m.Ghost)
                 for (int i = 0; i < 2; i++) SpawnMinion(EnemyType.Spawnling, m.Center + new Vector2((i - 0.5f) * 0.5f, 0.1f), m);
             m.OnDeathEffects();
-            Game.I.Director?.OnMonsterDied(m);
+            if (!m.Ghost) Game.I.Director?.OnMonsterDied(m);
         }
 
         /// <summary>Wind: a sideways shove for everything alive (bosses barely move).</summary>
@@ -147,6 +152,8 @@ namespace SoccerFight
         /// <summary>Lightning strikes and geysers hurt monsters too.</summary>
         public void HazardHit(Vector2 c, float radius, float dmg, bool launch)
         {
+            if (Coop.IsClient) return;   // the host's hazards hurt the host's monsters
+
             float scaled = dmg * Mathf.Sqrt(Difficulty.HealthMul(Game.I.Run.Level));
             for (int i = 0; i < monsters.Count; i++)
             {
@@ -167,7 +174,8 @@ namespace SoccerFight
             {
                 var m = monsters[i];
                 if (!m.Alive) continue;
-                m.Update(dt, player);
+                // duo host: each monster chases whichever player is closer (and sticks to its choice a while)
+                m.Update(dt, Coop.IsHost ? Coop.TargetFor(m, player) : player);
                 if (!m.Alive) continue;
 
                 // ball vs monster
@@ -191,13 +199,18 @@ namespace SoccerFight
                         if (player.IsDashing && stats.DashDamageFrac > 0f) player.DashStrike(m);
                         else if (m.Halted) { }   // knocked over or whistled: it cannot hurt anyone right now
                         else if (player.TakeDamage(m.ContactDamage * StageMechanics.EnemyDamageBoost, m.Center))
-                            m.Vel.x = Mathf.Sign(m.Center.x - player.Pos.x) * (m.Rank >= Rank.MiniBoss ? 5f : 3.5f);   // bounce off instead of sitting on the player
+                        {
+                            // bounce off instead of sitting on the player (a ghost asks the host to do it)
+                            float vx = Mathf.Sign(m.Center.x - player.Pos.x) * (m.Rank >= Rank.MiniBoss ? 5f : 3.5f);
+                            if (m.Ghost) Coop.SendBounce(m, vx);
+                            else m.Vel.x = vx;
+                        }
                     }
                 }
                 if (m.Alive) alive++;
             }
             AliveCount = alive;
-            Separate();
+            if (!Coop.IsClient) Separate();
 
             // portals
             portalSpin += dt * 90f;

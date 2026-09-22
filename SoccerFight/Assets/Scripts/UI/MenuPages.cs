@@ -99,7 +99,6 @@ namespace SoccerFight
             register = reg;
             back = goBack;
             BuildRanking(parent);
-            BuildFriends(parent);
             BuildEvents(parent);
             BuildInfo(parent);
             BuildSettings(parent);
@@ -169,17 +168,6 @@ namespace SoccerFight
         }
 
         // ------------------------------------------------------------------ friends
-
-        void BuildFriends(RectTransform parent)
-        {
-            var page = NewPage(parent, MenuPage.Friends, "FREUNDE", "GEMEINSAM SPIELEN", Palette.DashMint);
-            var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 10f), new Vector2(820f, 580f));
-            MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(820f, 580f), Palette.DashMint, 0.3f);
-            Emblem(panel, MenuArt.IconFriends, new Vector2(0f, 130f), 180f, Palette.DashMint);
-            MenuArt.Label("Empty", panel, "NOCH KEINE FREUNDE", 40f, Color.white, new Vector2(0f, -20f), new Vector2(760f, 56f), TextAlignmentOptions.Center, 8f);
-            Body(panel, "Freundesliste, Einladungen und gemeinsame Läufe kommen in einem späteren Update.", new Vector2(0f, -88f), new Vector2(640f, 70f));
-            SoonButton(panel, MenuPage.Friends, "invite", new Vector2(0f, -196f), new Vector2(400f, 80f), Palette.DashMint, "EINLADEN", 30f, "ONLINE-FUNKTIONEN KOMMEN BALD");
-        }
 
         // ------------------------------------------------------------------ events
 

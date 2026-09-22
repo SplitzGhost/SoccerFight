@@ -21,6 +21,8 @@ namespace SoccerFight
         public WaveDirector Waves { get; private set; }
         public Player Player { get; private set; }
         public Ball Ball { get; private set; }
+        /// <summary>The duo partner's body and ball (hidden outside a duo run).</summary>
+        public RemotePlayer Remote { get; private set; }
         public WorldEnvironment Environment { get; private set; }
         public bool CaptureMode { get; private set; }
 
@@ -33,6 +35,7 @@ namespace SoccerFight
         public DevPanel Dev { get; private set; }
         EnemyProjectiles enemyShots;
         Barrier barrier;
+        Barrier partnerBarrier;
         Decoys decoys;
         Lightning lightning;
         EchoBalls echoes;
@@ -136,6 +139,10 @@ namespace SoccerFight
             vortices.Build(transform);
             barrier = new Barrier();
             barrier.Build(transform);
+            partnerBarrier = new Barrier();
+            partnerBarrier.Build(transform, true);
+            Remote = new RemotePlayer();
+            Remote.Build(transform);
             decoys = new Decoys();
             decoys.Build(transform, Player.Rig);
             twinSun = new TwinSun();
@@ -191,6 +198,18 @@ namespace SoccerFight
         /// <summary>A fresh run from stage 1.</summary>
         public void Restart()
         {
+            // in a duo the host starts every run, for both
+            if (Coop.IsClient) return;
+            if (Coop.S != null && Coop.S.Link.IsHost && Coop.S.Link.Connected && Coop.S.PartnerHello) Coop.S.StartRunAsHost();
+            else Coop.S?.LeaveRun();
+            if (Menu != null) Menu.Dismiss();
+            Hud.SetVisible(true);
+            Begin(true);
+        }
+
+        /// <summary>Duo partner: the host started a run — it starts here too, on the host's seed.</summary>
+        public void StartCoopRun()
+        {
             if (Menu != null) Menu.Dismiss();
             Hud.SetVisible(true);
             Begin(true);
@@ -202,6 +221,7 @@ namespace SoccerFight
         /// </summary>
         public void ToMenu()
         {
+            Coop.S?.LeaveRun();
             Hud.SetVisible(false);
             Begin(false);
             Menu.Open();
@@ -221,6 +241,7 @@ namespace SoccerFight
             vortices.Clear();
             barrier.Clear();
             decoys.Clear();
+            partnerBarrier.Clear();
             lightning.Clear();
             Mechanics.SetRunning(false);
             Run.Reset();
@@ -241,11 +262,12 @@ namespace SoccerFight
         {
             if (RecoverFromReload()) return;
             float udt = TimeFx.UiDelta;
+            Coop.Update(udt);
 
             GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen || Menu.IsOpen;
             GameInput.Poll(Cam.Cam);
 
-            if (GameInput.DevPressed && !CaptureMode && !Menu.IsOpen)
+            if (GameInput.DevPressed && !CaptureMode && !Menu.IsOpen && !Coop.Active)
             {
                 if (Dev.IsOpen) Dev.Close();
                 else if (!Rewards.IsOpen) { Pause.Close(); Dev.Open(); }
@@ -257,8 +279,8 @@ namespace SoccerFight
                 else if (Pause.IsOpen) Pause.HandleEscape();
                 else if (!CaptureMode) Pause.Open();
             }
-            // reward screens and the dev panel freeze the fight exactly like the pause menu
-            bool paused = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
+            // reward screens and the dev panel freeze the fight exactly like the pause menu (a duo's pause menu doesn't: the partner plays on)
+            bool paused = (Pause.IsOpen && !Coop.Active) || Rewards.IsOpen || Dev.IsOpen;
             TimeFx.Paused = paused;
             TimeFx.Update(udt);
             Hud.SetPaused(paused);
@@ -283,6 +305,7 @@ namespace SoccerFight
                 // a reward screen has the game frozen: the next stage's art can generate meanwhile
                 if (Rewards.Settled) ArtQueue.Pump(12f);
                 if (GameInput.Scripted) GameInput.ClearEdges();
+                Coop.LateTick(udt);
                 return;
             }
 
@@ -290,7 +313,9 @@ namespace SoccerFight
             if (Player.Dead)
             {
                 Player.DeadTime += udt;
-                if (GameInput.RestartPressed && Player.DeadTime > 0.9f) Restart();
+                // a duo run is over only when both are down, and only the host starts the next one
+                bool over = !Coop.Active || Director.P == RunDirector.Phase.RunOver;
+                if (GameInput.RestartPressed && Player.DeadTime > 0.9f && over && !Coop.IsClient) Restart();
             }
 
             Level.Update(dt);
@@ -298,12 +323,14 @@ namespace SoccerFight
             Player.Rig.Update(dt);
             Ball.Update(dt, Player);
             Player.LateVisuals(dt);
+            if (Coop.Active) Remote.Update(dt);
             upgradeLook.Update(dt);
             Waves.Update(dt, Player, Ball);
             bossTells.Update(dt);
             echoes.Update(dt);
             vortices.Update(dt);
             barrier.Update(dt);
+            partnerBarrier.Update(dt);
             decoys.Update(dt);
             twinSun.Update(dt, Player, Director.Fighting);
             enemyShots.Update(dt, Player);
@@ -314,6 +341,7 @@ namespace SoccerFight
             Director.Update(dt);
 
             if (GameInput.Scripted) GameInput.ClearEdges();
+            Coop.LateTick(udt);
         }
 
         void LateUpdate()
@@ -321,11 +349,14 @@ namespace SoccerFight
             if (Cam == null || Player == null) return;
             float udt = TimeFx.UiDelta;
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
-            bool paused = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen;
+            bool paused = (Pause.IsOpen && !Coop.Active) || Rewards.IsOpen || Dev.IsOpen;
 
-            Vector2 aimOffset = Vector2.ClampMagnitude((GameInput.AimWorld - (Player.Pos + Vector2.up)) * 0.09f, 1.1f);
-            Vector2 look = new Vector2(Player.Facing * 0.8f + aimOffset.x, aimOffset.y * 0.35f);
-            Cam.Update(Player.Pos, Player.Grounded, Player.Pos.y, look, dt, paused ? 0f : udt);
+            // a downed duo player watches the partner until coming back
+            var follow = Player;
+            if (Player.Dead && Coop.Active && Remote.Present && !Remote.Down) follow = Remote.P;
+            Vector2 aimOffset = follow == Player ? Vector2.ClampMagnitude((GameInput.AimWorld - (Player.Pos + Vector2.up)) * 0.09f, 1.1f) : Vector2.zero;
+            Vector2 look = new Vector2(follow.Facing * 0.8f + aimOffset.x, aimOffset.y * 0.35f);
+            Cam.Update(follow.Pos, follow.Grounded, follow.Pos.y, look, dt, paused ? 0f : udt);
 
             envTime += dt;
             Environment.Update(dt, envTime, Player, Ball);

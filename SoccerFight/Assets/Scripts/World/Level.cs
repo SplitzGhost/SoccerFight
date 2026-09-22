@@ -57,6 +57,13 @@ namespace SoccerFight
 
         public static Platform[] Platforms = Classic();
         static float time;
+        static float drift;
+
+        /// <summary>The platforms' clock (duo: the partner's screen follows the host's).</summary>
+        public static float Clock => time;
+
+        /// <summary>Shift the clock on the next update (small steps, so riders are carried along).</summary>
+        public static void Nudge(float seconds) => drift += seconds;
 
         public const float Ground = 0f;
         public const int None = -1;
@@ -91,7 +98,8 @@ namespace SoccerFight
         /// <summary>Advance the moving platforms (game time: they freeze with the game).</summary>
         public static void Update(float dt)
         {
-            time += dt;
+            time += dt + drift;
+            drift = 0f;
             foreach (var p in Platforms) p.Step(time);
         }
 

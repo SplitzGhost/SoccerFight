@@ -70,6 +70,9 @@ namespace SoccerFight
         /// </summary>
         public const float BossAdds = 0.5f;
 
+        /// <summary>Duo: monster health, boss health and wave budget next to a solo run.</summary>
+        public const float DuoHealth = 1.4f, DuoBossHealth = 1.6f, DuoBudget = 1.25f;
+
         /// <summary>Monsters per summon (and per phase change) at boss phase 0..2 — was 2 / 3 / 4.</summary>
         public static int BossSummons(int phase) => Mathf.Max(1, Mathf.RoundToInt((2 + phase) * BossAdds));
 

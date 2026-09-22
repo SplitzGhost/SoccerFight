@@ -36,6 +36,8 @@ namespace SoccerFight
         public Afterimages Ghosts;
         /// <summary>Brightness of the boot neon (the speed upgrades turn it up).</summary>
         public float GlowBoost = 1f;
+        /// <summary>Sorting order of the body's lowest part (the duo partner is drawn a step behind).</summary>
+        public int OrderBase = BaseOrder;
 
         // locomotion state
         float phase;
@@ -80,7 +82,7 @@ namespace SoccerFight
         SpriteRenderer Part(string name, PlayerPart kind, int order, bool back, bool glow = false)
         {
             var mat = glow ? Art.SpriteGlowMat : Art.CharacterMat;
-            var sr = Art.MakeSprite(name, flip, PlayerArt.SpriteOf(kind), BaseOrder + order, mat);
+            var sr = Art.MakeSprite(name, flip, PlayerArt.SpriteOf(kind), OrderBase + order, mat);
             Color c = back ? Palette.BackLimbTint : Color.white;
             if (glow) c = back ? Palette.Neon.WithAlpha(0.35f) : Palette.Neon.WithAlpha(0.7f);
             sr.color = c;
@@ -140,6 +142,13 @@ namespace SoccerFight
         public void ApplyLook()
         {
             for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(partKinds[i]);
+        }
+
+        /// <summary>Wear a specific character's body (the duo partner's).</summary>
+        public void ApplyLook(PlayerLook look)
+        {
+            if (look == null) return;
+            for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(look, partKinds[i]);
         }
 
         public void ResetPose()

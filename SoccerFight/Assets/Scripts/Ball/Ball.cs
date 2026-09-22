@@ -7,7 +7,7 @@ namespace SoccerFight
     /// magnetically recalled. Visual stack: stretch node (aligned to velocity) → spin node (pattern)
     /// + a non-rotating shading/highlight pass so it always reads as a lit sphere.
     /// </summary>
-    public sealed class Ball
+    public sealed partial class Ball
     {
         // Pierce: power shot that flies straight through every monster. Blast: bicycle kick that
         // explodes on the first thing it touches.
@@ -49,6 +49,8 @@ namespace SoccerFight
         float squash, squashVel;
         Vector2 prevPos;
         int order = PlayerRig.BallOrderFront;
+        /// <summary>Added to every sorting order (the duo partner's ball sits a step behind with its player).</summary>
+        public int OrderShift;
         float hueT;
 
         // a shot fired downwards from a platform passes through that platform for a moment
@@ -67,6 +69,7 @@ namespace SoccerFight
 
         public void Build(Transform parent)
         {
+            order = PlayerRig.BallOrderFront + OrderShift;
             root = new GameObject("Ball").transform;
             root.SetParent(parent, false);
 
@@ -252,6 +255,7 @@ namespace SoccerFight
             Vector2 p = meteorTarget;
             float radius = Player.PuntRadius * st.AreaMul;
             game.Waves.Blast(p, radius, Player.PuntDamage, Src.Punt);
+            CoopFx.Send(CoopFx.Kind.Meteor, p, radius, Palette.Amber);
             // Hagel: a couple of smaller craters left and right
             for (int i = 0; i < st.PuntExtra; i++)
             {
@@ -427,6 +431,7 @@ namespace SoccerFight
             var st = game.Run.Stats;
             float radius = Player.BlastRadius * st.BlastRadiusMul * st.AreaMul;
             game.Waves.Blast(p, radius, Player.BlastDamage);
+            CoopFx.Send(CoopFx.Kind.Blast, p, radius, Palette.BlastOrange);
 
             fx.Flash(p, 5f, Palette.BlastOrange, 0.24f, 2.6f);
             fx.Flash(p, 2.4f, Color.white, 0.1f, 3.2f);
@@ -626,6 +631,7 @@ namespace SoccerFight
         {
             // the free-kick wall bounces the ball back into play (a pierce shot goes straight through)
             if (St != State.Pierce && Barrier.I != null && Barrier.I.Deflect(prevPos, ref Pos, ref Vel, R)) squashVel -= 6f;
+            else if (St != State.Pierce && Barrier.Partner != null && Barrier.Partner.Deflect(prevPos, ref Pos, ref Vel, R)) squashVel -= 6f;
 
             // one-way platforms: only a ball that was above a surface last step can land on it
             float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f, 0f, passTimer > 0f ? passPlatform : Level.None, out int under);
@@ -654,6 +660,7 @@ namespace SoccerFight
             Vector2 p = new Vector2(Pos.x, b3.y);   // the target sits on the pitch or a platform
             Pos = p;
             game.Waves.RainbowImpact(p);
+            CoopFx.Send(CoopFx.Kind.Rainbow, p, WaveDirector.RainbowRadius * game.Run.Stats.FlickRadiusMul * game.Run.Stats.AreaMul, Color.white);
             if (game.Run.Stats.DoubleRainbow) { rainbowEcho = 0.38f; rainbowEchoAt = p; }
 
             fx.Flash(p + Vector2.up * 0.3f, 3.2f, Color.white, 0.2f, 2.4f);
@@ -774,7 +781,7 @@ namespace SoccerFight
             }
 
             // sorting: tuck between the legs while the flick rolls it up the calf
-            SetOrder(St == State.Scripted && !JuggleMode ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront);
+            SetOrder((St == State.Scripted && !JuggleMode ? PlayerRig.BallOrderBetweenLegs : PlayerRig.BallOrderFront) + OrderShift);
 
             // shadow on the surface below
             float h = Mathf.Max(0f, Pos.y - R - floor);

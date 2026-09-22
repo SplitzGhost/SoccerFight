@@ -9,7 +9,7 @@ namespace SoccerFight
     /// choice → next stage in a new theme with a new platform layout. Reward screens freeze the
     /// game; everything else plays out live.
     /// </summary>
-    public sealed class RunDirector
+    public sealed partial class RunDirector
     {
         public enum Phase { Idle, StageIntro, WaveIntro, Fighting, WaveCleared, Reward, AbilityPick, BossIntro, StageCleared, RunOver }
         /// <summary>How many skills a boss offers to pick one from.</summary>
@@ -26,7 +26,7 @@ namespace SoccerFight
         public Phase P { get; private set; } = Phase.Idle;
         public float PhaseTime => t;
         /// <summary>Monsters still to come in this wave plus those alive.</summary>
-        public int Remaining => (plan.Count - planIndex) + (bossPending ? 1 : 0) + waves.AliveCount;
+        public int Remaining => Coop.IsClient ? NetRemaining : (plan.Count - planIndex) + (bossPending ? 1 : 0) + waves.AliveCount;
         public int WaveTotal { get; private set; }
         public bool Fighting => P == Phase.Fighting;
         public int PlanIndex => planIndex;
@@ -59,6 +59,8 @@ namespace SoccerFight
         public void StartRun()
         {
             run.Reset();
+            // a duo run plays both arenas from the host's seed
+            if (Coop.S != null && Coop.S.InRun) run.Seed = Coop.S.RunSeed;
             CoinRewards.ResetRun();
             Combat.Reset();
             player.ApplyStats(true);
@@ -94,6 +96,14 @@ namespace SoccerFight
 
         public void OnPlayerDied()
         {
+            // duo: a downed player comes back after a while; the run only ends when both are down
+            if (Coop.Active) { Coop.OnLocalDown(); return; }
+            EndRun();
+        }
+
+        /// <summary>The run is over (solo death, or both duo players down).</summary>
+        public void EndRun()
+        {
             if (P == Phase.RunOver) return;
             StageMechanics.I.SetRunning(false);
             int reached = run.Stage;
@@ -120,7 +130,7 @@ namespace SoccerFight
             planIndex = 0;
             var theme = run.Theme;
             float level = run.Level;
-            float budget = Difficulty.Budget(level);
+            float budget = Difficulty.Budget(level) * (Coop.IsHost ? Difficulty.DuoBudget : 1f);
             float eliteChance = Difficulty.EliteChance(run.Stage, run.Wave, level);
             int affixes = Difficulty.EliteAffixes(run.Stage);
 
@@ -175,13 +185,14 @@ namespace SoccerFight
         {
             var s = plan[planIndex++];
             waves.SpawnFromPortal(s.Type, run.Level, s.Rank, s.Affixes, s.Name);
-            if (s.Rank == Rank.MiniBoss) Game.I.Hud.ShowToast(s.Name + "  NAHT");
+            if (s.Rank == Rank.MiniBoss) { Game.I.Hud.ShowToast(s.Name + "  NAHT"); Coop.SendToast(s.Name + "  NAHT"); }
         }
 
         // ------------------------------------------------------------------ update
 
         public void Update(float dt)
         {
+            if (Coop.IsClient) { UpdateFollower(dt); return; }
             t += dt;
             if (P != Phase.RunOver && P != Phase.Idle) run.Time += dt;
             switch (P)
@@ -203,7 +214,7 @@ namespace SoccerFight
                 case Phase.WaveCleared:
                     if (t > 1.5f)
                     {
-                        if (run.UpgradeDue) OpenReward(false);
+                        if (run.UpgradeDue) { Coop.SendRewards(false); OpenReward(false); }
                         else StartWave(run.Wave + 1);   // past the last regular wave this becomes the boss
                     }
                     break;
@@ -222,6 +233,7 @@ namespace SoccerFight
                     }
                     if (t > 2.8f)
                     {
+                        Coop.SendRewards(true);
                         if (run.UpgradeDue) OpenReward(true);
                         else AfterReward(true);
                     }
@@ -232,6 +244,7 @@ namespace SoccerFight
         void StartWave(int wave)
         {
             run.Wave = wave;
+            Coop.SendWave(wave);
             if (run.IsBossWave)
             {
                 bossPending = true;
@@ -275,6 +288,7 @@ namespace SoccerFight
 
         void WaveDone()
         {
+            Coop.SendWaveDone();
             StageMechanics.I.SetRunning(false);
             EnemyProjectiles.I.Clear();
             var s = run.Stats;
@@ -330,6 +344,7 @@ namespace SoccerFight
         void BossDefeated()
         {
             if (P != Phase.Fighting) return;
+            Coop.SendBossDown(lastBossPos);
             StageMechanics.I.SetRunning(false);
             EnemyProjectiles.I.Clear();
             // the boss's court dissolves with it
@@ -364,7 +379,7 @@ namespace SoccerFight
                 run.Take(u, player);
                 player.ApplyStats(false);
                 Game.I.Hud.OnUpgradeTaken(u);
-                if (bonus) NextStage();
+                if (bonus) FinishRewards(true);
                 else AfterReward(boss);
             }, bonus ? RebuildArena : (System.Action)null);
         }
@@ -376,7 +391,7 @@ namespace SoccerFight
         {
             if (!boss)
             {
-                StartWave(run.Wave + 1);   // past the last regular wave this becomes the boss
+                FinishRewards(false);
                 return;
             }
             var locked = run.LockedAbilities();
@@ -399,13 +414,14 @@ namespace SoccerFight
                 run.Unlock(a);
                 player.ApplyStats(false);
                 Game.I.Hud.OnAbilityUnlocked(a);
-                NextStage();
+                FinishRewards(true);
             }, RebuildArena);
         }
 
         void NextStage()
         {
             run.Stage++;
+            Coop.SendStage(run.Stage);
             BeginStage(false);
         }
 

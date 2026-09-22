@@ -11,7 +11,7 @@ namespace SoccerFight
     /// Immediate mode: a boss calls Spot/Lane/Ring every frame it wants a warning shown (keyed by
     /// monster and slot). Warnings nobody asks for any more fade out on their own.
     /// </summary>
-    public sealed class BossTells
+    public sealed partial class BossTells
     {
         public static BossTells I { get; private set; }
 
@@ -157,6 +157,8 @@ namespace SoccerFight
         public void Update(float dt)
         {
             time += dt;
+            if (Coop.IsClient) ReplayNet();
+            netOut.Clear();
             foreach (var t in tells)
             {
                 if (!t.Live) continue;
@@ -165,6 +167,7 @@ namespace SoccerFight
                 t.Flare = Mathf.Max(0f, t.Flare - dt * 3.2f);
                 t.Age += dt;
                 if (!t.Touched && t.Alpha <= 0f) { Retire(t); continue; }
+                if (t.Touched && Coop.IsHost) Record(t);
                 t.Touched = false;
 
                 float k = MathUtil.EaseOutQuad(t.Progress);

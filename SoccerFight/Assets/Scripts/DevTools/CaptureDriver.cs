@@ -12,7 +12,7 @@ namespace SoccerFight
     /// sheets to disk. Used to review visuals and animation without a human at the keyboard.
     /// </summary>
     [DefaultExecutionOrder(10000)]
-    public sealed class CaptureDriver : MonoBehaviour
+    public sealed partial class CaptureDriver : MonoBehaviour
     {
         public static bool Finished { get; private set; }
 
@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -95,6 +95,7 @@ namespace SoccerFight
             else if (scenario == "newskills") yield return NewSkills();
             else if (scenario == "look") yield return UpgradeLook();
             else if (scenario == "meta") yield return MetaTour();
+            else if (scenario == "duo") yield return Duo();
             else yield return All();
 
             Debug.Log("[Capture] finished");

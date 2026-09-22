@@ -20,10 +20,13 @@ namespace SoccerFight
             public Vector2 pos;
             public float age, life;
             public bool active;
+            /// <summary>The duo partner's decoy: it draws the monsters, its burst is the partner's to deal.</summary>
+            public bool partner;
         }
 
         readonly List<Ghost> pool = new List<Ghost>();
         readonly List<SpriteRenderer> source = new List<SpriteRenderer>();
+        readonly List<SpriteRenderer> partnerSource = new List<SpriteRenderer>();
         Transform parent;
         PlayerRig rig;
 
@@ -73,8 +76,18 @@ namespace SoccerFight
             return g;
         }
 
-        public void Spawn(Player player, float life, int extra)
+        public void Spawn(Player player, float life, int extra, bool partner = false)
         {
+            if (!partner) Coop.SendDecoy(life, extra);
+            // the partner's decoy is a snapshot of the partner's body
+            var from = source;
+            if (partner)
+            {
+                if (partnerSource.Count == 0)
+                    foreach (var q in player.Rig.Parts)
+                        if (q.sharedMaterial != Art.SpriteGlowMat) partnerSource.Add(q);
+                from = partnerSource;
+            }
             int n = 1 + Mathf.Max(0, extra);
             for (int k = 0; k < n; k++)
             {
@@ -83,6 +96,7 @@ namespace SoccerFight
                 if (g == null) g = Create();
 
                 g.active = true;
+                g.partner = partner;
                 g.age = 0f;
                 g.life = life;
                 g.pos = player.Pos + new Vector2(k == 0 ? 0f : (k % 2 == 0 ? 1.5f : -1.5f) * ((k + 1) / 2), 0f);
@@ -92,11 +106,11 @@ namespace SoccerFight
                 Vector2 offset = g.pos - player.Pos;
                 for (int i = 0; i < g.parts.Length; i++)
                 {
-                    var src = source[i].transform;
+                    var src = from[i].transform;
                     var dst = g.parts[i].transform;
                     dst.SetPositionAndRotation(src.position + new Vector3(offset.x, offset.y, 0f), src.rotation);
                     dst.localScale = src.lossyScale;
-                    g.parts[i].sprite = source[i].sprite;
+                    g.parts[i].sprite = from[i].sprite;
                 }
                 g.ring.transform.position = new Vector3(g.pos.x, g.pos.y + 0.05f, 0f);
                 g.ring.transform.localScale = Vector3.one * 1.6f;
@@ -135,7 +149,7 @@ namespace SoccerFight
             var s = Game.I.Run.Stats;
             Vector2 at = g.pos + new Vector2(0f, 0.9f);
             float radius = (s.DecoyBlast ? 3.2f : 2.2f) * s.AreaMul;
-            Combat.Explosion(at, radius, s.DecoyBlast ? 45f : 18f, Palette.Trick, Src.Decoy);
+            if (!g.partner) Combat.Explosion(at, radius, s.DecoyBlast ? 45f : 18f, Palette.Trick, Src.Decoy);
 
             var fx = FxSystem.I;
             fx.Flash(at, s.DecoyBlast ? 3.2f : 2f, Palette.Trick, 0.18f, 3f);
