@@ -136,6 +136,26 @@ namespace SoccerFight
             }
         }
 
+        /// <summary>
+        /// The basketball block: every shot within radius of center is swatted away (the partner
+        /// drops it too) and handed to back as a position and colour, so the player can fire it
+        /// back at the monsters.
+        /// </summary>
+        public void Reflect(Vector2 center, float radius, System.Action<Vector2, Color> back)
+        {
+            var player = Game.I.Player;
+            foreach (var p in pool)
+            {
+                if (!p.active || p.hit) continue;
+                Vector2 at = p.kind == PKind.Wave ? new Vector2(p.pos.x, p.floorY + 0.35f) : p.pos;
+                if ((at - center).sqrMagnitude > radius * radius) continue;
+                p.hit = true;
+                Color c = p.color;
+                Pop(p, 0f, player, true);
+                back(at, c);
+            }
+        }
+
         /// <summary>The whistle: everything in the air drops out of play at once.</summary>
         public void PopAll()
         {

@@ -11,6 +11,7 @@ namespace SoccerFight
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
         public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
         public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle, IconHeader, IconDash;
+        public static Sprite IconThrow, IconThree, IconCrossover, IconDunk, IconAlleyOop, IconBlock, IconFastBreak;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -251,6 +252,7 @@ namespace SoccerFight
             IconAirKick = ToUi(ak, "UiIconAirKick");
 
             BuildMoveIcons(D);
+            BuildHoopsIcons(D);
 
             // Lock for abilities the run hasn't unlocked yet
             var lk = new SdfCanvas(new Rect(-32, -32, 64, 64), D * 2f);
@@ -397,6 +399,120 @@ namespace SoccerFight
             }
             IconBall(ds, new Vector2(42f, -40f), 14f);
             IconDash = ToUi(ds, "UiIconDash");
+        }
+
+        /// <summary>A basketball glyph: orange with dark ribs (a cross and the two curved seams).</summary>
+        static void IconHoopBall(SdfCanvas c, Vector2 bc, float r)
+        {
+            Color leather = new Color(1f, 0.55f, 0.24f), rib = new Color(0.12f, 0.08f, 0.08f);
+            c.Fill(p => Sdf.Circle(p, bc, r), leather);
+            c.Fill(p => Sdf.Intersect(Sdf.Circle(p, bc + new Vector2(-r * 0.3f, r * 0.35f), r * 0.55f), Sdf.Circle(p, bc, r)), new Color(1f, 0.72f, 0.45f, 0.5f));
+            float w = Mathf.Max(1.4f, r * 0.08f);
+            c.Fill(p => Sdf.Intersect(Mathf.Abs(p.x - bc.x) - w, Sdf.Circle(p, bc, r - 0.5f)), rib);
+            c.Fill(p => Sdf.Intersect(Mathf.Abs(p.y - bc.y) - w, Sdf.Circle(p, bc, r - 0.5f)), rib);
+            for (int s = -1; s <= 1; s += 2)
+            {
+                int k = s;
+                c.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Circle(p, bc + new Vector2(k * r * 1.25f, 0f), r * 0.9f)) - w, Sdf.Circle(p, bc, r - 0.5f)), rib);
+            }
+        }
+
+        /// <summary>Icons for the basketball moves, in the same language as the soccer ones.</summary>
+        static void BuildHoopsIcons(float D)
+        {
+            var rect = new Rect(-64, -64, 128, 128);
+            Color orange = new Color(1f, 0.6f, 0.26f);
+
+            // Throw: the ball leaves the hand with speed lines
+            var th = new SdfCanvas(rect, D);
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 4f + (i - 1) * 17f;
+                float len = i == 1 ? 46f : 32f;
+                th.Fill(p => Sdf.Tapered(p, new Vector2(-16f - len, y + (i - 1) * 3f), 1.2f, new Vector2(-16f, y), 4.2f), orange.WithAlpha(0.9f));
+            }
+            IconHoopBall(th, new Vector2(14f, 4f), 27f);
+            IconThrow = ToUi(th, "UiIconThrow");
+
+            // Three: a high arc into a ring with a burst, a big 3 at the start
+            var tr = new SdfCanvas(rect, D);
+            for (int i = 0; i < 5; i++)
+            {
+                float a = Mathf.Lerp(160f, 30f, i / 4f) * Mathf.Deg2Rad;
+                Vector2 dot = new Vector2(Mathf.Cos(a) * 44f - 4f, Mathf.Sin(a) * 40f - 12f);
+                tr.Fill(p => Sdf.Circle(p, dot, 3.2f + i * 0.5f), orange.WithAlpha(0.5f + i * 0.1f));
+            }
+            tr.Fill(p => Sdf.Ring(p, new Vector2(40f, -40f), 14f, 3f), Color.white);
+            IconWhiteSparks(tr, new Vector2(40f, -40f), orange);
+            IconHoopBall(tr, new Vector2(34f, -6f), 15f);
+            // the digit 3, built from bars
+            Vector2 o = new Vector2(-52f, -50f);
+            tr.Fill(p => Mathf.Min(Mathf.Min(Sdf.Box(p, o + new Vector2(12f, 34f), new Vector2(12f, 3.5f), 2f), Sdf.Box(p, o + new Vector2(12f, 17f), new Vector2(10f, 3.5f), 2f)),
+                Mathf.Min(Sdf.Box(p, o + new Vector2(12f, 0f), new Vector2(12f, 3.5f), 2f), Sdf.Box(p, o + new Vector2(22f, 17f), new Vector2(3.5f, 17f), 2f))), Color.white);
+            IconThree = ToUi(tr, "UiIconThree");
+
+            // Crossover: the ball zig-zags between two legs, a purple speed chevron after it
+            var cr = new SdfCanvas(rect, D);
+            Color violet = new Color(0.82f, 0.6f, 1f);
+            cr.Fill(p => Sdf.Capsule(p, new Vector2(-24f, 40f), new Vector2(-34f, -44f), 9f), Color.white.WithAlpha(0.9f));
+            cr.Fill(p => Sdf.Capsule(p, new Vector2(20f, 40f), new Vector2(32f, -44f), 9f), Color.white.WithAlpha(0.9f));
+            cr.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(-46f, 20f), new Vector2(0f, -30f), 3.5f), Sdf.Capsule(p, new Vector2(0f, -30f), new Vector2(46f, 20f), 3.5f)), violet);
+            IconHoopBall(cr, new Vector2(0f, -30f), 14f);
+            IconCrossover = ToUi(cr, "UiIconCrossover");
+
+            // Dunk: the ball hammered down, shock rings spreading on the floor
+            var dk = new SdfCanvas(rect, D);
+            Color slam = new Color(0.62f, 0.85f, 1f);
+            for (int i = 0; i < 3; i++)
+            {
+                float rr = 16f + i * 15f;
+                dk.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Ellipse(p, new Vector2(0f, -44f), new Vector2(rr * 1.4f, rr * 0.35f))) - 2.6f, p.y + 56f), slam.WithAlpha(0.95f - i * 0.25f));
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                float x = -14f + i * 14f;
+                dk.Fill(p => Sdf.Tapered(p, new Vector2(x, 58f), 1.2f, new Vector2(x, 26f), 3.6f), slam.WithAlpha(0.85f - Mathf.Abs(i - 1) * 0.3f));
+            }
+            IconHoopBall(dk, new Vector2(0f, -8f), 22f);
+            IconDunk = ToUi(dk, "UiIconDunk");
+
+            // Alley-oop: the ball hangs high over a gold arrow pointing down at a target
+            var oo = new SdfCanvas(rect, D);
+            Color gold = new Color(1f, 0.85f, 0.4f);
+            oo.Fill(p => Sdf.Ring(p, new Vector2(20f, -44f), 12f, 3f), gold);
+            oo.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(-40f, -50f), new Vector2(-18f, 40f), 3f), Sdf.Capsule(p, new Vector2(-18f, 40f), new Vector2(12f, -26f), 3f)), gold.WithAlpha(0.8f));
+            oo.Fill(p => Sdf.Triangle(p, new Vector2(4f, -20f), new Vector2(24f, -22f), new Vector2(15f, -40f)), gold);
+            IconHoopBall(oo, new Vector2(-16f, 38f), 17f);
+            oo.Fill(p => Sdf.Star4(p, new Vector2(10f, 52f), 10f, 0.45f), Color.white);
+            IconAlleyOop = ToUi(oo, "UiIconAlleyOop");
+
+            // Block: an open hand raised, a bolt breaking on it and flying back
+            var bl = new SdfCanvas(rect, D);
+            Color guard = new Color(0.45f, 0.65f, 1f);
+            bl.Fill(p => Sdf.SmoothUnion(Sdf.Box(p, new Vector2(-6f, -14f), new Vector2(18f, 20f), 8f),
+                Sdf.Union(Sdf.Union(Sdf.Capsule(p, new Vector2(-18f, 4f), new Vector2(-22f, 38f), 5.5f), Sdf.Capsule(p, new Vector2(-6f, 6f), new Vector2(-6f, 46f), 5.5f)),
+                    Sdf.Union(Sdf.Capsule(p, new Vector2(6f, 6f), new Vector2(9f, 42f), 5.5f), Sdf.Capsule(p, new Vector2(12f, -14f), new Vector2(28f, 8f), 5.5f))), 3f), Color.white);
+            bl.Fill(p => Sdf.Capsule(p, new Vector2(-6f, -34f), new Vector2(-8f, -58f), 12f), Color.white);
+            for (int i = 0; i < 3; i++)
+            {
+                Vector2 a = new Vector2(34f, 30f - i * 8f), b = new Vector2(58f, 38f - i * 12f);
+                bl.Fill(p => Sdf.Tapered(p, a, 3.4f, b, 1f), guard.WithAlpha(0.95f - i * 0.25f));
+            }
+            bl.Fill(p => Sdf.Star4(p, new Vector2(28f, 26f), 15f, 0.45f), guard);
+            IconBlock = ToUi(bl, "UiIconBlock");
+
+            // Fast break: speed lines behind a ball pounded low, a mint chevron driving forward
+            var fb = new SdfCanvas(rect, D);
+            Color mint = new Color(0.55f, 1f, 0.85f);
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 26f - i * 16f, len = i == 1 ? 44f : 30f;
+                fb.Fill(p => Sdf.Tapered(p, new Vector2(-58f, y), 1.2f, new Vector2(-58f + len, y), 4f), mint.WithAlpha(0.9f - Mathf.Abs(i - 1) * 0.3f));
+            }
+            fb.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(4f, 34f), new Vector2(34f, 8f), 7f), Sdf.Capsule(p, new Vector2(34f, 8f), new Vector2(4f, -18f), 7f)), Color.white);
+            IconHoopBall(fb, new Vector2(26f, -40f), 16f);
+            fb.Fill(p => Sdf.Intersect(Mathf.Abs(p.y + 58f) - 2f, Mathf.Abs(p.x - 26f) - 28f), mint.WithAlpha(0.7f));
+            IconFastBreak = ToUi(fb, "UiIconFastBreak");
         }
 
         static void IconWhiteSparks(SdfCanvas c, Vector2 at, Color col)

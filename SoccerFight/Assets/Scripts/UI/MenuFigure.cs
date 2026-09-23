@@ -6,8 +6,9 @@ namespace SoccerFight
     /// <summary>
     /// The player as a UI puppet: the rig's own body sprites placed as images (each rotates around
     /// its sprite pivot, which is the joint) and posed every frame with the same two-bone maths the
-    /// rig uses. Three moods: standing with the ball at the foot (cards), keep-ups (the title
-    /// screen), and one big kick (the way into the game).
+    /// rig uses, on the character's own bones. Three moods: standing (cards), showing off (the
+    /// title screen: keep-ups, or a quicker dribble for a basketball player), and one big strike
+    /// on the way into the game (a kick, or a two-handed pass for the basketball players).
     /// </summary>
     public sealed class MenuFigure
     {
@@ -21,9 +22,11 @@ namespace SoccerFight
 
         Image farHand, farFore, farUpper, farShin, farThigh, farBoot, farGlow, neck, pelvis, nearShin, nearThigh, nearBoot, nearGlow, torso, tuft, head, nearHand, nearFore, nearUpper;
         RectTransform ball, ballSpin;
-        Image ballShadow;
+        Image ballShadow, ballPattern;
         PlayerLook look;
         CharacterDef def;
+        PlayerBody body = PlayerBody.Soccer;
+        bool hoops, hiRes;
         float scale, spin, phase;
         float kickT = -1f;
 
@@ -32,6 +35,7 @@ namespace SoccerFight
         public void Build(Transform parent, Vector2 feet, float unitScale, PlayerLook body, CharacterDef character, bool hiResBall = false)
         {
             scale = unitScale;
+            hiRes = hiResBall;
             Root = UiKit.Node("Figure", parent, feet, Vector2.zero);
             ballShadow = UiKit.Img("BallShadow", Root, UiArt.Glow, new Color(0f, 0f, 0.05f, 0.35f), Vector2.zero, new Vector2(0.5f, 0.14f) * scale);
             UiKit.Img("Shadow", Root, UiArt.Glow, new Color(0f, 0f, 0.05f, 0.45f), new Vector2(0f, 0.01f * scale), new Vector2(0.95f, 0.2f) * scale);
@@ -47,7 +51,7 @@ namespace SoccerFight
             ballSpin = UiKit.Node("Spin", ball, Vector2.zero, Vector2.one * bs);
             // the big title figure takes the hi-res ball of the kick-off transition
             bool hi = hiResBall && MenuScenery.HeroBall != null;
-            UiKit.Img("Pattern", ballSpin, hi ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
+            ballPattern = UiKit.Img("Pattern", ballSpin, hi ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
             UiKit.Img("Shade", ball, hi ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * bs);
             UiKit.Img("Hi", ball, hi ? MenuScenery.HeroHighlight : Art.BallHighlight, Color.white.WithAlpha(0.85f), Vector2.zero, Vector2.one * bs);
             SetLook(body, character);
@@ -64,6 +68,8 @@ namespace SoccerFight
         {
             look = body;
             def = character;
+            this.body = body.Body ?? PlayerBody.Soccer;
+            hoops = body.Sport == Sport.Basketball;
             Color back = Palette.BackLimbTint;
             Bind(farHand, look.Hand, back); Bind(farFore, look.Forearm, back); Bind(farUpper, look.UpperArm, back);
             Bind(farShin, look.Shin, back); Bind(farThigh, look.Thigh, back); Bind(farBoot, look.Boot, back);
@@ -72,7 +78,12 @@ namespace SoccerFight
             Bind(nearShin, look.Shin, Color.white); Bind(nearThigh, look.Thigh, Color.white); Bind(nearBoot, look.Boot, Color.white);
             Bind(nearGlow, look.BootGlow, def.Kit.Neon.WithAlpha(0.7f));
             Bind(torso, look.Torso, Color.white); Bind(tuft, look.HairTuft, Color.white); Bind(head, look.Head, Color.white);
-            Bind(nearHand, look.Hand, Color.white); Bind(nearFore, look.Forearm, Color.white); Bind(nearUpper, look.UpperArm, Color.white);
+            Bind(nearHand, look.Hand, Color.white);
+            Bind(nearFore, PlayerArt.SpriteOf(look, PlayerPart.ForearmNear), Color.white);
+            Bind(nearUpper, PlayerArt.SpriteOf(look, PlayerPart.UpperArmNear), Color.white);
+            if (ballPattern != null)
+                ballPattern.sprite = hoops ? (hiRes && MenuScenery.HeroHoop != null ? MenuScenery.HeroHoop : Art.HoopPattern)
+                                           : (hiRes && MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern);
         }
 
         void Bind(Image img, Sprite sprite, Color tint)
@@ -92,7 +103,7 @@ namespace SoccerFight
             rt.localRotation = Quaternion.Euler(0f, 0f, rot);
         }
 
-        /// <summary>Starts the big kick; the ball leaves the foot at KickContact.</summary>
+        /// <summary>Starts the big strike; the ball leaves the foot (or the hands) at KickContact.</summary>
         public void Kick() => kickT = 0f;
         public const float KickContact = 0.28f;
         public bool Kicking => kickT >= 0f;
@@ -110,6 +121,13 @@ namespace SoccerFight
             if (look == null) return;
             if (kickT >= 0f) kickT += dt;
             phase += dt;
+            if (hoops) UpdateHoops(dt, mode, lookAt);
+            else UpdateSoccer(dt, mode, lookAt);
+            if (kickT > 1.4f) kickT = -1f;
+        }
+
+        void UpdateSoccer(float dt, Mode mode, Vector2 lookAt)
+        {
             float t = phase;
 
             // ---- keep-ups: the ball rises and falls, the near foot meets it at the bottom
@@ -123,7 +141,7 @@ namespace SoccerFight
             float windup = kick >= 0f ? MathUtil.Smooth01(kick / 0.2f) * (1f - MathUtil.Smooth01((kick - 0.2f) / 0.08f)) : 0f;
             float strike = kick >= 0f ? MathUtil.Smooth01((kick - 0.2f) / 0.1f) * (1f - MathUtil.Smooth01((kick - 0.7f) / 0.4f)) : 0f;
 
-            Vector2 hip = new Vector2(0f, PlayerDims.StandHip - 0.015f - 0.012f * (breathe * 0.5f + 0.5f) - 0.03f * contact - 0.05f * windup);
+            Vector2 hip = new Vector2(0f, body.StandHip - 0.015f - 0.012f * (breathe * 0.5f + 0.5f) - 0.03f * contact - 0.05f * windup);
             float lean = -3f + 1.2f * breathe - 4f * contact + 10f * windup - 14f * strike;
 
             // legs
@@ -133,33 +151,16 @@ namespace SoccerFight
             nearAnkleTarget = Vector2.Lerp(nearAnkleTarget, new Vector2(-0.3f, 0.34f), windup);
             nearAnkleTarget = Vector2.Lerp(nearAnkleTarget, new Vector2(0.48f, 0.62f), strike);
             Vector2 farAnkleTarget = new Vector2(-0.2f + 0.04f * windup, A);
-            Vector2 nearHip = hip + new Vector2(0.02f, 0f), farHip = hip + new Vector2(-0.025f, 0f);
-            Vector2 nearKnee = MathUtil.SolveTwoBone(nearHip, nearAnkleTarget, PlayerDims.ThighLen, PlayerDims.ShinLen, 1f, out Vector2 nAnkle);
-            Vector2 farKnee = MathUtil.SolveTwoBone(farHip, farAnkleTarget, PlayerDims.ThighLen, PlayerDims.ShinLen, 1f, out Vector2 fAnkle);
             float nearBootRot = contact * 18f + strike * 30f - windup * 20f;
+            PoseBody(hip, lean, nearAnkleTarget, farAnkleTarget, nearBootRot, lookAt, contact, t, mode == Mode.Juggle ? 1f : 0f);
 
-            // upper body
-            Vector2 shoulder = hip + MathUtil.Rotate(new Vector2(0f, 0.465f), lean);
-            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, 0.525f), lean);
-            float headRot = lean * 0.6f + Mathf.Clamp(lookAt.y, -1f, 1f) * 5f - contact * 6f;
-            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0f, 0.065f), lean * 0.6f);
-            Vector2 nearSh = shoulder + MathUtil.Rotate(new Vector2(0.015f, -0.01f), lean);
-            Vector2 farSh = shoulder + MathUtil.Rotate(new Vector2(-0.035f, 0.01f), lean);
             // arms out for balance while juggling, swinging with the kick
             float armOut = juggling ? 1f : 0f;
             float sway = Mathf.Sin(t * 2f * Mathf.PI / period) * 6f;
             float farShDeg = Mathf.Lerp(26f, 58f, armOut) + sway - windup * 40f + strike * 70f;
             float nearShDeg = Mathf.Lerp(-30f, -50f, armOut) - sway + windup * 50f - strike * 60f;
-
-            Arm(farHand, farFore, farUpper, farSh, farShDeg, 30f);
-            Leg(farShin, farThigh, farBoot, farGlow, farHip, farKnee, fAnkle, 0f);
-            Place(neck, neckBase, lean * 0.6f);
-            Place(pelvis, hip, lean * 0.35f);
-            Leg(nearShin, nearThigh, nearBoot, nearGlow, nearHip, nearKnee, nAnkle, nearBootRot);
-            Place(torso, hip, lean);
-            Place(tuft, headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot), headRot + 6f + Mathf.Sin(t * 5f) * 3f * armOut);
-            Place(head, headPos, headRot);
-            Arm(nearHand, nearFore, nearUpper, nearSh, nearShDeg, 36f);
+            Arm(farHand, farFore, farUpper, FarShoulder(hip, lean), farShDeg, 30f);
+            Arm(nearHand, nearFore, nearUpper, NearShoulder(hip, lean), nearShDeg, 36f);
 
             // ---- the ball
             Vector2 b;
@@ -176,6 +177,93 @@ namespace SoccerFight
                 if (kick >= 0f && kick < 0.2f) b = Vector2.Lerp(b, new Vector2(0.4f, Art.BallRadius), kick / 0.2f);
                 spin = Mathf.Lerp(spin, 0f, dt * 2f);
             }
+            PlaceBall(b, kick);
+        }
+
+        /// <summary>
+        /// A basketball player: dribbles with the near hand (quicker and lower when showing off),
+        /// the free arm guarding; the strike is a two-handed chest pass straight at the camera.
+        /// </summary>
+        void UpdateHoops(float dt, Mode mode, Vector2 lookAt)
+        {
+            float t = phase;
+            float R = Art.BallRadius;
+            float kick = kickT >= 0f ? kickT : -1f;
+            float windup = kick >= 0f ? MathUtil.Smooth01(kick / 0.2f) * (1f - MathUtil.Smooth01((kick - 0.2f) / 0.08f)) : 0f;
+            float strike = kick >= 0f ? MathUtil.Smooth01((kick - 0.2f) / 0.08f) * (1f - MathUtil.Smooth01((kick - 0.7f) / 0.4f)) : 0f;
+            bool show = mode == Mode.Juggle && kick < 0f;
+
+            // the dribble: a bounce per beat, faster and lower in the show-off
+            float bps = show ? 2.3f : 1.5f;
+            float u = Mathf.Repeat(t * bps, 1f);
+            float bounce = Mathf.Abs(Mathf.Cos(Mathf.PI * u));
+            float breathe = Mathf.Sin(t * 2.1f);
+            float knees = show ? 0.06f : 0.025f;
+            Vector2 hip = new Vector2(0f, body.StandHip - 0.02f - knees - 0.012f * (breathe * 0.5f + 0.5f) - 0.015f * (1f - bounce) - 0.07f * windup + 0.03f * strike);
+            float lean = -4f - (show ? 6f : 0f) + 1.2f * breathe + 6f * windup - 12f * strike;
+
+            Vector2 nearAnkle = new Vector2(0.16f + 0.08f * strike, A);
+            Vector2 farAnkle = new Vector2(-0.18f, A);
+            PoseBody(hip, lean, nearAnkle, farAnkle, 0f, lookAt, 0f, t, 0f);
+
+            Vector2 nearSh = NearShoulder(hip, lean), farSh = FarShoulder(hip, lean);
+            float wristTop = hip.y + (show ? 0.02f : 0.1f);
+            float topY = wristTop - 0.07f - R;
+            Vector2 dribble = new Vector2(0.4f, R + (topY - R) * bounce);
+            Vector2 chest = new Vector2(0.22f, hip.y + body.ShoulderY * 0.72f);
+            Vector2 pass = new Vector2(0.5f, hip.y + body.ShoulderY * 0.78f);
+            Vector2 b = dribble;
+            if (kick >= 0f)
+            {
+                b = Vector2.Lerp(dribble, chest, MathUtil.EaseOutCubic(Mathf.Clamp01(kick / 0.2f)));
+                b = Vector2.Lerp(b, pass, MathUtil.EaseInQuad(Mathf.Clamp01((kick - 0.2f) / 0.08f)));
+            }
+
+            if (kick < 0f)
+            {
+                // near hand rides the ball down, far arm guards
+                Vector2 wrist = new Vector2(b.x - 0.035f, Mathf.Max(b.y + R + 0.07f, wristTop - 0.16f));
+                ArmTo(nearHand, nearFore, nearUpper, nearSh, wrist, 28f);
+                Arm(farHand, farFore, farUpper, farSh, 38f + breathe * 3f, 76f);
+            }
+            else
+            {
+                // both hands on the ball, then thrown out straight after it
+                float release = MathUtil.Smooth01((kick - KickContact) / 0.06f);
+                Vector2 nw = Vector2.Lerp(b + new Vector2(-0.02f, -(R + 0.07f)), nearSh + new Vector2(0.52f, 0.02f), release);
+                Vector2 fw = Vector2.Lerp(b + new Vector2(-(R + 0.06f), 0.04f), farSh + new Vector2(0.52f, 0.06f), release);
+                ArmTo(nearHand, nearFore, nearUpper, nearSh, nw, Mathf.Lerp(-30f, 60f, release));
+                ArmTo(farHand, farFore, farUpper, farSh, fw, Mathf.Lerp(40f, 60f, release));
+            }
+            spin = kick >= 0f ? spin - dt * 200f : spin - dt * 60f * (show ? 1.5f : 1f);
+            PlaceBall(b, kick);
+        }
+
+        Vector2 NearShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(new Vector2(0.015f, body.ShoulderY - 0.01f), lean);
+        Vector2 FarShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(new Vector2(-0.035f, body.ShoulderY + 0.01f), lean);
+
+        /// <summary>Legs, pelvis, torso, neck, head and hair for a hip, a lean and two ankle targets.</summary>
+        void PoseBody(Vector2 hip, float lean, Vector2 nearAnkleTarget, Vector2 farAnkleTarget, float nearBootRot, Vector2 lookAt, float contact, float t, float armOut)
+        {
+            Vector2 nearHip = hip + new Vector2(0.02f, 0f), farHip = hip + new Vector2(-0.025f, 0f);
+            Vector2 nearKnee = MathUtil.SolveTwoBone(nearHip, nearAnkleTarget, body.ThighLen, body.ShinLen, 1f, out Vector2 nAnkle);
+            Vector2 farKnee = MathUtil.SolveTwoBone(farHip, farAnkleTarget, body.ThighLen, body.ShinLen, 1f, out Vector2 fAnkle);
+
+            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), lean);
+            float headRot = lean * 0.6f + Mathf.Clamp(lookAt.y, -1f, 1f) * 5f - contact * 6f;
+            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0f, 0.065f), lean * 0.6f);
+
+            Leg(farShin, farThigh, farBoot, farGlow, farHip, farKnee, fAnkle, 0f);
+            Place(neck, neckBase, lean * 0.6f);
+            Place(pelvis, hip, lean * 0.35f);
+            Leg(nearShin, nearThigh, nearBoot, nearGlow, nearHip, nearKnee, nAnkle, nearBootRot);
+            Place(torso, hip, lean);
+            Place(tuft, headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot), headRot + 6f + Mathf.Sin(t * 5f) * 3f * armOut);
+            Place(head, headPos, headRot);
+        }
+
+        void PlaceBall(Vector2 b, float kick)
+        {
             BallLocal = Root.anchoredPosition + b * scale * Root.localScale.x;
             ball.anchoredPosition = b * scale;
             ballSpin.localRotation = Quaternion.Euler(0f, 0f, spin);
@@ -186,7 +274,6 @@ namespace SoccerFight
             ballShadow.rectTransform.anchoredPosition = new Vector2(b.x * scale, 0.01f * scale);
             ballShadow.rectTransform.sizeDelta = new Vector2(0.5f, 0.14f) * scale * Mathf.Lerp(1f, 0.5f, air);
             ballShadow.color = new Color(0f, 0f, 0.05f, showBall ? Mathf.Lerp(0.35f, 0.12f, air) : 0f);
-            if (kickT > 1.4f) kickT = -1f;
         }
 
         void Leg(Image shin, Image thigh, Image boot, Image glow, Vector2 hip, Vector2 knee, Vector2 ankle, float bootRot)
@@ -197,15 +284,24 @@ namespace SoccerFight
             Place(glow, ankle, bootRot);
         }
 
-        void Arm(Image hand, Image fore, Image upper, Vector2 shoulder, float shoulderDeg, float elbowDeg)
+        void Arm(Image hand, Image fore, Image upper, Vector2 shoulder, float shoulderDeg, float elbowDeg, float wristDeg = 0f)
         {
             Vector2 dirU = MathUtil.Rotate(Vector2.down, shoulderDeg);
-            Vector2 elbow = shoulder + dirU * PlayerDims.UpperArmLen;
+            Vector2 elbow = shoulder + dirU * body.UpperArmLen;
             Vector2 dirF = MathUtil.Rotate(dirU, elbowDeg);
-            Vector2 wrist = elbow + dirF * PlayerDims.ForearmLen;
-            Place(hand, wrist, MathUtil.DownAngle(dirF));
+            Vector2 wrist = elbow + dirF * body.ForearmLen;
+            Place(hand, wrist, MathUtil.DownAngle(dirF) + wristDeg);
             Place(fore, elbow, MathUtil.DownAngle(dirF));
             Place(upper, shoulder, MathUtil.DownAngle(dirU));
+        }
+
+        /// <summary>The arm with its wrist on target (elbow down and back), the hand bent by wristDeg.</summary>
+        void ArmTo(Image hand, Image fore, Image upper, Vector2 shoulder, Vector2 wristTarget, float wristDeg)
+        {
+            Vector2 elbow = MathUtil.SolveTwoBone(shoulder, wristTarget, body.UpperArmLen, body.ForearmLen, -1f, out Vector2 wrist);
+            Place(upper, shoulder, MathUtil.DownAngle(elbow - shoulder));
+            Place(fore, elbow, MathUtil.DownAngle(wrist - elbow));
+            Place(hand, wrist, MathUtil.DownAngle(wrist - elbow) + wristDeg);
         }
     }
 }

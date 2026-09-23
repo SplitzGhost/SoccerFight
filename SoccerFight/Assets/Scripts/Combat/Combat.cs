@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Where a hit came from. Primary sources scale with the build; derived ones (chains, explosions, burn) carry already-scaled damage.</summary>
-    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
+    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Three, Dunk, AlleyOop, FastBreak, Block, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
 
     /// <summary>
     /// Every player hit on a monster goes through here: damage multipliers, crits, then the build's
@@ -44,6 +44,8 @@ namespace SoccerFight
                 case Src.Power: return s.PowerDamageMul;
                 case Src.Rainbow: case Src.RainbowPass: return s.FlickDamageMul;
                 case Src.Blast: return s.BlastDamageMul;
+                case Src.Three: return s.ThreeDamageMul;
+                case Src.AlleyOop: return s.OopDamageMul;
                 default: return 1f;
             }
         }
@@ -74,6 +76,9 @@ namespace SoccerFight
                     boosted = cm > 1.01f && cat.Value == SkillCategory.Shot && s.ShotImpactFx;
                 }
             }
+            // Heisse Hand: while the ball burns, throws hit harder and set fire
+            bool hot = (src == Src.Shot || src == Src.Returning || src == Src.Echo) && Game.I.Player.HotHandLeft > 0f;
+            if (hot) d *= 1.4f;
             d *= m.DamageTakenMul;
             if (m.Slowed && s.FrostVuln > 0f && src != Src.Burn) d *= 1f + s.FrostVuln;
 
@@ -92,6 +97,7 @@ namespace SoccerFight
             bool shock = direct && s.ThermalShock && m.Burning && m.Slowed;
             Vector2 at = m.Center;
             bool killed = m.Hit(d, dir, knock, big || crit, crit, boosted);
+            if (hot && !killed) m.Ignite(d * 0.3f, 3f);
             if (boosted) PowerStar(at, dir, m.Radius, crit || big);
             // heavier kicks (knockback upgrades) land with a visible punch ring
             if (direct && s.KnockbackMul > 1f)

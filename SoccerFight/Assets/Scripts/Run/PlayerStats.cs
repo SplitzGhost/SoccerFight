@@ -66,6 +66,26 @@ namespace SoccerFight
         public float HeaderStunBonus;  // Kopfnuss
         public int HeaderPierce;       // Flugkopfball: monsters the header passes through before it bounces
 
+        // ---- basketball
+        public float ThreeDamageMul, ThreeRadiusMul, ThreeCooldownMul;
+        public int ThreeSplit;          // Dreier-Regen: extra lobs beside the target
+        public bool ThreeBurn;          // Splash Zone: the landing spot keeps burning
+        public float DunkWaveMul, DunkRangeMul, DunkCooldownMul;
+        public int DunkExtraWaves;
+        public float DunkStun;
+        public bool DunkRefund;         // Skywalker: a dunk that kills is ready again
+        public float CrossTimeBonus, CrossCooldownMul, CrossStunRadius;
+        public bool CrossMirror;        // Spiegelbild: throws during the boost fire a mirrored echo
+        public float OopDamageMul, OopCooldownMul;
+        public bool OopBounce;          // Zweiter Kontakt
+        public float BlockTimeBonus, BlockRadiusMul, BlockReflectMul, BlockCooldownMul;
+        public bool BlockStun;
+        public float FastBreakDistMul, FastBreakCooldownMul, FastBreakHeal;
+        public bool FastBreakFire;
+        public int BankShots;           // Brettwurf: a throw bounces off the floor into the next monster
+        public bool HotHand, Downtown;
+        public float AirThrowBonus;     // Fadeaway: throws from the air hit harder
+
         // ---- class traits and character perks (MetaPassives)
         /// <summary>Damage multiplier per SkillCategory, on top of DamageMul.</summary>
         public readonly float[] CategoryDamage = new float[System.Enum.GetValues(typeof(SkillCategory)).Length];
@@ -114,6 +134,14 @@ namespace SoccerFight
             WallLifeBonus = 0f; WallBounce = false; NutmegSpread = false; NutmegRefund = 0f;
             WhistleBonus = 0f; RedCard = false; DecoyCount = 0; DecoyBlast = false;
             HeaderStunBonus = 0f; HeaderPierce = 0;
+
+            ThreeDamageMul = ThreeRadiusMul = ThreeCooldownMul = 1f; ThreeSplit = 0; ThreeBurn = false;
+            DunkWaveMul = DunkRangeMul = DunkCooldownMul = 1f; DunkExtraWaves = 0; DunkStun = 0f; DunkRefund = false;
+            CrossTimeBonus = 0f; CrossCooldownMul = 1f; CrossStunRadius = 0f; CrossMirror = false;
+            OopDamageMul = OopCooldownMul = 1f; OopBounce = false;
+            BlockTimeBonus = 0f; BlockRadiusMul = BlockReflectMul = BlockCooldownMul = 1f; BlockStun = false;
+            FastBreakDistMul = FastBreakCooldownMul = 1f; FastBreakHeal = 0f; FastBreakFire = false;
+            BankShots = 0; HotHand = Downtown = false; AirThrowBonus = 0f;
 
             for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = CategoryCooldown[i] = 1f;
             TechniqueHaste = 1f;

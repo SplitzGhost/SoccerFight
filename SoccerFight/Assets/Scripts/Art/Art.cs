@@ -36,6 +36,8 @@ namespace SoccerFight
         // Ball
         public const float BallRadius = 0.2f;
         public static Sprite BallPattern;
+        /// <summary>The basketball: orange pebbled leather with black ribs (same size, same shading and highlight).</summary>
+        public static Sprite HoopPattern;
         public static Sprite BallShade;
         public static Sprite BallHighlight;
 
@@ -197,6 +199,7 @@ namespace SoccerFight
         static void BuildBall()
         {
             BallPattern = BallPatternCanvas(256f).ToSprite("BallPattern", Vector2.zero);
+            HoopPattern = HoopPatternCanvas(256f).ToSprite("HoopPattern", Vector2.zero);
             BallShade = BallShadeCanvas(256f).ToSprite("BallShade", Vector2.zero);
             BallHighlight = BallHighlightCanvas(256f).ToSprite("BallHighlight", Vector2.zero);
         }
@@ -245,6 +248,56 @@ namespace SoccerFight
             });
             return pat;
         }
+
+        static readonly Quaternion HoopTilt = Quaternion.Euler(24f, -38f, 14f);
+
+        /// <summary>
+        /// The basketball's surface at a given texture size. Eight panels of pebbled orange leather:
+        /// two great circles at right angles and the two curved ribs around the ends of the first
+        /// one's axis, all as dark grooves. Thread-safe.
+        /// </summary>
+        public static SdfCanvas HoopPatternCanvas(float pixels)
+        {
+            const float R = BallRadius;
+            float ppu = pixels / (BallExt * 2f);
+            Quaternion tilt = HoopTilt;
+            float ribCos = Mathf.Cos(50f * Mathf.Deg2Rad);
+            var pat = new SdfCanvas(BallRect, ppu);
+            pat.Fill(p => Sdf.Circle(p, Vector2.zero, R), p =>
+            {
+                Vector2 q = p / R;
+                float z2 = 1f - q.sqrMagnitude;
+                if (z2 <= 0f) q = q.normalized * 0.9999f;
+                float z = Mathf.Sqrt(Mathf.Max(0f, z2));
+                Vector3 n = tilt * new Vector3(q.x, q.y, z);
+
+                // groove distance (in "normal units"), widened towards the rim so the lines keep their width
+                float fore = Mathf.Max(0.3f, z);
+                float d = Mathf.Min(Mathf.Min(Mathf.Abs(n.z), Mathf.Abs(n.x)), Mathf.Abs(Mathf.Abs(n.x) - ribCos) * 1.15f);
+                float groove = 1f - MathUtil.Smooth01((d * fore - 0.012f) / 0.018f);
+
+                // pebble grain: a few octaves of hashed cells on the sphere
+                float grain = 0f;
+                Vector3 g = n * 46f;
+                int gx = Mathf.FloorToInt(g.x), gy = Mathf.FloorToInt(g.y), gz = Mathf.FloorToInt(g.z);
+                grain += MathUtil.Hash(gx * 73856093 ^ gy * 19349663 ^ gz * 83492791) * 0.5f;
+                Vector3 g2 = n * 97f;
+                grain += 0.3f * MathUtil.Hash(Mathf.FloorToInt(g2.x) * 73856093 ^ Mathf.FloorToInt(g2.y) * 19349663 ^ Mathf.FloorToInt(g2.z) * 83492791);
+
+                // the leather: warmer where it faces the moon, a touch darker near the grooves
+                Color leather = Color.Lerp(Palette.BallLeatherDark, Palette.BallLeather, 0.55f + 0.45f * z);
+                leather = Color.Lerp(leather, Palette.BallLeatherLight, Mathf.Clamp01((n.y * 0.4f + q.y * 0.3f)) * 0.35f);
+                leather *= 1f + grain * 0.16f;
+                leather.a = 1f;
+                float nearGroove = 1f - MathUtil.Smooth01((d * fore - 0.02f) / 0.05f);
+                leather = Color.Lerp(leather, Palette.BallLeatherDark, nearGroove * 0.35f);
+                return Color.Lerp(leather, Palette.BallRib, groove);
+            });
+            return pat;
+        }
+
+        /// <summary>The ball face of a sport (the shading and highlight passes are shared).</summary>
+        public static Sprite PatternFor(Sport s) => s == Sport.Basketball ? HoopPattern : BallPattern;
 
         /// <summary>Non-rotating shading overlay: the light stays top-left while the pattern spins.</summary>
         public static SdfCanvas BallShadeCanvas(float pixels)

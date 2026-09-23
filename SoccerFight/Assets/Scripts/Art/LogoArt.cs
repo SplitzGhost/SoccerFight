@@ -3,13 +3,13 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// The SOCCERFIGHT logo, drawn from scratch in the look of the ruins it belongs to: a chunky
-    /// display face built from boxes (the same counters and bar weights everywhere), "SOCCER" small
-    /// on top, "FIGHT" big below. The letters are moonstone blocks: a dark carved slab, pale faces
+    /// The SPORTFIGHTER logo, drawn from scratch in the look of the ruins it belongs to: a chunky
+    /// display face built from boxes (the same counters and bar weights everywhere), "SPORT" small
+    /// on top, "FIGHTER" big below. The letters are moonstone blocks: a dark carved slab, pale faces
     /// with grain, a lit bevel, moss creeping over some top edges and cracks with crystal light in
     /// them. The "O" is left as an empty socket: the menu puts a real spinning ball there.
     ///
-    /// Units: 1 = cap height of "FIGHT". The signed distance of all letters is sampled once into a
+    /// Units: 1 = the cap height FIGHTER would have at full size (it is set at 0.86). The signed distance of all letters is sampled once into a
     /// grid, so the outline, slab and shading passes are cheap lookups. Runs on a worker thread.
     /// </summary>
     public static class LogoArt
@@ -101,7 +101,7 @@ namespace SoccerFight
         static float Ring(Vector2 q, float x0, float y0, float x1, float y1, float r, float ix0, float iy0, float ix1, float iy1, float ir)
             => Mathf.Max(Bar(q, x0, y0, x1, y1, r), -Bar(q, ix0, iy0, ix1, iy1, ir));
 
-        const float WS = 0.8f, WO = 0.9f, WC = 0.8f, WE = 0.66f, WR = 0.82f, WF = 0.64f, WI = T, WG = 0.88f, WH = 0.84f, WT = 0.78f;
+        const float WS = 0.8f, WO = 0.9f, WC = 0.8f, WE = 0.66f, WR = 0.82f, WF = 0.64f, WI = T, WG = 0.88f, WH = 0.84f, WT = 0.78f, WP = 0.78f;
 
         static float GlyphS(Vector2 q)
         {
@@ -136,6 +136,13 @@ namespace SoccerFight
             return Mathf.Min(Mathf.Min(stem, bowl), leg);
         }
 
+        static float GlyphP(Vector2 q)
+        {
+            float stem = Bar(q, 0f, 0f, T, 1f);
+            float bowl = Ring(q, 0f, 0.36f, WP, 1f, 0.22f, T, 0.36f + B, WP - T, 1f - B, 0.05f);
+            return Mathf.Min(stem, bowl);
+        }
+
         static float GlyphF(Vector2 q)
             => Mathf.Min(Mathf.Min(Bar(q, 0f, 0f, T, 1f), Bar(q, 0f, 1f - B, WF, 1f)), Bar(q, 0f, 0.37f, WF * 0.88f, 0.37f + B));
 
@@ -168,6 +175,7 @@ namespace SoccerFight
                 case 'C': width = WC; return GlyphC;
                 case 'E': width = WE; return GlyphE;
                 case 'R': width = WR; return GlyphR;
+                case 'P': width = WP; return GlyphP;
                 case 'F': width = WF; return GlyphF;
                 case 'I': width = WI; return GlyphI;
                 case 'G': width = WG; return GlyphG;
@@ -180,11 +188,12 @@ namespace SoccerFight
 
         static Placed[] Layout()
         {
-            const string top = "SOCCER", bottom = "FIGHT";
+            const string top = "SPORT", bottom = "FIGHTER";
             // settled, weathered blocks: barely off true
-            float[] topRot = { -1.2f, 0f, 0.8f, -0.6f, 1f, -0.8f }, topDy = { 0.01f, 0f, -0.01f, 0.01f, 0f, 0.01f };
-            float[] botRot = { -1f, 1.4f, -0.6f, 0.9f, -1.2f }, botDy = { 0f, 0.02f, -0.01f, 0.01f, 0f };
-            const float topScale = 0.66f, topY = 1.2f;
+            float[] topRot = { -1.2f, 0.8f, 0f, -0.6f, 1f }, topDy = { 0.01f, -0.01f, 0f, 0.01f, 0f };
+            float[] botRot = { -1f, 1.4f, -0.6f, 0.9f, -1.2f, 0.7f, -0.9f }, botDy = { 0f, 0.02f, -0.01f, 0.01f, 0f, 0.015f, -0.01f };
+            // FIGHTER is two letters longer than FIGHT was: set a little smaller to keep the logo's width
+            const float topScale = 0.66f, botScale = 0.86f, topY = 1.06f;
             var list = new System.Collections.Generic.List<Placed>();
 
             void Word(string word, float scale, float y, float[] rot, float[] dy, bool isTop)
@@ -206,7 +215,7 @@ namespace SoccerFight
                 }
             }
             Word(top, topScale, topY, topRot, topDy, true);
-            Word(bottom, 1f, 0f, botRot, botDy, false);
+            Word(bottom, botScale, 0f, botRot, botDy, false);
             return list.ToArray();
         }
 
@@ -267,7 +276,7 @@ namespace SoccerFight
             // 3) keyline around the faces
             c.Fill(p => field.At(p) - 0.042f, Ink, 0f, letters);
 
-            // 4) faces: moonstone — SOCCER cool and pale, FIGHT bright with a teal foot; grain and streaks
+            // 4) faces: moonstone — SPORT cool and pale, FIGHTER bright with a teal foot; grain and streaks
             c.Fill(p => field.At(p), p =>
             {
                 bool top = topField.At(p) < 0.02f;
@@ -318,7 +327,7 @@ namespace SoccerFight
                 return Color.Lerp(Palette.Moss, Palette.IvyLight, lump).WithAlpha(a * 0.95f);
             }, letters);
 
-            // 7) cracks through FIGHT with crystal light inside them
+            // 7) cracks through FIGHTER with crystal light inside them
             var rng = new System.Random(7);
             float R() => (float)rng.NextDouble();
             foreach (var pl in placed)
@@ -354,7 +363,7 @@ namespace SoccerFight
             return c;
         }
 
-        /// <summary>Where the tagline goes under FIGHT (logo units).</summary>
+        /// <summary>Where the tagline goes under FIGHTER (logo units).</summary>
         public static Vector2 TaglineCenter => Tilt(new Vector2(0.05f, -0.52f));
     }
 }

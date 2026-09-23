@@ -86,7 +86,7 @@ namespace SoccerFight
 
             bool fire = s.BurnFrac > 0f, frost = s.SlowAmount > 0f, storm = s.ChainTargets > 0, boom = s.Cannoneer || s.KillExplodeFrac > 0f;
             bool golden = player.NextShotGolden && ball.IsHeld;
-            ball.SetShotTrail(fire && frost ? trailFireFrost : fire ? trailFire : frost ? trailFrost : storm ? trailStorm : boom ? trailBoom : trailBase,
+            ball.SetShotTrail(fire && frost ? trailFireFrost : fire ? trailFire : frost ? trailFrost : storm ? trailStorm : boom ? trailBoom : ball.Kind == Sport.Basketball ? ball.DefaultShotGradient : trailBase,
                 0.17f * Mathf.Pow(Mathf.Max(1f, s.BallSpeedMul), 0.9f));
 
             bool flying = !ball.IsHeld;
@@ -193,7 +193,8 @@ namespace SoccerFight
                 e.transform.localScale = new Vector3(sc, sc, 1f);
                 e.transform.localRotation = Quaternion.Euler(0f, 0f, -echoSpin * 2f);
                 e.sortingOrder = Mathf.Sin(ang * Mathf.Deg2Rad) > 0f ? PlayerRig.BallOrderFront - 4 : PlayerRig.BallOrderFront + 5;
-                e.color = Palette.ShotCyan.WithAlpha(a);
+                if (e.sprite != Art.PatternFor(ball.Kind)) e.sprite = Art.PatternFor(ball.Kind);
+                e.color = (ball.Kind == Sport.Basketball ? Palette.HoopOrange : Palette.ShotCyan).WithAlpha(a);
             }
         }
 

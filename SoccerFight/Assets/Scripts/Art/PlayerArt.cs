@@ -3,7 +3,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>The rig parts, so a character swap can re-bind every sprite.</summary>
-    public enum PlayerPart { Torso, Pelvis, Neck, Head, HairTuft, Thigh, Shin, Boot, BootGlow, UpperArm, Forearm, Hand }
+    public enum PlayerPart { Torso, Pelvis, Neck, Head, HairTuft, Thigh, Shin, Boot, BootGlow, UpperArm, Forearm, Hand, UpperArmNear, ForearmNear }
 
     /// <summary>Skeleton measurements shared by the art and the procedural rig (world units).</summary>
     public static class PlayerDims
@@ -20,31 +20,43 @@ namespace SoccerFight
         public const float Ppu = 360f;
     }
 
-    /// <summary>One character's finished body sprites.</summary>
+    /// <summary>One character's finished body sprites, with the build and sport they were drawn for.</summary>
     public sealed class PlayerLook
     {
         public Sprite Torso, Pelvis, Neck, Head, HairTuft;
         public Sprite Thigh, Shin, Boot, BootGlow;
         public Sprite UpperArm, Forearm, Hand;
+        /// <summary>The front arm when it differs (a compression sleeve on the throwing arm); null: same as the back arm.</summary>
+        public Sprite UpperArmNear, ForearmNear;
+        public PlayerBody Body = PlayerBody.Soccer;
+        public Sport Sport;
     }
 
     /// <summary>
-    /// Kit, skin and hair for the side-view soccer player. Every part pivots at its joint.
-    /// Parts carry form shading, cloth detail and a thin dark contour; the moonlit rim and the grass
-    /// bounce come from the character shader at runtime so they follow every pose and the facing.
-    /// The colours come from the chosen character's kit, so the same body draws three players.
+    /// Kit, skin and hair for the side-view players. Every part pivots at its joint. Parts carry
+    /// form shading, cloth detail and a thin dark contour; the moonlit rim and the grass bounce
+    /// come from the character shader at runtime so they follow every pose and the facing. The
+    /// colours come from the chosen character's kit and the bones from its build; soccer players
+    /// share one body, the basketball players (PlayerArt.Hoops) are drawn with their own.
     /// </summary>
-    public static class PlayerArt
+    public static partial class PlayerArt
     {
         public static Sprite Torso, Pelvis, Neck, Head, HairTuft;
         public static Sprite Thigh, Shin, Boot, BootGlow;
         public static Sprite UpperArm, Forearm, Hand;
+        public static Sprite UpperArmNear, ForearmNear;
+        static PlayerBody body = PlayerBody.Soccer;
+        static Sport sport;
+        /// <summary>The look of the selected character (what a freshly built rig should wear).</summary>
+        public static PlayerLook Current { get; private set; }
 
         const float P = PlayerDims.Ppu;
         const float LineW = 0.0105f;
 
         /// <summary>Colours of the character currently being drawn.</summary>
         static CharacterKit K;
+        /// <summary>Bones of the character currently being drawn.</summary>
+        static PlayerBody Bd => body;
         static readonly PlayerLook[] looks = new PlayerLook[Characters.All.Length];
 
         // bodies asked for by the menus, drawn a quarter at a time (legs, arms, body, head) so a
@@ -61,6 +73,7 @@ namespace SoccerFight
             building = null;
             buildingIndex = -1;
             buildingStep = 0;
+            Current = null;
         }
 
         public static bool Ready(int index) => index >= 0 && index < looks.Length && looks[index] != null;
@@ -80,6 +93,26 @@ namespace SoccerFight
             requested.Add(index);
         }
 
+        /// <summary>Points the drawing state (kit, bones, sport) at a character.</summary>
+        static void Target(CharacterDef def)
+        {
+            K = def.Kit;
+            body = def.Body ?? PlayerBody.Soccer;
+            sport = def.Sport;
+        }
+
+        static void BuildStep(int step)
+        {
+            bool hoops = sport == Sport.Basketball;
+            switch (step)
+            {
+                case 0: if (hoops) HoopsLegs(); else BuildLegs(); break;
+                case 1: if (hoops) HoopsArms(); else { BuildArms(); UpperArmNear = ForearmNear = null; } break;
+                case 2: if (hoops) HoopsBody(); else BuildBody(); break;
+                default: if (hoops) HoopsHead(); else BuildHead(); break;
+            }
+        }
+
         /// <summary>Draws one quarter of the next queued body. Call once per frame while a menu waits for bodies.</summary>
         public static void Pump()
         {
@@ -93,14 +126,18 @@ namespace SoccerFight
                 buildingStep = 0;
             }
             var previous = Snapshot();
-            K = Characters.All[buildingIndex].Kit;
+            var def = Characters.All[buildingIndex];
+            Target(def);
+            BuildStep(buildingStep);
             switch (buildingStep)
             {
-                case 0: BuildLegs(); building.Thigh = Thigh; building.Shin = Shin; building.Boot = Boot; building.BootGlow = BootGlow; break;
-                case 1: BuildArms(); building.UpperArm = UpperArm; building.Forearm = Forearm; building.Hand = Hand; break;
-                case 2: BuildBody(); building.Torso = Torso; building.Pelvis = Pelvis; building.Neck = Neck; break;
-                default: BuildHead(); building.Head = Head; building.HairTuft = HairTuft; break;
+                case 0: building.Thigh = Thigh; building.Shin = Shin; building.Boot = Boot; building.BootGlow = BootGlow; break;
+                case 1: building.UpperArm = UpperArm; building.Forearm = Forearm; building.Hand = Hand; building.UpperArmNear = UpperArmNear; building.ForearmNear = ForearmNear; break;
+                case 2: building.Torso = Torso; building.Pelvis = Pelvis; building.Neck = Neck; break;
+                default: building.Head = Head; building.HairTuft = HairTuft; break;
             }
+            building.Body = body;
+            building.Sport = sport;
             Restore(previous);
             if (++buildingStep < 4) return;
             looks[buildingIndex] = building;
@@ -127,11 +164,8 @@ namespace SoccerFight
             requested.Remove(index);
 
             var previous = Snapshot();
-            K = Characters.All[index].Kit;
-            BuildLegs();
-            BuildArms();
-            BuildBody();
-            BuildHead();
+            Target(Characters.All[index]);
+            for (int step = 0; step < 4; step++) BuildStep(step);
             looks[index] = Snapshot();
             Restore(previous);
             return looks[index];
@@ -141,14 +175,16 @@ namespace SoccerFight
         {
             Torso = Torso, Pelvis = Pelvis, Neck = Neck, Head = Head, HairTuft = HairTuft,
             Thigh = Thigh, Shin = Shin, Boot = Boot, BootGlow = BootGlow,
-            UpperArm = UpperArm, Forearm = Forearm, Hand = Hand
+            UpperArm = UpperArm, Forearm = Forearm, Hand = Hand, UpperArmNear = UpperArmNear, ForearmNear = ForearmNear,
+            Body = body, Sport = sport,
         };
 
         static void Restore(PlayerLook l)
         {
             Torso = l.Torso; Pelvis = l.Pelvis; Neck = l.Neck; Head = l.Head; HairTuft = l.HairTuft;
             Thigh = l.Thigh; Shin = l.Shin; Boot = l.Boot; BootGlow = l.BootGlow;
-            UpperArm = l.UpperArm; Forearm = l.Forearm; Hand = l.Hand;
+            UpperArm = l.UpperArm; Forearm = l.Forearm; Hand = l.Hand; UpperArmNear = l.UpperArmNear; ForearmNear = l.ForearmNear;
+            body = l.Body ?? PlayerBody.Soccer; sport = l.Sport;
         }
 
         /// <summary>Makes a character's sprites the ones the rig draws.</summary>
@@ -156,28 +192,12 @@ namespace SoccerFight
         {
             var l = Get(index);
             Restore(l);
+            Current = l;
         }
 
 
         /// <summary>Sprite of one rig part for the current look (used when the character changes).</summary>
-        public static Sprite SpriteOf(PlayerPart part)
-        {
-            switch (part)
-            {
-                case PlayerPart.Torso: return Torso;
-                case PlayerPart.Pelvis: return Pelvis;
-                case PlayerPart.Neck: return Neck;
-                case PlayerPart.Head: return Head;
-                case PlayerPart.HairTuft: return HairTuft;
-                case PlayerPart.Thigh: return Thigh;
-                case PlayerPart.Shin: return Shin;
-                case PlayerPart.Boot: return Boot;
-                case PlayerPart.BootGlow: return BootGlow;
-                case PlayerPart.UpperArm: return UpperArm;
-                case PlayerPart.Forearm: return Forearm;
-                default: return Hand;
-            }
-        }
+        public static Sprite SpriteOf(PlayerPart part) => SpriteOf(Snapshot(), part);
 
         public static Sprite SpriteOf(PlayerLook look, PlayerPart part)
         {
@@ -194,6 +214,8 @@ namespace SoccerFight
                 case PlayerPart.BootGlow: return look.BootGlow;
                 case PlayerPart.UpperArm: return look.UpperArm;
                 case PlayerPart.Forearm: return look.Forearm;
+                case PlayerPart.UpperArmNear: return look.UpperArmNear != null ? look.UpperArmNear : look.UpperArm;
+                case PlayerPart.ForearmNear: return look.ForearmNear != null ? look.ForearmNear : look.Forearm;
                 default: return look.Hand;
             }
         }
@@ -447,19 +469,66 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ head
 
+        static readonly Vector2 HeadCenter = new Vector2(0f, 0.19f);
+
+        /// <summary>Skull, face, jaw and nose in profile (every character shares the head shape).</summary>
+        static float HeadShape(Vector2 p)
+        {
+            float cranium = Sdf.Circle(p, HeadCenter, PlayerDims.HeadR);
+            float face = Sdf.Box(p, new Vector2(0.07f, 0.11f), new Vector2(0.112f, 0.086f), 0.075f);
+            float jaw = Sdf.Ellipse(p, new Vector2(0.1f, 0.052f), new Vector2(0.075f, 0.05f));
+            float nose = Sdf.Circle(p, new Vector2(0.187f, 0.168f), 0.026f);
+            return Sdf.SmoothUnion(Sdf.SmoothUnion(Sdf.SmoothUnion(cranium, face, 0.05f), jaw, 0.04f), nose, 0.02f);
+        }
+
+        /// <summary>Skin shading, cheek and brow light of the head (after the contour).</summary>
+        static void SkinHead(SdfCanvas c, SdfCanvas.SdfFn head)
+        {
+            c.Fill(head, K.Skin);
+            c.Shade(p => Mathf.Lerp(0.8f, 1f, MathUtil.Smooth01((p.x + 0.12f) / 0.2f)) * Mathf.Lerp(0.88f, 1f, MathUtil.Smooth01((p.y - 0.02f) / 0.12f)));
+            c.Paint(p => Sdf.Ellipse(p, new Vector2(0.118f, 0.122f), new Vector2(0.032f, 0.02f)), new Color(0.93f, 0.55f, 0.5f, 0.28f), 0.022f);
+            c.Paint(p => Sdf.Ellipse(p, new Vector2(0.14f, 0.28f), new Vector2(0.05f, 0.03f)), K.SkinLight.WithAlpha(0.3f), 0.03f);
+        }
+
+        /// <summary>A sweatband around the head: cream with a kit-coloured centre stripe.</summary>
+        static void Headband(SdfCanvas c, SdfCanvas.SdfFn headAndHair)
+        {
+            SdfCanvas.SdfFn band = p => Sdf.Intersect(Mathf.Abs(Vector2.Dot(p - new Vector2(0f, 0.305f), new Vector2(-0.27f, 0.963f))) - 0.022f,
+                headAndHair(p) - 0.012f);
+            c.Fill(p => band(p) - LineW * 0.7f, Palette.PlayerLine);
+            c.Fill(band, K.KitWhite);
+            c.Paint(p => Sdf.Intersect(Mathf.Abs(Vector2.Dot(p - new Vector2(0f, 0.305f), new Vector2(-0.27f, 0.963f))) - 0.006f, band(p)), K.Jersey);
+            Tint(c, band, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.16f) / 0.2f)));
+        }
+
+        static void Ear(SdfCanvas c)
+        {
+            c.Fill(p => Sdf.Ellipse(p, new Vector2(-0.018f, 0.165f), new Vector2(0.034f, 0.05f)), K.SkinShade);
+            c.Fill(p => Sdf.Ellipse(p, new Vector2(-0.012f, 0.165f), new Vector2(0.015f, 0.026f)), Color.Lerp(K.SkinShade, K.Hair, 0.35f));
+            c.Paint(p => Sdf.Ring(p, new Vector2(-0.018f, 0.165f), 0.028f, 0.006f), K.Skin.WithAlpha(0.6f), 0.004f);
+        }
+
+        /// <summary>Eye, lid, brow, nose shadow and mouth.</summary>
+        static void Face(SdfCanvas c)
+        {
+            SdfCanvas.SdfFn eye = p => Sdf.Ellipse(p, new Vector2(0.131f, 0.19f), new Vector2(0.021f, 0.026f));
+            c.Fill(eye, new Color(0.95f, 0.93f, 0.9f));
+            c.Paint(p => Sdf.Intersect(Sdf.Ellipse(p, new Vector2(0.142f, 0.188f), new Vector2(0.013f, 0.021f)), eye(p)), Palette.EyeDark);
+            c.Fill(p => Sdf.Circle(p, new Vector2(0.146f, 0.198f), 0.005f), Color.white);
+            c.Fill(p => Sdf.Capsule(p, new Vector2(0.108f, 0.213f), new Vector2(0.154f, 0.207f), 0.0058f), Palette.EyeDark);
+            c.Fill(p => Sdf.Capsule(p, new Vector2(0.094f, 0.247f), new Vector2(0.162f, 0.236f), 0.0115f), K.Hair);
+
+            c.Paint(p => Sdf.Capsule(p, new Vector2(0.17f, 0.146f), new Vector2(0.19f, 0.142f), 0.008f), K.SkinShade.WithAlpha(0.5f), 0.008f);
+            c.Fill(p => Sdf.Capsule(p, new Vector2(0.14f, 0.098f), new Vector2(0.166f, 0.103f), 0.0058f), Color.Lerp(K.SkinShade, Palette.EyeDark, 0.45f));
+            c.Paint(p => Sdf.Capsule(p, new Vector2(0.145f, 0.084f), new Vector2(0.163f, 0.087f), 0.005f), K.SkinLight.WithAlpha(0.5f), 0.006f);
+        }
+
         static void BuildHead()
         {
-            Vector2 hc = new Vector2(0f, 0.19f);
+            Vector2 hc = HeadCenter;
             var c = new SdfCanvas(new Rect(-0.27f, -0.06f, 0.54f, 0.54f), P);
 
-            SdfCanvas.SdfFn head = p =>
-            {
-                float cranium = Sdf.Circle(p, hc, PlayerDims.HeadR);
-                float face = Sdf.Box(p, new Vector2(0.07f, 0.11f), new Vector2(0.112f, 0.086f), 0.075f);
-                float jaw = Sdf.Ellipse(p, new Vector2(0.1f, 0.052f), new Vector2(0.075f, 0.05f));
-                float nose = Sdf.Circle(p, new Vector2(0.187f, 0.168f), 0.026f);
-                return Sdf.SmoothUnion(Sdf.SmoothUnion(Sdf.SmoothUnion(cranium, face, 0.05f), jaw, 0.04f), nose, 0.02f);
-            };
+            SdfCanvas.SdfFn head = HeadShape;
             SdfCanvas.SdfFn hair = p =>
             {
                 float cap = Sdf.Circle(p, hc + new Vector2(-0.012f, 0.016f), 0.205f);
@@ -474,15 +543,8 @@ namespace SoccerFight
             };
 
             Contour(c, p => Sdf.Union(head(p), hair(p)));
-            c.Fill(head, K.Skin);
-            c.Shade(p => Mathf.Lerp(0.8f, 1f, MathUtil.Smooth01((p.x + 0.12f) / 0.2f)) * Mathf.Lerp(0.88f, 1f, MathUtil.Smooth01((p.y - 0.02f) / 0.12f)));
-            c.Paint(p => Sdf.Ellipse(p, new Vector2(0.118f, 0.122f), new Vector2(0.032f, 0.02f)), new Color(0.93f, 0.55f, 0.5f, 0.28f), 0.022f);
-            c.Paint(p => Sdf.Ellipse(p, new Vector2(0.14f, 0.28f), new Vector2(0.05f, 0.03f)), K.SkinLight.WithAlpha(0.3f), 0.03f);
-
-            // ear
-            c.Fill(p => Sdf.Ellipse(p, new Vector2(-0.018f, 0.165f), new Vector2(0.034f, 0.05f)), K.SkinShade);
-            c.Fill(p => Sdf.Ellipse(p, new Vector2(-0.012f, 0.165f), new Vector2(0.015f, 0.026f)), Color.Lerp(K.SkinShade, K.Hair, 0.35f));
-            c.Paint(p => Sdf.Ring(p, new Vector2(-0.018f, 0.165f), 0.028f, 0.006f), K.Skin.WithAlpha(0.6f), 0.004f);
+            SkinHead(c, head);
+            Ear(c);
 
             // hair: dark cap with a cool sheen arc and strand lines
             c.Fill(hair, K.Hair);
@@ -492,28 +554,10 @@ namespace SoccerFight
             c.Paint(p => Sdf.Intersect(hair(p) + 0.004f, -hair(p + new Vector2(0.01f, 0.028f))), new Color(0.4f, 0.37f, 0.46f, 0.7f), 0.01f);
 
             // headband: cream with a kit-coloured centre stripe (not every character wears one)
-            if (K.Headband)
-            {
-                SdfCanvas.SdfFn band = p => Sdf.Intersect(Mathf.Abs(Vector2.Dot(p - new Vector2(0f, 0.305f), new Vector2(-0.27f, 0.963f))) - 0.022f,
-                    Sdf.Union(head(p), hair(p)) - 0.012f);
-                c.Fill(p => band(p) - LineW * 0.7f, Palette.PlayerLine);
-                c.Fill(band, K.KitWhite);
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(Vector2.Dot(p - new Vector2(0f, 0.305f), new Vector2(-0.27f, 0.963f))) - 0.006f, band(p)), K.Jersey);
-                Tint(c, band, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.16f) / 0.2f)));
-            }
+            if (K.Headband) Headband(c, p => Sdf.Union(head(p), hair(p)));
 
-            // eye: almond with sclera, iris looking ahead and a catch-light; lid line and brow
-            SdfCanvas.SdfFn eye = p => Sdf.Ellipse(p, new Vector2(0.131f, 0.19f), new Vector2(0.021f, 0.026f));
-            c.Fill(eye, new Color(0.95f, 0.93f, 0.9f));
-            c.Paint(p => Sdf.Intersect(Sdf.Ellipse(p, new Vector2(0.142f, 0.188f), new Vector2(0.013f, 0.021f)), eye(p)), Palette.EyeDark);
-            c.Fill(p => Sdf.Circle(p, new Vector2(0.146f, 0.198f), 0.005f), Color.white);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.108f, 0.213f), new Vector2(0.154f, 0.207f), 0.0058f), Palette.EyeDark);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.094f, 0.247f), new Vector2(0.162f, 0.236f), 0.0115f), K.Hair);
-
-            // nose shadow, mouth, lower lip light
-            c.Paint(p => Sdf.Capsule(p, new Vector2(0.17f, 0.146f), new Vector2(0.19f, 0.142f), 0.008f), K.SkinShade.WithAlpha(0.5f), 0.008f);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.14f, 0.098f), new Vector2(0.166f, 0.103f), 0.0058f), Color.Lerp(K.SkinShade, Palette.EyeDark, 0.45f));
-            c.Paint(p => Sdf.Capsule(p, new Vector2(0.145f, 0.084f), new Vector2(0.163f, 0.087f), 0.005f), K.SkinLight.WithAlpha(0.5f), 0.006f);
+            // eye: almond with sclera, iris looking ahead and a catch-light; lid line and brow; nose shadow, mouth
+            Face(c);
             Head = c.ToSprite("Head", Vector2.zero);
 
             // hair tuft: three spikes that whip with the head. The kit's Tuft scales the whole thing

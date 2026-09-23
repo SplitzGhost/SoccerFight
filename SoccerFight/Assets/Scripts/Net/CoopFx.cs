@@ -9,7 +9,7 @@ namespace SoccerFight
     /// </summary>
     public static class CoopFx
     {
-        public enum Kind : byte { Explosion, Blast, Rainbow, Meteor, Whistle, Nova }
+        public enum Kind : byte { Explosion, Blast, Rainbow, Meteor, Whistle, Nova, Slam, Three, Oop }
 
         public static void Send(Kind kind, Vector2 at, float radius, Color c)
         {
@@ -71,6 +71,18 @@ namespace SoccerFight
                     fx.Flash(at, radius * 1.2f, Palette.ShotCyan, 0.2f, 2.8f);
                     fx.Ring(FxLayer.Front, at, 0.3f, radius, 0.35f, 0.02f, 0.35f, Color.white, Palette.ShotCyan.WithAlpha(0f), 2.6f);
                     cam.AddTrauma(0.08f);
+                    break;
+                case Kind.Slam:
+                    // the partner's dunk: the same waves, without the damage (that happened over there)
+                    for (int i = 0; i < 2; i++) Court.I?.Shockwave(at + new Vector2(0f, 0.15f), radius * (1f + i * 0.28f), 0f, 0f, 0f, i * 0.11f, false);
+                    fx.Flash(at + new Vector2(0f, 0.3f), 3.2f, c, 0.16f, 2.8f);
+                    fx.Dust(at, Vector2.right, 8, 4.5f, 0.6f, 0.4f);
+                    fx.Dust(at, Vector2.left, 8, 4.5f, 0.6f, 0.4f);
+                    cam.AddTrauma(0.25f);
+                    break;
+                case Kind.Three:
+                case Kind.Oop:
+                    Court.BlastFx(at, radius, c, 0.6f);
                     break;
             }
         }

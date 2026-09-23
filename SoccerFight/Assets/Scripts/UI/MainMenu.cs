@@ -31,6 +31,7 @@ namespace SoccerFight
         sealed class Shot
         {
             public RectTransform Root, Spin;
+            public Image Pattern;
             public Image Glow;
             public Image[] Ghosts;
             public Vector2 From, To, Pos, Vel;
@@ -104,6 +105,8 @@ namespace SoccerFight
         MenuTarget figureTarget, tagTarget;
         CanvasGroup tagGroup;
         const float FeetY = -392f, FigureScale = 292f, LogoUnit = 25f;
+        /// <summary>The name tag floats a little above the head of whoever stands there (the basketball players are taller).</summary>
+        static float TagY => FeetY + 612f + (Characters.Current.Body.HeadTop - PlayerBody.Soccer.HeadTop) * FigureScale;
 
         // cursor
         Image curRing, curDot, curGlow;
@@ -111,6 +114,7 @@ namespace SoccerFight
 
         // play transition
         RectTransform hero, heroSpin;
+        Image logoPattern, heroPattern;
         CanvasGroup heroGroup;
         Image heroGlow, flash;
         float heroT = -1f, flashA, heroA;
@@ -278,7 +282,7 @@ namespace SoccerFight
             Register(figureTarget);
 
             // name tag floating above the player's head
-            tagRoot = UiKit.Node("Tag", stack, new Vector2(-12f, FeetY + 612f), new Vector2(300f, 70f));
+            tagRoot = UiKit.Node("Tag", stack, new Vector2(-12f, TagY), new Vector2(300f, 70f));
             tagGroup = tagRoot.gameObject.AddComponent<CanvasGroup>();
             tagButton = new ChunkButton(tagRoot, "Plate", Vector2.zero, new Vector2(300f, 70f), MenuArt.Accent, null, 0f);
             tagBadge = UiKit.Img("Badge", tagButton.Face, MenuArt.Badge, Color.white, new Vector2(-112f, 0f), new Vector2(50f, 50f));
@@ -498,7 +502,7 @@ namespace SoccerFight
             logoRoot = UiKit.Node("Logo", parent, new Vector2(26f + size.x * 0.5f, 2f), size);
             if (MenuScenery.Logo == null)
             {
-                MenuArt.Label("Word", logoRoot, "SOCCERFIGHT", 26f, Palette.Gold, Vector2.zero, new Vector2(260f, 40f));
+                MenuArt.Label("Word", logoRoot, "SPORTFIGHTER", 26f, Palette.Gold, Vector2.zero, new Vector2(260f, 40f));
                 return;
             }
             Vector2 centre = LogoArt.Area.center;
@@ -510,7 +514,7 @@ namespace SoccerFight
             float bs = LogoArt.BallRadius * LogoUnit * 2f * 1.12f;
             var ball = UiKit.Node("Ball", logoRoot, bp, Vector2.one * bs);
             logoSpin = UiKit.Node("Spin", ball, Vector2.zero, Vector2.one * bs);
-            UiKit.Img("Pattern", logoSpin, Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
+            logoPattern = UiKit.Img("Pattern", logoSpin, Art.BallPattern, Color.white, Vector2.zero, Vector2.one * bs);
             UiKit.Img("Shade", ball, Art.BallShade, Color.white, Vector2.zero, Vector2.one * bs);
             UiKit.Img("Hi", ball, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * bs);
 
@@ -610,7 +614,7 @@ namespace SoccerFight
             hero = UiKit.Node("HeroBall", root, Vector2.zero, Vector2.one * 100f);
             heroGlow = UiKit.Img("Glow", hero, UiArt.Glow, new Color(0.7f, 0.95f, 1f, 0f), Vector2.zero, Vector2.one * 260f);
             heroSpin = UiKit.Node("Spin", hero, Vector2.zero, Vector2.one * 100f);
-            UiKit.Img("Pattern", heroSpin, MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * 100f);
+            heroPattern = UiKit.Img("Pattern", heroSpin, MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * 100f);
             UiKit.Img("Shade", hero, MenuScenery.HeroShade != null ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * 100f);
             UiKit.Img("Hi", hero, MenuScenery.HeroHighlight != null ? MenuScenery.HeroHighlight : Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * 100f);
             // speed lines streaming out from behind the ball
@@ -810,6 +814,10 @@ namespace SoccerFight
             var def = Characters.Current;
             var look = PlayerArt.Get(idx);
             figure.SetLook(look, def);
+            // the balls of the title (the one in the logo, the one kicked into the camera) are the sport's
+            bool hoops = def.Sport == Sport.Basketball;
+            if (logoPattern != null) logoPattern.sprite = Art.PatternFor(def.Sport);
+            if (heroPattern != null) heroPattern.sprite = hoops ? (MenuScenery.HeroHoop != null ? MenuScenery.HeroHoop : Art.HoopPattern) : (MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern);
             tagName.text = def.Name;
             tagRole.text = def.Role;
             tagRole.color = Color.Lerp(def.Accent, Color.white, 0.4f);
@@ -1006,7 +1014,7 @@ namespace SoccerFight
             if (state == State.Starting && !playFired) centreFade = 1f;
             figure.SetAlpha(centreFade);
             tagGroup.alpha = (1f - away) * Mathf.Clamp01(openT * 1.5f);
-            tagRoot.anchoredPosition = new Vector2(-12f, FeetY + 612f + Mathf.Sin(time * 1.6f) * 5f);
+            tagRoot.anchoredPosition = new Vector2(-12f, TagY + Mathf.Sin(time * 1.6f) * 5f);
             pedestalGlow.color = pedestalGlow.color.WithAlpha((0.2f + 0.04f * Mathf.Sin(time * 2f)) * centreFade);
             playHalo.color = Gold.WithAlpha((0.18f + 0.08f * Mathf.Sin(time * 2.2f)) * (1f - away) * Mathf.Clamp01(openT * 1.4f));
             modeGlow.color = MenuArt.Accent.WithAlpha(0.18f + 0.06f * Mathf.Sin(time * 1.7f));
@@ -1145,6 +1153,7 @@ namespace SoccerFight
         void Shoot(Vector2 at, MenuTarget target)
         {
             var s = TakeShot();
+            s.Pattern.sprite = Art.PatternFor(Characters.Current.Sport);
             s.Live = true;
             s.Flying = true;
             s.Target = target;
@@ -1360,7 +1369,7 @@ namespace SoccerFight
                     heroFrom = root.InverseTransformPoint(ballRt.TransformPoint(Vector3.zero));
                     Vector2 at = heroFrom;
                     Bump(MenuArt.Burst, at, 60f, 520f, Color.white, 0.3f, 2f, 40f);
-                    Bump(MenuArt.Shock, at, 40f, 420f, Palette.ShotCyan.WithAlpha(0.9f), 0.4f, 1.6f, 0f);
+                    Bump(MenuArt.Shock, at, 40f, 420f, (Characters.Current.Sport == Sport.Basketball ? Palette.HoopOrange : Palette.ShotCyan).WithAlpha(0.9f), 0.4f, 1.6f, 0f);
                     shake = 1.2f;
                     shakeVel = 0f;
                     hero.gameObject.SetActive(true);
@@ -1471,7 +1480,7 @@ namespace SoccerFight
             n.Root = UiKit.Node("Shot", fxRoot, Vector2.zero, new Vector2(118f, 118f));
             n.Glow = UiKit.Img("Glow", n.Root, UiArt.Glow, new Color(0.7f, 0.95f, 1f, 0.3f), Vector2.zero, new Vector2(290f, 290f));
             n.Spin = UiKit.Node("Spin", n.Root, Vector2.zero, new Vector2(118f, 118f));
-            UiKit.Img("Pattern", n.Spin, Art.BallPattern, Color.white, Vector2.zero, new Vector2(118f, 118f));
+            n.Pattern = UiKit.Img("Pattern", n.Spin, Art.BallPattern, Color.white, Vector2.zero, new Vector2(118f, 118f));
             UiKit.Img("Shade", n.Root, Art.BallShade, Color.white, Vector2.zero, new Vector2(118f, 118f));
             UiKit.Img("Hi", n.Root, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, new Vector2(118f, 118f));
             foreach (var g in n.Ghosts) g.gameObject.layer = UiLayer;

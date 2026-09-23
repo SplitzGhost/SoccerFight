@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -96,6 +96,7 @@ namespace SoccerFight
             else if (scenario == "look") yield return UpgradeLook();
             else if (scenario == "meta") yield return MetaTour();
             else if (scenario == "duo") yield return Duo();
+            else if (scenario == "hoops") yield return Hoops();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -1036,7 +1037,7 @@ namespace SoccerFight
             GameInput.AimScreen = menu.ScreenOf(new Vector2(0f, -470f));
             yield return Seconds(2.8f);   // the three bodies are drawn a quarter per frame
             yield return Shot("x00_starter");
-            yield return Kick("starter1");
+            yield return Kick("starter_bruno");
             yield return Seconds(1.1f);
             yield return Shot("x01_starter_picked");
             yield return Kick("starterGo");
@@ -1044,34 +1045,34 @@ namespace SoccerFight
             yield return Shot("x04_welcome");
             Debug.Log($"[Capture] onboarded={Profile.Onboarded} char={Characters.Current.Name} primary={Characters.Current.ClassDef.Primary}");
 
-            // shop: buy a striker (two kicks), then fail on one that is too expensive
+            // shop: buy a basketball defender (two kicks), then fail on one that is too expensive
             Wallet.Add(Currencies.Coins, 900);
             yield return Seconds(0.8f);
             yield return Shot("x05_wallet");
             yield return Kick("tab_shop");
             yield return Seconds(3f);
             yield return Shot("x06_shop_players");
-            yield return Kick("shop_char_kai");
+            yield return Kick("shop_char_titan");
             yield return Frames(18);
             yield return Shot("x07_confirm");
-            yield return Kick("shop_char_kai");
+            yield return Kick("shop_char_titan");
             yield return Frames(14);
             yield return Shot("x08_bought");
             yield return Seconds(1f);
-            yield return Kick("shop_char_zara");
+            yield return Kick("shop_char_dre");
             yield return Frames(12);
             yield return Shot("x11_too_expensive");
-            Debug.Log($"[Capture] coins left {Wallet.Get(Currencies.Coins)}, owns kai={Profile.OwnsCharacter("kai")}");
+            Debug.Log($"[Capture] coins left {Wallet.Get(Currencies.Coins)}, owns titan={Profile.OwnsCharacter("titan")}");
             yield return Kick("tab_home");
             yield return Seconds(1f);
 
-            // the roster, first on the defenders, then the strikers
+            // the roster, first on the soccer players, then the basketball ones
             yield return Kick("figure");
             yield return Seconds(2.4f);
             yield return Shot("x15_roster");
-            yield return Kick("class0");
+            yield return Kick("sport1");
             yield return Seconds(2.6f);
-            yield return Shot("x16_roster_strikers");
+            yield return Shot("x16_roster_basketball");
             yield return Kick("tab_home");
             yield return Seconds(1f);
             yield return Shot("x17_title");
@@ -1116,7 +1117,8 @@ namespace SoccerFight
             yield return Seconds(1.2f);
 
             // ---- the striker: a boosted shot lands with the impact star, the power shot is on the right button
-            Characters.Select(Characters.IndexOf(Characters.Get("kai")));
+            Profile.GrantCharacter("rio");
+            Characters.Select(Characters.IndexOf(Characters.Get("rio")));
             G.Restart();
             G.Director.Idle();
             G.Hud.HideStageCard();

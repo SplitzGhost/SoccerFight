@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// SHOP: every character as a compact card, one row per class, with portrait, class, perk,
+    /// SHOP: every character as a compact card, one row per sport, with portrait, class, perk,
     /// description and price. Skills are not sold — every player has all of them and picks them up
     /// after boss fights. Buying takes two kicks — the first turns the button into a pulsing gold
     /// KAUFEN?, the second (within a few seconds) buys — so a stray ball never spends coins. Not
@@ -36,15 +36,22 @@ namespace SoccerFight
             wallet = new WalletChip(page.Root, new Vector2(1f, 1f), new Vector2(-150f, -78f));
             wallet.Root.gameObject.SetActive(false);
 
-            // one row per class
+            // one row per sport, a small heading above each
             int row = 0;
-            foreach (var cls in Classes.All)
+            foreach (var sport in Characters.Sports)
             {
                 int col = 0;
-                foreach (var def in Characters.OfClass(cls.Class))
+                float y = 190f - row * (ShopCharacterCard.H + 76f);
+                MenuArt.Label("Sport" + sport, content, Characters.SportName(sport), 18f, MetaUi.Soft(CharacterPage.SportAccent(sport)),
+                    new Vector2(-ShopCharacterCard.W * 1.5f - 22f + 30f + 230f, y + ShopCharacterCard.H * 0.5f + 26f), new Vector2(460f, 28f), TMPro.TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
+                UiKit.Img("SportIcon" + sport, content, MenuArt.SportIcon(sport), MetaUi.Soft(CharacterPage.SportAccent(sport)),
+                    new Vector2(-ShopCharacterCard.W * 1.5f - 22f + 12f, y + ShopCharacterCard.H * 0.5f + 26f), new Vector2(26f, 26f)).preserveAspect = true;
+                foreach (var cls in Classes.ForSport(sport))
                 {
+                    var def = Characters.Of(sport, cls.Class);
+                    if (def == null) continue;
                     var item = Shop.ForCharacter(def);
-                    var card = new ShopCharacterCard(content, item, new Vector2((col - 1) * (ShopCharacterCard.W + 22f), 236f - row * (ShopCharacterCard.H + 20f)));
+                    var card = new ShopCharacterCard(content, item, new Vector2((col - 1) * (ShopCharacterCard.W + 22f), y));
                     cards.Add(card);
                     nav.Register(new MenuTarget
                     {

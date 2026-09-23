@@ -23,6 +23,7 @@ namespace SoccerFight
         // icons (white glyphs, tinted per use) and the two currencies in colour
         public static Sprite IconShop, IconTrophy, IconFriends, IconGear, IconInfo, IconEvents, IconCoin, IconGem, IconPower, IconQuest, IconMode;
         public static Sprite IconBack, IconSwap, IconCheck, IconLock, IconPlay, IconStriker, IconDefender, IconSkiller, IconPlus, IconStar, IconSkills;
+        public static Sprite IconSoccer, IconHoops, IconBoxing, IconTennis;
         // text
         public static TMP_FontAsset FontHeavy;
         public static Material TextHeavy, TextHeavySoft, TextPlate;
@@ -456,9 +457,51 @@ namespace SoccerFight
             Glyph(sl, p => Mathf.Min(Sdf.Star4(p, new Vector2(-6f, -6f), 48f, 0.55f),
                 Mathf.Min(Sdf.Star4(p, new Vector2(34f, 34f), 17f, 0.55f), Sdf.Star4(p, new Vector2(38f, -34f), 12f, 0.55f))));
             Ui(sl, "IconSkiller", x => IconSkiller = x);
+
+            // sports: a soccer ball, a basketball, a boxing glove, a tennis racket with its ball
+            var so = IconCanvas(D);
+            Glyph(so, p => Sdf.Circle(p, Vector2.zero, 46f));
+            so.Erase(p => Sdf.Circle(p, new Vector2(2f, 2f), 13f));
+            for (int k = 0; k < 5; k++)
+            {
+                Vector2 pc = new Vector2(2f, 2f) + MathUtil.Dir(90f + k * 72f) * 36f;
+                so.Erase(p => Mathf.Max(Sdf.Circle(p, pc, 11f), Sdf.Circle(p, Vector2.zero, 43f)));
+            }
+            Ui(so, "IconSoccer", x => IconSoccer = x);
+
+            var bb = IconCanvas(D);
+            Glyph(bb, p => Sdf.Circle(p, Vector2.zero, 46f));
+            bb.Erase(p => Mathf.Max(Mathf.Abs(p.x) - 3.2f, Sdf.Circle(p, Vector2.zero, 43f)));
+            bb.Erase(p => Mathf.Max(Mathf.Abs(p.y) - 3.2f, Sdf.Circle(p, Vector2.zero, 43f)));
+            for (int s = -1; s <= 1; s += 2)
+            {
+                int k = s;
+                bb.Erase(p => Mathf.Max(Mathf.Abs(Sdf.Circle(p, new Vector2(k * 58f, 0f), 42f)) - 3.2f, Sdf.Circle(p, Vector2.zero, 43f)));
+            }
+            Ui(bb, "IconHoops", x => IconHoops = x);
+
+            var bx = IconCanvas(D);
+            Glyph(bx, p => Sdf.SmoothUnion(Sdf.SmoothUnion(
+                Sdf.Box(p, new Vector2(4f, 10f), new Vector2(34f, 32f), 26f),
+                Sdf.Ellipse(p, new Vector2(-30f, 2f), new Vector2(14f, 20f)), 6f),
+                Sdf.Box(p, new Vector2(2f, -38f), new Vector2(26f, 14f), 5f), 4f));
+            bx.Erase(p => Mathf.Abs(p.y + 22f) - 2.6f);
+            bx.Erase(p => Sdf.Capsule(p, new Vector2(-22f, 18f), new Vector2(-12f, -6f), 2.4f));
+            Ui(bx, "IconBoxing", x => IconBoxing = x);
+
+            var tn = IconCanvas(D);
+            Glyph(tn, p => Mathf.Min(Mathf.Min(Mathf.Abs(Sdf.Ellipse(p, new Vector2(-8f, 12f), new Vector2(28f, 36f))) - 5f,
+                Sdf.Capsule(p, new Vector2(-8f, -24f), new Vector2(-8f, -56f), 6f)), Sdf.Circle(p, new Vector2(34f, -30f), 11f)));
+            for (int i = -2; i <= 2; i++)
+            {
+                float o = i * 10f;
+                Glyph(tn, p => Mathf.Max(Mathf.Min(Mathf.Abs(p.x + 8f - o) - 1.2f, Mathf.Abs(p.y - 12f - o * 1.3f) - 1.2f), Sdf.Ellipse(p, new Vector2(-8f, 12f), new Vector2(24f, 32f))));
+            }
+            Ui(tn, "IconTennis", x => IconTennis = x);
         }
 
         public static Sprite ClassIcon(CharacterClass c) => c == CharacterClass.Defender ? IconDefender : c == CharacterClass.Skiller ? IconSkiller : IconStriker;
+        public static Sprite SportIcon(Sport s) => s == Sport.Basketball ? IconHoops : IconSoccer;
 
         // ------------------------------------------------------------------ text
 

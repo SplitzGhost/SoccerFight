@@ -239,7 +239,7 @@ namespace SoccerFight
                 Body(right, tips[i], new Vector2(40f, ty), new Vector2(540f, 90f), 20f, TextAlignmentOptions.Left);
                 ty -= 100f;
             }
-            Body(right, "SOCCERFIGHT  ·  Grafik und Animation komplett im Code erzeugt  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEV", new Vector2(0f, -312f), new Vector2(620f, 40f), 15f);
+            Body(right, "SPORTFIGHTER  ·  Grafik und Animation komplett im Code erzeugt  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEV", new Vector2(0f, -312f), new Vector2(620f, 40f), 15f);
             RefreshKeys();
         }
 

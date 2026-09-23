@@ -93,7 +93,9 @@ namespace SoccerFight
         public const float DashRun = 0.15f, DashDuration = 0.3f, DashCooldown = 2f;
         const float DashRunSpeed = 23f;   // ≈ 3.5 units in DashRun
 
-        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash }
+        public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash,
+            // basketball
+            Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -124,7 +126,7 @@ namespace SoccerFight
         public float DecoyCooldownTotal => DecoyCooldown * S.CooldownOf(SkillCategory.Technique);
         public float HeaderCooldownTotal => HeaderCooldown * S.CooldownOf(SkillCategory.Header);
         public float DashCooldownTotal => DashCooldown * S.CooldownOf(SkillCategory.Technique) * S.DashCooldownMul;
-        public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul * (Rushing ? 1f + S.RushSpeed : 1f);
+        public float MaxSpeedNow => MaxSpeed * S.MoveSpeedMul * Combat.AdrenalineMul * (Rushing ? 1f + S.RushSpeed : 1f) * CrossSpeedMul;
         /// <summary>The skiller's sprint after a trick.</summary>
         public bool Rushing => rushT > 0f;
         /// <summary>Trick moves play faster for the skiller; everything else at normal speed.</summary>
@@ -255,6 +257,7 @@ namespace SoccerFight
             JuggleCount = 0;
             JuggleDropped = false;
             SinceTouch = 99f;
+            ResetHoops();
             Rig.ResetPose();
             Rig.SetVisible(true);
             ghosts.Clear();
@@ -293,7 +296,9 @@ namespace SoccerFight
                 case Ability.Nutmeg: nutmegBuffer = 0.25f; break;
                 case Ability.Decoy: decoyBuffer = 0.25f; break;
                 case Ability.Whistle: whistleBuffer = 0.25f; break;
-                default: Game.I.Hud.OnEmptySlot(slot); break;   // nothing in this slot yet
+                default:
+                    if (!PressHoopsSkill(a)) Game.I.Hud.OnEmptySlot(slot);   // nothing in this slot yet
+                    break;
             }
         }
 
@@ -305,6 +310,7 @@ namespace SoccerFight
                 case Ability.Power: powerBuffer = 0.3f; break;
                 case Ability.Dash: dashBuffer = 0.2f; break;
                 case Ability.Header: headerBuffer = 0.25f; break;
+                default: PressHoopsClassMove(a); break;
             }
         }
 
@@ -369,6 +375,12 @@ namespace SoccerFight
             DecoyCd = Mathf.Max(0f, DecoyCd - seconds);
             HeaderCd = Mathf.Max(0f, HeaderCd - seconds);
             DashCd = Mathf.Max(0f, DashCd - seconds);
+            ThreeCd = Mathf.Max(0f, ThreeCd - seconds);
+            CrossCd = Mathf.Max(0f, CrossCd - seconds);
+            DunkCd = Mathf.Max(0f, DunkCd - seconds);
+            OopCd = Mathf.Max(0f, OopCd - seconds);
+            BlockCd = Mathf.Max(0f, BlockCd - seconds);
+            FastCd = Mathf.Max(0f, FastCd - seconds);
         }
 
         /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
@@ -406,6 +418,7 @@ namespace SoccerFight
                 TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = DashCd = 0f;
                 Ultimate = 1f;
             }
+            TickHoops(dt);
 
             var s = S;
             var run = Run;
@@ -456,6 +469,7 @@ namespace SoccerFight
             if (CurrentAction == Action.None && !Dead)
             {
                 if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
+                else if (Hoops && StartHoopsAction()) { }
                 else if (dashBuffer > 0f && DashCd <= 0f && (Grounded || airDashes > 0)) StartDash();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
@@ -472,7 +486,7 @@ namespace SoccerFight
                 {
                     // one-touch: a ball that is almost home gets taken first time
                     if (!Ball.IsHeld && Ball.IsCatchable(Rig.BallHold, 2.1f * s.CatchRadiusMul)) Ball.ForceCatch(this);
-                    if (Ball.IsHeld) StartKick();
+                    if (Ball.IsHeld) { if (Hoops) StartThrow(); else StartKick(); }
                 }
             }
 
@@ -489,6 +503,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Punt) speedMul = ActionTime < PuntContact ? 0f : 0.35f;
             else if (CurrentAction == Action.Wall || CurrentAction == Action.Whistle) speedMul = 0.15f;
             else if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Decoy) speedMul = 0.1f;
+            else if (CurrentAction >= Action.Throw) speedMul = HoopsSpeedMul();
             float target = input * MaxSpeedNow * speedMul;
             float accel;
             bool turning = false;
@@ -508,6 +523,7 @@ namespace SoccerFight
             float rate = ActionRate;
             if (CurrentAction == Action.Dash && ActionTime < DashRun) Vel.x = dashDir * DashRunSpeed * s.DashDistanceMul * rate;
             else if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
+            else if (IsFastBreaking) Vel.x = fastDir * FastSpeed * s.FastBreakDistMul * rate;
             // the slide starts fast and runs out of steam — on ice it keeps going much further
             else if (IsSliding) Vel.x = slideDir * TackleSpeed * (1f - 0.72f * MathUtil.EaseInQuad(ActionTime / TackleSlide)) * (s.Slippery ? 1.45f : 1f);
             else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun) * rate;
@@ -544,51 +560,56 @@ namespace SoccerFight
 
             // --- gravity with variable height and apex hang (a recoil boost rises like a held jump).
             // The dash is flat even off a ledge; the bicycle kick hangs in the air for the scissor.
-            if (IsDashing) Vel.y = 0f;
-            else if (!Grounded)
+            // The dunk flies its own arc onto the target; everything else goes through the physics.
+            if (DunkFlying) DunkMove(dt);
+            else
             {
-                if (Vel.y <= 0f) boostRise = false;
-                bool floaty = GameInput.JumpHeld || boostRise;
-                float g = Vel.y > 0f ? (floaty ? RiseGravity : RiseGravity * 2.3f) : FallGravity;
-                if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
-                if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
-                if (CurrentAction == Action.Header && ActionTime < HeaderContact + 0.08f && Vel.y < 2f) g *= 0.3f;
-                g *= s.GravityMul;
-                Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall * Mathf.Sqrt(s.GravityMul));
-            }
-
-            float prevY = Pos.y;
-            Pos += Vel * dt;
-
-            // --- ground and one-way platforms: a surface only catches feet that come down onto it.
-            // Holding down in the air falls through every platform, a drop skips the one it left.
-            dropTimer = Mathf.Max(0f, dropTimer - dt);
-            int ignore = !Grounded && GameInput.DownHeld && !Dead ? Level.All : dropTimer > 0f ? dropIgnore : Level.None;
-            float floor = Level.FloorBelow(Pos.x, prevY + 0.02f, FootHalf, ignore, out int floorIndex);
-            if (Vel.y <= 0f && Pos.y <= floor)
-            {
-                if (!Grounded)
+                if (IsDashing || IsFastBreaking) Vel.y = 0f;
+                else if (!Grounded)
                 {
-                    float impact = -Vel.y;
-                    Rig.OnLand(impact);
-                    Vector2 at = new Vector2(Pos.x, floor);
-                    FxSystem.I.Dust(at, Vector2.right, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
-                    FxSystem.I.Dust(at, Vector2.left, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
-                    if (impact > 12f) game.Cam.AddTrauma(0.08f);
+                    if (Vel.y <= 0f) boostRise = false;
+                    bool floaty = GameInput.JumpHeld || boostRise;
+                    float g = Vel.y > 0f ? (floaty ? RiseGravity : RiseGravity * 2.3f) : FallGravity;
+                    if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
+                    if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
+                    if (CurrentAction == Action.Header && ActionTime < HeaderContact + 0.08f && Vel.y < 2f) g *= 0.3f;
+                    g *= s.GravityMul;
+                    Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall * Mathf.Sqrt(s.GravityMul));
                 }
-                Pos.y = floor;
-                Vel.y = 0f;
-                Grounded = true;
-                OnPlatform = floorIndex;
-                platformVersion = Level.Version;
-                airBoosts = s.AirBoosts;
-                airDashes = s.AirDashes;
-                boostRise = false;
-            }
-            else if (Pos.y > floor + 0.001f)
-            {
-                Grounded = false;   // jumped, or walked off an edge (coyote time still allows the jump)
-                OnPlatform = Level.None;
+
+                float prevY = Pos.y;
+                Pos += Vel * dt;
+
+                // --- ground and one-way platforms: a surface only catches feet that come down onto it.
+                // Holding down in the air falls through every platform, a drop skips the one it left.
+                dropTimer = Mathf.Max(0f, dropTimer - dt);
+                int ignore = !Grounded && GameInput.DownHeld && !Dead ? Level.All : dropTimer > 0f ? dropIgnore : Level.None;
+                float floor = Level.FloorBelow(Pos.x, prevY + 0.02f, FootHalf, ignore, out int floorIndex);
+                if (Vel.y <= 0f && Pos.y <= floor)
+                {
+                    if (!Grounded)
+                    {
+                        float impact = -Vel.y;
+                        Rig.OnLand(impact);
+                        Vector2 at = new Vector2(Pos.x, floor);
+                        FxSystem.I.Dust(at, Vector2.right, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
+                        FxSystem.I.Dust(at, Vector2.left, 5, 1.2f + impact * 0.08f, 0.38f, 0.32f);
+                        if (impact > 12f) game.Cam.AddTrauma(0.08f);
+                    }
+                    Pos.y = floor;
+                    Vel.y = 0f;
+                    Grounded = true;
+                    OnPlatform = floorIndex;
+                    platformVersion = Level.Version;
+                    airBoosts = s.AirBoosts;
+                    airDashes = s.AirDashes;
+                    boostRise = false;
+                }
+                else if (Pos.y > floor + 0.001f)
+                {
+                    Grounded = false;   // jumped, or walked off an edge (coyote time still allows the jump)
+                    OnPlatform = Level.None;
+                }
             }
 
             // --- walls
@@ -1124,6 +1145,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Whistle) UpdateWhistle(dt);
             else if (CurrentAction == Action.Header) UpdateHeader(dt);
             else if (CurrentAction == Action.Dash) UpdateDash(dt);
+            else UpdateHoopsAction(dt);
         }
 
         void UpdatePower(float dt)
@@ -1712,6 +1734,10 @@ namespace SoccerFight
                 CurrentAction = Action.None;
                 if (StepCarry) { Ball.EndScripted(); StepCarry = false; }
             }
+            // basketball: an unreleased throw or dunk drops out of the hands
+            if (CurrentAction == Action.Dunk && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
+            if (CurrentAction == Action.Three && !released) game.Cam.SetZoom(1f);
+            AbortHoops();
 
             if (Hp <= 0f)
             {

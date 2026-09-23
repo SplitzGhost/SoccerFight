@@ -29,7 +29,7 @@ namespace SoccerFight
         /// <summary>Depth of the plateau's top face (from its back edge to the lip).</summary>
         public const float GroundBand = 0.5f;
 
-        public static Sprite Logo, HeroBall, HeroShade, HeroHighlight;
+        public static Sprite Logo, HeroBall, HeroHoop, HeroShade, HeroHighlight;
         public static Sprite Moon, Peaks, Ridge, Waste, Ground, Smoke;
 
         /// <summary>Crystal light in the split summit and its veins (peaks-local: x, y, size).</summary>
@@ -44,7 +44,7 @@ namespace SoccerFight
         public static readonly List<Vector3> GroundGlows = new List<Vector3>();
 
         static ArtJobs jobs;
-        static ArtJobs.Job jLogo, jHero, jHeroShade, jHeroHi, jMoon, jPeaks, jRidge, jWaste, jGround, jSmoke;
+        static ArtJobs.Job jLogo, jHero, jHeroHoop, jHeroShade, jHeroHi, jMoon, jPeaks, jRidge, jWaste, jGround, jSmoke;
 
         static readonly Color Clear = new Color(0f, 0f, 0f, 0f);
         static readonly Color Cyan = new Color(0.45f, 0.95f, 1f);
@@ -86,6 +86,7 @@ namespace SoccerFight
             // UI pieces: straight alpha, centre pivot
             jLogo = Ui("MenuLogo", LogoArt.Build);
             jHero = Ui("MenuHeroBall", () => Art.BallPatternCanvas(640f));
+            jHeroHoop = Ui("MenuHeroHoop", () => Art.HoopPatternCanvas(640f));
             jHeroShade = Ui("MenuHeroShade", () => Art.BallShadeCanvas(640f));
             jHeroHi = Ui("MenuHeroHi", () => Art.BallHighlightCanvas(640f));
 
@@ -113,7 +114,7 @@ namespace SoccerFight
             jobs.Complete();
             Debug.Log("[SoccerFight] menu art: " + jobs.Slowest(8));
             Logo = UiSprite(jLogo);
-            HeroBall = UiSprite(jHero); HeroShade = UiSprite(jHeroShade); HeroHighlight = UiSprite(jHeroHi);
+            HeroBall = UiSprite(jHero); HeroHoop = UiSprite(jHeroHoop); HeroShade = UiSprite(jHeroShade); HeroHighlight = UiSprite(jHeroHi);
             Moon = jMoon.Sprite; Peaks = jPeaks.Sprite; Ridge = jRidge.Sprite; Waste = jWaste.Sprite; Ground = jGround.Sprite;
             Smoke = jSmoke.Sprite;
             jobs = null;

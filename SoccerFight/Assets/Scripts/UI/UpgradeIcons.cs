@@ -40,6 +40,20 @@ namespace SoccerFight
             }
         }
 
+        /// <summary>A basketball in line art: the disc with its ribs punched out.</summary>
+        static void HoopBall(SdfCanvas c, Vector2 bc, float r)
+        {
+            c.Fill(p => Sdf.Circle(p, bc, r), W);
+            float w = Mathf.Max(1.2f, r * 0.07f);
+            c.Erase(p => Sdf.Intersect(Mathf.Abs(p.x - bc.x) - w, Sdf.Circle(p, bc, r - 0.6f)));
+            c.Erase(p => Sdf.Intersect(Mathf.Abs(p.y - bc.y) - w, Sdf.Circle(p, bc, r - 0.6f)));
+            for (int s = -1; s <= 1; s += 2)
+            {
+                int k = s;
+                c.Erase(p => Sdf.Intersect(Mathf.Abs(Sdf.Circle(p, bc + new Vector2(k * r * 1.25f, 0f), r * 0.9f)) - w, Sdf.Circle(p, bc, r - 0.6f)));
+            }
+        }
+
         static void Line(SdfCanvas c, Vector2 a, Vector2 b, float w, Color col) => c.Fill(p => Sdf.Capsule(p, a, b, w), col);
 
         static void Arrow(SdfCanvas c, Vector2 from, Vector2 to, float w, float head, Color col)
@@ -366,6 +380,53 @@ namespace SoccerFight
                     c.Fill(p => Sdf.Tapered(p, V(2f, 40f), 5f, V(26f, 18f), 2f), W);
                     Line(c, V(-50f, 50f), V(-22f, 20f), 3f, H);
                     c.Fill(p => Sdf.Star4(p, V(38f, -30f), 12f, 0.5f), H);
+                    break;
+                case UpIcon.Hoop:
+                    HoopBall(c, V(0f, 0f), 34f);
+                    c.Fill(p => Sdf.Star4(p, V(34f, 34f), 16f, 0.5f), W);
+                    break;
+                case UpIcon.Swish:
+                    // the ring with its net, a ball dropping through
+                    c.Fill(p => Mathf.Abs(Sdf.Ellipse(p, V(0f, 14f), V(34f, 8f))) - 3.5f, W);
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float x0 = -30f + i * 15f, x1 = -16f + i * 8f;
+                        Line(c, V(x0, 12f), V(x1, -34f), 2.2f, H);
+                    }
+                    Line(c, V(-16f, -34f), V(16f, -34f), 2.2f, H);
+                    HoopBall(c, V(0f, 34f), 16f);
+                    break;
+                case UpIcon.Slam:
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float rr = 14f + i * 13f;
+                        c.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Ellipse(p, V(0f, -38f), V(rr * 1.4f, rr * 0.35f))) - 2.8f, p.y + 50f), i == 0 ? W : H);
+                    }
+                    Arrow(c, V(0f, 54f), V(0f, 22f), 4f, 12f, H);
+                    HoopBall(c, V(0f, -2f), 20f);
+                    break;
+                case UpIcon.Crossover:
+                    Line(c, V(-22f, 44f), V(-30f, -44f), 7f, H);
+                    Line(c, V(22f, 44f), V(30f, -44f), 7f, H);
+                    c.Fill(p => Sdf.Union(Sdf.Capsule(p, V(-44f, 18f), V(0f, -28f), 4f), Sdf.Capsule(p, V(0f, -28f), V(44f, 18f), 4f)), W);
+                    HoopBall(c, V(0f, -28f), 13f);
+                    break;
+                case UpIcon.Palm:
+                    c.Fill(p => Sdf.SmoothUnion(Sdf.Box(p, V(-4f, -12f), V(20f, 22f), 9f),
+                        Sdf.Union(Sdf.Union(Sdf.Capsule(p, V(-17f, 6f), V(-21f, 40f), 6f), Sdf.Capsule(p, V(-4f, 8f), V(-4f, 48f), 6f)),
+                            Sdf.Union(Sdf.Capsule(p, V(9f, 8f), V(12f, 44f), 6f), Sdf.Capsule(p, V(15f, -12f), V(32f, 10f), 6f))), 3f), W);
+                    c.Fill(p => Sdf.Star4(p, V(36f, 38f), 14f, 0.5f), H);
+                    break;
+                case UpIcon.Distance:
+                    for (int i = 0; i < 6; i++)
+                    {
+                        float a = Mathf.Lerp(170f, 20f, i / 5f) * Mathf.Deg2Rad;
+                        Vector2 d = V(Mathf.Cos(a) * 46f, Mathf.Sin(a) * 40f - 14f);
+                        c.Fill(p => Sdf.Circle(p, d, 3.5f), H);
+                    }
+                    HoopBall(c, V(44f, -6f), 14f);
+                    c.Fill(p => Sdf.Ring(p, V(-46f, -30f), 10f, 3f), W);
+                    c.Fill(p => Sdf.Circle(p, V(-46f, -30f), 3f), W);
                     break;
                 default: // Synergy
                     c.Fill(p => Sdf.Ring(p, V(-16f, 0f), 28f, 8f), W);

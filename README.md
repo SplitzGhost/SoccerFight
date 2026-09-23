@@ -1,6 +1,6 @@
-# SoccerFight
+# SportFighter
 
-2D-Side-View-Roguelite: Ein Fußballspieler kämpft sich mit seinem Ball durch Stages voller Monster-Wellen.
+2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
 Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gibt keine importierten Sprites.
 
 ## Ein Lauf
@@ -39,6 +39,29 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
   heller leuchten und Streifen ziehen, Sprung-Upgrades puffen beim Absprung, Regeneration funkelt grün, Blutrausch
   glüht rot. Verlangsamte Gegner bekommen einen leichten Eisüberzug mit wachsenden Eiskristallen, eingefrorene
   einen stärkeren, brennende glühen und züngeln.
+
+## Sportarten: Fußball und Basketball
+
+SportFighter hat mehrere Sportarten mit denselben drei Klassen (Angreifer/Stürmer, Verteidiger, Skiller); Boxen und
+Tennis stehen schon als „kommt bald“ im Spielermenü. Welt, Monster und Ablauf eines Laufs sind für alle gleich, jede
+Sportart bringt aber ihre eigenen Moves, Boss-Fähigkeiten und Upgrade-Karten mit (`Run/Characters.cs`, `Sport`).
+
+**Basketball** (`Player/Player.Hoops.cs`, Posen in `Player/PlayerRig.Hoops.cs`, Körper in `Art/HoopsArt.cs`): größere,
+schlaksigere Spieler mit eigenen Knochenlängen (`PlayerBody`) in Tanktop mit Nummer, langen Shorts, Crew-Socken und
+High-Tops. Beim Laufen und Stehen wird der Ball automatisch gedribbelt (ein Aufsetzer pro Schritt, reine Optik), in
+der Luft halten ihn beide Hände vor der Brust.
+
+| | Spieler | Rechtsklick |
+|---|---|---|
+| Angreifer | **DRE** (Rot-Schwarz, Stirnband, Armsleeve, #3) | **Dreier:** Step-back, Sprungwurf im hohen Bogen genau aufs Fadenkreuz, kleine Explosion beim Einschlag („+3“) |
+| Skiller | **NOVA** (Türkis-Magenta, Zöpfe, #11) | **Crossover:** zweimal durch die Beine, danach 3 s schneller, und alle Würfe fliegen durch Gegner hindurch |
+| Verteidiger | **TITAN** (Navy-Gold, Bart, Knieschoner, #34) | **Dunk:** springt zum Fadenkreuz (bis 7,5 m) und hämmert den Ball in den Boden – Druckwellen in alle Richtungen mit Rückstoß und Schaden |
+
+Linksklick ist ein **Wurf**, der wie der Schuss zurückkommt; ein Wurf in der Luft stößt ab (**Bodenpass**, der
+Doppelsprung). Boss-Fähigkeiten: **Alley-Oop** (hoch, kurz hängen, auf den nächsten Gegner), **Block** (Sprung mit
+hochgerissenen Armen, Geschosse fliegen zurück) und **Fastbreak** (unverwundbarer Sprint, Gegner werden umgeworfen).
+77 eigene Upgrade-Karten (die passenden Fußball-Karten umbenannt, dazu Karten für jeden Move sowie z. B. Heiße Hand,
+Brettwurf, Downtown, Skywalker, Splash Zone). Treffer und Effekte laufen über `Combat/Court.cs`.
 
 ## ▶ Im Browser spielen
 
@@ -105,14 +128,13 @@ köpft ihn wuchtig Richtung Fadenkreuz. Der Getroffene wird 1,1 s betäubt, der 
 kommt zurück. Dazu drei Upgrade-Karten: Lufthoheit (+15 % Schaden), Kopfnuss (längere Betäubung), Flugkopfball
 (fliegt durch zwei Gegner).
 
-**Neun Spieler** (`Run/Characters.cs`), drei pro Klasse: die Starter RIO, BRUNO und MIRA und je zwei weitere mit einem
-kleinen persönlichen **Perk** zusätzlich zum Klassen-Talent – KAI (+8 % Krit), ZARA (schnellere Bälle, stärkerer
-Power-Schuss), IVO (+20 Leben), TALA (Schockwelle, wenn sie getroffen wird), LUNA (Tempo, Sprung), NICO (−10 %
-Abklingzeiten).
+**Sechs Spieler** (`Run/Characters.cs`), einer pro Klasse und Sportart: RIO, BRUNO und MIRA (Fußball), DRE, TITAN und
+NOVA (Basketball), jeder mit einem kleinen persönlichen **Perk** zusätzlich zum Klassen-Talent (z. B. DRE: Dreier
++20 % Schaden, TITAN: +25 Leben und größere Druckwellen, NOVA: längerer Crossover-Boost). Die früheren Shop-Spieler
+KAI, ZARA, IVO, TALA, LUNA und NICO sind weg; wer sie gekauft hatte, bekommt die Münzen einmalig zurück (`Profile`, Version 2).
 
-**Erster Start** (`UI/OnboardingPages.cs`): Das Menü öffnet auf *Wähle deinen Spieler* – drei Starterkarten mit Porträt,
-Klasse, Talent und Stärken; einer ist gratis. Danach *Wähle 3 Fähigkeiten* aus allen, die diese Klasse spielen kann;
-sie gehören dir und liegen auf den ersten drei Plätzen. Erst *Los geht's* speichert beides zusammen.
+**Erster Start** (`UI/OnboardingPages.cs`): Das Menü öffnet auf *Wähle deinen Spieler* – ein Tab pro Sportart mit je drei
+Karten (Porträt, Klasse, Talent, Rechtsklick-Move und Perk); ein beliebiger Spieler ist gratis, *Los geht's* speichert die Wahl.
 
 **Fähigkeiten-Menü** (`UI/SkillPage.cs`): oben die vier Plätze mit ihren Tasten, darunter alle Fähigkeiten. Eine
 gekaufte Fähigkeit abschießen legt sie in den nächsten freien Platz, nochmal (oder ihren Platz) abschießen nimmt sie

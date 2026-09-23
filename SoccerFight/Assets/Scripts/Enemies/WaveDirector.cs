@@ -251,11 +251,32 @@ namespace SoccerFight
                     else ball.HeaderPop();
                     break;
                 }
+                case Ball.State.Oop:
+                    ball.OopImpact();   // the alley-oop lands on this monster and everything around it
+                    break;
                 default:
-                    Combat.Hit(m, Player.ShotDamage * ball.ShotMul, dir, 6.5f, Src.Shot, ball.GoldenShot);
+                {
+                    float mul = ball.ShotMul;
+                    bool crit = ball.GoldenShot;
+                    // Downtown: the further the throw flew, the harder it lands — and from deep it always crits
+                    if (s.Downtown)
+                    {
+                        float dist = (ball.Pos - ball.FlightStart).magnitude;
+                        mul *= 1f + 0.6f * MathUtil.Smooth01((dist - 3f) / 9f);
+                        if (dist > 9f) crit = true;
+                    }
+                    Combat.Hit(m, Player.ShotDamage * mul, dir, 6.5f, Src.Shot, crit);
                     ball.GoldenShot = false;
+                    if (ball.Kind == Sport.Basketball) Game.I.Player.OnThrowHit();
+                    // the crossover boost: the throw carries on through
+                    if (ball.PierceShot)
+                    {
+                        FxSystem.I.Sparks(m.Center, dir, 35f, 5, 4f, 9f, Palette.Trick, 2.4f, 0.04f, 0.18f);
+                        break;
+                    }
                     if (!ball.TryRicochet(m)) ball.BounceOff(d.normalized);
                     break;
+                }
             }
         }
 

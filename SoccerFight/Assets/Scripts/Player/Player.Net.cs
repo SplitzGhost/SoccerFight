@@ -22,7 +22,7 @@ namespace SoccerFight
         public float Invuln, Hp, MaxHp, DownLeft;
         public Ball.State BallSt;
         public Vector2 BallPos, BallVel, MeteorTarget;
-        public float Charge, BallSize;
+        public float Charge, BallSize, DunkFlight;
         public bool JuggleMode, MeteorFalling;
 
         public void Write(NetWriter w)
@@ -41,7 +41,7 @@ namespace SoccerFight
             w.Float(SinceTouch); w.Float(JugDropTime); w.Float(JugTtc);
             w.Float(Invuln); w.Float(Hp); w.Float(MaxHp); w.Float(DownLeft);
             w.Byte((byte)BallSt); w.Pos(BallPos); w.Pos(BallVel); w.Pos(MeteorTarget);
-            w.Unit(Charge); w.Unit(BallSize * 0.5f);
+            w.Unit(Charge); w.Unit(BallSize * 0.5f); w.Unit(DunkFlight);
             w.Byte((byte)((JuggleMode ? 1 : 0) | (MeteorFalling ? 2 : 0)));
         }
 
@@ -62,7 +62,7 @@ namespace SoccerFight
             s.SinceTouch = r.Float(); s.JugDropTime = r.Float(); s.JugTtc = r.Float();
             s.Invuln = r.Float(); s.Hp = r.Float(); s.MaxHp = r.Float(); s.DownLeft = r.Float();
             s.BallSt = (Ball.State)r.Byte(); s.BallPos = r.Pos(); s.BallVel = r.Pos(); s.MeteorTarget = r.Pos();
-            s.Charge = r.Unit(); s.BallSize = r.Unit() * 2f;
+            s.Charge = r.Unit(); s.BallSize = r.Unit() * 2f; s.DunkFlight = r.Unit();
             int bf = r.Byte();
             s.JuggleMode = (bf & 1) != 0; s.MeteorFalling = (bf & 2) != 0;
             return s;
@@ -118,7 +118,7 @@ namespace SoccerFight
                 NextTouch = NextTouch, LastTouch = LastTouch, SinceTouch = SinceTouch, JugDropTime = JuggleDropTime, JugTtc = JuggleTimeToContact,
                 Invuln = InvulnTimer, Hp = Hp, MaxHp = MaxHp, DownLeft = downLeft,
                 BallSt = Ball.St, BallPos = Ball.Pos, BallVel = Ball.Vel, MeteorTarget = Ball.MeteorTarget,
-                Charge = Ball.Charge, BallSize = Ball.SizeMul, JuggleMode = Ball.JuggleMode, MeteorFalling = Ball.MeteorFalling,
+                Charge = Ball.Charge, BallSize = Ball.SizeMul, JuggleMode = Ball.JuggleMode, MeteorFalling = Ball.MeteorFalling, DunkFlight = DunkFlight,
             };
         }
 
@@ -133,6 +133,7 @@ namespace SoccerFight
             BikeBallLocal = s.BikeBall; HeaderBallLocal = s.HeaderBall; JuggleBallLocal = s.JugBall; JuggleContactLocal = s.JugContact;
             NextTouch = s.NextTouch; LastTouch = s.LastTouch; SinceTouch = s.SinceTouch; JuggleDropTime = s.JugDropTime; netJugTtc = s.JugTtc;
             InvulnTimer = s.Invuln; Hp = s.Hp; MaxHp = Mathf.Max(1f, s.MaxHp);
+            DunkFlight = Mathf.Max(0.3f, s.DunkFlight);
             Ball.ApplyNet(s.BallSt, s.BallPos, s.BallVel, s.Charge, s.JuggleMode, s.BallSize, s.MeteorTarget, s.MeteorFalling, s.Facing);
         }
 

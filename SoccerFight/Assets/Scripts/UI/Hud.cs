@@ -82,6 +82,8 @@ namespace SoccerFight
 
         Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
         Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot;
+        Slot threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot;
+        Sport shotIconSport = (Sport)(-1);
         const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
 
@@ -255,6 +257,9 @@ namespace SoccerFight
             powerSlot = BuildSlot("Power", Vector2.zero, SkillSlotSize, UiArt.IconPower, UiArt.RingThick, Palette.PowerGold, GameAction.PowerShot, Ability.Power);
             headerSlot = BuildSlot("Header", Vector2.zero, SkillSlotSize, UiArt.IconHeader, UiArt.RingThick, Palette.Header, GameAction.PowerShot, Ability.Header);
             dashSlot = BuildSlot("Dash", Vector2.zero, SkillSlotSize, UiArt.IconDash, UiArt.RingThick, Palette.Trick, GameAction.PowerShot, Ability.Dash);
+            threeSlot = BuildSlot("Three", Vector2.zero, SkillSlotSize, UiArt.IconThree, UiArt.RingThick, Palette.HoopOrange, GameAction.PowerShot, Ability.Three);
+            crossSlot = BuildSlot("Crossover", Vector2.zero, SkillSlotSize, UiArt.IconCrossover, UiArt.RingThick, Palette.Trick, GameAction.PowerShot, Ability.Crossover);
+            dunkSlot = BuildSlot("Dunk", Vector2.zero, SkillSlotSize, UiArt.IconDunk, UiArt.RingThick, Palette.Slam, GameAction.PowerShot, Ability.Dunk);
             // one slot object per unlockable ability; only the four a run picks up are ever shown,
             // and each takes the key of the slot it landed in (LayoutSlots assigns the action)
             flickSlot = BuildSlot("Flick", Vector2.zero, SkillSlotSize, UiArt.IconFlick, UiArt.RingRainbow, Color.white, GameAction.Skill1, Ability.Flick);
@@ -267,8 +272,12 @@ namespace SoccerFight
             nutmegSlot = BuildSlot("Nutmeg", Vector2.zero, SkillSlotSize, UiArt.IconNutmeg, UiArt.RingThick, Palette.Showboat, GameAction.Skill1, Ability.Nutmeg);
             decoySlot = BuildSlot("Decoy", Vector2.zero, SkillSlotSize, UiArt.IconDecoy, UiArt.RingThick, Palette.Trick, GameAction.Skill1, Ability.Decoy);
             whistleSlot = BuildSlot("Whistle", Vector2.zero, SkillSlotSize, UiArt.IconWhistle, UiArt.RingThick, Palette.Silver, GameAction.Skill1, Ability.Whistle);
+            oopSlot = BuildSlot("AlleyOop", Vector2.zero, SkillSlotSize, UiArt.IconAlleyOop, UiArt.RingThick, Palette.Oop, GameAction.Skill1, Ability.AlleyOop);
+            blockSlot = BuildSlot("Block", Vector2.zero, SkillSlotSize, UiArt.IconBlock, UiArt.RingThick, Palette.Guard, GameAction.Skill1, Ability.Block);
+            fastSlot = BuildSlot("FastBreak", Vector2.zero, SkillSlotSize, UiArt.IconFastBreak, UiArt.RingThick, Palette.DashMint, GameAction.Skill1, Ability.FastBreak);
             slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
-                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot };
+                            tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot,
+                            threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot };
             foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
@@ -396,7 +405,7 @@ namespace SoccerFight
             if (hintText != null)
                 hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN    "
                     + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN    " + KeyBindings.DisplayName(GameAction.Down) + "  RUNTER    "
-                    + KeyBindings.DisplayName(GameAction.Shoot) + "  SCHUSS    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  " + Abilities.Name(Game.I != null && Game.I.Run != null ? Game.I.Run.Primary : Ability.Power) + "    ESC  PAUSE\n"
+                    + KeyBindings.DisplayName(GameAction.Shoot) + "  " + Abilities.Name(Ability.Shot) + "    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  " + Abilities.Name(Game.I != null && Game.I.Run != null ? Game.I.Run.Primary : Ability.Power) + "    ESC  PAUSE\n"
                     + "FÄHIGKEITEN  " + KeyBindings.DisplayName(GameAction.Skill1) + "  " + KeyBindings.DisplayName(GameAction.Skill2)
                     + "  " + KeyBindings.DisplayName(GameAction.Skill3) + "  " + KeyBindings.DisplayName(GameAction.Skill4)
                     + "   ·   EINE NEUE NACH JEDEM BOSS, HÖCHSTENS " + RunState.MaxSkills;
@@ -832,6 +841,13 @@ namespace SoccerFight
             UpdateSlot(whistleSlot, 1f - player.Ultimate, 1f, free, dt, false, true);
             UpdateSlot(headerSlot, player.HeaderCd, player.HeaderCooldownTotal, withBall, dt, false, true);
             UpdateSlot(dashSlot, player.DashCd, player.DashCooldownTotal, free, dt, false, true);
+            UpdateSlot(threeSlot, player.ThreeCd, player.ThreeCooldownTotal, withBall, dt, false, true);
+            UpdateSlot(crossSlot, player.CrossCd, player.CrossCooldownTotal, withBall, dt, false, true);
+            UpdateSlot(dunkSlot, player.DunkCd, player.DunkCooldownTotal, withBall, dt, false, true);
+            UpdateSlot(oopSlot, player.OopCd, player.OopCooldownTotal, withBall, dt, false, true);
+            UpdateSlot(blockSlot, player.BlockCd, player.BlockCooldownTotal, free, dt, false, true);
+            UpdateSlot(fastSlot, player.FastCd, player.FastCooldownTotal, player.Grounded && free, dt, false, true);
+            if (shotIconSport != player.Rig.Sport) { shotIconSport = player.Rig.Sport; shotSlot.icon.sprite = Abilities.Icon(Ability.Shot); shotSlot.accent = Abilities.Accent(Ability.Shot); RefreshBindings(); }
             UpdateCrosshair(dt);
             UpdateWave(dt, run);
             UpdateBoss(dt);

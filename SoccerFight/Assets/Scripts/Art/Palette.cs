@@ -114,6 +114,16 @@ namespace SoccerFight
         public static readonly Color Header = Hex("#7CC4FF");      // Kopfball
         public static readonly Color Coin = Hex("#FFCC5C");        // Münzen
 
+        // Basketball
+        public static readonly Color HoopOrange = Hex("#FF8A3A");  // Wurf, Dreier
+        public static readonly Color HoopFlame = Hex("#FFB25A");   // Dreier-Explosion
+        public static readonly Color Slam = Hex("#9FD8FF");        // Dunk-Druckwellen
+        public static readonly Color Oop = Hex("#FFE07A");         // Alley-Oop
+        public static readonly Color BallLeather = Hex("#E0712F");
+        public static readonly Color BallLeatherDark = Hex("#A94A1C");
+        public static readonly Color BallLeatherLight = Hex("#F5A262");
+        public static readonly Color BallRib = Hex("#1B1413");
+
         // UI
         public static readonly Color UiGlass = Hex("#0C1522");
         public static readonly Color UiRim = Hex("#FFFFFF");

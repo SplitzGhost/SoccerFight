@@ -581,7 +581,7 @@ namespace SoccerFight
             DevMode.MarkRun();
             foreach (var a in DevPool()) run.Unlock(a);
             player.ApplyStats(false);
-            foreach (var a in Abilities.Unlockable) Game.I.Hud.OnAbilityUnlocked(a);
+            foreach (var a in Abilities.UnlockableFor(run.Sport)) Game.I.Hud.OnAbilityUnlocked(a);
             Game.I.Hud.ShowToast("FÄHIGKEITS-PLÄTZE GEFÜLLT");
         }
 

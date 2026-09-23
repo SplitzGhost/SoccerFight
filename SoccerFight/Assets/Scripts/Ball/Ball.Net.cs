@@ -33,7 +33,9 @@ namespace SoccerFight
                 if (st == State.Pierce) heavyTrail.colorGradient = pierceGradient;
                 else if (st == State.Blast || st == State.Meteor) heavyTrail.colorGradient = blastGradient;
                 else if (st == State.Header) heavyTrail.colorGradient = headerGradient;
-                if (st == State.Pierce || st == State.Blast || st == State.Meteor || st == State.Header) heavyTrail.Clear();
+                else if (st == State.Lob) heavyTrail.colorGradient = lobGradient;
+                else if (st == State.Oop) heavyTrail.colorGradient = oopGradient;
+                if (st == State.Pierce || st == State.Blast || st == State.Meteor || st == State.Header || st == State.Lob || st == State.Oop) heavyTrail.Clear();
                 if (st == State.Rainbow) rainbowTrail.Clear();
                 if (st == State.Shot) squashVel += 6f;
             }
@@ -58,7 +60,11 @@ namespace SoccerFight
             {
                 case State.Held:
                 {
+                    Vector2 was = Pos;
                     MathUtil.Spring(ref Pos, ref Vel, rig.BallHold, 7.5f, 0.9f, dt);
+                    // the partner's basketball keeps the rhythm of the dribble like the own one
+                    if (Kind == Sport.Basketball && (rig.BallHold - was).sqrMagnitude < 0.25f)
+                        Pos = Vector2.Lerp(Pos, rig.BallHold, MathUtil.Smooth01(stateTime / 0.16f));
                     float floor = Level.FloorBelow(Pos.x, Mathf.Min(Pos.y - R, player.Pos.y) + 0.02f);
                     if (Pos.y < floor + R) Pos.y = floor + R;
                     break;

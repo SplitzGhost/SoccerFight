@@ -11,7 +11,9 @@ namespace SoccerFight
     {
         // Pierce: power shot that flies straight through every monster. Blast: bicycle kick that
         // explodes on the first thing it touches.
-        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor, Header }
+        public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor, Header,
+            // basketball: the three's arc onto the cursor, the alley-oop (up, hang, down on a monster)
+            Lob, Oop }
 
         public State St { get; private set; } = State.Held;
         public Vector2 Pos;
@@ -19,7 +21,16 @@ namespace SoccerFight
         public bool IsHeld => St == State.Held || St == State.Scripted;
         public bool IsHeldFree => St == State.Held;
         public bool IsDangerous => St == State.Shot || St == State.Rainbow || St == State.Pierce || St == State.Blast || St == State.Header
+                                   || (St == State.Oop && oopPhase == 2)
                                    || (St == State.Returning && Vel.magnitude > (Game.I.Run.Stats.Boomerang ? 4f : 9f));
+        /// <summary>Soccer ball or basketball (the pattern, the hold and the trail colour follow it).</summary>
+        public Sport Kind { get; private set; }
+        /// <summary>Crossover boost: this throw passes through every monster it meets.</summary>
+        public bool PierceShot;
+        /// <summary>Brettwurf: floor bounces left that redirect the throw into the nearest monster.</summary>
+        public int BanksLeft;
+        /// <summary>Where the current flight started (Downtown measures the distance).</summary>
+        public Vector2 FlightStart;
         public bool IsRainbow => St == State.Rainbow;
         /// <summary>Scripted by the player's keep-ups: drawn in front and spun by each touch.</summary>
         public bool JuggleMode;
@@ -41,6 +52,7 @@ namespace SoccerFight
         SpriteRenderer markerRing, markerGlow;
         TrailRenderer shotTrail, rainbowTrail, heavyTrail;
         Gradient pierceGradient, blastGradient, shotGradient, headerGradient;
+        Gradient kickGradient, hoopGradient, pierceShotGradient, lobGradient, oopGradient, shownTrail;
         /// <summary>Header: monsters it may still pass through before it pops up.</summary>
         public int HeaderPierceLeft;
         float shotTrailTime = 0.17f;
@@ -96,8 +108,13 @@ namespace SoccerFight
             g.SetKeys(
                 new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Palette.ShotCyan, 0.35f), new GradientColorKey(new Color(0.3f, 0.5f, 1f), 1f) },
                 new[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0.6f, 0.4f), new GradientAlphaKey(0f, 1f) });
-            shotTrail.colorGradient = shotGradient = g;
+            shotTrail.colorGradient = shotGradient = kickGradient = shownTrail = g;
             shotTrail.widthCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.5f, 0.55f), new Keyframe(1f, 0f));
+            hoopGradient = new Gradient();
+            hoopGradient.SetKeys(
+                new[] { new GradientColorKey(new Color(1f, 0.95f, 0.85f), 0f), new GradientColorKey(Palette.HoopOrange, 0.35f), new GradientColorKey(new Color(0.85f, 0.3f, 0.2f), 1f) },
+                new[] { new GradientAlphaKey(0.9f, 0f), new GradientAlphaKey(0.55f, 0.4f), new GradientAlphaKey(0f, 1f) });
+            pierceShotGradient = TrailGradient(Color.white, Palette.Trick, new Color(0.45f, 0.25f, 0.9f));
 
             rainbowTrail = MakeTrail("RainbowTrail", Art.TrailRainbowMat, 0.55f, 0.46f, order - 4);
             var rg = new Gradient();
@@ -113,13 +130,28 @@ namespace SoccerFight
             pierceGradient = TrailGradient(Color.white, Palette.PowerGold, new Color(1f, 0.45f, 0.2f));
             blastGradient = TrailGradient(new Color(1f, 0.95f, 0.8f), Palette.BlastOrange, new Color(0.75f, 0.15f, 0.2f));
             headerGradient = TrailGradient(Color.white, Palette.Header, new Color(0.2f, 0.35f, 0.9f));
+            lobGradient = TrailGradient(new Color(1f, 0.95f, 0.8f), Palette.HoopFlame, new Color(0.9f, 0.35f, 0.15f));
+            oopGradient = TrailGradient(Color.white, Palette.Oop, new Color(1f, 0.6f, 0.2f));
         }
 
         /// <summary>The normal shot's trail colour and length (elemental upgrades recolour it).</summary>
         public void SetShotTrail(Gradient g, float time)
         {
-            if (g != null && g != shotGradient) { shotGradient = g; shotTrail.colorGradient = g; }
+            if (g != null) shotGradient = g;
             shotTrailTime = time;
+        }
+
+        /// <summary>The trail of a plain shot of this sport (cyan kick, orange throw).</summary>
+        public Gradient DefaultShotGradient => Kind == Sport.Basketball ? hoopGradient : kickGradient;
+
+        /// <summary>Soccer ball or basketball: swaps the face of the ball and its plain trail.</summary>
+        public void SetSport(Sport s)
+        {
+            if (pattern == null) return;
+            bool changed = s != Kind;
+            Kind = s;
+            pattern.sprite = Art.PatternFor(s);
+            if (changed || shotGradient == kickGradient || shotGradient == hoopGradient) shotGradient = DefaultShotGradient;
         }
 
         public static Gradient TrailGradient(Color head, Color mid, Color tail)
@@ -195,7 +227,90 @@ namespace SoccerFight
             passTimer = fromPlatform != Level.None && velocity.y < 0f ? 0.3f : 0f;
             hitIds.Clear();
             FlightId++;
+            FlightStart = Pos;
+            PierceShot = false;
+            BanksLeft = 0;
             squashVel += 6f;
+        }
+
+        // ---- the three: a timed arc from the hand onto the target, a small blast where it lands
+        Vector2 lobFrom, lobTo;
+        float lobDur, lobH, lobDamage, lobRadius;
+
+        /// <summary>The three: a high arc that lands exactly on target after flight seconds (monsters under the arc are ignored).</summary>
+        public void Lob(Vector2 target, float flight, float damage, float radius)
+        {
+            Enter(State.Lob);
+            hitIds.Clear();
+            FlightId++;
+            FlightStart = Pos;
+            lobFrom = Pos;
+            lobTo = target;
+            lobDur = Mathf.Max(0.2f, flight);
+            lobH = Mathf.Max(2.2f, Mathf.Abs(target.x - Pos.x) * 0.28f) + Mathf.Max(0f, target.y - Pos.y) * 0.3f;
+            lobDamage = damage;
+            lobRadius = radius;
+            Vel = LobVelocity(0f);
+            heavyTrail.colorGradient = lobGradient;
+            heavyTrail.Clear();
+            squashVel += 5f;
+        }
+
+        Vector2 LobPoint(float k) => Vector2.Lerp(lobFrom, lobTo, k) + new Vector2(0f, lobH * 4f * k * (1f - k));
+        Vector2 LobVelocity(float k) => (lobTo - lobFrom) / lobDur + new Vector2(0f, lobH * 4f * (1f - 2f * k) / lobDur);
+
+        void LobImpact(Vector2 p)
+        {
+            Court.ThreeBlast(p, lobRadius, lobDamage, true);
+            Pos = p;
+            Vel = new Vector2(Mathf.Sign(lobTo.x - lobFrom.x) * 1.5f, 8f);
+            Enter(State.Loose);
+            squashVel -= 10f;
+        }
+
+        // ---- the alley-oop: tossed straight up, hangs at the top, then dives onto a monster
+        int oopPhase;          // 0 rising, 1 hanging, 2 diving
+        Vector2 oopFallback;
+        float oopDamage, oopRadius;
+        Monster oopTarget;
+
+        public void AlleyOop(Vector2 velocity, Vector2 fallback, float damage, float radius)
+        {
+            Enter(State.Oop);
+            hitIds.Clear();
+            FlightId++;
+            FlightStart = Pos;
+            Vel = velocity;
+            oopPhase = 0;
+            oopFallback = fallback;
+            oopDamage = damage;
+            oopRadius = radius;
+            oopTarget = null;
+            heavyTrail.colorGradient = oopGradient;
+            heavyTrail.Clear();
+            squashVel += 6f;
+        }
+
+        /// <summary>The alley-oop came down: on a monster or on the floor.</summary>
+        public void OopImpact()
+        {
+            if (St != State.Oop) return;
+            Vector2 p = Pos;
+            Court.OopBlast(p, oopRadius, oopDamage, oopTarget);
+            Vel = new Vector2(Random.Range(-1.5f, 1.5f), 9f);
+            Enter(State.Loose);
+            squashVel -= 12f;
+        }
+
+        /// <summary>The dunk: the ball is hammered into the floor here and bounces up high before it comes home.</summary>
+        public void Slam(Vector2 at)
+        {
+            Pos = at + new Vector2(0f, R);
+            prevPos = Pos;
+            Vel = new Vector2(Random.Range(-1f, 1f), 13f);
+            JuggleMode = false;
+            Enter(State.Loose);
+            squashVel -= 16f;
         }
 
         /// <summary>
@@ -509,7 +624,18 @@ namespace SoccerFight
                 case State.Held:
                 {
                     Vector2 target = rig.BallHold;
+                    Vector2 was = Pos;
                     MathUtil.Spring(ref Pos, ref Vel, target, 7.5f, 0.9f, dt);
+                    // a dribbled basketball sits in the hand's rhythm: once caught it follows the hold exactly
+                    // (a turn still swings it over with the spring instead of teleporting it)
+                    if (Kind == Sport.Basketball && (target - was).sqrMagnitude < 0.5f * 0.5f)
+                    {
+                        float k = MathUtil.Smooth01(stateTime / 0.16f);
+                        Pos = Vector2.Lerp(Pos, target, k);
+                        if (dt > 0f) Vel = (Pos - was) / dt;
+                        // the bounce off the floor squashes it a little
+                        if (was.y > target.y + 0.005f && target.y <= player.GroundY + R + 0.03f) squashVel -= 3.5f;
+                    }
                     // never sink into the surface — but only surfaces at the player's feet or lower,
                     // so the ball follows when the player drops through a platform
                     float floor = Level.FloorBelow(Pos.x, Mathf.Min(Pos.y - R, player.Pos.y) + 0.02f);
@@ -586,6 +712,53 @@ namespace SoccerFight
                     else if (Mathf.Abs(Pos.x) >= Player.ArenaHalf + 0.6f || Pos.y > 12f || stateTime > 1.6f) Explode();
                     break;
                 }
+                case State.Lob:
+                {
+                    float k = Mathf.Clamp01(stateTime / lobDur);
+                    Pos = LobPoint(k);
+                    Vel = LobVelocity(k);
+                    // a surface in the way (the lip of a platform) ends the arc early
+                    float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f);
+                    if (k > 0.5f && Pos.y < floor + R) LobImpact(new Vector2(Pos.x, floor + R));
+                    else if (k >= 1f) LobImpact(lobTo);
+                    break;
+                }
+                case State.Oop:
+                {
+                    if (oopPhase == 0)
+                    {
+                        // up and slowing: it stops dead at the top
+                        Vel.y -= 30f * dt;
+                        Vel.x *= Mathf.Exp(-3f * dt);
+                        Pos += Vel * dt;
+                        if (Vel.y <= 0f) { oopPhase = 1; stateTime = 0f; Vel = Vector2.zero; squashVel += 4f; }
+                    }
+                    else if (oopPhase == 1)
+                    {
+                        // the hang: a moment of stillness with a glint, then it picks its victim
+                        Pos += new Vector2(0f, Mathf.Sin(stateTime * 18f) * 0.2f * dt);
+                        if (stateTime > 0.28f)
+                        {
+                            oopPhase = 2;
+                            oopTarget = Combat.NearestTo(Pos, 15f);
+                            FxSystem.I.Sparkles(Pos, 0.3f, 6, Palette.Oop, 3f, 0.4f);
+                            FxSystem.I.Ring(FxLayer.Front, Pos, 0.1f, 0.9f, 0.14f, 0.01f, 0.2f, Color.white, Palette.Oop.WithAlpha(0f), 2.4f);
+                        }
+                    }
+                    else
+                    {
+                        // the dive: homes in on the monster (or the spot under the cursor) and speeds up
+                        if (oopTarget != null && !oopTarget.Alive) oopTarget = Combat.NearestTo(Pos, 15f);
+                        Vector2 to = (oopTarget != null ? oopTarget.Center : oopFallback + new Vector2(0f, R)) - Pos;
+                        float speed = Mathf.Lerp(12f, 36f, MathUtil.Smooth01(stateTime / 0.25f));
+                        Vel = MathUtil.Damp(Vel, to.normalized * speed, 14f, dt);
+                        Pos += Vel * dt;
+                        float floor = Level.FloorBelow(Pos.x, prevPos.y - R + 0.02f);
+                        if (Pos.y <= floor + R) { Pos.y = floor + R; OopImpact(); }
+                        else if (stateTime > 1.6f || Mathf.Abs(Pos.x) > Player.ArenaHalf + 1f) OopImpact();
+                    }
+                    break;
+                }
                 case State.Rainbow:
                 {
                     float u0 = ArcU(arcS);
@@ -646,6 +819,20 @@ namespace SoccerFight
                 }
                 Vel.y = -Vel.y * restitution;
                 Vel.x *= 0.88f;
+                // Brettwurf: a throw that hits the floor jumps on into the nearest monster
+                if (St == State.Shot && BanksLeft > 0)
+                {
+                    var next = Combat.NearestTo(Pos, 9f);
+                    if (next != null && !hitIds.Contains(next.Id))
+                    {
+                        BanksLeft--;
+                        Vel = (next.Center - Pos).normalized * Mathf.Max(Vel.magnitude, 22f);
+                        stateTime = Mathf.Min(stateTime, 0.12f);
+                        squashVel -= 6f;
+                        FxSystem.I.Ring(FxLayer.Front, Pos, 0.05f, 0.7f, 0.1f, 0.01f, 0.2f, Color.white, Palette.HoopOrange.WithAlpha(0f), 2.2f);
+                        FxSystem.I.Sparks(Pos, Vel, 40f, 6, 5f, 10f, Palette.HoopOrange, 2.4f, 0.04f, 0.18f);
+                    }
+                }
             }
             float wall = Player.ArenaHalf + 0.6f;
             if (Pos.x < -wall) { Pos.x = -wall; Vel.x = Mathf.Abs(Vel.x) * 0.6f; }
@@ -742,17 +929,21 @@ namespace SoccerFight
             hueT += dt * 2.2f;
             Color glowCol;
             float glowA, glowSize, coreA = 0f;
+            bool hoops = Kind == Sport.Basketball;
+            Color plain = hoops ? Palette.HoopOrange : Palette.ShotCyan;
             switch (St)
             {
-                case State.Shot: glowCol = Palette.ShotCyan; glowA = 0.7f; glowSize = 1.35f; coreA = 0.5f; break;
+                case State.Shot: glowCol = PierceShot ? Palette.Trick : plain; glowA = 0.7f; glowSize = 1.35f; coreA = 0.5f; break;
+                case State.Lob: glowCol = Palette.HoopFlame; glowA = 0.75f; glowSize = 1.45f; coreA = 0.5f; break;
+                case State.Oop: glowCol = Palette.Oop; glowA = oopPhase == 1 ? 0.95f : 0.75f; glowSize = oopPhase == 1 ? 1.9f : 1.5f; coreA = 0.6f; break;
                 case State.Rainbow: glowCol = Art.Rainbow(Mathf.PingPong(hueT, 1f)); glowA = 0.55f; glowSize = 1.15f; coreA = 0.5f; break;
-                case State.Returning: glowCol = Palette.ShotCyan; glowA = 0.38f; glowSize = 1.1f; coreA = 0.2f; break;
-                case State.Loose: glowCol = Palette.ShotCyan; glowA = 0.28f; glowSize = 1f; break;
+                case State.Returning: glowCol = plain; glowA = 0.38f; glowSize = 1.1f; coreA = 0.2f; break;
+                case State.Loose: glowCol = plain; glowA = 0.28f; glowSize = 1f; break;
                 case State.Pierce: glowCol = Palette.PowerGold; glowA = 0.85f; glowSize = 1.6f; coreA = 0.7f; break;
                 case State.Blast: glowCol = Palette.BlastOrange; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
                 case State.Header: glowCol = Palette.Header; glowA = 0.8f; glowSize = 1.45f; coreA = 0.55f; break;
                 case State.Meteor: glowCol = Palette.Amber; glowA = 0.9f; glowSize = 1.7f; coreA = 0.75f; break;
-                default: glowCol = Palette.ShotCyan; glowA = 0.06f + 0.03f * Mathf.Sin(Time.time * 3f); glowSize = 0.85f; break;
+                default: glowCol = plain; glowA = (hoops ? 0.03f : 0.06f) + 0.03f * Mathf.Sin(Time.time * 3f); glowSize = 0.85f; break;
             }
             if (Charge > 0f && IsHeld)
             {
@@ -771,12 +962,15 @@ namespace SoccerFight
             if (St != State.Meteor) HideMarker();
             shotTrail.emitting = St == State.Shot || (St == State.Returning && speed > 7f) || (St == State.Loose && speed > 7f);
             rainbowTrail.emitting = St == State.Rainbow;
-            heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header;
+            heavyTrail.emitting = St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header || St == State.Lob || (St == State.Oop && oopPhase != 1);
+            var wantTrail = St == State.Shot && PierceShot ? pierceShotGradient : shotGradient;
+            if (wantTrail != shownTrail) { shownTrail = wantTrail; shotTrail.colorGradient = wantTrail; }
 
             // heavy shots shed embers along their path
-            if ((St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header) && Random.value < dt * 45f && speed > 1f)
+            if ((St == State.Pierce || St == State.Blast || St == State.Meteor || St == State.Header || St == State.Lob || St == State.Oop) && Random.value < dt * 45f && speed > 1f)
             {
-                Color c = St == State.Pierce ? Palette.PowerGold : St == State.Meteor ? Palette.Amber : St == State.Header ? Palette.Header : Palette.BlastOrange;
+                Color c = St == State.Pierce ? Palette.PowerGold : St == State.Meteor ? Palette.Amber : St == State.Header ? Palette.Header
+                    : St == State.Lob ? Palette.HoopFlame : St == State.Oop ? Palette.Oop : Palette.BlastOrange;
                 FxSystem.I.Sparks(Pos, -delta.normalized, 35f, 1, 1.5f, 4.5f, c, 2.4f, 0.035f, 0.2f, St == State.Blast ? 6f : 0f);
             }
 

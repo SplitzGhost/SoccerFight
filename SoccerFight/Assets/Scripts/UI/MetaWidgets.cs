@@ -125,7 +125,9 @@ namespace SoccerFight
                 placeholder.color = def.Accent.WithAlpha((0.14f + 0.06f * Mathf.Sin(Time.unscaledTime * 3f)) * alpha);
                 if (look == null) return;
                 figure = new MenuFigure();
-                figure.Build(parent, feet, scale, look, def);
+                // taller bodies stand lower in the frame, so every head sits at the same height
+                float taller = (def.Body.HeadTop - PlayerBody.Soccer.HeadTop) * scale;
+                figure.Build(parent, feet - new Vector2(0f, taller), scale, look, def);
                 MenuUi.SetLayer(parent, parent.gameObject.layer);
                 BringFront();
             }
@@ -379,7 +381,7 @@ namespace SoccerFight
             MenuArt.Label("Name", Root, def.Name, 32f, Color.white, new Vector2(cx, 80f), new Vector2(tw, 40f), TextAlignmentOptions.Left, 8f);
             var badge = UiKit.Img("ClassIcon", Root, cls.Icon(), MetaUi.Soft(def.Accent), new Vector2(x0 + 11f, 48f), new Vector2(20f, 20f));
             badge.preserveAspect = true;
-            MenuArt.Label("Class", Root, cls.Name + (def.Starter ? "  ·  STARTER" : ""), 14f, MetaUi.Soft(def.Accent), new Vector2(cx + 14f, 48f), new Vector2(tw - 28f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+            MenuArt.Label("Class", Root, cls.Name + "  ·  " + Characters.SportName(def.Sport), 14f, MetaUi.Soft(def.Accent), new Vector2(cx + 14f, 48f), new Vector2(tw - 28f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
             var perk = MenuArt.Label("Perk", Root, def.Perk != null ? def.Perk.Name + ":  " + def.Perk.Text : "TALENT  ·  " + cls.TraitName, 13f,
                 def.Perk != null ? MetaUi.Gold : MetaUi.Soft(def.Accent), new Vector2(cx, 20f), new Vector2(tw, 34f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
             perk.textWrappingMode = TextWrappingModes.Normal;   // up to two lines between the class and the description

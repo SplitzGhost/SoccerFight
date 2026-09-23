@@ -46,6 +46,8 @@ namespace SoccerFight
         public static bool IsSkill(Ability a) => a != Ability.None && a != Ability.Shot && a != Ability.AirKick && !Abilities.IsClassMove(a);
         /// <summary>The class move on the right mouse button (power shot, dash or header).</summary>
         public Ability Primary = Ability.Power;
+        /// <summary>The sport of the player of this run: which moves, skills and upgrade cards exist.</summary>
+        public Sport Sport => Characters.Current.Sport;
         public readonly PlayerStats Stats = new PlayerStats();
 
         public StageTheme Theme => StageThemes.For(Stage);
@@ -67,7 +69,7 @@ namespace SoccerFight
             int best = PlayerPrefs.GetInt(BestKey(c), 0);
             // records from before the character ids: the three starters were stored by position
             int index = Characters.IndexOf(c);
-            if (c.Starter && index >= 0) best = Mathf.Max(best, PlayerPrefs.GetInt("sf_best_stage_" + index, 0));
+            if (c.Starter && index >= 0 && index < 3) best = Mathf.Max(best, PlayerPrefs.GetInt("sf_best_stage_" + index, 0));
             return best;
         }
 
@@ -105,7 +107,7 @@ namespace SoccerFight
         {
             var list = new List<Ability>();
             if (!CanUnlockMore) return list;
-            foreach (var s in SkillCatalog.All)
+            foreach (var s in SkillCatalog.ForSport(Sport))
                 if (!Unlocked.Contains(s.Ability)) list.Add(s.Ability);
             return list;
         }

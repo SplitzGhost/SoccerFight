@@ -41,7 +41,7 @@ namespace SoccerFight
     /// </summary>
     public static class Profile
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
         const string Key = "sf_profile";
         public const string FlagStarter = "starter";
 
@@ -93,6 +93,21 @@ namespace SoccerFight
             if (d.Wallet == null) d.Wallet = new List<ProfileData.Entry>();
             if (d.Levels == null) d.Levels = new List<ProfileData.Entry>();
             if (d.Flags == null) d.Flags = new List<string>();
+            // version 2 (the sport update): the extra soccer players left the roster — whoever bought one gets the coins back
+            if (d.Version < 2)
+            {
+                int refund = 0;
+                foreach (var id in d.Characters)
+                    if (Characters.Retired.TryGetValue(id, out int price)) refund += price;
+                if (refund > 0)
+                {
+                    bool found = false;
+                    for (int i = 0; i < d.Wallet.Count; i++)
+                        if (d.Wallet[i].Id == Currencies.Coins.Id) { d.Wallet[i] = new ProfileData.Entry { Id = d.Wallet[i].Id, Value = d.Wallet[i].Value + refund }; found = true; }
+                    if (!found) d.Wallet.Add(new ProfileData.Entry { Id = Currencies.Coins.Id, Value = refund });
+                    Debug.Log("[SportFighter] Refunded " + refund + " coins for retired characters");
+                }
+            }
             d.Characters.RemoveAll(id => Characters.Get(id) == null);
             if (Characters.Get(d.Character) == null || !d.Characters.Contains(d.Character))
                 d.Character = d.Characters.Count > 0 ? d.Characters[0] : "";

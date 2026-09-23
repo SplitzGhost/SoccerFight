@@ -10,7 +10,7 @@ namespace SoccerFight
     /// perfectly smooth at any frame rate. Kick, rainbow flick and keep-ups are authored as eased
     /// key poses layered on top of locomotion.
     /// </summary>
-    public sealed class PlayerRig
+    public sealed partial class PlayerRig
     {
         public const int BaseOrder = 100;
         public const int BallOrderFront = 130;
@@ -38,6 +38,12 @@ namespace SoccerFight
         public float GlowBoost = 1f;
         /// <summary>Sorting order of the body's lowest part (the duo partner is drawn a step behind).</summary>
         public int OrderBase = BaseOrder;
+
+        /// <summary>Bone lengths of the body being worn.</summary>
+        PlayerBody body = PlayerBody.Soccer;
+        public PlayerBody Body => body;
+        /// <summary>The sport of the body being worn: a basketball player dribbles at the hand.</summary>
+        public Sport Sport { get; private set; }
 
         // locomotion state
         float phase;
@@ -133,22 +139,24 @@ namespace SoccerFight
             nearArm = new Arm
             {
                 hand = Part("NearHand", PlayerPart.Hand, 25, false).transform,
-                fore = Part("NearForearm", PlayerPart.Forearm, 26, false).transform,
-                upper = Part("NearUpperArm", PlayerPart.UpperArm, 27, false).transform
+                fore = Part("NearForearm", PlayerPart.ForearmNear, 26, false).transform,
+                upper = Part("NearUpperArm", PlayerPart.UpperArmNear, 27, false).transform
             };
+            // bones and sport of the chosen character (the duo partner's rig is re-dressed on its first packet)
+            if (PlayerArt.Current != null) ApplyLook(PlayerArt.Current);
         }
 
         /// <summary>The chosen character changed: re-bind every part to the new body art.</summary>
-        public void ApplyLook()
-        {
-            for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(partKinds[i]);
-        }
+        public void ApplyLook() => ApplyLook(PlayerArt.Current);
 
-        /// <summary>Wear a specific character's body (the duo partner's).</summary>
+        /// <summary>Wear a specific character's body (the duo partner's): its sprites, its bones and its sport's ball.</summary>
         public void ApplyLook(PlayerLook look)
         {
             if (look == null) return;
             for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(look, partKinds[i]);
+            body = look.Body ?? PlayerBody.Soccer;
+            Sport = look.Sport;
+            player.Ball?.SetSport(Sport);
         }
 
         public void ResetPose()
@@ -242,7 +250,7 @@ namespace SoccerFight
 
         void PoseLeg(Leg leg, Vector2 hip, Vector2 ankleTarget, float footPoint, float footFlatWeight)
         {
-            Vector2 knee = MathUtil.SolveTwoBone(hip, ankleTarget, PlayerDims.ThighLen, PlayerDims.ShinLen, 1f, out Vector2 ankle);
+            Vector2 knee = MathUtil.SolveTwoBone(hip, ankleTarget, body.ThighLen, body.ShinLen, 1f, out Vector2 ankle);
             Vector2 shinDir = ankle - knee;
             float shinAngle = MathUtil.Angle(shinDir);
             Place(leg.thigh, hip, MathUtil.DownAngle(knee - hip));
@@ -254,15 +262,25 @@ namespace SoccerFight
             Place(leg.glow, ankle, bootRot);
         }
 
-        void PoseArm(Arm arm, Vector2 shoulder, float shoulderDeg, float elbowDeg)
+        /// <param name="wristDeg">bends the hand against the forearm (positive: fingers towards the front)</param>
+        void PoseArm(Arm arm, Vector2 shoulder, float shoulderDeg, float elbowDeg, float wristDeg = 0f)
         {
             Vector2 dirU = MathUtil.Rotate(Vector2.down, shoulderDeg);
-            Vector2 elbow = shoulder + dirU * PlayerDims.UpperArmLen;
+            Vector2 elbow = shoulder + dirU * body.UpperArmLen;
             Vector2 dirF = MathUtil.Rotate(dirU, elbowDeg);
-            Vector2 wrist = elbow + dirF * PlayerDims.ForearmLen;
+            Vector2 wrist = elbow + dirF * body.ForearmLen;
             Place(arm.upper, shoulder, MathUtil.DownAngle(dirU));
             Place(arm.fore, elbow, MathUtil.DownAngle(dirF));
-            Place(arm.hand, wrist, MathUtil.DownAngle(dirF));
+            Place(arm.hand, wrist, MathUtil.DownAngle(dirF) + wristDeg);
+        }
+
+        /// <summary>Two-bone arm IK: the shoulder and elbow angles (PoseArm's terms) that put the wrist on target, elbow down and back.</summary>
+        void ArmIK(Vector2 shoulder, Vector2 wristTarget, out float shoulderDeg, out float elbowDeg)
+        {
+            Vector2 elbow = MathUtil.SolveTwoBone(shoulder, wristTarget, body.UpperArmLen, body.ForearmLen, -1f, out Vector2 wrist);
+            Vector2 dirU = elbow - shoulder, dirF = wrist - elbow;
+            shoulderDeg = Vector2.SignedAngle(Vector2.down, dirU);
+            elbowDeg = Vector2.SignedAngle(dirU, dirF);
         }
 
         /// <summary>Gait foot position (ankle, root-local, hip-relative x) for a leg phase in [0,1).</summary>
@@ -332,7 +350,7 @@ namespace SoccerFight
             }
 
             if (speed01 < 0.05f && grounded && !acting) idleTime += dt; else idleTime = 0f;
-            float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree ? 1f : 0f;
+            float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree && Sport != Sport.Basketball ? 1f : 0f;
             MathUtil.Spring(ref footOnBall, ref footOnBallVel, footOnBallTarget, 2.6f, 1f, dt);
             float fob = Mathf.Clamp01(footOnBall);
 
@@ -354,7 +372,7 @@ namespace SoccerFight
             float leanTarget = -(runBlend * 11f + Mathf.Clamp(accel * facing * 0.35f, -7f, 9f)) * (1f - air * 0.5f);
             leanTarget += air * Mathf.Clamp(-vel.y * 0.9f, -8f, 10f) * 0.4f;
 
-            float hipY = PlayerDims.StandHip - runBlend * 0.06f;
+            float hipY = body.StandHip - runBlend * 0.06f;
             float bobAmp = Mathf.Lerp(0.012f, 0.065f, runBlend) * moveBlend;
             float bob = bobAmp * (0.5f + 0.5f * Mathf.Cos(MathUtil.Tau * 2f * (phase - stanceFrac * 0.5f)));
             float breathe = Mathf.Sin(time * 2.1f) * 0.006f * (1f - moveBlend);
@@ -450,6 +468,12 @@ namespace SoccerFight
             ballLocal = Vector2.Lerp(ballLocal, ballLocalIdle, fob * (1f - moveBlend));
             ballLocal.x = Mathf.Lerp(ballLocal.x, 0.72f, sk);   // the ball keeps rolling on while the player brakes
             BallIsScripted = false;
+
+            // basketball: the ball bounces between the hand and the floor (or is held at the chest in the air)
+            nearIKw = farIKw = 0f;
+            nearWrist = farWrist = 0f;
+            if (Sport == Sport.Basketball)
+                HoopsCarry(dt, hipY, air, cycleLen, sk, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref ballLocal);
 
             // =============================================================== action layers
             float t = player.ActionTime;
@@ -549,6 +573,12 @@ namespace SoccerFight
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
                     ref extraHipY, ref ballLocal);
             }
+            else if (player.CurrentAction >= Player.Action.Throw)
+            {
+                PoseHoops(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
+            }
 
             // --- springs for the upper body
             MathUtil.Spring(ref lean, ref leanVel, leanTarget, acting ? 5.5f : 3f, 0.72f, dt);
@@ -571,8 +601,8 @@ namespace SoccerFight
             float torsoRot = lean + torsoTwist;
             Place(torso, hip, torsoRot);
             Place(pelvis, hip, torsoRot * 0.35f);
-            Vector2 shoulder = hip + MathUtil.Rotate(new Vector2(0.0f, 0.465f), torsoRot);
-            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, 0.525f), torsoRot);
+            Vector2 shoulder = hip + MathUtil.Rotate(new Vector2(0.0f, body.ShoulderY), torsoRot);
+            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), torsoRot);
             Place(neck, neckBase, torsoRot * 0.6f + headTilt * 0.3f);
             float headRot = torsoRot + headTilt;
             Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0.0f, 0.065f), torsoRot * 0.6f);
@@ -589,8 +619,22 @@ namespace SoccerFight
 
             Vector2 nearSh = shoulder + MathUtil.Rotate(new Vector2(0.015f, -0.01f), torsoRot);
             Vector2 farSh = shoulder + MathUtil.Rotate(new Vector2(-0.035f, 0.01f), torsoRot);
-            PoseArm(farArm, farSh, farShoulder + torsoRot, farElbow);
-            PoseArm(nearArm, nearSh, nearShoulder + torsoRot, nearElbow);
+            // hands that hold or dribble the basketball reach for it (IK blended over the swing)
+            float farAbs = farShoulder + torsoRot, nearAbs = nearShoulder + torsoRot;
+            if (farIKw > 0.001f)
+            {
+                ArmIK(farSh, farIK, out float a, out float e);
+                farAbs = Mathf.LerpAngle(farAbs, a, farIKw);
+                farElbow = Mathf.LerpAngle(farElbow, e, farIKw);
+            }
+            if (nearIKw > 0.001f)
+            {
+                ArmIK(nearSh, nearIK, out float a, out float e);
+                nearAbs = Mathf.LerpAngle(nearAbs, a, nearIKw);
+                nearElbow = Mathf.LerpAngle(nearElbow, e, nearIKw);
+            }
+            PoseArm(farArm, farSh, farAbs, farElbow, farWrist);
+            PoseArm(nearArm, nearSh, nearAbs, nearElbow, nearWrist);
 
             // --- outputs (world space)
             Vector2 rootW = player.Pos;
