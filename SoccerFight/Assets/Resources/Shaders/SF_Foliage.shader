@@ -73,6 +73,9 @@ Shader "SoccerFight/Foliage"
                 return lerp(rgb, (half3)max(g, 0.0), (half)_EnvGraded);
             }
 
+            // aerial perspective colour (global, set per stage by ThemeGrade)
+            half4 _SF_Haze;
+
             // set every frame by WorldEnvironment
             float4 _SF_Wind;   // x base lean, y gust strength, z flutter strength, w time
             float4 _SF_Push0;  // xy position, z radius, w strength  (player)
@@ -120,7 +123,7 @@ Shader "SoccerFight/Foliage"
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
                 half a = tex.a * i.color.a;
                 half3 rgb = tex.rgb * i.color.rgb;
-                rgb = EnvGrade(lerp(rgb, _FogColor.rgb * tex.a, _FogAmount) * _Tint.rgb, tex.a);
+                rgb = lerp(EnvGrade(rgb * _Tint.rgb, tex.a), _SF_Haze.rgb * tex.a, _FogAmount);
                 return half4(rgb * (i.color.a * _Intensity * i.pulse), a);
             }
             ENDHLSL

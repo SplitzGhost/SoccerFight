@@ -3,11 +3,11 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// The SPORTFIGHTER logo, drawn from scratch in the look of the ruins it belongs to: a chunky
+    /// The SPORTFIGHTER logo, drawn from scratch: a chunky
     /// display face built from boxes (the same counters and bar weights everywhere), "SPORT" small
-    /// on top, "FIGHTER" big below. The letters are moonstone blocks: a dark carved slab, pale faces
-    /// with grain, a lit bevel, moss creeping over some top edges and cracks with crystal light in
-    /// them. The "O" is left as an empty socket: the menu puts a real spinning ball there.
+    /// on top, "FIGHTER" big below, in the Project Rise title look: SPORT sky blue, FIGHTER gold
+    /// (cream at the top, orange at the foot) with a navy keyline, a warm extruded slab and a lit bevel.
+    /// The "O" is left as an empty socket: the menu puts a real spinning ball there.
     ///
     /// Units: 1 = the cap height FIGHTER would have at full size (it is set at 0.86). The signed distance of all letters is sampled once into a
     /// grid, so the outline, slab and shading passes are cheap lookups. Runs on a worker thread.
@@ -26,9 +26,9 @@ namespace SoccerFight
         const float B = 0.22f;  // bar height
         const float Gap = 0.075f;
 
-        static readonly Color Ink = new Color(0.015f, 0.04f, 0.06f, 1f);
-        static readonly Color Slab = new Color(0.04f, 0.11f, 0.15f, 1f);
-        static readonly Color SlabLight = new Color(0.09f, 0.2f, 0.25f, 1f);
+        static readonly Color Ink = new Color(0.1f, 0.11f, 0.22f, 1f);
+        static readonly Color Slab = new Color(0.52f, 0.26f, 0.1f, 1f);
+        static readonly Color SlabLight = new Color(0.8f, 0.45f, 0.16f, 1f);
 
         static Color Mul(Color c, float f) { c.r *= f; c.g *= f; c.b *= f; return c; }
 
@@ -258,10 +258,10 @@ namespace SoccerFight
             var c = new SdfCanvas(Area, Ppu);
             Rect letters = new Rect(-2.42f, -0.34f, 4.88f, 2.56f);
 
-            // 1) a soft dark halo so the letters hold against the bright moon behind them
-            c.Fill(p => field.At(p) - 0.16f, new Color(0.01f, 0.03f, 0.05f, 0.45f), 0.14f, letters);
+            // 1) a soft dark halo so the letters hold against the bright sky behind them
+            c.Fill(p => field.At(p) - 0.16f, new Color(0.08f, 0.1f, 0.2f, 0.4f), 0.14f, letters);
 
-            // 2) slab: the letters pushed straight down, carved from the same dark stone
+            // 2) slab: the letters pushed straight down, a warm toffee-coloured extrusion
             Vector2 depth = new Vector2(0.02f, -0.1f);
             const int steps = 6;
             SdfCanvas.SdfFn slab = p =>
@@ -276,7 +276,7 @@ namespace SoccerFight
             // 3) keyline around the faces
             c.Fill(p => field.At(p) - 0.042f, Ink, 0f, letters);
 
-            // 4) faces: moonstone — SPORT cool and pale, FIGHTER bright with a teal foot; grain and streaks
+            // 4) faces: SPORT sky blue to white, FIGHTER gold — cream on top, orange at the foot (the Project Rise title look)
             c.Fill(p => field.At(p), p =>
             {
                 bool top = topField.At(p) < 0.02f;
@@ -284,17 +284,17 @@ namespace SoccerFight
                 if (top)
                 {
                     float k = MathUtil.Smooth01((p.y - 1.2f) / 0.62f);
-                    col = Color.Lerp(new Color(0.38f, 0.72f, 0.8f), new Color(0.86f, 0.98f, 1f), k);
+                    col = Color.Lerp(new Color(0.36f, 0.68f, 0.96f), new Color(0.9f, 0.97f, 1f), k);
                 }
                 else
                 {
                     float f = MathUtil.Smooth01((p.y + 0.02f) / 1.02f);
-                    Color low = new Color(0.27f, 0.55f, 0.63f), mid = new Color(0.72f, 0.9f, 0.94f), high = new Color(0.97f, 1f, 1f);
+                    Color low = new Color(0.96f, 0.52f, 0.12f), mid = new Color(1f, 0.8f, 0.28f), high = new Color(1f, 0.97f, 0.7f);
                     col = f < 0.45f ? Color.Lerp(low, mid, f / 0.45f) : Color.Lerp(mid, high, (f - 0.45f) / 0.55f);
                 }
                 float grain = Noise.Perlin(p.x * 34f, p.y * 34f);
                 float streak = Noise.Perlin(p.x * 60f, p.y * 3f);
-                col = Mul(col, 0.93f + 0.08f * grain - 0.05f * MathUtil.Smooth01((streak - 0.62f) / 0.1f));
+                col = Mul(col, 0.97f + 0.04f * grain - 0.02f * MathUtil.Smooth01((streak - 0.62f) / 0.1f));
                 col.a = 1f;
                 return col;
             }, 0f, letters);
@@ -309,57 +309,14 @@ namespace SoccerFight
                 float gloss = MathUtil.Smooth01(up / 0.02f) * 0.7f;
                 float shade = MathUtil.Smooth01(down / 0.02f) * 0.4f;
                 if (gloss > 0.01f) return new Color(1f, 1f, 1f, gloss);
-                if (shade > 0.01f) return new Color(0.1f, 0.25f, 0.32f, shade);
+                if (shade > 0.01f) return new Color(0.7f, 0.34f, 0.08f, shade);
                 return Color.clear;
             }, letters);
-
-            // 6) moss creeping over some of the top edges
-            c.Paint(p =>
-            {
-                float d = field.At(p);
-                if (d > 0f) return Color.clear;
-                float up = field.At(p + new Vector2(0f, 0.09f));
-                if (up < -0.01f) return Color.clear;
-                float patch = Noise.Perlin(p.x * 3.4f + 7f, 1.3f);
-                float lump = Noise.Perlin(p.x * 22f, p.y * 22f);
-                float edge = MathUtil.Smooth01((up + 0.01f) / 0.03f) * MathUtil.Smooth01((patch - 0.63f) / 0.08f);
-                float a = edge * MathUtil.Smooth01((lump - 0.35f) / 0.15f);
-                return Color.Lerp(Palette.Moss, Palette.IvyLight, lump).WithAlpha(a * 0.95f);
-            }, letters);
-
-            // 7) cracks through FIGHTER with crystal light inside them
-            var rng = new System.Random(7);
-            float R() => (float)rng.NextDouble();
-            foreach (var pl in placed)
-            {
-                if (pl.Top || pl.C == 'O') continue;
-                int n = 1 + rng.Next(2);
-                for (int k = 0; k < n; k++)
-                {
-                    Vector2 a = Tilt(pl.Origin + new Vector2(R() * pl.Width, 0.15f + R() * 0.7f) * pl.Scale);
-                    Vector2 dir = MathUtil.Dir(R() * 360f);
-                    var pts = new Vector2[5];
-                    pts[0] = a;
-                    for (int s = 1; s < pts.Length; s++) pts[s] = pts[s - 1] + MathUtil.Rotate(dir, (R() - 0.5f) * 70f) * (0.06f + R() * 0.07f);
-                    SdfCanvas.SdfFn crack = p =>
-                    {
-                        if (field.At(p) > -0.008f) return 1f;
-                        float d = 10f;
-                        for (int s = 1; s < pts.Length; s++)
-                            d = Mathf.Min(d, Sdf.Tapered(p, pts[s - 1], 0.016f * (1f - s * 0.18f) + 0.004f, pts[s], 0.004f));
-                        return d;
-                    };
-                    Rect cb = new Rect(a.x - 0.4f, a.y - 0.4f, 0.8f, 0.8f);
-                    c.Paint(crack, new Color(0.03f, 0.1f, 0.13f, 0.95f), 0f, cb);
-                    c.Paint(p => crack(p) + 0.006f, new Color(0.55f, 0.97f, 1f, 1f), 0.004f, cb);
-                    c.Paint(p => crack(p) - 0.018f, new Color(0.6f, 0.95f, 1f, 0.22f), 0.02f, cb);
-                }
-            }
 
             // 8) the ball socket: a dark disc the spinning ball will cover
             Vector2 bcn = BallCenter;
             float br = BallRadius;
-            c.Fill(p => Sdf.Circle(p, bcn, br), new Color(0.03f, 0.08f, 0.11f), 0f, new Rect(bcn.x - br - 0.1f, bcn.y - br - 0.1f, br * 2f + 0.2f, br * 2f + 0.2f));
+            c.Fill(p => Sdf.Circle(p, bcn, br), new Color(0.1f, 0.12f, 0.22f), 0f, new Rect(bcn.x - br - 0.1f, bcn.y - br - 0.1f, br * 2f + 0.2f, br * 2f + 0.2f));
             return c;
         }
 

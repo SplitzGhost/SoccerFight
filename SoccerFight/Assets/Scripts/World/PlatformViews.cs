@@ -93,7 +93,7 @@ namespace SoccerFight
                     for (float x = x0 + 0.2f; x < x1 - 0.2f; x += Range(0.5f, 1.1f))
                         back.Add(Pick(FoliageArt.Crystals), new Vector2(x, y + Range(0.06f, 0.1f)), Range(0.3f, 0.48f), Color.white, 0f, 0f, R() > 0.5f, Range(-20f, 20f));
                     for (float x = x0 + 0.1f; x < x1 - 0.1f; x += Range(0.35f, 0.8f))
-                        back.Add(Pick(FoliageArt.Grass), new Vector2(x, y + Range(0.05f, 0.1f)), Range(0.35f, 0.55f), new Color(0.85f, 1f, 1f, 1f), 1f, 1f, R() > 0.5f);
+                        back.Add(Pick(FoliageArt.Grass), new Vector2(x, y + Range(0.05f, 0.1f)), Range(0.35f, 0.55f), Color.white, 1f, 1f, R() > 0.5f);
                     break;
                 case Level.Style.Mushroom:
                     for (float x = x0 + 0.1f; x < x1 - 0.1f; x += Range(0.18f, 0.45f))
@@ -125,7 +125,7 @@ namespace SoccerFight
             if (p.Kind != Level.Style.Crystal)
                 for (float x = x0; x < x1; x += Range(0.18f, 0.42f) * (p.Kind == Level.Style.Plank || p.Kind == Level.Style.Mushroom ? 2f : 1f))
                     lip.Add(R() > 0.85f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Grass), new Vector2(x, y - Range(0.1f, 0.15f)), Range(0.3f, 0.5f),
-                        new Color(0.95f, 1f, 1f, 1f), 1f, 0.7f, R() > 0.5f);
+                        Color.white, 1f, 0.7f, R() > 0.5f);
             foreach (var h in look.Hangs)
             {
                 FoliageArt.Variant hv;

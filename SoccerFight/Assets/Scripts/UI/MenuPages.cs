@@ -31,7 +31,7 @@ namespace SoccerFight
             MenuUi.Stretch(Root);
             Group = Root.gameObject.AddComponent<CanvasGroup>();
 
-            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
+            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.1f, 0.16f, 0.22f, InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
             var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, 0.55f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(vignette.rectTransform);
 
@@ -134,7 +134,7 @@ namespace SoccerFight
         {
             var glow = UiKit.Img("EmblemGlow", parent, UiArt.Glow, accent.WithAlpha(0.22f), pos, Vector2.one * size * 2f);
             glows.Add((glow, accent, Random.value * 10f));
-            UiKit.Img("EmblemDisc", parent, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.8f), pos, Vector2.one * size);
+            UiKit.Img("EmblemDisc", parent, MenuArt.Round, new Color(0.13f, 0.21f, 0.28f, 0.8f), pos, Vector2.one * size);
             UiKit.Img("EmblemRing", parent, MenuArt.RoundFrame, Color.Lerp(accent, Color.white, 0.3f).WithAlpha(0.85f), pos, Vector2.one * (size + 4f));
             var img = UiKit.Img("Emblem", parent, icon, colored ? Color.white : Color.Lerp(accent, Color.white, 0.5f), pos, Vector2.one * size * 0.56f);
             img.preserveAspect = true;
@@ -155,7 +155,7 @@ namespace SoccerFight
                 float y = 130f - i * 70f;
                 bool you = i == 0;
                 var row = UiKit.Node("Row" + i, panel, new Vector2(0f, y), new Vector2(860f, 58f));
-                UiKit.Img("Plate", row, MenuArt.CardBody, you ? new Color(0.16f, 0.14f, 0.09f, 0.9f) : new Color(0.03f, 0.06f, 0.09f, 0.7f), Vector2.zero, new Vector2(860f, 58f), Image.Type.Sliced);
+                UiKit.Img("Plate", row, MenuArt.CardBody, you ? new Color(0.16f, 0.14f, 0.09f, 0.9f) : new Color(0.15f, 0.23f, 0.3f, 0.7f), Vector2.zero, new Vector2(860f, 58f), Image.Type.Sliced);
                 UiKit.Img("Frame", row, MenuArt.Frame, (you ? Gold : Muted).WithAlpha(you ? 0.7f : 0.15f), Vector2.zero, new Vector2(862f, 60f), Image.Type.Sliced);
                 Color medal = i == 0 ? Gold : i == 1 ? new Color(0.8f, 0.87f, 0.92f) : i == 2 ? new Color(0.9f, 0.6f, 0.4f) : Muted;
                 MenuUi.Medallion(row, "Rank", new Vector2(-380f, 0f), 42f, medal);
@@ -190,7 +190,7 @@ namespace SoccerFight
                 MenuArt.Label("Name", card, names[i], 34f, Color.white, new Vector2(0f, -20f), new Vector2(520f, 50f), TextAlignmentOptions.Center, 6f);
                 Body(card, lines[i], new Vector2(0f, -84f), new Vector2(460f, 70f));
                 var timer = UiKit.Node("Timer", card, new Vector2(0f, -148f), new Vector2(240f, 40f));
-                UiKit.Img("Pill", timer, UiArt.Pill, new Color(0.02f, 0.05f, 0.08f, 0.85f), Vector2.zero, new Vector2(240f, 40f), Image.Type.Sliced);
+                UiKit.Img("Pill", timer, UiArt.Pill, new Color(0.13f, 0.21f, 0.28f, 0.85f), Vector2.zero, new Vector2(240f, 40f), Image.Type.Sliced);
                 MenuArt.Label("T", timer, "STARTET BALD", 18f, Gold, Vector2.zero, new Vector2(240f, 40f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
                 SoonButton(card, MenuPage.Events, "event" + i, new Vector2(0f, -218f), new Vector2(320f, 72f), cols[i], "MITMACHEN", 26f, "EVENTS STARTEN BALD");
                 MenuUi.Tag(card, "BALD", new Vector2(208f, 250f), Gold);
@@ -260,7 +260,7 @@ namespace SoccerFight
             Settings.Build(holder, false);
             Recolor(Settings.Root, "Glass", MenuArt.Glass, cardPos, cardSize);
             Recolor(Settings.Root, "Border", MenuArt.Accent.WithAlpha(0.3f), cardPos, cardSize + new Vector2(3f, 3f));
-            Recolor(Settings.Root, "Shadow", new Color(0f, 0.01f, 0.03f, 0.45f), cardPos + new Vector2(0f, -12f), cardSize * 1.1f);
+            Recolor(Settings.Root, "Shadow", new Color(0.04f, 0.08f, 0.16f, 0.45f), cardPos + new Vector2(0f, -12f), cardSize * 1.1f);
             Recolor(Settings.Root, "Top Light", MenuArt.Accent.WithAlpha(0.55f), cardPos + new Vector2(0f, cardSize.y * 0.5f - 1f), new Vector2(cardSize.x * 0.7f, 2f));
             var title = Settings.Root.Find("Title");
             if (title != null) title.gameObject.SetActive(false);   // the page already has a heading

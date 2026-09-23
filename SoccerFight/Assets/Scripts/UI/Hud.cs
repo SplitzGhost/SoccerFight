@@ -197,13 +197,13 @@ namespace SoccerFight
             var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
             t.font = bold ? UiArt.FontBold : UiArt.FontRegular;
             var mat = bold ? UiArt.FontBoldShadow : UiArt.FontRegularShadow;
-            if (shadow && mat != null) t.fontSharedMaterial = mat;
+            if (mat != null) t.fontSharedMaterial = mat;   // every HUD text carries the ink halo: it sits on the bright world
             t.fontSize = size;
             t.color = color;
             t.alignment = align;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
-            t.characterSpacing = spacing;
+            t.characterSpacing = bold ? spacing * UiArt.DisplayTracking : spacing;
             t.raycastTarget = false;
             t.text = text;
             return t;
@@ -307,18 +307,20 @@ namespace SoccerFight
         {
             hpGroup = Node("Health", canvasRect, new Vector2(0f, 1f), new Vector2(44f, -44f), Vector2.zero);
             Color glass = Palette.UiGlass.WithAlpha(0.86f);
+            // a dark translucent strip behind the whole block, like the player plates of Project Rise
+            Img("Plate", hpGroup, UiArt.Panel, new Color(0.08f, 0.13f, 0.2f, 0.5f), new Vector2(210f, -40f), new Vector2(470f, 96f), Image.Type.Sliced);
 
-            emblemGlow = Img("EmblemGlow", hpGroup, UiArt.Glow, Palette.HpA.WithAlpha(0.22f), new Vector2(38f, -38f), new Vector2(150f, 150f));
+            emblemGlow = Img("EmblemGlow", hpGroup, UiArt.Glow, Palette.Life.WithAlpha(0.22f), new Vector2(38f, -38f), new Vector2(150f, 150f));
             shieldGlow = Img("ShieldGlow", hpGroup, UiArt.Glow, Palette.ShotCyan.WithAlpha(0f), new Vector2(38f, -38f), new Vector2(170f, 170f));
             Img("EmblemBase", hpGroup, UiArt.Circle, glass, new Vector2(38f, -38f), new Vector2(76f, 76f));
-            emblemRing = Img("EmblemRing", hpGroup, UiArt.RingThick, Palette.HpA, new Vector2(38f, -38f), new Vector2(76f, 76f));
+            emblemRing = Img("EmblemRing", hpGroup, UiArt.RingThick, Palette.Life, new Vector2(38f, -38f), new Vector2(76f, 76f));
             Img("EmblemRim", hpGroup, UiArt.RingThin, Color.white.WithAlpha(0.18f), new Vector2(38f, -38f), new Vector2(92f, 92f));
             shieldRing = Img("ShieldRing", hpGroup, UiArt.RingThin, Palette.ShotCyan.WithAlpha(0f), new Vector2(38f, -38f), new Vector2(104f, 104f));
             Img("Heart", hpGroup, UiArt.Heart, Color.white, new Vector2(38f, -37f), new Vector2(32f, 32f));
             shieldText = Text("Shield", hpGroup, "", 13f, Palette.ShotCyan, TextAlignmentOptions.Center, new Vector2(38f, -94f), new Vector2(120f, 20f), true, true, 3f);
 
             float barX = 92f, barY = -30f;
-            hpGlow = Img("BarGlow", hpGroup, UiArt.Glow, Palette.HpA.WithAlpha(0f), new Vector2(barX + BarW * 0.5f, barY), new Vector2(BarW + 80f, 70f));
+            hpGlow = Img("BarGlow", hpGroup, UiArt.Glow, Palette.Life.WithAlpha(0f), new Vector2(barX + BarW * 0.5f, barY), new Vector2(BarW + 80f, 70f));
             Img("BarBack", hpGroup, UiArt.Pill, glass, new Vector2(barX + BarW * 0.5f, barY), new Vector2(BarW, BarH), Image.Type.Sliced);
             Img("BarRim", hpGroup, UiArt.Pill, Color.white.WithAlpha(0.06f), new Vector2(barX + BarW * 0.5f, barY + 1f), new Vector2(BarW - 2f, BarH - 4f), Image.Type.Sliced);
 
@@ -327,7 +329,7 @@ namespace SoccerFight
             hpGhostRt = hpGhost.rectTransform;
             hpGhostRt.pivot = new Vector2(0f, 0.5f);
             hpGhostRt.anchoredPosition = new Vector2(barX + BarInset, barY);
-            hpFill = Img("Fill", hpGroup, UiArt.BarFill, Palette.HpB, Vector2.zero, new Vector2(BarW, innerH), Image.Type.Sliced);
+            hpFill = Img("Fill", hpGroup, UiArt.BarFill, Palette.Life, Vector2.zero, new Vector2(BarW, innerH), Image.Type.Sliced);
             hpFillRt = hpFill.rectTransform;
             hpFillRt.pivot = new Vector2(0f, 0.5f);
             hpFillRt.anchoredPosition = new Vector2(barX + BarInset, barY);
@@ -343,8 +345,8 @@ namespace SoccerFight
                 Img("Tick", hpGroup, UiArt.Pill, Palette.UiGlass.WithAlpha(0.45f), new Vector2(x, barY), new Vector2(2f, innerH), Image.Type.Sliced);
             }
 
-            Text("Label", hpGroup, "LEBEN", 14f, Palette.UiMuted, TextAlignmentOptions.Left, new Vector2(barX + 60f, barY - 26f), new Vector2(120f, 20f), true, true, 6f);
-            hpText = Text("Value", hpGroup, "100", 20f, Palette.UiText, TextAlignmentOptions.Right, new Vector2(barX + BarW - 60f, barY - 27f), new Vector2(120f, 24f));
+            Text("Label", hpGroup, "LEBEN", 18f, Palette.UiMuted, TextAlignmentOptions.Left, new Vector2(barX + 60f, barY - 28f), new Vector2(120f, 24f), true, true, 6f);
+            hpText = Text("Value", hpGroup, "100", 22f, Palette.UiText, TextAlignmentOptions.Right, new Vector2(barX + BarW - 60f, barY - 28f), new Vector2(160f, 26f));
 
             // the build: one medallion per upgrade, in pick order
             buildRoot = Node("Build", hpGroup, new Vector2(0.5f, 0.5f), new Vector2(92f, -92f), Vector2.zero);
@@ -356,11 +358,11 @@ namespace SoccerFight
             s.root = Node(name, canvasRect, new Vector2(1f, 0f), pos, new Vector2(size, size));
             Color glass = Palette.UiGlass.WithAlpha(0.88f);
             s.glow = Img("Glow", s.root, UiArt.Glow, accent.WithAlpha(0.0f), Vector2.zero, Vector2.one * size * 2f);
-            Img("Shadow", s.root, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.45f), new Vector2(0f, -4f), Vector2.one * size * 1.45f);
+            Img("Shadow", s.root, UiArt.Glow, new Color(0.04f, 0.08f, 0.16f, 0.45f), new Vector2(0f, -4f), Vector2.one * size * 1.45f);
             s.baseImg = Img("Base", s.root, UiArt.Circle, glass, Vector2.zero, Vector2.one * size);
             s.icon = Img("Icon", s.root, icon, Color.white, Vector2.zero, Vector2.one * size * 0.72f);
             s.iconRt = s.icon.rectTransform;
-            s.overlay = Img("Cooldown", s.root, UiArt.Circle, new Color(0.01f, 0.02f, 0.05f, 0.62f), Vector2.zero, Vector2.one * (size - 2f), Image.Type.Filled);
+            s.overlay = Img("Cooldown", s.root, UiArt.Circle, new Color(0.06f, 0.12f, 0.18f, 0.62f), Vector2.zero, Vector2.one * (size - 2f), Image.Type.Filled);
             s.overlay.fillMethod = Image.FillMethod.Radial360;
             s.overlay.fillOrigin = (int)Image.Origin360.Top;
             s.overlay.fillClockwise = false;
@@ -428,10 +430,11 @@ namespace SoccerFight
         void BuildWave()
         {
             var g = Node("Wave", canvasRect, new Vector2(0.5f, 1f), new Vector2(0f, -34f), Vector2.zero);
-            stageText = Text("Stage", g, "", 13f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 0f), new Vector2(600f, 20f), true, true, 6f);
+            Img("Plate", g, UiArt.Panel, new Color(0.08f, 0.13f, 0.2f, 0.5f), new Vector2(0f, -40f), new Vector2(360f, 108f), Image.Type.Sliced);
+            stageText = Text("Stage", g, "", 16f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 0f), new Vector2(600f, 22f), true, true, 6f);
             pipRoot = Node("Pips", g, new Vector2(0.5f, 0.5f), new Vector2(0f, -28f), Vector2.zero);
-            waveText = Text("WaveText", g, "", 20f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, -58f), new Vector2(500f, 28f), true, true, 8f);
-            enemiesText = Text("Enemies", g, "", 13f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -82f), new Vector2(400f, 20f), true, true, 4f);
+            waveText = Text("WaveText", g, "", 27f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, -58f), new Vector2(500f, 34f), true, true, 8f);
+            enemiesText = Text("Enemies", g, "", 16f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -84f), new Vector2(400f, 22f), true, true, 4f);
 
             banner = Node("Banner", canvasRect, new Vector2(0.5f, 0.5f), new Vector2(0f, 190f), new Vector2(900f, 160f));
             bannerGroup = banner.gameObject.AddComponent<CanvasGroup>();
@@ -566,7 +569,7 @@ namespace SoccerFight
             death.anchorMin = Vector2.zero; death.anchorMax = Vector2.one; death.sizeDelta = Vector2.zero;
             deathGroup = death.gameObject.AddComponent<CanvasGroup>();
             deathGroup.alpha = 0f;
-            Stretch(Img("Dim", death, null, new Color(0.01f, 0.02f, 0.05f, 0.72f), Vector2.zero, Vector2.zero));
+            Stretch(Img("Dim", death, null, new Color(0.06f, 0.12f, 0.18f, 0.72f), Vector2.zero, Vector2.zero));
             Img("Aura", death, UiArt.Glow, Palette.Hurt.WithAlpha(0.08f), new Vector2(0f, 60f), new Vector2(1500f, 700f));
             Text("Label", death, "LAUF BEENDET", 16f, Palette.Hurt, TextAlignmentOptions.Center, new Vector2(0f, 190f), new Vector2(900f, 24f), true, true, 14f);
             Text("Title", death, "BESIEGT", 96f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 120f), new Vector2(1000f, 120f), true, true, 22f);
@@ -579,11 +582,12 @@ namespace SoccerFight
             // two lines (moves, then skills), shifted left so they clear the skill bar
             var hint = Node("Hint", canvasRect, new Vector2(0.5f, 0f), new Vector2(-230f, 58f), new Vector2(1200f, 56f));
             hintGroup = hint.gameObject.AddComponent<CanvasGroup>();
-            hintText = Text("HintText", hint, "", 14f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1200f, 56f), true, true, 2.5f);
+            Img("Plate", hint, UiArt.Panel, new Color(0.08f, 0.13f, 0.2f, 0.45f), Vector2.zero, new Vector2(1140f, 62f), Image.Type.Sliced);
+            hintText = Text("HintText", hint, "", 15f, Palette.UiMuted, TextAlignmentOptions.Center, Vector2.zero, new Vector2(1200f, 56f), true, true, 2.5f);
             RefreshBindings();
             KeyBindings.Changed += RefreshBindings;
 
-            fade = Img("Fade", canvasRect, null, new Color(0.01f, 0.02f, 0.05f, 1f), Vector2.zero, Vector2.zero);
+            fade = Img("Fade", canvasRect, null, new Color(0.06f, 0.12f, 0.18f, 1f), Vector2.zero, Vector2.zero);
             Stretch(fade);
         }
 
@@ -876,11 +880,11 @@ namespace SoccerFight
             float gw = innerW * hpGhostV;
             hpGhost.enabled = gw > fw + 0.5f;
             hpGhostRt.sizeDelta = new Vector2(Mathf.Max(innerH, gw), innerH);
-            hpGhost.color = Color.Lerp(Palette.HpA, Color.white, 0.75f).WithAlpha(0.9f);
+            hpGhost.color = Color.Lerp(Palette.LifeLow, Color.white, 0.6f).WithAlpha(0.9f);
 
             float low = frac < 0.3f && !player.Dead ? 1f - frac / 0.3f : 0f;
             float pulse = 0.5f + 0.5f * Mathf.Sin(time * 7f);
-            Color fillCol = Color.Lerp(Palette.HpA, Palette.HpB, Mathf.Clamp01((frac - 0.2f) / 0.8f));
+            Color fillCol = Color.Lerp(Palette.LifeLow, Palette.Life, Mathf.Clamp01((frac - 0.2f) / 0.5f));
             hpFill.color = Color.Lerp(fillCol, Color.white, low * pulse * 0.3f);
             hpGlow.color = Palette.HpA.WithAlpha(low * (0.25f + 0.25f * pulse));
             emblemRing.color = fillCol;
@@ -896,7 +900,7 @@ namespace SoccerFight
             {
                 shownHp = hp;
                 shownMaxHp = max;
-                hpText.text = hp + "<size=70%><color=#8FA3B8> / " + max + "</color></size>";
+                hpText.text = hp + "<size=70%><color=#D4E4EA> / " + max + "</color></size>";
             }
 
             // captain's shield: a cyan ring around the emblem, pips for extra charges
@@ -1123,7 +1127,7 @@ namespace SoccerFight
                 float ns = Mathf.Lerp(1.3f, 1f, MathUtil.EaseOutCubic((bossIntroT - 0.2f) / 0.5f));
                 bossIntroName.rectTransform.localScale = new Vector3(ns, ns, 1f);
                 bossIntroName.alpha = MathUtil.Smooth01((bossIntroT - 0.2f) / 0.3f);
-                bossIntroName.characterSpacing = Mathf.Lerp(40f, 16f, MathUtil.EaseOutCubic((bossIntroT - 0.2f) / 1.2f));
+                bossIntroName.characterSpacing = UiArt.DisplayTracking * Mathf.Lerp(40f, 16f, MathUtil.EaseOutCubic((bossIntroT - 0.2f) / 1.2f));
                 bossIntroTitle.alpha = MathUtil.Smooth01((bossIntroT - 0.6f) / 0.4f);
                 bossIntroLabel.alpha = MathUtil.Smooth01((bossIntroT - 0.1f) / 0.3f);
             }
@@ -1162,7 +1166,7 @@ namespace SoccerFight
             float tIn = MathUtil.EaseOutCubic(stageT / 0.6f);
             float tOut = MathUtil.Smooth01((stageT - (dur - 0.6f)) / 0.6f);
             stageGroup.alpha = tIn * (1f - tOut);
-            stageName.characterSpacing = Mathf.Lerp(46f, 18f, MathUtil.EaseOutCubic(stageT / 1.6f));
+            stageName.characterSpacing = UiArt.DisplayTracking * Mathf.Lerp(46f, 18f, MathUtil.EaseOutCubic(stageT / 1.6f));
             float s = Mathf.Lerp(1.08f, 1f, tIn);
             stageCard.localScale = new Vector3(s, s, 1f);
             stageCard.anchoredPosition = new Vector2(0f, 150f + tOut * 24f);
@@ -1398,7 +1402,7 @@ namespace SoccerFight
             // fade in from black on start / restart (also hides first-frame shader warm-up)
             fadeT += dt;
             float fa = 1f - MathUtil.EaseOutQuad(fadeT / 0.8f);
-            fade.color = new Color(0.01f, 0.02f, 0.05f, fa);
+            fade.color = new Color(0.06f, 0.12f, 0.18f, fa);
             fade.enabled = fa > 0.001f;
         }
     }

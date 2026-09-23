@@ -106,7 +106,7 @@ namespace SoccerFight
         CanvasGroup tagGroup;
         const float FeetY = -392f, FigureScale = 292f, LogoUnit = 25f;
         /// <summary>The name tag floats a little above the head of whoever stands there (the basketball players are taller).</summary>
-        static float TagY => FeetY + 612f + (Characters.Current.Body.HeadTop - PlayerBody.Soccer.HeadTop) * FigureScale;
+        static float TagY => FeetY + Characters.Current.Body.HeadTop * FigureScale + 80f;
 
         // cursor
         Image curRing, curDot, curGlow;
@@ -178,7 +178,7 @@ namespace SoccerFight
             vista = new MenuVista();
             vista.Build(parent);
             // night falls over the switch between arena and scene
-            veil = UiKit.Img("Veil", root, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
+            veil = UiKit.Img("Veil", root, null, new Color(0.1f, 0.16f, 0.22f, 1f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(veil.rectTransform);
 
             // everything that fades with the menu; the flying balls and the transition sit above it
@@ -247,7 +247,7 @@ namespace SoccerFight
 
         static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
         static readonly Color Cool = new Color(0.8f, 0.95f, 1f);
-        static readonly Color Muted = new Color(0.62f, 0.72f, 0.8f);
+        static readonly Color Muted = new Color(0.86f, 0.92f, 0.95f);
         const int UiLayer = 5;
 
         void Register(MenuTarget t) => targets.Add(t);
@@ -305,15 +305,15 @@ namespace SoccerFight
             // season heading and the record as a progress bar through the eight stages
             var season = UiKit.Node("Season", leftCol, new Vector2(0f, 262f), new Vector2(500f, 170f));
             MenuArt.Label("Overline", season, "SAISON 1", 22f, MenuArt.Accent, new Vector2(0f, 62f), new Vector2(500f, 30f), TextAlignmentOptions.Left, 9f, MenuArt.TextHeavySoft);
-            MenuArt.Label("Title", season, "MONDNACHT", 60f, Color.white, new Vector2(0f, 14f), new Vector2(500f, 72f), TextAlignmentOptions.Left, 10f);
+            MenuArt.Label("Title", season, "ANSTOSS", 60f, Color.white, new Vector2(0f, 14f), new Vector2(500f, 72f), TextAlignmentOptions.Left, 10f);
             MenuArt.Label("RecordLabel", season, "REKORD", 17f, Muted, new Vector2(0f, -40f), new Vector2(500f, 24f), TextAlignmentOptions.Left, 5f, MenuArt.TextHeavySoft);
             recordValue = MenuArt.Label("RecordValue", season, "", 17f, Gold, new Vector2(-40f, -40f), new Vector2(420f, 24f), TextAlignmentOptions.Right, 4f, MenuArt.TextHeavySoft);
             UiKit.Img("RecordTrophy", season, MenuArt.IconTrophy, Gold, new Vector2(232f, -40f), new Vector2(22f, 22f)).preserveAspect = true;
-            UiKit.Img("Track", season, UiArt.Pill, new Color(0.02f, 0.05f, 0.08f, 0.85f), new Vector2(0f, -66f), new Vector2(500f, 12f), Image.Type.Sliced);
+            UiKit.Img("Track", season, UiArt.Pill, new Color(0.13f, 0.21f, 0.28f, 0.85f), new Vector2(0f, -66f), new Vector2(500f, 12f), Image.Type.Sliced);
             recordFill = UiKit.Img("Fill", season, UiArt.Pill, Gold, new Vector2(-250f, -66f), new Vector2(0f, 8f), Image.Type.Sliced);
             recordFill.rectTransform.pivot = new Vector2(0f, 0.5f);
             for (int i = 1; i < StageThemes.All.Length; i++)
-                UiKit.Img("Tick", season, null, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-250f + 500f * i / StageThemes.All.Length, -66f), new Vector2(2f, 12f));
+                UiKit.Img("Tick", season, null, new Color(0.13f, 0.21f, 0.28f, 0.9f), new Vector2(-250f + 500f * i / StageThemes.All.Length, -66f), new Vector2(2f, 12f));
             Move(season, new Vector2(-700f, 0f), 0.1f);
 
             // quests: a placeholder panel with the kind of tasks the weekly quests will bring
@@ -335,13 +335,13 @@ namespace SoccerFight
             {
                 var (icon, title, goal, reward, accent) = quests[i];
                 var row = UiKit.Node("Quest" + i, face, new Vector2(0f, 76f - i * 104f), new Vector2(456f, 92f));
-                UiKit.Img("Plate", row, MenuArt.CardBody, new Color(0.02f, 0.05f, 0.08f, 0.62f), Vector2.zero, new Vector2(456f, 92f), Image.Type.Sliced);
+                UiKit.Img("Plate", row, MenuArt.CardBody, new Color(0.13f, 0.21f, 0.28f, 0.62f), Vector2.zero, new Vector2(456f, 92f), Image.Type.Sliced);
                 UiKit.Img("Edge", row, null, accent.WithAlpha(0.8f), new Vector2(-226f, 0f), new Vector2(3f, 56f));
-                UiKit.Img("Disc", row, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-180f, 0f), new Vector2(58f, 58f));
+                UiKit.Img("Disc", row, MenuArt.Round, new Color(0.13f, 0.21f, 0.28f, 0.9f), new Vector2(-180f, 0f), new Vector2(58f, 58f));
                 UiKit.Img("Ring", row, MenuArt.RoundFrame, MetaUi.Soft(accent).WithAlpha(0.8f), new Vector2(-180f, 0f), new Vector2(60f, 60f));
                 UiKit.Img("Icon", row, icon, MetaUi.Soft(accent), new Vector2(-180f, 0f), new Vector2(30f, 30f)).preserveAspect = true;
                 MenuArt.Label("Title", row, title, 18f, Color.white, new Vector2(12f, 17f), new Vector2(300f, 26f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
-                UiKit.Img("Track", row, UiArt.Pill, new Color(0.01f, 0.03f, 0.05f, 0.9f), new Vector2(-20f, -14f), new Vector2(236f, 9f), Image.Type.Sliced);
+                UiKit.Img("Track", row, UiArt.Pill, new Color(0.1f, 0.16f, 0.22f, 0.9f), new Vector2(-20f, -14f), new Vector2(236f, 9f), Image.Type.Sliced);
                 var fill = UiKit.Img("Fill", row, UiArt.Pill, accent, new Vector2(-138f, -14f), new Vector2(0f, 5f), Image.Type.Sliced);
                 fill.rectTransform.pivot = new Vector2(0f, 0.5f);
                 MenuArt.Label("Goal", row, goal, 14f, Muted, new Vector2(-20f, -32f), new Vector2(236f, 20f), TextAlignmentOptions.Right, 2f, MenuArt.TextHeavySoft);
@@ -363,7 +363,7 @@ namespace SoccerFight
             modeButton = mode;
             var face = mode.Face;
             modeGlow = UiKit.Img("EmblemGlow", face, UiArt.Glow, MenuArt.Accent.WithAlpha(0.25f), new Vector2(-160f, 16f), new Vector2(190f, 190f));
-            UiKit.Img("EmblemDisc", face, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-160f, 16f), new Vector2(100f, 100f));
+            UiKit.Img("EmblemDisc", face, MenuArt.Round, new Color(0.13f, 0.21f, 0.28f, 0.9f), new Vector2(-160f, 16f), new Vector2(100f, 100f));
             UiKit.Img("EmblemRing", face, MenuArt.RoundFrame, MetaUi.Soft(MenuArt.Accent).WithAlpha(0.9f), new Vector2(-160f, 16f), new Vector2(104f, 104f));
             UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(60f, 60f)).preserveAspect = true;
             MenuArt.Label("Overline", face, "SPIELMODUS", 15f, MenuArt.Accent, new Vector2(66f, 52f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
@@ -394,9 +394,9 @@ namespace SoccerFight
             barGroup = bar.gameObject.AddComponent<CanvasGroup>();
 
             // a band of night glass with a hairline of moonlight along its lower edge
-            var back = UiKit.Img("Back", bar, null, new Color(0.01f, 0.03f, 0.05f, 0.72f), Vector2.zero, Vector2.zero);
+            var back = UiKit.Img("Back", bar, null, new Color(0.1f, 0.16f, 0.22f, 0.72f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(back.rectTransform);
-            var shade = UiKit.Img("Shade", bar, UiArt.Glow, new Color(0f, 0.01f, 0.02f, 0.5f), Vector2.zero, Vector2.zero);
+            var shade = UiKit.Img("Shade", bar, UiArt.Glow, new Color(0.04f, 0.08f, 0.16f, 0.5f), Vector2.zero, Vector2.zero);
             shade.rectTransform.anchorMin = new Vector2(0f, 0f);
             shade.rectTransform.anchorMax = new Vector2(1f, 0f);
             shade.rectTransform.sizeDelta = new Vector2(400f, 60f);
@@ -506,7 +506,7 @@ namespace SoccerFight
                 return;
             }
             Vector2 centre = LogoArt.Area.center;
-            UiKit.Img("Glow", logoRoot, UiArt.Glow, new Color(0.45f, 0.85f, 1f, 0.16f), new Vector2(0f, -4f), size * 1.5f);
+            UiKit.Img("Glow", logoRoot, UiArt.Glow, new Color(1f, 0.8f, 0.35f, 0.14f), new Vector2(0f, -4f), size * 1.5f);
             UiKit.Img("Art", logoRoot, MenuScenery.Logo, Color.white, Vector2.zero, size);
 
             // the ball that sits in the O keeps spinning, faster after every hit
@@ -535,7 +535,7 @@ namespace SoccerFight
             strip.pivot = new Vector2(0.5f, 0f);
             strip.sizeDelta = new Vector2(0f, SubPage.BottomBar);
             stripGroup = strip.gameObject.AddComponent<CanvasGroup>();
-            var back = UiKit.Img("Back", strip, null, new Color(0.01f, 0.03f, 0.05f, 0.6f), Vector2.zero, Vector2.zero);
+            var back = UiKit.Img("Back", strip, null, new Color(0.1f, 0.16f, 0.22f, 0.6f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(back.rectTransform);
             var line = UiKit.Img("Line", strip, MenuArt.Sliver, Color.white.WithAlpha(0.1f), Vector2.zero, Vector2.zero);
             line.rectTransform.anchorMin = new Vector2(0f, 1f);
@@ -821,7 +821,7 @@ namespace SoccerFight
             tagName.text = def.Name;
             tagRole.text = def.Role;
             tagRole.color = Color.Lerp(def.Accent, Color.white, 0.4f);
-            tagBadge.color = Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f);
+            tagBadge.color = Color.Lerp(def.Accent, new Color(0.2f, 0.31f, 0.39f), 0.35f);
             tagIcon.sprite = MenuArt.ClassIcon(def.Class);
             tagButton.Color = def.Accent;
             if (changed) swapFlash = 1f;

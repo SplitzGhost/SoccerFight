@@ -44,14 +44,14 @@ namespace SoccerFight
         public float ThighLen = PlayerDims.ThighLen, ShinLen = PlayerDims.ShinLen;
         public float UpperArmLen = PlayerDims.UpperArmLen, ForearmLen = PlayerDims.ForearmLen;
         /// <summary>Hip joint → shoulder joint along the torso.</summary>
-        public float ShoulderY = 0.465f;
-        /// <summary>Width of the chest and shoulders (1 = the soccer build).</summary>
-        public float Build = 1f;
+        public float ShoulderY = 0.4f;
+        /// <summary>Chunkiness: width of the chest, shoulders and limbs (1 = the old slim build; the soccer players are 1.35).</summary>
+        public float Build = 1.35f;
 
         public float StandHip => PlayerDims.AnkleHeight + ThighLen + ShinLen - 0.045f;
         public float NeckY => ShoulderY + 0.06f;
         /// <summary>Feet → top of the head, standing (name tags, portraits).</summary>
-        public float HeadTop => StandHip + NeckY + 0.065f + 0.38f;
+        public float HeadTop => StandHip + NeckY + 0.05f + 0.4f * PlayerDims.HeadScale;
 
         public static readonly PlayerBody Soccer = new PlayerBody();
 
@@ -161,7 +161,7 @@ namespace SoccerFight
                 Accent = Hex("#FF6A3D"), Attack = 5, Defence = 2, Tech = 3,
                 Kit = Hoops(Kit("#C9352C", "#7A1B24", "#EE6B4E", "#F3EEE4", "#A9A39A", "#8A5A3C", "#5C3826", "#B98460",
                           "#141118", "#46404F", "#1B1A20", "#403E4A", "#FF5A3A", 0.5f, true), "#17151B", HairStyle.Fade, 3, sleeve: true),
-                Body = PlayerBody.Hoops(0.46f, 0.47f, 0.31f, 0.29f, 0.5f, 1f),
+                Body = PlayerBody.Hoops(0.35f, 0.34f, 0.26f, 0.24f, 0.44f, 1.3f),
                 Perk = Perk("dre", "SPLASH", "Dreier: +20 % Schaden, lädt 15 % schneller.",
                     (s, n) => { s.ThreeDamageMul += 0.2f; s.ThreeCooldownMul *= 0.85f; }),
             },
@@ -172,7 +172,7 @@ namespace SoccerFight
                 Accent = Hex("#E7B43A"), Attack = 3, Defence = 5, Tech = 2,
                 Kit = Hoops(Kit("#233A70", "#111D3E", "#4263A6", "#F2EBDD", "#A69F92", "#6A4430", "#41291C", "#98684A",
                           "#100C0C", "#3A302C", "#16181F", "#3A4150", "#E9B640", 0.3f, false), "#E9B640", HairStyle.Buzz, 34, kneePads: true),
-                Body = PlayerBody.Hoops(0.49f, 0.49f, 0.32f, 0.3f, 0.53f, 1.2f),
+                Body = PlayerBody.Hoops(0.36f, 0.35f, 0.27f, 0.25f, 0.46f, 1.6f),
                 Perk = Perk("titan", "RIM PROTECTOR", "+25 maximales Leben, Dunk-Druckwellen 20 % größer.",
                     (s, n) => { s.MaxHpBonus += 25f; s.DunkWaveMul += 0.2f; }),
             },
@@ -183,7 +183,7 @@ namespace SoccerFight
                 Accent = Hex("#2FD6C8"), Attack = 2, Defence = 3, Tech = 5,
                 Kit = Hoops(Kit("#17A39B", "#0A5B5A", "#4FD3C5", "#F6EEF4", "#B7A4B4", "#D9A57E", "#A77558", "#F4CCA6",
                           "#2A1A1E", "#6E4A56", "#D8398F", "#FF86C4", "#2FD6C8", 1.6f, false), "#E0409A", HairStyle.Braids, 11),
-                Body = PlayerBody.Hoops(0.45f, 0.45f, 0.3f, 0.28f, 0.49f, 0.94f),
+                Body = PlayerBody.Hoops(0.34f, 0.33f, 0.25f, 0.23f, 0.43f, 1.22f),
                 Perk = Perk("nova", "HANDLES", "Crossover-Boost hält 1 s länger, +8 % Tempo.",
                     (s, n) => { s.CrossTimeBonus += 1f; s.MoveSpeedMul += 0.08f; }),
             },

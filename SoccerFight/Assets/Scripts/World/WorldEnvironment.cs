@@ -7,7 +7,7 @@ namespace SoccerFight
     /// Assembles the world: eight parallax depth layers — far snowy peaks, mountains
     /// with a waterfall, a forest hill with a ruined stadium, big trees, an aqueduct, the arcade ruins,
     /// near columns and trunks, bushes — each moving with the camera by its distance and getting
-    /// darker the further back it lies, mist pooling between them, hundreds of wind-animated plants,
+    /// hazier the further back it lies, haze drifting between them, hundreds of wind-animated plants,
     /// ambient life, the marked pitch and the platforms. Drives the global wind / interaction inputs.
     /// </summary>
     public sealed class WorldEnvironment
@@ -28,6 +28,12 @@ namespace SoccerFight
         readonly List<Puddle> puddles = new List<Puddle>();
         readonly Ambient ambient = new Ambient();
 
+        readonly List<(Material m, float intensity)> glowMats = new List<(Material, float)>();
+        SpriteRenderer starField, sunHaloWide;
+        readonly List<(SpriteRenderer sr, Color c)> sunParts = new List<(SpriteRenderer, Color)>();
+        float sunShown = -1f;
+        float fxNight = -1f;
+
         Transform root;
         CameraRig cam;
         System.Random rng;
@@ -38,6 +44,7 @@ namespace SoccerFight
         public Transform LeftPortal { get; private set; }
         public Transform RightPortal { get; private set; }
         public float Wind { get; private set; }
+        public SpriteRenderer SkyGradient { get; private set; }
 
         public const float GoalX = 16.9f;
 
@@ -52,14 +59,38 @@ namespace SoccerFight
         float Range(float a, float b) => a + (b - a) * R();
         T Pick<T>(T[] arr) => arr[rng.Next(arr.Length)];
 
-        /// <summary>Night falls off with distance: every layer is darker and a little bluer the further back it lies.</summary>
+        /// <summary>
+        /// Daylight falls off with distance the other way round: every layer is a touch cooler (this
+        /// tint) and fades further into the pale sky haze (<see cref="DepthHaze"/>) the further back it lies.
+        /// </summary>
         public static Color DepthTint(float depth)
         {
-            float b = Mathf.Lerp(1f, 0.42f, depth);
-            return new Color(b * Mathf.Lerp(1f, 0.86f, depth), b * Mathf.Lerp(1f, 0.94f, depth), b, 1f);
+            return new Color(Mathf.Lerp(1f, 0.93f, depth), Mathf.Lerp(1f, 0.97f, depth), 1f, 1f);
         }
 
+        /// <summary>How far a layer at this depth fades into the haze colour (0 = play plane).</summary>
+        public static float DepthHaze(float depth) => 0.5f * Mathf.Pow(Mathf.Clamp01(depth), 0.85f);
+
+        /// <summary>Material for a backdrop layer at this depth.</summary>
+        static Material DepthMat(float depth) => Art.HazeMat(DepthHaze(depth));
+
+        /// <summary>0 = sunny day, 1 = night: stars, lantern light, fireflies and spirit lights fade in with it (set per stage).</summary>
+        public static float Night { get; set; }
+
+        /// <summary>How much of the sun shows (0 in the rain and the cave; set per stage).</summary>
+        public static float SunK { get; set; } = 1f;
+
         static Color Shade(Color c, Color tint) => new Color(c.r * tint.r, c.g * tint.g, c.b * tint.b, c.a);
+
+        /// <summary>Glowing plant layers (mushrooms, flowers, crystals) only shine properly at night.</summary>
+        Material NightGlow(Material m)
+        {
+            glowMats.Add((m, m.GetFloat("_Intensity")));
+            return m;
+        }
+
+        /// <summary>How strongly night-only lights show: a faint glint by day, full at night.</summary>
+        static float NightK(float day) => Mathf.Lerp(day, 1f, Night);
 
         Transform Group(string name)
         {
@@ -104,28 +135,36 @@ namespace SoccerFight
         void BuildSky()
         {
             var sky = AddLayer("Sky", new Vector2(0f, -1.6f), 1f, 1f);
-            Art.MakeSprite("Gradient", sky, EnvironmentArt.Sky, -1000).transform.localScale = new Vector3(240f, 1f, 1f);
+            // the gradient is graded on its own (sky matrix): every stage paints its own sky
+            var skyMat = Art.MakeSpriteMaterial("SF Sky", 1f, false);
+            skyMat.SetFloat("_EnvGraded", 2f);
+            SkyGradient = Art.MakeSprite("Gradient", sky, EnvironmentArt.Sky, -1000, skyMat, Color.white);
+            SkyGradient.transform.localScale = new Vector3(240f, 1f, 1f);
 
             var stars = AddLayer("Stars", new Vector2(0f, 2.6f), 0.985f, 0.97f);
-            Art.MakeSprite("Stars", stars, EnvironmentArt.Stars, -995, Art.SpriteAddMat, new Color(1, 1, 1, 0.85f)).transform.localScale = new Vector3(1.6f, 1f, 1f);
+            starField = Art.MakeSprite("Stars", stars, EnvironmentArt.Stars, -995, Art.SpriteAddMat, new Color(1, 1, 1, 0f));
+            starField.transform.localScale = new Vector3(1.6f, 1f, 1f);
 
             var clouds = AddLayer("Clouds", Vector2.zero, 0.96f, 0.94f);
             var bats = AddLayer("Bats", Vector2.zero, 0.9f, 0.86f);
             ambient.BuildSky(stars, clouds, bats);
 
-            var moon = AddLayer("Moon", new Vector2(5.4f, 6.6f), 0.975f, 0.96f);
-            Art.MakeSprite("Halo Wide", moon, Art.SoftGlow, -985, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.13f)).transform.localScale = Vector3.one * 18f;
-            Art.MakeSprite("Halo", moon, Art.SoftGlow, -984, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.36f)).transform.localScale = Vector3.one * 6.5f;
-            var disc = Art.MakeSprite("Disc", moon, EnvironmentArt.Moon, -983, Art.SpriteEmissiveMat, Color.white);
-            disc.sharedMaterial = Art.MakeSpriteMaterial("SF Moon", 1.35f, false);
+            // the sun: a warm disc in a wide soft halo (at night the stage grade turns it into a pale moon)
+            var sun = AddLayer("Sun", new Vector2(5.4f, 6.6f), 0.975f, 0.96f);
+            sunHaloWide = Art.MakeSprite("Halo Wide", sun, Art.SoftGlow, -985, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.14f));
+            sunHaloWide.transform.localScale = Vector3.one * 16f;
+            Art.MakeSprite("Halo", sun, Art.SoftGlow, -984, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0.35f)).transform.localScale = Vector3.one * 6.5f;
+            var disc = Art.MakeSprite("Disc", sun, EnvironmentArt.Moon, -983, Art.SpriteEmissiveMat, Color.white);
+            disc.sharedMaterial = Art.MakeSpriteMaterial("SF Sun", 1.25f, false);
             disc.transform.localScale = Vector3.one * 1.05f;
-            Art.MakeSprite("Rim", moon, Art.Ring, -982, Art.SpriteGlowMat, Palette.MoonGlow.WithAlpha(0.12f)).transform.localScale = Vector3.one * 1.28f;
+            Art.MakeSprite("Rim", sun, Art.Ring, -982, Art.SpriteGlowMat, Palette.MoonGlow.WithAlpha(0.1f)).transform.localScale = Vector3.one * 1.3f;
+            foreach (var sr in sun.GetComponentsInChildren<SpriteRenderer>()) if (sr != sunHaloWide) sunParts.Add((sr, sr.color));
 
             float[] rayAngles = { -10f, -19f, -27f, -35f, -43f, -15f, -31f };
             float[] rayWidths = { 1.9f, 3.0f, 1.4f, 2.6f, 1.7f, 0.9f, 0.7f };
             for (int i = 0; i < rayAngles.Length; i++)
             {
-                var r = Art.MakeSprite("Ray" + i, moon, Art.LightRay, -760, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0f));
+                var r = Art.MakeSprite("Ray" + i, sun, Art.LightRay, -760, Art.SpriteAddMat, Palette.MoonGlow.WithAlpha(0f));
                 r.transform.localRotation = Quaternion.Euler(0f, 0f, rayAngles[i]);
                 r.transform.localScale = new Vector3(rayWidths[i], 1.8f, 1f);
                 rays.Add(r);
@@ -143,7 +182,7 @@ namespace SoccerFight
         {
             var l = AddLayer("Peaks", new Vector2(0f, 3.4f), 0.94f, 0.9f);
             Color tint = DepthTint(DPeaks);
-            Art.MakeSprite("Range", l, DepthArt.Peaks, -950, Art.SpriteMat, tint);
+            Art.MakeSprite("Range", l, DepthArt.Peaks, -950, DepthMat(DPeaks), tint);
             AddFog("Fog Peaks", -945, new Vector2(0f, 3.1f), 0.92f, 0.88f, 1.4f, 0.14f, 0.07f, DPeaks);
         }
 
@@ -153,7 +192,7 @@ namespace SoccerFight
         {
             var far = AddLayer("Far", new Vector2(0f, 2.7f), 0.87f, 0.8f);
             Color tint = DepthTint(DFar);
-            Art.MakeSprite("Mountains", far, EnvironmentArt.Far, -900, Art.SpriteMat, tint);
+            Art.MakeSprite("Mountains", far, EnvironmentArt.Far, -900, DepthMat(DFar), tint);
             ambient.BuildWaterfall(far, tint.b);
             AddStrip(far, Shade(Color.Lerp(Palette.FarBottom, Palette.Fog, 0.16f), tint), 0.1f, -901);
             AddFog("Fog Far", -880, new Vector2(0f, 2.75f), 0.85f, 0.78f, 1.5f, 0.13f, 0.12f, DFar);
@@ -165,7 +204,7 @@ namespace SoccerFight
         {
             var l = AddLayer("Far Forest", new Vector2(0f, 2.4f), 0.77f, 0.71f);
             Color tint = DepthTint(DForest);
-            Art.MakeSprite("Forest", l, DepthArt.FarForest, -850, Art.SpriteMat, tint);
+            Art.MakeSprite("Forest", l, DepthArt.FarForest, -850, DepthMat(DForest), tint);
             foreach (var li in DepthArt.ForestLights)
             {
                 bool flood = li.z > 0.8f;
@@ -187,7 +226,7 @@ namespace SoccerFight
             // raised so the crowns frame the top of the view and leave the middle open for the far layers
             var mid = AddLayer("Trees", new Vector2(0f, 0.1f), 0.65f, 0.6f);
             Color tint = DepthTint(DTrees);
-            Art.MakeSprite("Trunks", mid, EnvironmentArt.Mid, -800, Art.SpriteMat, tint);
+            Art.MakeSprite("Trunks", mid, EnvironmentArt.Mid, -800, DepthMat(DTrees), tint);
             AddStrip(mid, Shade(Palette.MidBottom, tint), 0.35f, -801);
 
             var canopy = new FoliageLayer();
@@ -201,7 +240,7 @@ namespace SoccerFight
             }
             foreach (var a in EnvironmentArt.MossAnchors)
                 if (R() > 0.3f) canopy.Add(Pick(FoliageArt.Moss), a, Range(0.7f, 1.2f), leaf, 1f, 0f, R() > 0.5f);
-            canopy.Build(mid, "Canopies", -799, FoliageLayer.MakeMaterial("SF Foliage Trees", 0.28f, 0.7f, false, 1f, tint));
+            canopy.Build(mid, "Canopies", -799, FoliageLayer.MakeMaterial("SF Foliage Trees", DepthHaze(DTrees), 0.7f, false, 1f, tint));
 
             AddFog("Fog Mid", -780, new Vector2(0f, 0.6f), 0.6f, 0.55f, 2.2f, 0.14f, -0.18f, DTrees);
         }
@@ -212,7 +251,7 @@ namespace SoccerFight
         {
             var l = AddLayer("Aqueduct", new Vector2(0f, -0.1f), 0.54f, 0.5f);
             Color tint = DepthTint(DAqueduct);
-            Art.MakeSprite("Arches", l, DepthArt.Aqueduct, -740, Art.SpriteMat, tint);
+            Art.MakeSprite("Arches", l, DepthArt.Aqueduct, -740, DepthMat(DAqueduct), tint);
 
             var plants = new FoliageLayer();
             foreach (var a in DepthArt.AqueductIvy)
@@ -223,7 +262,7 @@ namespace SoccerFight
                 var v = roll < 0.5f ? Pick(FoliageArt.Grass) : roll < 0.75f ? Pick(FoliageArt.TallGrass) : Pick(FoliageArt.Bushes);
                 plants.Add(v, new Vector2(x, Range(0.05f, 0.25f)), roll >= 0.75f ? Range(0.45f, 0.7f) : Range(0.6f, 1f), Color.white, 1f, 0f, R() > 0.5f);
             }
-            plants.Build(l, "Aqueduct Plants", -739, FoliageLayer.MakeMaterial("SF Foliage Aqueduct", 0.15f, 0.85f, false, 1f, tint));
+            plants.Build(l, "Aqueduct Plants", -739, FoliageLayer.MakeMaterial("SF Foliage Aqueduct", DepthHaze(DAqueduct), 0.85f, false, 1f, tint));
             ambient.BuildAqueductFall(l, DepthArt.AqueductFallTop, DepthArt.AqueductFallLength, tint.b, -737);
             AddFog("Fog Aqueduct", -730, new Vector2(0f, 0.25f), 0.5f, 0.46f, 1.8f, 0.13f, 0.16f, DAqueduct);
         }
@@ -234,7 +273,7 @@ namespace SoccerFight
         {
             var ruins = AddLayer("Ruins", new Vector2(0f, -0.4f), 0.42f, 0.38f);
             Color tint = DepthTint(DRuins);
-            Art.MakeSprite("Arcade", ruins, EnvironmentArt.Ruins, -700, Art.SpriteMat, tint);
+            Art.MakeSprite("Arcade", ruins, EnvironmentArt.Ruins, -700, DepthMat(DRuins), tint);
             AddStrip(ruins, Shade(Palette.RuinBottom * 1.1f, tint), 0.2f, -701);
 
             var plants = new FoliageLayer();
@@ -254,10 +293,10 @@ namespace SoccerFight
                 float s = bush ? Range(0.5f, 0.8f) : Range(0.7f, 1.1f);
                 plants.Add(v, new Vector2(x, Range(0.02f, 0.18f)), s, leaf, 1f, 0f, R() > 0.5f);
             }
-            plants.Build(ruins, "Ruin Plants", -699, FoliageLayer.MakeMaterial("SF Foliage Ruins", 0.16f, 0.9f, false, 1f, tint));
+            plants.Build(ruins, "Ruin Plants", -699, FoliageLayer.MakeMaterial("SF Foliage Ruins", DepthHaze(DRuins), 0.9f, false, 1f, tint));
             ambient.BuildRuins(ruins);
 
-            AddFog("Fog Low", -650, new Vector2(0f, -0.35f), 0.36f, 0.33f, 1.6f, 0.2f, 0.26f, DRuins);
+            AddFog("Fog Low", -650, new Vector2(0f, -0.35f), 0.36f, 0.33f, 1.6f, 0.12f, 0.26f, DRuins);
         }
 
         // ------------------------------------------------------------------ near columns and trunks
@@ -274,7 +313,7 @@ namespace SoccerFight
             foreach (var (x, kind, flip) in pieces)
             {
                 var sprite = kind == 0 ? DepthArt.ColumnTall : kind == 1 ? DepthArt.ColumnBroken : DepthArt.Trunk;
-                var sr = Art.MakeSprite(kind == 2 ? "Trunk" : "Column", l, sprite, -620, Art.SpriteMat, tint);
+                var sr = Art.MakeSprite(kind == 2 ? "Trunk" : "Column", l, sprite, -620, DepthMat(DColonnade), tint);
                 sr.transform.localPosition = new Vector3(x, 0f, 0f);
                 sr.flipX = flip;
                 float sx = flip ? -1f : 1f;
@@ -283,7 +322,7 @@ namespace SoccerFight
                 foreach (var a in anchors)
                     hang.Add(kind == 2 || R() > 0.5f ? Pick(FoliageArt.Moss) : Pick(FoliageArt.Ivy), new Vector2(x + a.x * sx, a.y), Range(0.7f, 1.1f), Color.white, 1f, 0f, R() > 0.5f);
             }
-            hang.Build(l, "Colonnade Moss", -619, FoliageLayer.MakeMaterial("SF Foliage Colonnade", 0.08f, 0.9f, false, 1f, tint));
+            hang.Build(l, "Colonnade Moss", -619, FoliageLayer.MakeMaterial("SF Foliage Colonnade", DepthHaze(DColonnade), 0.9f, false, 1f, tint));
         }
 
         // ------------------------------------------------------------------ near vegetation behind the pitch
@@ -292,7 +331,7 @@ namespace SoccerFight
         {
             var near = AddLayer("Near", new Vector2(0f, -0.4f), 0.16f, 0.15f);
             Color tint = DepthTint(DNear);
-            Art.MakeSprite("Bushes", near, EnvironmentArt.Bushes, -600, Art.SpriteMat, tint);
+            Art.MakeSprite("Bushes", near, EnvironmentArt.Bushes, -600, DepthMat(DNear), tint);
 
             var back = new FoliageLayer();
             var front = new FoliageLayer();
@@ -317,9 +356,9 @@ namespace SoccerFight
                 else { v = Pick(FoliageArt.Grass); s = Range(0.8f, 1.3f); }
                 front.Add(v, new Vector2(x, Range(0.44f, 0.56f)), s, full, 1f, 0f, R() > 0.5f);
             }
-            back.Build(near, "Near Back", -595, FoliageLayer.MakeMaterial("SF Foliage Near Back", 0.06f, 0.95f, false, 1f, tint));
-            front.Build(near, "Near Front", -590, FoliageLayer.MakeMaterial("SF Foliage Near", 0f, 1f, false, 1f, tint),
-                FoliageLayer.MakeMaterial("SF Foliage Near Glow", 0f, 1f, true, 0.9f), -589);
+            back.Build(near, "Near Back", -595, FoliageLayer.MakeMaterial("SF Foliage Near Back", DepthHaze(DNear) + 0.04f, 0.95f, false, 1f, tint));
+            front.Build(near, "Near Front", -590, FoliageLayer.MakeMaterial("SF Foliage Near", DepthHaze(DNear) * 0.5f, 1f, false, 1f, tint),
+                NightGlow(FoliageLayer.MakeMaterial("SF Foliage Near Glow", 0f, 1f, true, 0.9f)), -589);
         }
 
         // ------------------------------------------------------------------ pitch, earth, goals (world locked)
@@ -377,7 +416,7 @@ namespace SoccerFight
                 backEdge.Add(v, new Vector2(x, Range(0.27f, 0.35f)), s, Color.white, 1f, 1f, R() > 0.5f);
             }
             backEdge.Build(ground, "Pitch Back Grass", -95, FoliageLayer.MakeMaterial("SF Foliage Pitch", 0f, 1f),
-                FoliageLayer.MakeMaterial("SF Foliage Pitch Glow", 0f, 1f, true, 0.8f), -94);
+                NightGlow(FoliageLayer.MakeMaterial("SF Foliage Pitch Glow", 0f, 1f, true, 0.8f)), -94);
 
             // tufts on the front lip (in front of the players, below their feet)
             var lip = new FoliageLayer();
@@ -395,7 +434,7 @@ namespace SoccerFight
             for (int i = 0; i < 9; i++)
                 earthDecor.Add(Pick(FoliageArt.Crystals), new Vector2(Range(-26f, 26f), Range(-2.4f, -1.0f)), Range(1.0f, 1.5f), Color.white, 0f, 0f, R() > 0.5f, Range(-25f, 25f));
             earthDecor.Build(ground, "Earth Decor", -108, FoliageLayer.MakeMaterial("SF Foliage Earth", 0f, 0f),
-                FoliageLayer.MakeMaterial("SF Foliage Earth Glow", 0f, 0f, true, 0.45f), -107);
+                NightGlow(FoliageLayer.MakeMaterial("SF Foliage Earth Glow", 0f, 0f, true, 0.45f)), -107);
 
             // a thin ground mist drifting over the back of the pitch
             var mist = Group("Ground Mist");
@@ -481,7 +520,7 @@ namespace SoccerFight
         void AddFog(string name, int order, Vector2 basePos, float px, float py, float height, float alpha, float speed, float depth)
         {
             var g = AddLayer(name, basePos, px, py);
-            Color c = Shade(Palette.Fog, DepthTint(depth * 0.85f)).WithAlpha(alpha);
+            Color c = Shade(Palette.Fog, DepthTint(depth * 0.85f)).WithAlpha(alpha * 0.6f);   // light haze bands, not night mist
             var sr = Art.MakeSprite(name, g, EnvironmentArt.FogBand, order, Art.SpriteMat, c);
             sr.drawMode = SpriteDrawMode.Tiled;
             sr.size = new Vector2(64f, 2f);
@@ -550,16 +589,31 @@ namespace SoccerFight
             for (int i = 0; i < rays.Count; i++)
             {
                 float a = rayBaseAlpha[i] * (0.65f + 0.35f * Mathf.Sin(time * (0.35f + i * 0.07f) + i * 1.7f));
-                rays[i].color = Palette.MoonGlow.WithAlpha(a);
+                rays[i].color = Palette.MoonGlow.WithAlpha(a * Mathf.Lerp(1.3f, 0.8f, Night) * SunK);
                 rays[i].transform.localRotation = Quaternion.Euler(0f, 0f, rayBaseRot[i] + Mathf.Sin(time * 0.13f + i) * 1.6f);
             }
+            starField.color = new Color(1f, 1f, 1f, 0.85f * Night * Night);
+            sunHaloWide.color = Palette.MoonGlow.WithAlpha(Mathf.Lerp(0.14f, 0.1f, Night) * SunK);
+            if (Mathf.Abs(SunK - sunShown) > 0.005f)
+            {
+                sunShown = SunK;
+                foreach (var (sr, col) in sunParts) sr.color = col.WithAlpha(col.a * SunK);
+            }
+            for (int i = 0; i < glowMats.Count; i++) glowMats[i].m.SetFloat("_Intensity", glowMats[i].intensity * NightK(0.3f));
+            // additive light is tamed by day: on the bright backdrop full-strength glows burn out to white
+            if (Mathf.Abs(Night - fxNight) > 0.01f)
+            {
+                fxNight = Night;
+                Art.ParticleAddMat.SetFloat("_Intensity", NightK(0.55f));
+                Art.SpriteGlowMat.SetFloat("_Intensity", 2.4f * NightK(0.6f));
+            }
 
-            // distant windows, the floodlight and the crystals flicker softly
+            // distant windows, the floodlight and the crystals flicker softly (hardly visible by day)
             for (int i = 0; i < blinks.Count; i++)
             {
                 var b = blinks[i];
                 float f = 0.72f + 0.28f * Mathf.PerlinNoise(time * b.speed, b.phase);
-                b.sr.color = b.color.WithAlpha(b.baseA * f);
+                b.sr.color = b.color.WithAlpha(b.baseA * f * NightK(0.15f));
             }
 
             Platforms.Update(dt, time, Wind);
@@ -573,7 +627,7 @@ namespace SoccerFight
                 pos.x += c.x * f.parallax;
                 float blink = Mathf.Clamp01(0.35f + 0.65f * Mathf.Sin(t * 1.1f + f.phase * 3f)) * (0.6f + 0.4f * Mathf.PerlinNoise(t * 2f, f.phase));
                 f.sr.transform.localPosition = pos;
-                f.sr.color = Palette.Firefly.WithAlpha(blink * (f.parallax < 0f ? 0.35f : 0.9f));
+                f.sr.color = Palette.Firefly.WithAlpha(blink * (f.parallax < 0f ? 0.35f : 0.9f) * NightK(0.4f));
             }
 
             var fx = FxSystem.I;
@@ -586,7 +640,7 @@ namespace SoccerFight
                 moteTimer += 0.12f;
                 Rect view = cam.ViewRect;
                 Vector2 p = new Vector2(view.xMin + Random.value * view.width, view.yMin + 1.5f + Random.value * (view.height - 1.5f));
-                Color mc = new Color(0.8f, 0.95f, 1f, 0.55f);
+                Color mc = Color.Lerp(new Color(1f, 0.97f, 0.82f, 0.7f), new Color(0.8f, 0.95f, 1f, 0.55f), Night);
                 fx.Spawn(Random.value > 0.8f ? FxLayer.Front : FxLayer.Back, true, Art.CellDot, p,
                     new Vector2(Wind * 0.25f + (Random.value - 0.5f) * 0.12f, 0.05f + Random.value * 0.1f),
                     Random.Range(5f, 9f), Random.Range(0.025f, 0.05f), Random.Range(0.02f, 0.04f), mc, mc, 1.8f, 0f, -0.01f, 0f, 0f, false, true);
@@ -608,12 +662,12 @@ namespace SoccerFight
                     splashTimer = 0.09f;
                     p.stir = 1f;
                     Vector2 at = new Vector2(player.Pos.x, p.y);
-                    Color w = new Color(0.62f, 0.86f, 0.95f, 0.85f);
+                    Color w = new Color(0.78f, 0.93f, 1f, 0.9f);
                     fx.Sparks(at, new Vector2(-Mathf.Sign(player.Vel.x) * 0.4f, 1f), 70f, 4, 1.8f, 3.4f, w, 1.4f, 0.025f, 0.32f, 9f);
                 }
                 p.stir = Mathf.Max(0f, p.stir - dt * 1.5f);
                 float a = 0.3f + 0.12f * Mathf.Sin(time * 0.9f + p.phase) + 0.25f * p.stir * (0.5f + 0.5f * Mathf.Sin(time * 22f));
-                p.shine.color = new Color(0.7f, 0.92f, 1f, a);
+                p.shine.color = new Color(0.85f, 0.96f, 1f, a * 0.8f);
                 puddles[i] = p;
             }
         }

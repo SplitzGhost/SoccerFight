@@ -7,10 +7,10 @@ using UnityEngine.TextCore.LowLevel;
 namespace SoccerFight
 {
     /// <summary>
-    /// Everything the title screen draws on top of its scene, in the language of the in-game UI
-    /// (the upgrade cards, the HUD rings): dark glass bodies with a lit top edge, hairline frames
-    /// that take the accent colour, clean white glyph icons that get tinted, a crystal gem and a
-    /// gold coin, the impact shapes for the kicked ball, and a tracked text style with a soft shadow.
+    /// Everything the title screen draws on top of its scene, in the Project Rise language shared with
+    /// the in-game UI: slate-teal stone tablets with chamfered corners and a carved bevel, light inner
+    /// frames, gold buttons, clean white glyph icons that get tinted, a crystal gem and a
+    /// gold coin, the impact shapes for the kicked ball, and chunky Lilita One print with an ink outline.
     /// The logo and the scene are separate (LogoArt, MenuScenery) because they generate on worker
     /// threads while the game boots.
     /// </summary>
@@ -28,12 +28,16 @@ namespace SoccerFight
         public static TMP_FontAsset FontHeavy;
         public static Material TextHeavy, TextHeavySoft, TextPlate;
 
-        /// <summary>Near-black night blue for shadows and text on light plates.</summary>
-        public static readonly Color Ink = new Color(0.02f, 0.05f, 0.08f, 1f);
-        /// <summary>Dark glass of every panel and button (the same family as the upgrade cards).</summary>
-        public static readonly Color Glass = new Color(0.05f, 0.09f, 0.14f, 0.94f);
-        /// <summary>The menu's own accent: the cyan of the shots and crystals.</summary>
-        public static readonly Color Accent = new Color(0.36f, 0.92f, 1f, 1f);
+        /// <summary>Deep navy ink: letter outlines, shadows and text on light plates.</summary>
+        public static readonly Color Ink = new Color(0.1f, 0.13f, 0.22f, 1f);
+        /// <summary>Dark brown print on the gold buttons.</summary>
+        public static readonly Color InkWarm = new Color(0.3f, 0.16f, 0.06f, 1f);
+        /// <summary>Cream of the cards (hero cards, perk cards).</summary>
+        public static readonly Color Cream = new Color(0.93f, 0.92f, 0.87f, 1f);
+        /// <summary>Slate-teal stone of every panel and button (the Project Rise tablets).</summary>
+        public static readonly Color Glass = new Color(0.25f, 0.38f, 0.46f, 0.96f);
+        /// <summary>The menu's own accent: warm gold, like the Project Rise highlights.</summary>
+        public static readonly Color Accent = new Color(1f, 0.8f, 0.32f, 1f);
 
         static bool built;
 
@@ -131,21 +135,20 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ widgets
 
-        /// <summary>Size of the cut on the top-left and bottom-right corners of buttons and panels (UI px).</summary>
-        public const float Cut = 13f;
-        const float R = 3f;   // the two remaining corners are only eased
+        /// <summary>Size of the chamfer on the corners of buttons and panels (UI px).</summary>
+        public const float Cut = 11f;
+        const float R = 3f;   // the chamfers themselves are only eased
 
         /// <summary>
-        /// The menu's one shape: a box with the top-left and bottom-right corners cut off at 45° —
-        /// the shape of a shard, the way the crystals in the ruins break. Nine-sliced, so the cut
-        /// keeps its size on every button.
+        /// The menu's one shape: a stone tablet — a box with all four corners chamfered at 45°, like
+        /// the carved slabs of Project Rise. Nine-sliced, so the chamfer keeps its size on every button.
         /// </summary>
         public static float Shard(Vector2 p, Vector2 half, float cut, float r = R)
         {
             float d = Sdf.Box(p, Vector2.zero, half, r);
-            float tl = (-(p.x + half.x - cut) + (p.y - half.y)) * 0.70710678f;
-            float br = ((p.x - half.x + cut) - (p.y + half.y)) * 0.70710678f;
-            return Mathf.Max(d, Mathf.Max(tl, br));
+            Vector2 q = new Vector2(Mathf.Abs(p.x), Mathf.Abs(p.y));
+            float corner = (q.x + q.y - (half.x + half.y - cut)) * 0.70710678f;
+            return Mathf.Max(d, corner);
         }
 
         static void BuildWidgets(float D)
@@ -155,10 +158,12 @@ namespace SoccerFight
             Ui(vg, "MenuVignette", x => Vignette = x);
 
             float border = (Cut + 6f) * D;
-            // body: lit from the top, a hairline of light along the top edge (it starts after the cut)
+            // body: a tablet lit from the top with a carved bevel — a light groove along the upper
+            // edges, a shadowed one along the lower edges
             var body = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            body.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut), p => Mul(Color.white, Mathf.Lerp(0.7f, 1f, S01((p.y + 30f) / 60f))));
-            body.Paint(p => Sdf.Box(p, new Vector2(Cut * 0.5f, 30f), new Vector2(31.5f - Cut * 0.5f - 3f, 0.8f), 0.8f), new Color(1f, 1f, 1f, 1f), 0.6f);
+            body.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut), p => Mul(Color.white, Mathf.Lerp(0.8f, 1f, S01((p.y + 30f) / 60f))));
+            body.Paint(p => Sdf.Intersect(Mathf.Abs(Shard(p, new Vector2(27.5f, 27.5f), Cut - 1.6f)) - 1.1f, -p.y - 2f), new Color(1f, 1f, 1f, 0.5f), 0.6f);
+            body.Paint(p => Sdf.Intersect(Mathf.Abs(Shard(p, new Vector2(27.5f, 27.5f), Cut - 1.6f)) - 1.1f, p.y - 2f), new Color(0f, 0f, 0f, 0.22f), 0.6f);
             Ui(body, "MenuBody", x => Body = x, border);
 
             var edge = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
@@ -167,17 +172,19 @@ namespace SoccerFight
 
             // hairline frame (hollow), so a translucent body never shows a rim through itself
             var frame = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            frame.Fill(p => Mathf.Abs(Shard(p, new Vector2(30.6f, 30.6f), Cut - 0.4f)) - 1.05f, Color.white);
+            frame.Fill(p => Mathf.Abs(Shard(p, new Vector2(30.6f, 30.6f), Cut - 0.4f)) - 1.3f, Color.white);
             Ui(frame, "MenuFrame", x => Frame = x, border);
 
-            // soft sheen over the top of a body (only the top-left cut shows in it)
+            // soft sheen over the top of a body (the upper chamfers show in it)
             var gloss = new SdfCanvas(new Rect(-32, -16, 64, 32), D);
             gloss.Field(p => new Color(1f, 1f, 1f, S01((p.y + 14f) / 30f) * 0.8f));
-            gloss.Clip(p => Mathf.Max(Sdf.Box(p, Vector2.zero, new Vector2(31f, 15f), R), (-(p.x + 31f - Cut) + (p.y - 15f)) * 0.70710678f));
+            gloss.Clip(p => Mathf.Max(Sdf.Box(p, Vector2.zero, new Vector2(31f, 15f), R), (Mathf.Abs(p.x) + p.y - (31f + 15f - Cut)) * 0.70710678f));
             Ui(gloss, "MenuGloss", x => Gloss = x, border);
 
             var card = new SdfCanvas(new Rect(-32, -32, 64, 64), D);
-            card.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut + 3f), p => Mul(Color.white, Mathf.Lerp(0.8f, 1f, S01((p.y + 30f) / 60f))));
+            card.Fill(p => Shard(p, new Vector2(31.5f, 31.5f), Cut + 3f), p => Mul(Color.white, Mathf.Lerp(0.86f, 1f, S01((p.y + 30f) / 60f))));
+            card.Paint(p => Sdf.Intersect(Mathf.Abs(Shard(p, new Vector2(27f, 27f), Cut + 1f)) - 1.1f, -p.y - 2f), new Color(1f, 1f, 1f, 0.4f), 0.6f);
+            card.Paint(p => Sdf.Intersect(Mathf.Abs(Shard(p, new Vector2(27f, 27f), Cut + 1f)) - 1.1f, p.y - 2f), new Color(0f, 0f, 0f, 0.18f), 0.6f);
             Ui(card, "MenuCard", x => CardBody = x, (Cut + 9f) * D);
 
             // a sliver of light for the edges of bars and active tabs
@@ -511,40 +518,40 @@ namespace SoccerFight
         /// </summary>
         static void BuildFont()
         {
-            var font = Resources.Load<Font>("Fonts/Inter-SemiBold");
+            var font = Resources.Load<Font>("Fonts/LilitaOne-Regular");
             FontHeavy = font != null ? TMP_FontAsset.CreateFontAsset(font, 90, 22, GlyphRenderMode.SDFAA, 1024, 1024) : UiArt.FontBold;
             if (FontHeavy == null || FontHeavy.material == null) return;
-            FontHeavy.name = "Inter Menu SDF";
+            FontHeavy.name = "Lilita Menu SDF";
 
-            // headings and button labels: a hairline of night blue and a soft shadow underneath
+            // headings and button labels: a solid ink outline and a hard drop shadow (cartoon print)
             TextHeavy = new Material(FontHeavy.material) { name = "SF Menu Heavy" };
             TextHeavy.EnableKeyword("OUTLINE_ON");
             TextHeavy.SetColor("_OutlineColor", Ink);
-            TextHeavy.SetFloat("_FaceDilate", 0.06f);
-            TextHeavy.SetFloat("_OutlineWidth", 0.08f);
+            TextHeavy.SetFloat("_FaceDilate", 0.04f);
+            TextHeavy.SetFloat("_OutlineWidth", 0.16f);
             TextHeavy.SetFloat("_OutlineSoftness", 0f);
             TextHeavy.EnableKeyword("UNDERLAY_ON");
-            TextHeavy.SetColor("_UnderlayColor", new Color(0f, 0.02f, 0.04f, 0.65f));
+            TextHeavy.SetColor("_UnderlayColor", new Color(0.08f, 0.1f, 0.18f, 0.8f));
             TextHeavy.SetFloat("_UnderlayOffsetX", 0f);
-            TextHeavy.SetFloat("_UnderlayOffsetY", -0.55f);
-            TextHeavy.SetFloat("_UnderlayDilate", 0.25f);
-            TextHeavy.SetFloat("_UnderlaySoftness", 0.5f);
+            TextHeavy.SetFloat("_UnderlayOffsetY", -0.75f);
+            TextHeavy.SetFloat("_UnderlayDilate", 0.3f);
+            TextHeavy.SetFloat("_UnderlaySoftness", 0.08f);
 
-            // small print: only the soft shadow
+            // small print: a thinner ink halo
             TextHeavySoft = new Material(FontHeavy.material) { name = "SF Menu Soft" };
             TextHeavySoft.SetFloat("_FaceDilate", 0.02f);
             TextHeavySoft.EnableKeyword("UNDERLAY_ON");
-            TextHeavySoft.SetColor("_UnderlayColor", new Color(0f, 0.02f, 0.04f, 0.55f));
-            TextHeavySoft.SetFloat("_UnderlayOffsetY", -0.4f);
-            TextHeavySoft.SetFloat("_UnderlayDilate", 0.15f);
-            TextHeavySoft.SetFloat("_UnderlaySoftness", 0.45f);
+            TextHeavySoft.SetColor("_UnderlayColor", new Color(0.08f, 0.1f, 0.18f, 0.8f));
+            TextHeavySoft.SetFloat("_UnderlayOffsetY", -0.45f);
+            TextHeavySoft.SetFloat("_UnderlayDilate", 0.28f);
+            TextHeavySoft.SetFloat("_UnderlaySoftness", 0.12f);
 
-            // plain dark text printed onto light plates (the gold play button)
+            // plain dark text printed onto light plates (gold buttons, cream cards)
             TextPlate = new Material(FontHeavy.material) { name = "SF Menu Plate" };
             TextPlate.SetFloat("_FaceDilate", 0.08f);
         }
 
-        /// <summary>Menu label: semibold, tracked, soft shadow.</summary>
+        /// <summary>Menu label: Lilita One with the ink outline.</summary>
         public static TextMeshProUGUI Label(string name, Transform parent, string text, float size, Color color, Vector2 pos, Vector2 box,
             TextAlignmentOptions align = TextAlignmentOptions.Center, float spacing = 4f, Material mat = null)
         {

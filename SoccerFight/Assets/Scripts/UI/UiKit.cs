@@ -36,12 +36,12 @@ namespace SoccerFight
         }
     }
 
-    /// <summary>Builders for the clean glass-style menu widgets.</summary>
+    /// <summary>Builders for the slate stone-tablet menu widgets.</summary>
     public static class UiKit
     {
-        public static readonly Color ButtonBase = new Color(0.08f, 0.13f, 0.21f, 0.96f);
-        public static readonly Color ButtonHover = new Color(0.12f, 0.2f, 0.32f, 1f);
-        public static readonly Color Track = new Color(0.14f, 0.2f, 0.3f, 1f);
+        public static readonly Color ButtonBase = new Color(0.25f, 0.38f, 0.46f, 0.96f);
+        public static readonly Color ButtonHover = new Color(0.33f, 0.5f, 0.58f, 1f);
+        public static readonly Color Track = new Color(0.12f, 0.19f, 0.25f, 1f);
 
         public static RectTransform Node(string name, Transform parent, Vector2 pos, Vector2 size)
         {
@@ -80,7 +80,7 @@ namespace SoccerFight
             t.alignment = align;
             t.textWrappingMode = TextWrappingModes.NoWrap;
             t.overflowMode = TextOverflowModes.Overflow;
-            t.characterSpacing = spacing;
+            t.characterSpacing = bold ? spacing * UiArt.DisplayTracking : spacing;
             t.raycastTarget = false;
             t.text = text;
             return t;
@@ -108,7 +108,7 @@ namespace SoccerFight
                 rim.rectTransform.localScale = new Vector3(s, s, 1f);
                 glow.rectTransform.localScale = new Vector3(s, s, 1f);
                 rim.color = Color.Lerp(Color.white.WithAlpha(primary ? 0.3f : 0.14f), accent.WithAlpha(0.7f), h);
-                bg.color = Color.Lerp(primary ? new Color(0.1f, 0.2f, 0.3f, 0.98f) : ButtonBase, ButtonHover, h);
+                bg.color = Color.Lerp(primary ? new Color(0.3f, 0.45f, 0.54f, 0.98f) : ButtonBase, ButtonHover, h);
                 glow.color = accent.WithAlpha(h * 0.16f + (primary ? 0.05f : 0f));
                 bar.color = accent.WithAlpha(primary ? 1f : 0.35f + 0.65f * h);
                 bar.rectTransform.sizeDelta = new Vector2(6f, size.y * (0.3f + 0.25f * h));
@@ -146,7 +146,7 @@ namespace SoccerFight
                 knobGlow.rectTransform.anchoredPosition = knob.rectTransform.anchoredPosition;
                 knobGlow.color = Palette.ShotCyan.WithAlpha(0.35f * v);
                 track.color = Color.Lerp(Track, Palette.ShotCyan * 0.85f, v);
-                row.color = new Color(0.16f, 0.3f, 0.45f, 0.35f * a.Hover);
+                row.color = new Color(0.4f, 0.6f, 0.7f, 0.3f * a.Hover);
                 label.color = Color.Lerp(Palette.UiText, Color.white, a.Hover);
             };
             return button;
@@ -224,14 +224,14 @@ namespace SoccerFight
             return new KeyRow { Key = key, Background = bg, Rim = rim, Anim = anim };
         }
 
-        /// <summary>Glass card with a soft drop shadow, a hairline border and a lit top edge.</summary>
+        /// <summary>Stone card with a soft drop shadow, a light border and a lit top edge.</summary>
         public static RectTransform Panel(Transform parent, string name, Vector2 size, out CanvasGroup group)
         {
             var rt = Node(name, parent, Vector2.zero, size);
             group = rt.gameObject.AddComponent<CanvasGroup>();
-            Img("Shadow", rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.35f);
-            Img("Border", rt, UiArt.Panel, Color.white.WithAlpha(0.1f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
-            Img("Glass", rt, UiArt.Panel, new Color(0.045f, 0.075f, 0.12f, 0.995f), Vector2.zero, size, Image.Type.Sliced, true);
+            Img("Shadow", rt, UiArt.Glow, new Color(0.04f, 0.08f, 0.16f, 0.55f), new Vector2(0f, -20f), size * 1.35f);
+            Img("Border", rt, UiArt.Panel, new Color(0.78f, 0.9f, 0.94f, 0.5f), Vector2.zero, size + new Vector2(4f, 4f), Image.Type.Sliced);
+            Img("Glass", rt, UiArt.Panel, new Color(0.24f, 0.36f, 0.44f, 0.985f), Vector2.zero, size, Image.Type.Sliced, true);
             Img("Top Light", rt, UiArt.LineFade, Palette.ShotCyan.WithAlpha(0.35f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return rt;
         }

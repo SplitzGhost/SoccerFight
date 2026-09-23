@@ -132,11 +132,11 @@ namespace SoccerFight
                 c.Fill(sole, p => Color.Lerp(SoleShade, SoleWhite, MathUtil.Smooth01((p.y + 0.1f) / 0.03f)));
                 c.Paint(p => Sdf.Intersect(sole(p), Mathf.Abs(p.y + 0.08f) - 0.003f), K.Neon.WithAlpha(0.8f));
                 c.Paint(p => Sdf.Intersect(sole(p), -(p.y + 0.094f)), Color.Lerp(K.Boot, Color.black, 0.3f));
-                Boot = c.ToSprite("Boot", Vector2.zero);
+                Boot = c.ToSprite("Boot", Vector2.zero, scale: PlayerDims.BootScale);
 
                 var g = new SdfCanvas(new Rect(-0.2f, -0.22f, 0.52f, 0.26f), 180f);
                 g.Fill(p => Sdf.Capsule(p, new Vector2(-0.08f, -0.1f), new Vector2(0.19f, -0.1f), 0.004f), K.Neon, 0.07f);
-                BootGlow = g.ToSprite("BootGlow", Vector2.zero);
+                BootGlow = g.ToSprite("BootGlow", Vector2.zero, scale: PlayerDims.BootScale);
             }
         }
 
@@ -228,7 +228,7 @@ namespace SoccerFight
                 Stroke(c, hand, new Vector2(-0.01f, -0.085f), new Vector2(-0.018f, -0.145f), 0.003f, K.SkinShade.WithAlpha(0.6f), 0.005f);
                 Stroke(c, hand, new Vector2(0.018f, -0.087f), new Vector2(0.022f, -0.15f), 0.003f, K.SkinShade.WithAlpha(0.6f), 0.005f);
                 c.Paint(p => Sdf.Ellipse(p, new Vector2(0.01f, -0.04f), new Vector2(0.025f, 0.02f)), K.SkinLight.WithAlpha(0.3f), 0.02f);
-                Hand = c.ToSprite("Hand", Vector2.zero);
+                Hand = c.ToSprite("Hand", Vector2.zero, scale: PlayerDims.HandScale);
             }
         }
 
@@ -433,7 +433,7 @@ namespace SoccerFight
             }
             if (K.Headband) Headband(c, p => Sdf.Union(head(p), hair(p)));
             Face(c);
-            Head = c.ToSprite("Head", Vector2.zero);
+            Head = c.ToSprite("Head", Vector2.zero, scale: PlayerDims.HeadScale);
 
             // hair tuft: the braids hang from the back of the head (beads in the trim colour) and
             // swing with every move; the short cuts have none
@@ -460,12 +460,12 @@ namespace SoccerFight
                     t.Fill(p => Sdf.Circle(p, bead, 0.019f * s), K.Stripe);
                     t.Paint(p => Sdf.Circle(p, bead + T(0.005f, 0.006f), 0.007f * s), Color.white.WithAlpha(0.6f), 0.004f);
                 }
-                HairTuft = t.ToSprite("HairTuft", Vector2.zero);
+                HairTuft = t.ToSprite("HairTuft", Vector2.zero, scale: PlayerDims.HeadScale);
             }
             else
             {
                 var t = new SdfCanvas(new Rect(-0.02f, -0.02f, 0.04f, 0.04f), P);
-                HairTuft = t.ToSprite("HairTuft", Vector2.zero);
+                HairTuft = t.ToSprite("HairTuft", Vector2.zero, scale: PlayerDims.HeadScale);
             }
         }
     }

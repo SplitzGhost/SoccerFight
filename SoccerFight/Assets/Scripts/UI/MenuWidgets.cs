@@ -5,11 +5,11 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// A title-screen button: a shard of dark night glass (top-left and bottom-right corners cut),
+    /// A title-screen button: a slate-teal stone tablet (all four corners chamfered, a carved bevel),
     /// lit from the top, with a thin bar of the button's accent colour along its bottom edge that
-    /// swells into a wash of light when the pointer is on it, a hairline frame, a white icon and a
-    /// tracked label; a darker base underneath that the body sinks into when the ball hits it.
-    /// Filled buttons (SPIELEN) are solid accent with dark print. Drawn by the menu every frame
+    /// swells into a wash of light when the pointer is on it, a light inner frame, a white icon and a
+    /// chunky outlined label; a darker base underneath that the body sinks into when the ball hits it.
+    /// Filled buttons (SPIELEN) are solid gold with dark brown print. Drawn by the menu every frame
     /// through Style(hover, hit, punch, fade) — buttons are hit by the kicked ball, not by uGUI,
     /// so they carry no Button component.
     /// </summary>
@@ -38,7 +38,7 @@ namespace SoccerFight
             lip = LipHeight * Mathf.Clamp(size.y / 110f, 0.7f, 1.2f);
             Root = UiKit.Node(name, parent, pos, size);
             Glow = UiKit.Img("Glow", Root, UiArt.Glow, color.WithAlpha(0f), new Vector2(0f, -4f), size + new Vector2(150f, 130f));
-            Shadow = UiKit.Img("Shadow", Root, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.5f), new Vector2(0f, -14f), size * 1.1f + new Vector2(40f, 50f));
+            Shadow = UiKit.Img("Shadow", Root, UiArt.Glow, new Color(0.05f, 0.1f, 0.2f, 0.35f), new Vector2(0f, -14f), size * 1.1f + new Vector2(40f, 50f));
             Lip = UiKit.Img("Lip", Root, MenuArt.Body, LipColor(color), new Vector2(0f, -lip * 0.5f), size + new Vector2(0f, lip), Image.Type.Sliced);
             Face = UiKit.Node("Face", Root, Vector2.zero, size);
             Body = UiKit.Img("Body", Face, MenuArt.Body, BodyColor(color), Vector2.zero, size, Image.Type.Sliced);
@@ -74,7 +74,7 @@ namespace SoccerFight
 
         Color BodyColor(Color c) => Filled ? c : Color.Lerp(MenuArt.Glass, new Color(c.r, c.g, c.b, MenuArt.Glass.a), 0.015f);
 
-        Color LipColor(Color c) => Filled ? new Color(c.r * 0.45f, c.g * 0.35f, c.b * 0.25f, 1f) : new Color(0.01f, 0.025f, 0.04f, 0.95f);
+        Color LipColor(Color c) => Filled ? new Color(c.r * 0.62f, c.g * 0.42f, c.b * 0.22f, 1f) : new Color(0.12f, 0.19f, 0.25f, 1f);
 
         /// <summary>Icon on the left, label to the right of it.</summary>
         public ChunkButton IconLeft(float pad = 18f)
@@ -96,7 +96,7 @@ namespace SoccerFight
             Icon.rectTransform.anchoredPosition = at;
             Icon.rectTransform.sizeDelta = Vector2.one * iconH * 0.62f;
             Ring = UiKit.Img("Ring", Face, MenuArt.RoundFrame, Color.WithAlpha(0.7f), at, Vector2.one * iconH);
-            var disc = UiKit.Img("Disc", Face, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.6f), at, Vector2.one * (iconH - 6f));
+            var disc = UiKit.Img("Disc", Face, MenuArt.Round, new Color(0.13f, 0.21f, 0.28f, 0.55f), at, Vector2.one * (iconH - 6f));
             disc.transform.SetSiblingIndex(Ring.transform.GetSiblingIndex());
             Icon.transform.SetAsLastSibling();
             Flash.transform.SetAsLastSibling();
@@ -104,7 +104,7 @@ namespace SoccerFight
             Label.rectTransform.anchoredPosition = new Vector2(0f, labelY);
             if (sub != null)
             {
-                Sub = MenuArt.Label("Sub", Face, sub, 18f, new Color(0.7f, 0.8f, 0.86f), new Vector2(0f, labelY - Label.fontSize * 0.5f - 18f), new Vector2(Size.x - 30f, 26f),
+                Sub = MenuArt.Label("Sub", Face, sub, 18f, new Color(0.86f, 0.94f, 0.97f), new Vector2(0f, labelY - Label.fontSize * 0.5f - 18f), new Vector2(Size.x - 30f, 26f),
                     TextAlignmentOptions.Center, 2f, MenuArt.TextHeavySoft);
             }
             return this;
@@ -125,25 +125,25 @@ namespace SoccerFight
             Color bright = Color.Lerp(c, Color.white, 0.45f);
 
             // hovered, the glass takes a breath of the accent and the bar at the bottom lights up
-            Color hoverGlass = new Color(Mathf.Lerp(0.07f, c.r, 0.16f), Mathf.Lerp(0.12f, c.g, 0.16f), Mathf.Lerp(0.18f, c.b, 0.16f), 0.97f);
+            Color hoverGlass = new Color(Mathf.Lerp(0.33f, c.r, 0.14f), Mathf.Lerp(0.49f, c.g, 0.14f), Mathf.Lerp(0.57f, c.b, 0.14f), 0.98f);
             Body.color = (Filled ? Color.Lerp(c, Color.white, h * 0.12f) : Color.Lerp(BodyColor(c), hoverGlass, h)).WithAlpha((Filled ? 1f : 0.93f) * fade);
             Lip.color = LipColor(c).WithAlpha(fade);
-            Shadow.color = new Color(0f, 0.01f, 0.03f, 0.5f * fade);
+            Shadow.color = new Color(0.05f, 0.1f, 0.2f, 0.35f * fade);
             Wash.color = (Filled ? Color.white : c).WithAlpha(fade * (Filled ? 0f : 0.01f + 0.09f * h));
-            Gloss.color = Color.white.WithAlpha(fade * (Filled ? 0.32f : 0.045f + 0.035f * h));
+            Gloss.color = Color.white.WithAlpha(fade * (Filled ? 0.32f : 0.08f + 0.05f * h));
             Bar.color = (Filled ? new Color(c.r * 0.5f, c.g * 0.38f, c.b * 0.22f, 1f) : Color.Lerp(c, Color.white, 0.2f * h)).WithAlpha(fade * (Filled ? 0.55f : Disabled ? 0.3f : 0.55f + 0.45f * h));
             Bar.rectTransform.sizeDelta = new Vector2(Bar.rectTransform.sizeDelta.x, Filled ? 3f : 2f + 2f * h + 2f * press);
-            Rim.color = (Filled ? Color.Lerp(c, Color.white, 0.6f) : Color.Lerp(Color.white, bright, 0.35f + 0.65f * h)).WithAlpha(fade * (Filled ? 0.7f : 0.12f + 0.6f * h));
+            Rim.color = (Filled ? Color.Lerp(c, Color.white, 0.6f) : Color.Lerp(new Color(0.8f, 0.93f, 0.96f), bright, 0.65f * h)).WithAlpha(fade * (Filled ? 0.7f : 0.38f + 0.5f * h));
             Glow.color = c.WithAlpha(fade * (0.1f * h + 0.45f * hit + (Filled ? 0.08f : 0f)));
             Flash.color = Color.white.WithAlpha(fade * hit * 0.5f);
-            if (Icon != null) Icon.color = (Filled ? MenuArt.Ink : Color.Lerp(bright, Color.white, 0.25f + 0.5f * h)).WithAlpha(fade * (Disabled ? 0.7f : 1f));
+            if (Icon != null) Icon.color = (Filled ? MenuArt.InkWarm : Color.Lerp(bright, Color.white, 0.25f + 0.5f * h)).WithAlpha(fade * (Disabled ? 0.7f : 1f));
             if (Ring != null) Ring.color = bright.WithAlpha(fade * (0.45f + 0.4f * h));
             if (Label != null)
             {
                 var mat = Filled ? MenuArt.TextPlate : MenuArt.TextHeavy;
                 if (mat != null && Label.fontSharedMaterial != mat) Label.fontSharedMaterial = mat;
             }
-            if (Label != null) Label.color = (Filled ? MenuArt.Ink : Disabled ? new Color(0.72f, 0.78f, 0.84f) : Color.white).WithAlpha(fade);
+            if (Label != null) Label.color = (Filled ? MenuArt.InkWarm : Disabled ? new Color(0.78f, 0.84f, 0.88f) : Color.white).WithAlpha(fade);
             if (Sub != null) Sub.color = Sub.color.WithAlpha(fade);
             if (shine != null)
             {
@@ -159,7 +159,7 @@ namespace SoccerFight
 
     /// <summary>
     /// One tab of the title screen's top bar: tracked text on the bar, a sliver of accent light
-    /// under it when aimed at, and a moonlit plate with dark print when its page is open.
+    /// under it when aimed at, and a cream plate with dark print when its page is open.
     /// </summary>
     public sealed class NavTab
     {
@@ -171,7 +171,7 @@ namespace SoccerFight
         readonly RectTransform face;
         float active, activeVel;
 
-        public static readonly Color Moon = new Color(0.9f, 0.97f, 1f, 1f);
+        public static readonly Color Moon = new Color(0.96f, 0.95f, 0.9f, 1f);
 
         public NavTab(Transform parent, string text, int page, float fontSize, float height)
         {
@@ -206,20 +206,20 @@ namespace SoccerFight
             flash.color = Color.white.WithAlpha(fade * hit * 0.45f);
             var mat = a > 0.5f ? MenuArt.TextPlate : MenuArt.TextHeavy;
             if (mat != null && label.fontSharedMaterial != mat) label.fontSharedMaterial = mat;
-            label.color = Color.Lerp(Color.Lerp(new Color(0.74f, 0.84f, 0.9f), Color.white, h), MenuArt.Ink, a).WithAlpha(fade);
+            label.color = Color.Lerp(Color.Lerp(new Color(0.9f, 0.95f, 0.97f), Color.white, h), MenuArt.Ink, a).WithAlpha(fade);
         }
     }
 
     /// <summary>Small helpers shared by the menu pages.</summary>
     public static class MenuUi
     {
-        /// <summary>A dark glass panel with a soft shadow, a hairline frame and a lit top edge in the accent colour.</summary>
+        /// <summary>A slate stone panel with a soft shadow, a light inner frame and a lit top edge in the accent colour.</summary>
         public static Image Plate(Transform parent, string name, Vector2 pos, Vector2 size, Color accent, float rim = 0.3f)
         {
             var rt = UiKit.Node(name, parent, pos, size);
-            UiKit.Img("Shadow", rt, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.45f), new Vector2(0f, -12f), size * 1.08f + new Vector2(60f, 60f));
+            UiKit.Img("Shadow", rt, UiArt.Glow, new Color(0.05f, 0.1f, 0.2f, 0.32f), new Vector2(0f, -12f), size * 1.08f + new Vector2(60f, 60f));
             var body = UiKit.Img("Body", rt, MenuArt.CardBody, MenuArt.Glass, Vector2.zero, size, Image.Type.Sliced);
-            UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(accent, Color.white, 0.3f).WithAlpha(rim), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
+            UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(accent, Color.white, 0.55f).WithAlpha(Mathf.Max(rim, 0.4f)), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
             UiKit.Img("TopLight", rt, UiArt.LineFade, accent.WithAlpha(0.55f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return body;
         }
@@ -250,7 +250,7 @@ namespace SoccerFight
             return rt;
         }
 
-        /// <summary>Round glass medallion (rank, avatar) with a hairline ring in the accent colour.</summary>
+        /// <summary>Round stone medallion (rank, avatar) with a ring in the accent colour.</summary>
         public static Image Medallion(Transform parent, string name, Vector2 pos, float size, Color accent)
         {
             var rt = UiKit.Node(name, parent, pos, Vector2.one * size);

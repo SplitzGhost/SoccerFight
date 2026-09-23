@@ -34,7 +34,7 @@ namespace SoccerFight
             partnerGroup.alpha = 0f;
             partnerName = Text("Name", partnerTag, "", 17f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 12f), new Vector2(260f, 24f), true, true, 4f);
             partnerBack = Img("Back", partnerTag, UiArt.Pill, Palette.UiGlass.WithAlpha(0.88f), new Vector2(0f, -8f), new Vector2(PartnerBarW + 6f, 11f), Image.Type.Sliced);
-            partnerFill = Img("Fill", partnerTag, UiArt.Pill, Palette.HpA, new Vector2(-PartnerBarW * 0.5f, -8f), new Vector2(PartnerBarW, 6f), Image.Type.Sliced);
+            partnerFill = Img("Fill", partnerTag, UiArt.Pill, Palette.Life, new Vector2(-PartnerBarW * 0.5f, -8f), new Vector2(PartnerBarW, 6f), Image.Type.Sliced);
             partnerFill.rectTransform.pivot = new Vector2(0f, 0.5f);
             partnerState = Text("State", partnerTag, "", 13f, Palette.Hurt, TextAlignmentOptions.Center, new Vector2(0f, -26f), new Vector2(300f, 20f), true, true, 3f);
 
@@ -85,7 +85,7 @@ namespace SoccerFight
                 float frac = Mathf.Clamp01(p.Hp / Mathf.Max(1f, p.MaxHp));
                 partnerHp = MathUtil.Damp(partnerHp, frac, 10f, dt);
                 partnerFill.rectTransform.sizeDelta = new Vector2(Mathf.Max(6f, PartnerBarW * partnerHp), 6f);
-                partnerFill.color = Color.Lerp(Palette.HpA, Palette.HpB, partnerHp);
+                partnerFill.color = Color.Lerp(Palette.LifeLow, Palette.Life, partnerHp);
                 partnerBack.enabled = partnerFill.enabled = !down;
                 partnerState.text = down ? "AUSGESCHALTET  ·  " + Mathf.CeilToInt(Mathf.Max(0f, remote.DownLeft)) + " S" : "";
                 tagA = 1f;

@@ -1207,7 +1207,7 @@ namespace SoccerFight
 
             float pulse = 0.5f + 0.5f * Mathf.Sin(t * 3.4f);
             float ga = look.GlowAlpha + (look.Wisp ? 0.1f : 0.08f) * pulse + Mathf.Max(charge, primed) * 0.5f;
-            glow.color = look.Glow.WithAlpha(ga * fade);
+            glow.color = look.Glow.WithAlpha(ga * fade * Mathf.Lerp(0.35f, 1f, WorldEnvironment.Night));   // the halo is for the dark stages
 
             // elite / mini-boss aura; bosses are recognisable by their own bodies (no ring around them)
             if (Named)

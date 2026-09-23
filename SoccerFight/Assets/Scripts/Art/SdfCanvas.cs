@@ -244,6 +244,48 @@ namespace SoccerFight
             });
         }
 
+        /// <summary>
+        /// Cartoon outline: a band of <paramref name="color"/> around everything drawn so far, laid
+        /// underneath it (the alpha grown by <paramref name="widthUnits"/>, the drawing composited on top).
+        /// </summary>
+        public void Outline(Color color, float widthUnits)
+        {
+            int r = Mathf.Max(1, Mathf.RoundToInt(widthUnits * Ppu));
+            var src = (Color[])px.Clone();
+            ForRows(0, Width, 0, Height, y =>
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    int i = y * Width + x;
+                    Color c = src[i];
+                    if (c.a >= 0.999f) continue;
+                    // the grown alpha: the strongest neighbour inside the disc, faded by distance at the rim
+                    float grown = 0f;
+                    for (int oy = -r; oy <= r && grown < 1f; oy++)
+                    {
+                        int ny = y + oy;
+                        if (ny < 0 || ny >= Height) continue;
+                        for (int ox = -r; ox <= r; ox++)
+                        {
+                            int nx = x + ox;
+                            if (nx < 0 || nx >= Width) continue;
+                            float d = Mathf.Sqrt(ox * ox + oy * oy);
+                            if (d > r + 0.5f) continue;
+                            float a = src[ny * Width + nx].a * Mathf.Clamp01(r + 0.5f - d);
+                            if (a > grown) grown = a;
+                        }
+                    }
+                    float ua = grown * color.a;
+                    if (ua <= 0f) continue;
+                    // the drawing over the outline (straight alpha "over")
+                    float outA = c.a + ua * (1f - c.a);
+                    Color o = (c * c.a + color * ua * (1f - c.a)) / Mathf.Max(outA, 1e-5f);
+                    o.a = outA;
+                    px[i] = o;
+                }
+            });
+        }
+
         /// <summary>Remove alpha outside a shape.</summary>
         public void Clip(SdfFn keep, float softness = 0f)
         {
@@ -361,12 +403,12 @@ namespace SoccerFight
             return tex;
         }
 
-        /// <summary>Main thread only: sprite for a texture produced from this canvas.</summary>
-        public Sprite CreateSprite(Texture2D tex, string name, Vector2 pivotUnits, Vector4 border = default)
+        /// <summary>Main thread only: sprite for a texture produced from this canvas; scale above 1 shows it bigger (around the pivot) than it was drawn.</summary>
+        public Sprite CreateSprite(Texture2D tex, string name, Vector2 pivotUnits, Vector4 border = default, float scale = 1f)
         {
             Vector2 size = new Vector2(Width / Ppu, Height / Ppu);
             Vector2 pivot = new Vector2((pivotUnits.x - origin.x) / size.x, (pivotUnits.y - origin.y) / size.y);
-            var s = Sprite.Create(tex, new Rect(0, 0, Width, Height), pivot, Ppu, 0, SpriteMeshType.FullRect, border);
+            var s = Sprite.Create(tex, new Rect(0, 0, Width, Height), pivot, Ppu / scale, 0, SpriteMeshType.FullRect, border);
             s.name = name;
             return s;
         }
@@ -445,10 +487,10 @@ namespace SoccerFight
         /// <summary>Create a sprite whose pivot sits at the given unit-space position.</summary>
         public Sprite ToSprite(string name, Vector2 pivotUnits, bool linear = true, bool mips = true,
             TextureWrapMode wrap = TextureWrapMode.Clamp, bool dither = false, Vector4 border = default,
-            bool premultiply = true)
+            bool premultiply = true, float scale = 1f)
         {
             var tex = ToTexture(name, linear, mips, wrap, dither, premultiply);
-            return CreateSprite(tex, name, pivotUnits, border);
+            return CreateSprite(tex, name, pivotUnits, border, scale);
         }
     }
 }

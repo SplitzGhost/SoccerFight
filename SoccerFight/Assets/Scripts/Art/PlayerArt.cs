@@ -5,17 +5,22 @@ namespace SoccerFight
     /// <summary>The rig parts, so a character swap can re-bind every sprite.</summary>
     public enum PlayerPart { Torso, Pelvis, Neck, Head, HairTuft, Thigh, Shin, Boot, BootGlow, UpperArm, Forearm, Hand, UpperArmNear, ForearmNear }
 
-    /// <summary>Skeleton measurements shared by the art and the procedural rig (world units).</summary>
+    /// <summary>
+    /// Skeleton measurements shared by the art and the procedural rig (world units). The build is
+    /// the chunky Clash look of Project Rise: short sturdy legs, big boots and hands and a big head.
+    /// </summary>
     public static class PlayerDims
     {
-        public const float ThighLen = 0.40f;
-        public const float ShinLen = 0.40f;
-        public const float UpperArmLen = 0.27f;
-        public const float ForearmLen = 0.25f;
-        public const float AnkleHeight = 0.10f;   // ankle joint above ground with the boot flat
+        public const float ThighLen = 0.30f;
+        public const float ShinLen = 0.29f;
+        public const float UpperArmLen = 0.23f;
+        public const float ForearmLen = 0.21f;
+        public const float AnkleHeight = 0.13f;   // ankle joint above ground with the boot flat (the boot is drawn at BootScale)
         public const float TorsoLen = 0.54f;      // hip joint → shoulder joint
         public const float NeckLen = 0.075f;
         public const float HeadR = 0.19f;
+        /// <summary>The head, hands and boots are drawn in the old units and shown this much bigger.</summary>
+        public const float HeadScale = 1.45f, HandScale = 1.4f, BootScale = 1.3f;
         public const float StandHip = AnkleHeight + ThighLen + ShinLen - 0.045f;
         public const float Ppu = 360f;
     }
@@ -51,7 +56,7 @@ namespace SoccerFight
         public static PlayerLook Current { get; private set; }
 
         const float P = PlayerDims.Ppu;
-        const float LineW = 0.0105f;
+        const float LineW = 0.0125f;
 
         /// <summary>Colours of the character currently being drawn.</summary>
         static CharacterKit K;
@@ -243,93 +248,95 @@ namespace SoccerFight
 
         static void BuildLegs()
         {
+            float w = Wd;
+
             // Thigh with the shorts' leg opening on top.
             {
-                const float L = PlayerDims.ThighLen;
-                var c = new SdfCanvas(new Rect(-0.16f, -L - 0.1f, 0.32f, L + 0.26f), P);
+                float L = Bd.ThighLen;
+                var c = new SdfCanvas(new Rect(-0.17f * w, -L - 0.1f, 0.34f * w, L + 0.28f), P);
                 SdfCanvas.SdfFn leg = p => Sdf.SmoothUnion(
-                    Sdf.Tapered(p, Vector2.zero, 0.09f, new Vector2(0f, -L), 0.066f),
-                    Sdf.Ellipse(p, new Vector2(0.02f, -0.19f), new Vector2(0.066f, 0.12f)), 0.04f);
+                    Sdf.Tapered(p, Vector2.zero, 0.09f * w, new Vector2(0f, -L), 0.068f * w),
+                    Sdf.Ellipse(p, new Vector2(0.02f, -L * 0.48f), new Vector2(0.066f * w, L * 0.3f)), 0.04f);
                 SdfCanvas.SdfFn shorts = p => Sdf.Intersect(
-                    Sdf.Box(p, new Vector2(0.004f, -0.06f), new Vector2(0.12f, 0.155f), 0.075f),
-                    Sdf.HalfPlane(p, new Vector2(0f, -0.2f), new Vector2(-0.22f, -1f)));
+                    Sdf.Box(p, new Vector2(0.004f, -0.05f), new Vector2(0.118f * w, 0.14f), 0.08f),
+                    Sdf.HalfPlane(p, new Vector2(0f, -0.17f), new Vector2(-0.22f, -1f)));
 
                 // the knee end lies over the shin: no contour there
                 Contour(c, p => Sdf.Union(leg(p), shorts(p)), -0.03f, -L + 0.04f);
                 c.Fill(leg, K.Skin);
-                ShadeBack(c, -0.09f, 0.02f, 0.8f);
-                c.Paint(p => Sdf.Ellipse(p, new Vector2(0.042f, -0.26f), new Vector2(0.022f, 0.08f)), K.SkinLight.WithAlpha(0.45f), 0.035f);
-                c.Paint(p => Sdf.Circle(p, new Vector2(0.034f, -L + 0.012f), 0.03f), K.SkinLight.WithAlpha(0.35f), 0.03f);
+                ShadeBack(c, -0.09f * w, 0.02f, 0.8f);
+                c.Paint(p => Sdf.Ellipse(p, new Vector2(0.042f * w, -L * 0.62f), new Vector2(0.022f * w, L * 0.2f)), K.SkinLight.WithAlpha(0.45f), 0.035f);
+                c.Paint(p => Sdf.Circle(p, new Vector2(0.034f * w, -L + 0.012f), 0.03f), K.SkinLight.WithAlpha(0.35f), 0.03f);
 
                 c.Fill(p => shorts(p) - LineW * 0.8f, Palette.PlayerLine);
                 c.Fill(shorts, K.KitWhite);
-                Tint(c, shorts, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.12f) / 0.14f)));
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x - 0.008f) - 0.017f, shorts(p)), K.Jersey);
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x - 0.008f) - 0.005f, shorts(p)), K.JerseyShade.WithAlpha(0.5f));
-                Stroke(c, shorts, new Vector2(-0.11f, -0.186f), new Vector2(0.11f, -0.216f), 0.012f, K.KitWhiteShade.WithAlpha(0.7f), 0.01f);
-                Stroke(c, shorts, new Vector2(0.03f, 0.0f), new Vector2(0.085f, -0.11f), 0.006f, K.KitWhiteShade.WithAlpha(0.45f), 0.012f);
+                Tint(c, shorts, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.12f * w) / (0.14f * w))));
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x - 0.008f) - 0.02f * w, shorts(p)), K.Jersey);
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x - 0.008f) - 0.006f * w, shorts(p)), K.JerseyShade.WithAlpha(0.5f));
+                Stroke(c, shorts, new Vector2(-0.11f * w, -0.156f), new Vector2(0.11f * w, -0.186f), 0.013f, K.KitWhiteShade.WithAlpha(0.7f), 0.01f);
+                Stroke(c, shorts, new Vector2(0.03f * w, 0.0f), new Vector2(0.085f * w, -0.1f), 0.006f, K.KitWhiteShade.WithAlpha(0.45f), 0.012f);
                 Thigh = c.ToSprite("Thigh", Vector2.zero);
             }
 
-            // Shin: knee cap, calf, crimson sock with a cream double band, shin-guard bulge in front.
+            // Shin: knee cap, round calf, sock in the kit colour with a cream double band.
             {
-                const float L = PlayerDims.ShinLen;
-                var c = new SdfCanvas(new Rect(-0.14f, -L - 0.08f, 0.28f, L + 0.18f), P);
+                float L = Bd.ShinLen;
+                var c = new SdfCanvas(new Rect(-0.15f * w, -L - 0.09f, 0.3f * w, L + 0.2f), P);
                 SdfCanvas.SdfFn shin = p => Sdf.SmoothUnion(
                     Sdf.SmoothUnion(
-                        Sdf.Tapered(p, Vector2.zero, 0.068f, new Vector2(0, -L), 0.046f),
-                        Sdf.Ellipse(p, new Vector2(-0.026f, -0.13f), new Vector2(0.062f, 0.12f)), 0.03f),
-                    Sdf.Ellipse(p, new Vector2(0.024f, -0.19f), new Vector2(0.05f, 0.11f)), 0.02f);
+                        Sdf.Tapered(p, Vector2.zero, 0.07f * w, new Vector2(0, -L), 0.052f * w),
+                        Sdf.Ellipse(p, new Vector2(-0.028f * w, -L * 0.34f), new Vector2(0.064f * w, L * 0.32f)), 0.03f),
+                    Sdf.Ellipse(p, new Vector2(0.024f * w, -L * 0.48f), new Vector2(0.05f * w, L * 0.28f)), 0.02f);
 
                 Contour(c, shin, 0f);
                 c.Fill(shin, K.Skin);
-                SdfCanvas.SdfFn sock = p => Sdf.Intersect(shin(p), p.y + 0.09f);
+                SdfCanvas.SdfFn sock = p => Sdf.Intersect(shin(p), p.y + L * 0.25f);
                 c.Paint(sock, K.Jersey);
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + 0.108f) - 0.016f, shin(p)), K.KitWhite);
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + 0.157f) - 0.0065f, shin(p)), K.KitWhite);
-                ShadeBack(c, -0.085f, 0.015f, 0.76f);
-                Tint(c, sock, K.JerseyShade, p => 0.55f * (1f - MathUtil.Smooth01((p.x + 0.08f) / 0.09f)));
-                Stroke(c, sock, new Vector2(0.038f, -0.18f), new Vector2(0.032f, -0.31f), 0.011f, K.JerseyLight.WithAlpha(0.6f), 0.014f);
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + L * 0.3f) - 0.018f, shin(p)), K.KitWhite);
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + L * 0.3f + 0.042f) - 0.007f, shin(p)), K.KitWhite);
+                ShadeBack(c, -0.085f * w, 0.015f, 0.76f);
+                Tint(c, sock, K.JerseyShade, p => 0.55f * (1f - MathUtil.Smooth01((p.x + 0.08f * w) / (0.09f * w))));
+                Stroke(c, sock, new Vector2(0.038f * w, -L * 0.45f), new Vector2(0.032f * w, -L * 0.8f), 0.012f, K.JerseyLight.WithAlpha(0.6f), 0.014f);
                 Shin = c.ToSprite("Shin", Vector2.zero);
             }
 
-            // Boot: dark leather lit from above, cream stripe, laces, toe sheen, neon sole with studs.
+            // Boot: leather lit from above, cream stripe, laces, toe sheen, neon sole with studs (shown big).
             {
                 var c = new SdfCanvas(new Rect(-0.15f, -0.15f, 0.4f, 0.24f), P);
                 SdfCanvas.SdfFn upper = p =>
                 {
-                    float ankle = Sdf.Circle(p, new Vector2(-0.008f, -0.005f), 0.054f);
-                    float foot = Sdf.Capsule(p, new Vector2(-0.05f, -0.045f), new Vector2(0.15f, -0.052f), 0.043f);
-                    float toe = Sdf.Ellipse(p, new Vector2(0.155f, -0.058f), new Vector2(0.062f, 0.036f));
-                    float heel = Sdf.Box(p, new Vector2(-0.045f, -0.058f), new Vector2(0.052f, 0.03f), 0.022f);
+                    float ankle = Sdf.Circle(p, new Vector2(-0.008f, -0.005f), 0.056f);
+                    float foot = Sdf.Capsule(p, new Vector2(-0.05f, -0.045f), new Vector2(0.15f, -0.052f), 0.046f);
+                    float toe = Sdf.Ellipse(p, new Vector2(0.155f, -0.058f), new Vector2(0.066f, 0.04f));
+                    float heel = Sdf.Box(p, new Vector2(-0.045f, -0.058f), new Vector2(0.054f, 0.032f), 0.024f);
                     float d = Sdf.SmoothUnion(Sdf.SmoothUnion(ankle, foot, 0.04f), Sdf.Union(toe, heel), 0.03f);
                     return Sdf.Intersect(d, -(p.y + 0.084f));
                 };
-                SdfCanvas.SdfFn sole = p => Sdf.Box(p, new Vector2(0.052f, -0.09f), new Vector2(0.146f, 0.013f), 0.012f);
+                SdfCanvas.SdfFn sole = p => Sdf.Box(p, new Vector2(0.052f, -0.09f), new Vector2(0.15f, 0.014f), 0.012f);
 
                 Contour(c, p => Sdf.Union(upper(p), sole(p)), 0.02f);
                 c.Fill(upper, p => Color.Lerp(K.Boot, K.BootLight,
-                    0.6f * MathUtil.Smooth01((p.y + 0.07f) / 0.08f) * MathUtil.Smooth01((p.x + 0.04f) / 0.14f)));
+                    0.65f * MathUtil.Smooth01((p.y + 0.07f) / 0.08f) * MathUtil.Smooth01((p.x + 0.04f) / 0.14f)));
                 c.Paint(p => Sdf.Box(p, new Vector2(-0.07f, -0.056f), new Vector2(0.03f, 0.03f), 0.02f), K.Boot.WithAlpha(0.8f), 0.02f);
-                c.Paint(p => Sdf.Capsule(p, new Vector2(-0.035f, -0.042f), new Vector2(0.105f, -0.024f), 0.0105f), K.KitWhite);
+                c.Paint(p => Sdf.Capsule(p, new Vector2(-0.035f, -0.042f), new Vector2(0.105f, -0.024f), 0.012f), K.KitWhite);
                 for (int i = 0; i < 3; i++)
                 {
                     float lx = 0.035f + i * 0.033f;
-                    c.Paint(p => Sdf.Capsule(p, new Vector2(lx, -0.012f), new Vector2(lx + 0.016f, -0.02f), 0.005f), K.KitWhiteShade);
+                    c.Paint(p => Sdf.Capsule(p, new Vector2(lx, -0.012f), new Vector2(lx + 0.016f, -0.02f), 0.0055f), K.KitWhiteShade);
                 }
-                c.Paint(p => Sdf.Circle(p, new Vector2(0.172f, -0.042f), 0.028f), new Color(1f, 1f, 1f, 0.16f), 0.02f);
+                c.Paint(p => Sdf.Circle(p, new Vector2(0.172f, -0.042f), 0.03f), new Color(1f, 1f, 1f, 0.22f), 0.02f);
                 c.Fill(sole, K.Neon);
                 c.Paint(p => Sdf.Intersect(sole(p), -(p.y + 0.094f)), Color.Lerp(K.Neon, K.Boot, 0.35f));
                 for (int i = 0; i < 3; i++)
                 {
                     float sx = -0.05f + i * 0.09f;
-                    c.Fill(p => Sdf.Box(p, new Vector2(sx, -0.104f), new Vector2(0.013f, 0.009f), 0.004f), K.Boot);
+                    c.Fill(p => Sdf.Box(p, new Vector2(sx, -0.104f), new Vector2(0.014f, 0.009f), 0.004f), K.Boot);
                 }
-                Boot = c.ToSprite("Boot", Vector2.zero);
+                Boot = c.ToSprite("Boot", Vector2.zero, scale: PlayerDims.BootScale);
 
                 var g = new SdfCanvas(new Rect(-0.2f, -0.2f, 0.5f, 0.24f), 180f);
                 g.Fill(p => Sdf.Capsule(p, new Vector2(-0.07f, -0.09f), new Vector2(0.17f, -0.09f), 0.004f), K.Neon, 0.07f);
-                BootGlow = g.ToSprite("BootGlow", Vector2.zero);
+                BootGlow = g.ToSprite("BootGlow", Vector2.zero, scale: PlayerDims.BootScale);
             }
         }
 
@@ -337,61 +344,64 @@ namespace SoccerFight
 
         static void BuildArms()
         {
-            // Upper arm in a crimson sleeve with a cream cuff.
+            float w = Wd;
+
+            // Upper arm in a kit-coloured sleeve with a cream cuff.
             {
-                const float L = PlayerDims.UpperArmLen;
-                var c = new SdfCanvas(new Rect(-0.12f, -L - 0.08f, 0.24f, L + 0.19f), P);
+                float L = Bd.UpperArmLen;
+                var c = new SdfCanvas(new Rect(-0.13f * w, -L - 0.09f, 0.26f * w, L + 0.21f), P);
                 SdfCanvas.SdfFn arm = p => Sdf.SmoothUnion(
-                    Sdf.Tapered(p, Vector2.zero, 0.058f, new Vector2(0, -L), 0.047f),
-                    Sdf.Ellipse(p, new Vector2(0.012f, -0.15f), new Vector2(0.05f, 0.075f)), 0.03f);
+                    Sdf.Tapered(p, Vector2.zero, 0.058f * w, new Vector2(0, -L), 0.048f * w),
+                    Sdf.Ellipse(p, new Vector2(0.012f * w, -L * 0.56f), new Vector2(0.05f * w, L * 0.28f)), 0.03f);
                 SdfCanvas.SdfFn sleeve = p => Sdf.Intersect(
-                    Sdf.SmoothUnion(Sdf.Circle(p, new Vector2(0f, 0.005f), 0.08f),
-                        Sdf.Tapered(p, Vector2.zero, 0.073f, new Vector2(0, -0.135f), 0.067f), 0.02f),
-                    Sdf.HalfPlane(p, new Vector2(0, -0.135f), new Vector2(0.12f, -1f)));
+                    Sdf.SmoothUnion(Sdf.Circle(p, new Vector2(0f, 0.005f), 0.08f * w),
+                        Sdf.Tapered(p, Vector2.zero, 0.073f * w, new Vector2(0, -L * 0.5f), 0.067f * w), 0.02f),
+                    Sdf.HalfPlane(p, new Vector2(0, -L * 0.5f), new Vector2(0.12f, -1f)));
 
                 Contour(c, p => Sdf.Union(arm(p), sleeve(p)), 99f, -L + 0.035f);
                 c.Fill(arm, K.Skin);
-                ShadeBack(c, -0.06f, 0.012f, 0.8f);
-                c.Paint(p => Sdf.Ellipse(p, new Vector2(0.03f, -0.17f), new Vector2(0.016f, 0.045f)), K.SkinLight.WithAlpha(0.4f), 0.025f);
+                ShadeBack(c, -0.06f * w, 0.012f, 0.8f);
+                c.Paint(p => Sdf.Ellipse(p, new Vector2(0.03f * w, -L * 0.63f), new Vector2(0.016f * w, L * 0.17f)), K.SkinLight.WithAlpha(0.4f), 0.025f);
                 c.Fill(p => sleeve(p) - LineW * 0.8f, Palette.PlayerLine);
                 c.Fill(sleeve, K.Jersey);
-                Tint(c, sleeve, K.JerseyShade, p => 0.7f * (1f - MathUtil.Smooth01((p.x + 0.075f) / 0.1f)));
-                Tint(c, sleeve, K.JerseyLight, p => 0.45f * MathUtil.Smooth01((p.x - 0.0f) / 0.07f) * MathUtil.Smooth01((p.y + 0.04f) / 0.06f));
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + 0.121f - 0.12f * p.x) - 0.012f, sleeve(p)), K.KitWhite);
+                Tint(c, sleeve, K.JerseyShade, p => 0.7f * (1f - MathUtil.Smooth01((p.x + 0.075f * w) / (0.1f * w))));
+                Tint(c, sleeve, K.JerseyLight, p => 0.45f * MathUtil.Smooth01((p.x - 0.0f) / (0.07f * w)) * MathUtil.Smooth01((p.y + 0.04f) / 0.06f));
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + L * 0.45f - 0.12f * p.x) - 0.014f, sleeve(p)), K.KitWhite);
                 UpperArm = c.ToSprite("UpperArm", Vector2.zero);
             }
 
             // Forearm with a cream sweatband at the wrist.
             {
-                const float L = PlayerDims.ForearmLen;
-                var c = new SdfCanvas(new Rect(-0.1f, -L - 0.07f, 0.2f, L + 0.15f), P);
+                float L = Bd.ForearmLen;
+                var c = new SdfCanvas(new Rect(-0.11f * w, -L - 0.08f, 0.22f * w, L + 0.17f), P);
                 SdfCanvas.SdfFn fore = p => Sdf.SmoothUnion(
-                    Sdf.Tapered(p, Vector2.zero, 0.05f, new Vector2(0, -L), 0.04f),
-                    Sdf.Ellipse(p, new Vector2(-0.008f, -0.07f), new Vector2(0.046f, 0.075f)), 0.03f);
+                    Sdf.Tapered(p, Vector2.zero, 0.05f * w, new Vector2(0, -L), 0.042f * w),
+                    Sdf.Ellipse(p, new Vector2(-0.008f * w, -L * 0.28f), new Vector2(0.046f * w, L * 0.3f)), 0.03f);
 
                 Contour(c, fore, 0f, -L + 0.02f);
                 c.Fill(fore, K.Skin);
-                ShadeBack(c, -0.05f, 0.012f, 0.8f);
-                SdfCanvas.SdfFn band = p => Sdf.Intersect(Mathf.Abs(p.y + L - 0.04f) - 0.021f, fore(p) - 0.006f);
+                ShadeBack(c, -0.05f * w, 0.012f, 0.8f);
+                SdfCanvas.SdfFn band = p => Sdf.Intersect(Mathf.Abs(p.y + L - 0.04f) - 0.024f, fore(p) - 0.006f);
                 c.Fill(p => band(p) - LineW * 0.7f, Palette.PlayerLine);
                 c.Fill(band, K.KitWhite);
-                Tint(c, band, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.045f) / 0.07f)));
-                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + L - 0.04f) - 0.0045f, band(p)), K.Jersey);
+                Tint(c, band, K.KitWhiteShade, p => 0.8f * (1f - MathUtil.Smooth01((p.x + 0.045f * w) / (0.07f * w))));
+                c.Paint(p => Sdf.Intersect(Mathf.Abs(p.y + L - 0.04f) - 0.005f, band(p)), K.Jersey);
                 Forearm = c.ToSprite("Forearm", Vector2.zero);
             }
 
-            // Hand: loose fist with a thumb.
+            // Hand: a loose fist with a thumb (shown big, like a glove).
             {
                 var c = new SdfCanvas(new Rect(-0.095f, -0.145f, 0.19f, 0.185f), P);
                 SdfCanvas.SdfFn hand = p => Sdf.SmoothUnion(
-                    Sdf.Ellipse(p, new Vector2(0f, -0.048f), new Vector2(0.049f, 0.062f)),
-                    Sdf.Ellipse(p, new Vector2(0.036f, -0.03f), new Vector2(0.02f, 0.036f)), 0.015f);
+                    Sdf.Ellipse(p, new Vector2(0f, -0.048f), new Vector2(0.05f, 0.062f)),
+                    Sdf.Ellipse(p, new Vector2(0.036f, -0.03f), new Vector2(0.021f, 0.036f)), 0.015f);
                 Contour(c, hand, -0.005f);
                 c.Fill(hand, K.Skin);
                 ShadeBack(c, -0.05f, 0.02f, 0.8f);
                 Stroke(c, hand, new Vector2(-0.028f, -0.088f), new Vector2(0.018f, -0.094f), 0.005f, K.SkinShade.WithAlpha(0.6f), 0.008f);
                 Stroke(c, hand, new Vector2(0.03f, -0.012f), new Vector2(0.036f, -0.05f), 0.005f, K.SkinShade.WithAlpha(0.45f), 0.008f);
-                Hand = c.ToSprite("Hand", Vector2.zero);
+                c.Paint(p => Sdf.Ellipse(p, new Vector2(0.012f, -0.03f), new Vector2(0.022f, 0.018f)), K.SkinLight.WithAlpha(0.35f), 0.015f);
+                Hand = c.ToSprite("Hand", Vector2.zero, scale: PlayerDims.HandScale);
             }
         }
 
@@ -399,69 +409,76 @@ namespace SoccerFight
 
         static void BuildBody()
         {
+            // the torso is drawn in the old slim units and stretched to the build: wide, barrel-chested
+            float sy = Bd.ShoulderY / 0.465f;
+            float w = Wd;
+
             // Jersey: untucked hem, cream collar, twin pinstripes down the side, crest, soft folds.
             {
-                var c = new SdfCanvas(new Rect(-0.25f, -0.13f, 0.5f, 0.77f), P);
+                var c = new SdfCanvas(new Rect(-0.26f * w, -0.14f * sy, 0.52f * w, 0.78f * sy), P);
                 SdfCanvas.SdfFn torso = p =>
                 {
-                    float body = Sdf.Tapered(p, new Vector2(0f, 0.05f), 0.136f, new Vector2(0.008f, 0.42f), 0.158f);
-                    float chest = Sdf.Ellipse(p, new Vector2(0.035f, 0.35f), new Vector2(0.158f, 0.15f));
-                    float back = Sdf.Ellipse(p, new Vector2(-0.03f, 0.31f), new Vector2(0.14f, 0.2f));
-                    float shoulder = Sdf.Circle(p, new Vector2(0f, 0.46f), 0.12f);
+                    Vector2 q = new Vector2(p.x / w, p.y / sy);
+                    float body = Sdf.Tapered(q, new Vector2(0f, 0.05f), 0.14f, new Vector2(0.008f, 0.42f), 0.16f);
+                    float chest = Sdf.Ellipse(q, new Vector2(0.035f, 0.34f), new Vector2(0.162f, 0.16f));
+                    float back = Sdf.Ellipse(q, new Vector2(-0.03f, 0.31f), new Vector2(0.144f, 0.2f));
+                    float shoulder = Sdf.Circle(q, new Vector2(0f, 0.46f), 0.12f);
                     float d = Sdf.SmoothUnion(Sdf.SmoothUnion(Sdf.SmoothUnion(body, chest, 0.05f), back, 0.05f), shoulder, 0.04f);
-                    return Sdf.Intersect(d, Sdf.HalfPlane(p, new Vector2(0f, -0.07f), new Vector2(0.06f, -1f)));
+                    return Sdf.Intersect(d * Mathf.Min(w, sy), Sdf.HalfPlane(p, new Vector2(0f, -0.07f * sy), new Vector2(0.06f, -1f)));
                 };
 
                 Contour(c, torso);
                 c.Fill(torso, K.Jersey);
                 // form: cool shadow on the back and low on the body, warm light across the chest
                 Tint(c, torso, K.JerseyShade, p =>
-                    0.75f * (1f - MathUtil.Smooth01((p.x + 0.15f) / 0.14f)) + 0.35f * (1f - MathUtil.Smooth01((p.y + 0.02f) / 0.2f)));
+                    0.75f * (1f - MathUtil.Smooth01((p.x + 0.15f * w) / (0.14f * w))) + 0.35f * (1f - MathUtil.Smooth01((p.y + 0.02f) / 0.2f)));
                 Tint(c, torso, K.JerseyLight, p =>
-                    0.5f * MathUtil.Smooth01((p.x - 0.02f) / 0.1f) * MathUtil.Smooth01((p.y - 0.25f) / 0.12f));
+                    0.5f * MathUtil.Smooth01((p.x - 0.02f * w) / (0.1f * w)) * MathUtil.Smooth01((p.y - 0.25f * sy) / 0.12f));
                 // twin pinstripes along the side seam
                 for (int s = -1; s <= 1; s += 2)
                 {
-                    float off = s * 0.021f;
-                    c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x + 0.012f - 0.07f * (p.y - 0.3f) + off) - 0.0055f, p.y - 0.5f), K.KitWhite.WithAlpha(0.9f));
+                    float off = s * 0.023f * w;
+                    c.Paint(p => Sdf.Intersect(Mathf.Abs(p.x + 0.012f * w - 0.07f * (p.y - 0.3f * sy) + off) - 0.0065f, p.y - 0.5f * sy), K.KitWhite.WithAlpha(0.9f));
                 }
                 // hem band and cloth folds
-                c.Paint(p => Sdf.Intersect(torso(p), (p.y + 0.07f - 0.06f * p.x) - 0.022f), K.JerseyShade.WithAlpha(0.45f), 0.006f);
-                Stroke(c, torso, new Vector2(-0.07f, 0.1f), new Vector2(0.07f, 0.145f), 0.006f, K.JerseyShade.WithAlpha(0.45f), 0.014f);
-                Stroke(c, torso, new Vector2(-0.09f, 0.02f), new Vector2(0.05f, 0.06f), 0.005f, K.JerseyShade.WithAlpha(0.4f), 0.014f);
-                Stroke(c, torso, new Vector2(0.03f, 0.2f), new Vector2(0.13f, 0.25f), 0.005f, K.JerseyShade.WithAlpha(0.3f), 0.014f);
+                c.Paint(p => Sdf.Intersect(torso(p), (p.y + 0.07f * sy - 0.06f * p.x) - 0.024f), K.JerseyShade.WithAlpha(0.45f), 0.006f);
+                Stroke(c, torso, new Vector2(-0.07f * w, 0.1f * sy), new Vector2(0.07f * w, 0.145f * sy), 0.007f, K.JerseyShade.WithAlpha(0.45f), 0.014f);
+                Stroke(c, torso, new Vector2(-0.09f * w, 0.02f * sy), new Vector2(0.05f * w, 0.06f * sy), 0.006f, K.JerseyShade.WithAlpha(0.4f), 0.014f);
+                Stroke(c, torso, new Vector2(0.03f * w, 0.2f * sy), new Vector2(0.13f * w, 0.25f * sy), 0.006f, K.JerseyShade.WithAlpha(0.3f), 0.014f);
                 // collar: a cream band just inside the contour where the neck comes out
-                c.Paint(p => Sdf.Intersect(Sdf.Intersect(torso(p) + LineW, -(torso(p) + LineW + 0.024f)),
-                    Sdf.Intersect(Mathf.Abs(p.x - 0.02f) - 0.095f, 0.47f - p.y)), K.KitWhite, 0.004f);
-                // crest on the chest: cream shield with a crimson star point
+                c.Paint(p => Sdf.Intersect(Sdf.Intersect(torso(p) + LineW, -(torso(p) + LineW + 0.028f)),
+                    Sdf.Intersect(Mathf.Abs(p.x - 0.02f * w) - 0.095f * w, 0.47f * sy - p.y)), K.KitWhite, 0.004f);
+                // crest on the chest: cream shield with a kit-coloured star point
+                Vector2 cr = new Vector2(0.1f * w, 0.395f * sy);
                 SdfCanvas.SdfFn crest = p => Sdf.SmoothUnion(
-                    Sdf.Box(p, new Vector2(0.1f, 0.405f), new Vector2(0.024f, 0.018f), 0.006f),
-                    Sdf.Triangle(p, new Vector2(0.076f, 0.395f), new Vector2(0.124f, 0.395f), new Vector2(0.1f, 0.358f)), 0.006f);
+                    Sdf.Box(p, cr + new Vector2(0f, 0.01f), new Vector2(0.03f, 0.022f), 0.007f),
+                    Sdf.Triangle(p, cr + new Vector2(-0.03f, 0f), cr + new Vector2(0.03f, 0f), cr + new Vector2(0f, -0.045f)), 0.007f);
                 c.Paint(crest, K.KitWhite);
-                c.Paint(p => Sdf.Circle(p, new Vector2(0.1f, 0.395f), 0.008f), K.JerseyShade);
+                c.Paint(p => Sdf.Circle(p, cr, 0.01f), K.JerseyShade);
                 Torso = c.ToSprite("Torso", Vector2.zero);
             }
 
-            // Shorts: cream, crimson side stripe, teal-grey shade at the back, crotch fold.
+            // Shorts: cream, kit-coloured side stripe, cool shade at the back, crotch fold.
             {
-                var c = new SdfCanvas(new Rect(-0.21f, -0.19f, 0.42f, 0.32f), P);
-                SdfCanvas.SdfFn shorts = p => Sdf.Box(p, new Vector2(0.005f, -0.03f), new Vector2(0.155f, 0.11f), 0.075f);
+                var c = new SdfCanvas(new Rect(-0.22f * w, -0.2f, 0.44f * w, 0.34f), P);
+                SdfCanvas.SdfFn shorts = p => Sdf.Box(p, new Vector2(0.005f, -0.035f), new Vector2(0.158f * w, 0.115f), 0.08f);
                 Contour(c, shorts);
                 c.Fill(shorts, K.KitWhite);
-                Tint(c, shorts, K.KitWhiteShade, p => 0.85f * (1f - MathUtil.Smooth01((p.x + 0.15f) / 0.16f)) + 0.3f * (1f - MathUtil.Smooth01((p.y + 0.12f) / 0.08f)));
-                c.Paint(p => Mathf.Abs(p.x + 0.005f) - 0.018f, K.Jersey);
-                c.Paint(p => Mathf.Abs(p.x + 0.005f) - 0.005f, K.JerseyShade.WithAlpha(0.5f));
-                Stroke(c, shorts, new Vector2(0.06f, -0.03f), new Vector2(0.1f, -0.12f), 0.006f, K.KitWhiteShade.WithAlpha(0.6f), 0.012f);
+                Tint(c, shorts, K.KitWhiteShade, p => 0.85f * (1f - MathUtil.Smooth01((p.x + 0.15f * w) / (0.16f * w))) + 0.3f * (1f - MathUtil.Smooth01((p.y + 0.12f) / 0.08f)));
+                c.Paint(p => Mathf.Abs(p.x + 0.005f) - 0.02f * w, K.Jersey);
+                c.Paint(p => Mathf.Abs(p.x + 0.005f) - 0.006f * w, K.JerseyShade.WithAlpha(0.5f));
+                Stroke(c, shorts, new Vector2(0.06f * w, -0.03f), new Vector2(0.1f * w, -0.12f), 0.007f, K.KitWhiteShade.WithAlpha(0.6f), 0.012f);
                 Pelvis = c.ToSprite("Pelvis", Vector2.zero);
             }
 
-            // Neck.
+            // Neck: short and sturdy (the big head sits almost on the shoulders).
             {
-                var c = new SdfCanvas(new Rect(-0.09f, -0.07f, 0.18f, 0.24f), P);
-                SdfCanvas.SdfFn neck = p => Sdf.Capsule(p, Vector2.zero, new Vector2(0.01f, 0.1f), 0.056f);
+                float nw = Mathf.Lerp(1f, w, 0.8f);
+                var c = new SdfCanvas(new Rect(-0.1f * nw, -0.07f, 0.2f * nw, 0.22f), P);
+                SdfCanvas.SdfFn neck = p => Sdf.Capsule(p, Vector2.zero, new Vector2(0.01f, 0.08f), 0.058f * nw);
                 Contour(c, neck);
                 c.Fill(neck, K.Skin);
-                ShadeBack(c, -0.05f, 0.03f, 0.72f);
+                ShadeBack(c, -0.05f * nw, 0.03f, 0.72f);
                 c.Shade(p => Mathf.Lerp(0.78f, 1f, MathUtil.Smooth01((p.y - 0.05f) / -0.08f)));
                 Neck = c.ToSprite("Neck", Vector2.zero);
             }
@@ -508,19 +525,26 @@ namespace SoccerFight
             c.Paint(p => Sdf.Ring(p, new Vector2(-0.018f, 0.165f), 0.028f, 0.006f), K.Skin.WithAlpha(0.6f), 0.004f);
         }
 
-        /// <summary>Eye, lid, brow, nose shadow and mouth.</summary>
+        /// <summary>
+        /// A friendly cartoon face in profile (the Clash look): a big eye with a round iris and a bright
+        /// catch-light, a bold brow, a round nose and a confident little smile.
+        /// </summary>
         static void Face(SdfCanvas c)
         {
-            SdfCanvas.SdfFn eye = p => Sdf.Ellipse(p, new Vector2(0.131f, 0.19f), new Vector2(0.021f, 0.026f));
-            c.Fill(eye, new Color(0.95f, 0.93f, 0.9f));
-            c.Paint(p => Sdf.Intersect(Sdf.Ellipse(p, new Vector2(0.142f, 0.188f), new Vector2(0.013f, 0.021f)), eye(p)), Palette.EyeDark);
-            c.Fill(p => Sdf.Circle(p, new Vector2(0.146f, 0.198f), 0.005f), Color.white);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.108f, 0.213f), new Vector2(0.154f, 0.207f), 0.0058f), Palette.EyeDark);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.094f, 0.247f), new Vector2(0.162f, 0.236f), 0.0115f), K.Hair);
+            SdfCanvas.SdfFn eye = p => Sdf.Ellipse(p, new Vector2(0.129f, 0.19f), new Vector2(0.026f, 0.032f));
+            c.Fill(eye, new Color(0.98f, 0.97f, 0.95f));
+            c.Paint(p => Sdf.Intersect(Sdf.Ellipse(p, new Vector2(0.142f, 0.187f), new Vector2(0.016f, 0.025f)), eye(p)), Color.Lerp(Palette.EyeDark, K.Hair, 0.25f));
+            c.Paint(p => Sdf.Intersect(Sdf.Ellipse(p, new Vector2(0.145f, 0.186f), new Vector2(0.009f, 0.015f)), eye(p)), Palette.EyeDark);
+            c.Fill(p => Sdf.Circle(p, new Vector2(0.149f, 0.2f), 0.0075f), Color.white);
+            c.Fill(p => Sdf.Circle(p, new Vector2(0.138f, 0.176f), 0.0035f), Color.white.WithAlpha(0.8f));
+            // upper lid line, then a bold brow angled down to the nose
+            c.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Ellipse(p, new Vector2(0.129f, 0.19f), new Vector2(0.026f, 0.032f))) - 0.0045f, 0.2f - p.y), Palette.EyeDark);
+            c.Fill(p => Sdf.Tapered(p, new Vector2(0.09f, 0.254f), 0.011f, new Vector2(0.165f, 0.238f), 0.015f), K.Hair);
 
-            c.Paint(p => Sdf.Capsule(p, new Vector2(0.17f, 0.146f), new Vector2(0.19f, 0.142f), 0.008f), K.SkinShade.WithAlpha(0.5f), 0.008f);
-            c.Fill(p => Sdf.Capsule(p, new Vector2(0.14f, 0.098f), new Vector2(0.166f, 0.103f), 0.0058f), Color.Lerp(K.SkinShade, Palette.EyeDark, 0.45f));
-            c.Paint(p => Sdf.Capsule(p, new Vector2(0.145f, 0.084f), new Vector2(0.163f, 0.087f), 0.005f), K.SkinLight.WithAlpha(0.5f), 0.006f);
+            c.Paint(p => Sdf.Capsule(p, new Vector2(0.17f, 0.146f), new Vector2(0.19f, 0.142f), 0.009f), K.SkinShade.WithAlpha(0.5f), 0.008f);
+            // the smile: a short curve that lifts at the corner, a cheek above it
+            c.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Circle(p, new Vector2(0.15f, 0.13f), 0.034f)) - 0.0055f, Sdf.Intersect(p.y - 0.108f, 0.132f - p.x)), Color.Lerp(K.SkinShade, Palette.EyeDark, 0.5f));
+            c.Paint(p => Sdf.Ellipse(p, new Vector2(0.112f, 0.132f), new Vector2(0.03f, 0.02f)), new Color(1f, 0.55f, 0.5f, 0.32f), 0.02f);
         }
 
         static void BuildHead()
@@ -558,7 +582,7 @@ namespace SoccerFight
 
             // eye: almond with sclera, iris looking ahead and a catch-light; lid line and brow; nose shadow, mouth
             Face(c);
-            Head = c.ToSprite("Head", Vector2.zero);
+            Head = c.ToSprite("Head", Vector2.zero, scale: PlayerDims.HeadScale);
 
             // hair tuft: three spikes that whip with the head. The kit's Tuft scales the whole thing
             // from its root, so the same shape reads as a short quiff, a buzz cut or a long ponytail.
@@ -572,7 +596,7 @@ namespace SoccerFight
             Contour(t, tuft, 0.01f * s);
             t.Fill(tuft, K.Hair);
             t.Paint(p => Sdf.Intersect(Sdf.Capsule(p, T(0f, 0.03f), T(0.11f, 0.085f), 0.008f * s), tuft(p)), K.HairLight.WithAlpha(0.6f), 0.008f);
-            HairTuft = t.ToSprite("HairTuft", Vector2.zero);
+            HairTuft = t.ToSprite("HairTuft", Vector2.zero, scale: PlayerDims.HeadScale);
         }
     }
 }

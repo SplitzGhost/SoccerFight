@@ -104,7 +104,38 @@ namespace SoccerFight
             SpriteEmissiveMat = MakeSpriteMaterial("SF Sprite Emissive", 2.2f, false);
             CharacterMat = new Material(FindShader("SoccerFight/Character")) { name = "SF Character" };
             CharacterMat.SetColor("_RimColor", Palette.MoonRim);
+            // sunlight: full-strength colours, a warm rim from the sun, green bounce from the turf and a soft contact shade
+            CharacterMat.SetColor("_Ambient", Color.white);
+            CharacterMat.SetColor("_GroundColor", new Color(0.8f, 0.82f, 0.92f));
+            CharacterMat.SetColor("_BounceColor", new Color(0.5f, 0.8f, 0.32f));
+            CharacterMat.SetFloat("_BounceStrength", 0.3f);
+            CharacterMat.SetFloat("_RimStrength", 0.55f);
+            hazeMats.Clear();
+            Shader.SetGlobalColor(HazeId, Palette.Haze);
         }
+
+        static readonly int HazeId = Shader.PropertyToID("_SF_Haze");
+        static readonly System.Collections.Generic.Dictionary<int, Material> hazeMats = new System.Collections.Generic.Dictionary<int, Material>();
+
+        /// <summary>
+        /// Normal sprite material that fades the sprite into the global haze colour by <paramref name="amount"/>
+        /// (aerial perspective for the backdrop layers). Cached per 1 % step.
+        /// </summary>
+        public static Material HazeMat(float amount)
+        {
+            int key = Mathf.RoundToInt(Mathf.Clamp01(amount) * 100f);
+            if (key == 0) return SpriteMat;
+            if (!hazeMats.TryGetValue(key, out var m) || m == null)
+            {
+                m = MakeSpriteMaterial("SF Sprite Haze " + key, 1f, false);
+                m.SetFloat("_Haze", key / 100f);
+                hazeMats[key] = m;
+            }
+            return m;
+        }
+
+        /// <summary>Stage themes can tint the haze (dusk, rain, cave …).</summary>
+        public static void SetHaze(Color c) => Shader.SetGlobalColor(HazeId, c);
 
         // ------------------------------------------------------------------ generic
 

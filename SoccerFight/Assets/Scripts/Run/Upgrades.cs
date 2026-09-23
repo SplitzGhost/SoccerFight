@@ -35,10 +35,10 @@ namespace SoccerFight
 
     public static class Rarities
     {
-        public static readonly Color Common = new Color(0.72f, 0.8f, 0.86f);
-        public static readonly Color Rare = new Color(0.33f, 0.72f, 1f);
-        public static readonly Color Epic = new Color(0.78f, 0.45f, 1f);
-        public static readonly Color Legendary = new Color(1f, 0.74f, 0.25f);
+        public static readonly Color Common = new Color(0.44f, 0.6f, 0.68f);
+        public static readonly Color Rare = new Color(0.24f, 0.56f, 0.92f);
+        public static readonly Color Epic = new Color(0.64f, 0.36f, 0.9f);
+        public static readonly Color Legendary = new Color(0.98f, 0.62f, 0.16f);
 
         public static Color Of(Rarity r) => r == Rarity.Legendary ? Legendary : r == Rarity.Epic ? Epic : r == Rarity.Rare ? Rare : Common;
 
@@ -56,7 +56,7 @@ namespace SoccerFight
 
         public static UpgradeDef Get(string id) => byId.TryGetValue(id, out var u) ? u : null;
 
-        static string V(string s) => "<color=#FFD98A>" + s + "</color>";
+        static string V(string s) => "<color=#3E9E36>" + s + "</color>";   // green values, printed on the cream cards
         static string P(float f) => V(Mathf.RoundToInt(f * 100f) + "%");
         static string N(float f) => V(f % 1f == 0f ? ((int)f).ToString() : f.ToString("0.#"));
 

@@ -4,7 +4,7 @@ using UnityEngine.TextCore.LowLevel;
 
 namespace SoccerFight
 {
-    /// <summary>Resolution-independent looking HUD sprites (rasterized at 2x) and the Inter font assets.</summary>
+    /// <summary>Resolution-independent looking HUD sprites (rasterized at 2x) and the font assets (Lilita One + Inter).</summary>
     public static class UiArt
     {
         public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
@@ -14,6 +14,8 @@ namespace SoccerFight
         public static Sprite IconThrow, IconThree, IconCrossover, IconDunk, IconAlleyOop, IconBlock, IconFastBreak;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
+        /// <summary>The display face is chunky: the wide tracking the old UI used for caps would tear its words apart.</summary>
+        public const float DisplayTracking = 0.3f;
 
         static bool built;
 
@@ -526,27 +528,33 @@ namespace SoccerFight
         }
         static void BuildFonts()
         {
-            var bold = Resources.Load<Font>("Fonts/Inter-SemiBold");
-            var regular = Resources.Load<Font>("Fonts/Inter-Regular");
-            FontBold = bold != null ? TMP_FontAsset.CreateFontAsset(bold, 90, 9, GlyphRenderMode.SDFAA, 1024, 1024) : TMP_Settings.defaultFontAsset;
-            FontRegular = regular != null ? TMP_FontAsset.CreateFontAsset(regular, 90, 9, GlyphRenderMode.SDFAA, 1024, 1024) : FontBold;
-            if (FontBold != null) FontBold.name = "Inter SemiBold SDF";
-            if (FontRegular != null) FontRegular.name = "Inter Regular SDF";
+            // Headings, buttons and numbers: Lilita One, a chunky rounded display face (the Project Rise
+            // look). Body text: Inter SemiBold, which stays readable in long card descriptions.
+            var display = Resources.Load<Font>("Fonts/LilitaOne-Regular");
+            var body = Resources.Load<Font>("Fonts/Inter-SemiBold");
+            FontBold = display != null ? TMP_FontAsset.CreateFontAsset(display, 90, 12, GlyphRenderMode.SDFAA, 1024, 1024) : TMP_Settings.defaultFontAsset;
+            FontRegular = body != null ? TMP_FontAsset.CreateFontAsset(body, 90, 12, GlyphRenderMode.SDFAA, 1024, 1024) : FontBold;
+            if (FontBold != null) FontBold.name = "Lilita One SDF";
+            if (FontRegular != null) FontRegular.name = "Inter SemiBold SDF";
 
-            FontBoldShadow = MakeShadowMaterial(FontBold);
-            FontRegularShadow = MakeShadowMaterial(FontRegular);
+            FontBoldShadow = MakeShadowMaterial(FontBold, 0.34f);
+            FontRegularShadow = MakeShadowMaterial(FontRegular, 0.24f);
         }
 
-        static Material MakeShadowMaterial(TMP_FontAsset font)
+        /// <summary>
+        /// Cartoon print: a dark ink halo around the letters that drops a little downwards, so white
+        /// text reads on the bright sky and on light plates alike.
+        /// </summary>
+        static Material MakeShadowMaterial(TMP_FontAsset font, float dilate)
         {
             if (font == null || font.material == null) return null;
             var mat = new Material(font.material) { name = font.name + " Shadow" };
             mat.EnableKeyword("UNDERLAY_ON");
-            mat.SetColor("_UnderlayColor", new Color(0f, 0.02f, 0.06f, 0.55f));
+            mat.SetColor("_UnderlayColor", new Color(0.08f, 0.11f, 0.2f, 0.85f));
             mat.SetFloat("_UnderlayOffsetX", 0f);
             mat.SetFloat("_UnderlayOffsetY", -0.55f);
-            mat.SetFloat("_UnderlayDilate", 0.1f);
-            mat.SetFloat("_UnderlaySoftness", 0.55f);
+            mat.SetFloat("_UnderlayDilate", dilate);
+            mat.SetFloat("_UnderlaySoftness", 0.12f);
             return mat;
         }
     }

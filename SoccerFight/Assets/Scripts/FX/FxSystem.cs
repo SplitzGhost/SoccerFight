@@ -157,7 +157,7 @@ namespace SoccerFight
 
         public void Dust(Vector2 pos, Vector2 dir, int count, float speed = 1.6f, float size = 0.35f, float alpha = 0.35f)
         {
-            Color dust = new Color(0.62f, 0.82f, 0.8f, alpha);
+            Color dust = new Color(0.88f, 0.8f, 0.66f, alpha);   // sandy turf dust
             for (int i = 0; i < count; i++)
             {
                 Vector2 v = new Vector2(dir.x * Random.Range(0.3f, 1f) + Random.Range(-0.4f, 0.4f),

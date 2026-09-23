@@ -54,7 +54,7 @@ namespace SoccerFight
             rootGroup = go.AddComponent<CanvasGroup>();
             var root = (RectTransform)go.transform;
 
-            dim = UiKit.Img("Dim", root, null, new Color(0.01f, 0.02f, 0.05f, 0.72f), Vector2.zero, Vector2.zero);
+            dim = UiKit.Img("Dim", root, null, new Color(0.06f, 0.12f, 0.18f, 0.72f), Vector2.zero, Vector2.zero);
             dim.rectTransform.anchorMin = Vector2.zero;
             dim.rectTransform.anchorMax = Vector2.one;
             dim.rectTransform.sizeDelta = Vector2.zero;

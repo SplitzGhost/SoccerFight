@@ -10,6 +10,7 @@ Shader "SoccerFight/Sprite"
         _Intensity ("Intensity", Float) = 1
         _Solid ("Solid Fill", Range(0, 1)) = 0
         _EnvGraded ("Environment Grade", Float) = 0
+        _Haze ("Haze Amount", Range(0, 1)) = 0
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
         [HideInInspector] _Color ("Tint", Color) = (1,1,1,1)
@@ -54,14 +55,21 @@ Shader "SoccerFight/Sprite"
                 float _Intensity;
                 float _Solid;
                 float _EnvGraded;
+                float _Haze;
             CBUFFER_END
 
+            // aerial perspective: far layers fade into the global haze colour (set per stage)
+            half4 _SF_Haze;
+
             // environment grade (stage themes): rgb' = M rgb + t * coverage, only on graded clones
+            // _EnvGraded = 1: the stage grade (backdrop), 2: the sky grade (the gradient maps onto the stage's sky colours)
             float4x4 _SF_EnvGrade;
+            float4x4 _SF_SkyGrade;
             half3 EnvGrade(half3 rgb, half coverage)
             {
-                float3 g = mul((float3x3)_SF_EnvGrade, (float3)rgb) + _SF_EnvGrade._m03_m13_m23 * coverage;
-                return lerp(rgb, (half3)max(g, 0.0), (half)_EnvGraded);
+                float4x4 m = _EnvGraded > 1.5 ? _SF_SkyGrade : _SF_EnvGrade;
+                float3 g = mul((float3x3)m, (float3)rgb) + m._m03_m13_m23 * coverage;
+                return lerp(rgb, (half3)max(g, 0.0), (half)saturate(_EnvGraded));
             }
 
             Varyings vert(Attributes input)
@@ -76,7 +84,8 @@ Shader "SoccerFight/Sprite"
             half4 frag(Varyings i) : SV_Target
             {
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
-                half3 rgb = EnvGrade(lerp(tex.rgb, tex.aaa, (half)_Solid) * i.color.rgb, tex.a);
+                half3 rgb = lerp(tex.rgb, tex.aaa, (half)_Solid) * i.color.rgb;
+                rgb = lerp(EnvGrade(rgb, tex.a), _SF_Haze.rgb * tex.a, (half)_Haze);   // haze last: far layers fade into the stage's own haze colour
                 return half4(rgb * (i.color.a * _Intensity), tex.a * i.color.a);
             }
             ENDHLSL

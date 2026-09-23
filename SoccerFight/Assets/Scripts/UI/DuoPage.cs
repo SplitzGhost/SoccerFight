@@ -84,8 +84,8 @@ namespace SoccerFight
             for (int i = 0; i < CodeLength; i++)
             {
                 Vector2 p = center + new Vector2((i - (CodeLength - 1) * 0.5f) * step, 0f);
-                UiKit.Img("BoxShade", parent, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.4f), p + new Vector2(0f, -6f), box * 1.3f);
-                boxes[i] = UiKit.Img("Box" + i, parent, MenuArt.CardBody, new Color(0.02f, 0.05f, 0.08f, 0.9f), p, box, Image.Type.Sliced);
+                UiKit.Img("BoxShade", parent, UiArt.Glow, new Color(0.04f, 0.08f, 0.16f, 0.4f), p + new Vector2(0f, -6f), box * 1.3f);
+                boxes[i] = UiKit.Img("Box" + i, parent, MenuArt.CardBody, new Color(0.13f, 0.21f, 0.28f, 0.9f), p, box, Image.Type.Sliced);
                 UiKit.Img("Frame" + i, parent, MenuArt.Frame, Mint.WithAlpha(0.35f), p, box + new Vector2(2f, 2f), Image.Type.Sliced);
                 letters[i] = MenuArt.Label("Letter" + i, parent, "", font, Color.white, p + new Vector2(0f, 2f), box, TextAlignmentOptions.Center, 0f);
             }
@@ -291,7 +291,7 @@ namespace SoccerFight
             {
                 joinLetters[i].text = i < typed.Length ? typed[i].ToString() : "";
                 bool active = i == typed.Length;
-                joinBoxes[i].color = active ? new Color(0.06f, 0.14f, 0.2f, 0.95f) : new Color(0.02f, 0.05f, 0.08f, 0.9f);
+                joinBoxes[i].color = active ? new Color(0.06f, 0.14f, 0.2f, 0.95f) : new Color(0.13f, 0.21f, 0.28f, 0.9f);
             }
             if (typed.Length < CodeLength)
             {

@@ -61,7 +61,7 @@ namespace SoccerFight
             rootGroup = go.AddComponent<CanvasGroup>();
             root = (RectTransform)go.transform;
 
-            var dim = UiKit.Img("Dim", root, null, new Color(0.01f, 0.02f, 0.05f, 0.55f), Vector2.zero, Vector2.zero);
+            var dim = UiKit.Img("Dim", root, null, new Color(0.06f, 0.12f, 0.18f, 0.55f), Vector2.zero, Vector2.zero);
             dim.rectTransform.anchorMin = Vector2.zero;
             dim.rectTransform.anchorMax = Vector2.one;
             dim.rectTransform.sizeDelta = Vector2.zero;
@@ -69,7 +69,7 @@ namespace SoccerFight
 
             Vector2 size = new Vector2(1290f, 830f);
             panel = UiKit.Node("Panel", root, Vector2.zero, size);
-            UiKit.Img("Shadow", panel, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.3f);
+            UiKit.Img("Shadow", panel, UiArt.Glow, new Color(0.04f, 0.08f, 0.16f, 0.55f), new Vector2(0f, -20f), size * 1.3f);
             UiKit.Img("Border", panel, UiArt.Panel, Palette.Gold.WithAlpha(0.22f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
             UiKit.Img("Glass", panel, UiArt.Panel, new Color(0.045f, 0.075f, 0.12f, 0.995f), Vector2.zero, size, Image.Type.Sliced);
             UiKit.Img("Top Light", panel, UiArt.LineFade, Palette.Gold.WithAlpha(0.4f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));

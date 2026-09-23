@@ -605,13 +605,13 @@ namespace SoccerFight
             Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), torsoRot);
             Place(neck, neckBase, torsoRot * 0.6f + headTilt * 0.3f);
             float headRot = torsoRot + headTilt;
-            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0.0f, 0.065f), torsoRot * 0.6f);
+            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0.0f, 0.05f), torsoRot * 0.6f);
             Place(head, headPos, headRot);
 
             // hair tuft: spring-driven secondary motion
             float tuftTarget = Mathf.Clamp(-vel.x * facing * 1.6f - vel.y * 1.8f, -28f, 28f) + Mathf.Sin(time * 3f) * 2f;
             MathUtil.Spring(ref tuftAngle, ref tuftVel, tuftTarget, 2.2f, 0.3f, dt);
-            Vector2 tuftPos = headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot);
+            Vector2 tuftPos = headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f) * PlayerDims.HeadScale, headRot);
             Place(tuft, tuftPos, headRot + tuftAngle);
 
             PoseLeg(farLeg, hip + new Vector2(-0.025f, 0f), farFoot, farPoint, farFlat);
@@ -641,7 +641,7 @@ namespace SoccerFight
             BallHold = rootW + new Vector2(ballLocal.x * facing, ballLocal.y);
             if (BallIsScripted) BallScripted = BallHold;
             Vector2 footBody = hip + MathUtil.Rotate(nearFoot - hip, spin);
-            Vector2 headBody = hip + MathUtil.Rotate(headPos + new Vector2(0f, 0.2f) - hip, spin);
+            Vector2 headBody = hip + MathUtil.Rotate(headPos + new Vector2(0f, 0.2f * PlayerDims.HeadScale) - hip, spin);
             NearFootWorld = rootW + new Vector2(footBody.x * facing, footBody.y);
             HeadWorld = rootW + new Vector2(headBody.x * facing, headBody.y);
 

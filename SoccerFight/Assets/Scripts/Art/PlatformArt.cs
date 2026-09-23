@@ -142,7 +142,7 @@ namespace SoccerFight
         static Color TopColor(Vector2 p, float top, Surface kind, float seed)
         {
             float v = Mathf.Clamp01((p.y - (top - TopFront)) / (TopFront + TopBack));
-            Color turf = Color.Lerp(new Color(0.2f, 0.52f, 0.42f), new Color(0.12f, 0.34f, 0.3f), v);
+            Color turf = Color.Lerp(new Color(0.5f, 0.78f, 0.3f), new Color(0.34f, 0.6f, 0.26f), v);
             float grain = Noise.Perlin(p.x * 30f + seed, p.y * 9f);
             float patch = Noise.Perlin(p.x * 2.1f + seed * 3f, p.y * 4f);
             float slant = p.x + (v - 0.5f) * 0.35f;
@@ -153,7 +153,7 @@ namespace SoccerFight
                 case Surface.Rune:
                 {
                     float jx = Mathf.Abs(Mathf.Repeat(slant, 0.55f) - 0.275f);
-                    Color flag = Color.Lerp(new Color(0.2f, 0.33f, 0.36f), new Color(0.31f, 0.46f, 0.49f), Hash01((int)Mathf.Floor(slant / 0.55f) * 31 + (int)seed));
+                    Color flag = Color.Lerp(new Color(0.7f, 0.7f, 0.8f), new Color(0.9f, 0.87f, 0.83f), Hash01((int)Mathf.Floor(slant / 0.55f) * 31 + (int)seed));
                     if (jx > 0.262f || Mathf.Abs(v - 0.5f) < 0.03f) flag = Mul(flag, 0.62f);
                     col = Color.Lerp(flag, turf, S01((patch - (kind == Surface.Rune ? 0.6f : 0.45f)) / 0.15f));
                     break;
@@ -163,7 +163,7 @@ namespace SoccerFight
                     // boards running into the depth, each a slightly different plank
                     float board = Mathf.Floor(slant / 0.24f);
                     float jx = Mathf.Abs(Mathf.Repeat(slant, 0.24f) - 0.12f);
-                    Color wood = Color.Lerp(new Color(0.25f, 0.23f, 0.2f), new Color(0.36f, 0.34f, 0.29f), Hash01((int)board * 17 + (int)seed));
+                    Color wood = Color.Lerp(new Color(0.62f, 0.39f, 0.22f), new Color(0.8f, 0.53f, 0.3f), Hash01((int)board * 17 + (int)seed));
                     wood = Mul(wood, 0.9f + 0.2f * Noise.Perlin(p.x * 3f + board * 7f, p.y * 40f));
                     if (jx > 0.108f) wood = Mul(wood, 0.55f);
                     col = Color.Lerp(wood, turf, S01((patch - 0.68f) / 0.1f) * 0.8f);
@@ -172,7 +172,7 @@ namespace SoccerFight
                 case Surface.Crystal:
                 {
                     float facet = Noise.Perlin(p.x * 3.4f + seed, v * 2f);
-                    col = Color.Lerp(new Color(0.3f, 0.52f, 0.6f), new Color(0.5f, 0.78f, 0.84f), facet);
+                    col = Color.Lerp(new Color(0.42f, 0.66f, 0.95f), new Color(0.68f, 0.9f, 1f), facet);
                     if (Mathf.Abs(Mathf.Repeat(slant * 1.3f + facet * 0.4f, 0.7f) - 0.35f) > 0.338f) col = Color.Lerp(col, new Color(0.8f, 0.97f, 1f), 0.5f);
                     break;
                 }
@@ -186,7 +186,7 @@ namespace SoccerFight
             }
             col = Mul(col, 0.88f + 0.22f * grain);
             // the front lip catches the moonlight, the back edge falls into shade
-            Color lip = kind == Surface.Crystal ? new Color(0.8f, 0.98f, 1f) : kind == Surface.Wood ? new Color(0.6f, 0.62f, 0.55f) : new Color(0.56f, 0.86f, 0.74f);
+            Color lip = kind == Surface.Crystal ? new Color(0.9f, 1f, 1f) : kind == Surface.Wood ? new Color(0.92f, 0.7f, 0.45f) : new Color(0.78f, 0.95f, 0.45f);
             col = Color.Lerp(col, lip, S01((0.2f - v) / 0.2f) * 0.45f);
             col = Mul(col, 1f - 0.25f * S01((v - 0.6f) / 0.4f));
             col.a = 1f;
@@ -219,7 +219,7 @@ namespace SoccerFight
         }
 
         static Color FaceStone(Vector2 p, float light) =>
-            Color.Lerp(new Color(0.15f, 0.26f, 0.3f), new Color(0.33f, 0.49f, 0.53f), Mathf.Clamp01(light)).WithAlpha(1f);
+            Color.Lerp(new Color(0.55f, 0.57f, 0.72f), new Color(0.92f, 0.88f, 0.82f), Mathf.Clamp01(light)).WithAlpha(1f);
 
         /// <summary>Sparse hairline cracks: noise contour lines, but only inside a few weathered patches.</summary>
         static bool Crack(Vector2 p, float seed) =>
@@ -294,7 +294,7 @@ namespace SoccerFight
 
             MossSpill(c, x0, x1, T - TopFront - 0.03f, r, 0.35f);
             Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 0.6f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.62f, 0.9f, 0.9f), 0.45f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.96f, 0.86f), 0.45f);
 
             for (float x = x0 + 0.25f; x < x1 - 0.25f; x += 0.3f + R() * 0.55f) art.Hangs.Add(new Vector2(x, T - faceBottom + 0.03f));
             art.Lantern = new Vector2(pl.Center < 0f ? x1 - 0.45f : x0 + 0.45f, T - faceBottom + 0.02f);
@@ -353,7 +353,7 @@ namespace SoccerFight
             }, 0f, new Rect(x0 - 0.3f, T - abacusBottom - 0.1f, pl.Width + 0.6f, abacusBottom + 0.35f));
             MossSpill(c, x0, x1, T - TopFront - 0.025f, r, 0.4f);
             Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 0.7f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.62f, 0.9f, 0.9f), 0.45f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.96f, 0.86f), 0.45f);
 
             art.Hangs.Add(new Vector2(x0 + 0.12f + R() * 0.15f, T - abacusBottom + 0.03f));
             art.Hangs.Add(new Vector2(x1 - 0.12f - R() * 0.15f, T - abacusBottom + 0.03f));
@@ -405,13 +405,13 @@ namespace SoccerFight
                     // layered sediment, a touch warmer than the teal ruins so the rock separates from them
                     float strata = 0.5f + 0.5f * Mathf.Sin(p.y * 22f + Noise.Perlin(p.x * 1.6f, seed) * 5f);
                     float grain = Noise.Perlin(p.x * 6f, p.y * 6f);
-                    Color rock = Color.Lerp(new Color(0.15f, 0.19f, 0.2f), new Color(0.31f, 0.36f, 0.34f), strata * 0.55f + 0.3f * grain);
+                    Color rock = Color.Lerp(new Color(0.52f, 0.5f, 0.64f), new Color(0.8f, 0.76f, 0.74f), strata * 0.55f + 0.3f * grain);
                     rock = Mul(rock, 0.78f + 0.4f * Mathf.Clamp01((p.x - x0) / pl.Width));
                     rock = Mul(rock, 1f - 0.6f * S01((below - 0.2f) / 0.85f));
-                    col = Color.Lerp(new Color(0.1f, 0.17f, 0.17f), rock, S01((below - 0.07f) / 0.14f));
+                    col = Color.Lerp(new Color(0.42f, 0.4f, 0.54f), rock, S01((below - 0.07f) / 0.14f));
                     if (Crack(p, seed)) col = Mul(col, 0.55f);
                     float moss = S01((Noise.Perlin(p.x * 2.4f, p.y * 2.4f + seed) - 0.5f) / 0.12f) * S01((0.5f - below) / 0.3f);
-                    col = Color.Lerp(col, new Color(0.17f, 0.42f, 0.35f), moss * 0.7f);
+                    col = Color.Lerp(col, new Color(0.46f, 0.74f, 0.3f), moss * 0.7f);
                 }
                 col.a = a;
                 return col;
@@ -434,7 +434,7 @@ namespace SoccerFight
                 art.Crystals.Add(new Vector2(sx, sy - 0.08f));
             }
             Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 1f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.55f, 0.85f, 0.82f), 0.5f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.95f, 0.82f), 0.5f);
 
             for (float x = x0 + 0.2f; x < x1 - 0.2f; x += 0.22f + R() * 0.4f) art.Hangs.Add(new Vector2(x, bottom[Col(c, x)] + 0.06f));
             return c;
@@ -449,7 +449,7 @@ namespace SoccerFight
             var c = new SdfCanvas(BodyRect(pl), 110f);
             var r = new System.Random(pl.SeedI);
             float R() => (float)r.NextDouble();
-            Color deep = new Color(0.16f, 0.36f, 0.5f), mid = new Color(0.36f, 0.72f, 0.86f), bright = new Color(0.82f, 1f, 1f);
+            Color deep = new Color(0.3f, 0.48f, 0.86f), mid = new Color(0.5f, 0.78f, 1f), bright = new Color(0.9f, 1f, 1f);
 
             void Prism(Vector2 root, float ang, float len, float w, float shade)
             {
@@ -509,7 +509,7 @@ namespace SoccerFight
             {
                 if (q.y > T - TopFront) return TopColor(q, T, Surface.Crystal, seed);
                 float f = (T - TopFront) - q.y;
-                Color col = Color.Lerp(new Color(0.2f, 0.3f, 0.36f), new Color(0.1f, 0.15f, 0.2f), S01(f / 0.2f));
+                Color col = Color.Lerp(new Color(0.64f, 0.64f, 0.78f), new Color(0.46f, 0.46f, 0.62f), S01(f / 0.2f));
                 col = Mul(col, 0.8f + 0.35f * S01((q.x - x0) / pl.Width) + 0.1f * Noise.Perlin(q.x * 12f, q.y * 12f));
                 if (Crack(q, seed)) col = Color.Lerp(col, mid, 0.6f);
                 col.a = 1f;
@@ -523,7 +523,7 @@ namespace SoccerFight
                 Vector2 a = new Vector2(x, T + 0.08f), b = a + MathUtil.Dir(90f + (R() - 0.5f) * 40f) * (0.12f + R() * 0.16f);
                 c.Fill(q => Sdf.Tapered(q, a, 0.035f, b, 0.004f), q => Color.Lerp(mid, bright, S01((q - a).magnitude / 0.25f)).WithAlpha(1f), 0f, Around(a, b, 0.05f));
             }
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.8f, 1f, 1f), 0.55f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.97f, 0.9f), 0.55f);
             art.Spots.Add(new Vector3(cx, T - 0.9f, pl.Width * 1.1f + 1f));
             return c;
         }
@@ -595,11 +595,11 @@ namespace SoccerFight
             {
                 Vector2 gc = new Vector2(x, band);
                 int kind = (int)(Hash01(pl.SeedI * 13 + gi * 7) * 5f);
-                c.Fill(q => Glyph(q, gc, kind, 0.08f) - 0.012f, new Color(0.05f, 0.1f, 0.14f), 0f, new Rect(gc.x - 0.12f, gc.y - 0.12f, 0.24f, 0.24f));
+                c.Fill(q => Glyph(q, gc, kind, 0.08f) - 0.012f, new Color(0.38f, 0.4f, 0.56f), 0f, new Rect(gc.x - 0.12f, gc.y - 0.12f, 0.24f, 0.24f));
             }
             MossSpill(c, x0, x1, T - TopFront - 0.03f, r, 0.55f);
             Fringe(c, x0 - 0.05f, x1 + 0.05f, T - TopFront, r, 0.45f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.62f, 0.9f, 0.9f), 0.45f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.96f, 0.86f), 0.45f);
             for (float x = x0 + 0.25f; x < x1 - 0.25f; x += 0.3f + R() * 0.5f)
                 art.Hangs.Add(new Vector2(x, T - 0.9f - 0.22f * Noise.Perlin(x * 2.2f, seed) + 0.08f));
             art.Spots.Add(new Vector3(pl.Center, band, pl.Width * 0.9f));
@@ -632,8 +632,8 @@ namespace SoccerFight
             var c = new SdfCanvas(BodyRect(pl), 110f);
             var r = new System.Random(pl.SeedI);
             float R() => (float)r.NextDouble();
-            Color woodDark = new Color(0.13f, 0.12f, 0.11f), wood = new Color(0.27f, 0.24f, 0.2f), woodLight = new Color(0.42f, 0.38f, 0.31f);
-            Color iron = new Color(0.08f, 0.09f, 0.1f), ironLight = new Color(0.32f, 0.36f, 0.38f);
+            Color woodDark = new Color(0.42f, 0.25f, 0.15f), wood = new Color(0.66f, 0.42f, 0.24f), woodLight = new Color(0.9f, 0.64f, 0.37f);
+            Color iron = new Color(0.3f, 0.32f, 0.42f), ironLight = new Color(0.64f, 0.68f, 0.78f);
             float cl = x0 + 0.35f, cr = x1 - 0.35f;
 
             // joists and diagonal braces under the deck (behind the edge beam)
@@ -683,7 +683,7 @@ namespace SoccerFight
             }
             MossSpill(c, x0, x1, T - TopFront - 0.02f, r, 0.6f);
             Fringe(c, x0 + 0.1f, x1 - 0.1f, T - TopFront, r, 0.3f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.7f, 0.78f, 0.72f), 0.4f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.92f, 0.78f), 0.4f);
             for (float x = x0 + 0.3f; x < x1 - 0.3f; x += 0.45f + R() * 0.6f) art.Hangs.Add(new Vector2(x, T - 0.28f));
             if (R() < 0.6f) art.Lantern = new Vector2(pl.Center < 0f ? x1 - 0.15f : x0 + 0.15f, T - 0.28f);
             return c;
@@ -698,7 +698,7 @@ namespace SoccerFight
             var r = new System.Random(pl.SeedI);
             float R() => (float)r.NextDouble();
             float hw = pl.Width * 0.5f + 0.45f;
-            Color capDark = Mul(Palette.MushCapDark, 0.75f), cap = Mul(Palette.MushCap, 0.8f), stem = Mul(Palette.MushStem, 0.55f);
+            Color capDark = Mul(Palette.MushCapDark, 0.95f), cap = Palette.MushCap, stem = Mul(Palette.MushStem, 0.92f);
 
             // gills under the cap (seen from slightly below)
             c.Fill(q =>
@@ -751,7 +751,7 @@ namespace SoccerFight
                 return Mathf.Abs(q.y - rim - 0.03f) - 0.03f;
             }, Color.Lerp(cap, Palette.MushStem, 0.35f).WithAlpha(0.8f), 0.01f);
             Fringe(c, x0 + 0.05f, x1 - 0.05f, T - TopFront, r, 0.35f);
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.7f, 1f, 1f), 0.5f);
+            c.RimLight(new Vector2(0.03f, 0.03f), new Color(1f, 0.95f, 0.85f), 0.5f);
             art.Spots.Add(new Vector3(cx, T - 0.55f, pl.Width + 0.8f));
             return c;
         }
@@ -763,7 +763,7 @@ namespace SoccerFight
             float T = pl.T;
             const float baseY = 0.22f;          // standing on the far edge of the pitch
             var c = new SdfCanvas(SupportRect(pl), 90f);
-            Color dark = new Color(0.14f, 0.23f, 0.28f), lightC = new Color(0.25f, 0.37f, 0.42f);
+            Color dark = new Color(0.5f, 0.5f, 0.64f), lightC = new Color(0.74f, 0.72f, 0.76f);
 
             if (pl.Kind == Level.Style.Mushroom)
             {
@@ -771,7 +771,7 @@ namespace SoccerFight
                 float top = T - 0.5f;
                 float sw = Mathf.Clamp(pl.Width * 0.16f, 0.26f, 0.5f);
                 float bend = (Hash01(pl.SeedI) - 0.5f) * 0.5f;
-                Color stem = Mul(Palette.MushStem, 0.5f);
+                Color stem = Mul(Palette.MushStem, 0.85f);
                 SdfCanvas.SdfFn stalk = q =>
                 {
                     float t = Mathf.Clamp01((q.y - baseY) / (top - baseY));
@@ -794,7 +794,7 @@ namespace SoccerFight
                     col.a = 1f;
                     return col;
                 });
-                c.RimLight(new Vector2(0.03f, 0.02f), new Color(0.6f, 0.85f, 0.85f), 0.4f);
+                c.RimLight(new Vector2(0.03f, 0.02f), new Color(1f, 0.95f, 0.85f), 0.4f);
                 return c;
             }
 
@@ -845,7 +845,7 @@ namespace SoccerFight
                 });
                 c.Fill(q => Sdf.Box(q, new Vector2(pl.Center, baseY + 0.15f), new Vector2(0.55f, 0.15f), 0.02f), q => Color.Lerp(dark, lightC, 0.5f + 0.3f * Mathf.Clamp((q.x - pl.Center) / 0.5f, -1f, 1f)).WithAlpha(1f));
             }
-            c.RimLight(new Vector2(0.03f, 0.02f), new Color(0.3f, 0.52f, 0.58f), 0.4f);
+            c.RimLight(new Vector2(0.03f, 0.02f), new Color(0.95f, 0.9f, 0.8f), 0.4f);
             c.EdgeBand(Vector2.up, 0.06f, Mul(Palette.Moss, 0.7f).WithAlpha(1f), p => S01((Noise.Perlin(p.x * 2.4f, p.y * 2.4f) - 0.35f) / 0.2f));
             return c;
         }

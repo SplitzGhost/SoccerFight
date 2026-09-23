@@ -18,8 +18,8 @@ namespace SoccerFight
         float bloomBoost;  // additive bloom intensity
         float lowHealth;   // 0..1 steady state
 
-        const float BaseBloom = 1.05f;
-        const float BaseVignette = 0.3f;
+        const float BaseBloom = 0.8f;
+        const float BaseVignette = 0.16f;
 
         public void Init(Transform parent)
         {
@@ -32,23 +32,23 @@ namespace SoccerFight
             vol.sharedProfile = profile;
 
             bloom = profile.Add<Bloom>(true);
-            bloom.threshold.value = 0.92f;
+            bloom.threshold.value = 1.08f;   // the daylight scene itself stays crisp; only HDR effects bloom
             bloom.intensity.value = BaseBloom;
             bloom.scatter.value = 0.72f;
             bloom.clamp.value = 65000f;
             bloom.highQualityFiltering.value = true;
-            bloom.tint.value = new Color(0.92f, 0.98f, 1f);
+            bloom.tint.value = new Color(1f, 0.98f, 0.94f);
 
             vignette = profile.Add<Vignette>(true);
             vignette.intensity.value = BaseVignette;
             vignette.smoothness.value = 0.5f;
-            vignette.color.value = new Color(0.01f, 0.02f, 0.05f);
+            vignette.color.value = new Color(0.06f, 0.1f, 0.24f);
             vignette.rounded.value = false;
 
             color = profile.Add<ColorAdjustments>(true);
             color.contrast.value = 10f;
             color.saturation.value = 10f;
-            color.postExposure.value = 0.05f;
+            color.postExposure.value = 0f;
 
             chroma = profile.Add<ChromaticAberration>(true);
             chroma.intensity.value = 0f;
@@ -58,7 +58,7 @@ namespace SoccerFight
             lens.scale.value = 1f;
 
             var tonemap = profile.Add<Tonemapping>(true);
-            tonemap.mode.value = TonemappingMode.Neutral;
+            tonemap.mode.value = TonemappingMode.None;   // keep the bright cartoon whites and saturated colours
         }
 
         public void Impact(float strength)
@@ -99,7 +99,7 @@ namespace SoccerFight
 
             float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);
             float red = Mathf.Max(hurt, lowHealth * (0.35f + 0.25f * pulse));
-            Color baseVig = Color.Lerp(new Color(0.01f, 0.02f, 0.05f), new Color(0.2f, 0f, 0.04f), eclipse);
+            Color baseVig = Color.Lerp(new Color(0.06f, 0.1f, 0.24f), new Color(0.2f, 0f, 0.04f), eclipse);
             vignette.color.value = Color.Lerp(baseVig, new Color(0.55f, 0.02f, 0.08f), red);
             vignette.intensity.value = BaseVignette + themeVignetteShown + red * 0.18f + eclipse * 0.16f + darkness * 0.05f;
             vignette.center.value = Vector2.Lerp(new Vector2(0.5f, 0.5f), darkCenter, darkness);
@@ -108,7 +108,7 @@ namespace SoccerFight
 
             color.colorFilter.value = Color.Lerp(Color.white, new Color(1f, 0.8f, 0.84f), eclipse);
             color.saturation.value = 10f - 22f * eclipse;
-            color.postExposure.value = 0.05f - 0.25f * eclipse;
+            color.postExposure.value = 0f - 0.25f * eclipse;
         }
     }
 }

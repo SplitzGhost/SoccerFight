@@ -8,8 +8,8 @@ namespace SoccerFight
     /// EnvironmentArt: a far range of snowy peaks, a forest hill with a ruined stadium
     /// and its floodlight masts, a broken aqueduct, near columns and a giant trunk and the chalk
     /// markings of the pitch (the platforms live in PlatformArt, generated per stage).
-    /// Backdrop colours are authored at full brightness — WorldEnvironment darkens every layer by
-    /// its depth, so the scene gets darker the further back it goes.
+    /// Backdrop colours are authored at full strength — WorldEnvironment fades every layer into the
+    /// sky haze by its depth, so the scene gets paler the further back it goes.
     /// </summary>
     public static class DepthArt
     {
@@ -145,9 +145,9 @@ namespace SoccerFight
             var slopeB = Slope(back, ppu);
             var slopeF = Slope(front, ppu);
 
-            Color bBase = new Color(0.2f, 0.35f, 0.45f), bLit = new Color(0.46f, 0.64f, 0.73f), snow = new Color(0.8f, 0.9f, 0.96f);
-            Color fBase = new Color(0.11f, 0.22f, 0.29f), fLit = new Color(0.28f, 0.45f, 0.53f);
-            Color mist = new Color(0.36f, 0.56f, 0.64f), valley = new Color(0.09f, 0.18f, 0.24f);
+            Color bBase = new Color(0.5f, 0.56f, 0.8f), bLit = new Color(0.76f, 0.8f, 0.96f), snow = new Color(1f, 1f, 1f);
+            Color fBase = new Color(0.36f, 0.5f, 0.72f), fLit = new Color(0.56f, 0.72f, 0.88f);
+            Color mist = new Color(0.8f, 0.9f, 0.96f), valley = new Color(0.52f, 0.7f, 0.78f);
             c.Field(p =>
             {
                 int x = Mathf.Clamp((int)((p.x - left) * ppu), 0, W - 1);
@@ -159,7 +159,7 @@ namespace SoccerFight
                 float litB = Mathf.Clamp(-slopeB[x] * 0.8f, -0.6f, 0.8f);
                 float crag = Noise.Perlin(p.x * 6.5f, p.y * 0.7f + 3f);
                 Color b = Color.Lerp(bBase, bLit, Mathf.Clamp01(litB) * 0.8f);
-                b = Mul(b, (1f + Mathf.Min(0f, litB) * 0.3f) * (0.84f + 0.26f * crag));
+                b = Mul(b, (1f + Mathf.Min(0f, litB) * 0.3f) * (0.95f + 0.08f * crag));
                 float below = back[x] - p.y;
                 float snowMask = S01((0.32f - below) / 0.2f) * S01((Noise.Perlin(p.x * 4.4f, p.y * 3.6f) - 0.32f) / 0.2f) * S01((back[x] - 1.85f) / 0.45f);
                 b = Color.Lerp(b, Mul(snow, 0.7f + 0.4f * Mathf.Clamp01(litB + 0.3f)), snowMask * 0.85f);
@@ -177,7 +177,7 @@ namespace SoccerFight
             // pine forests clinging to the front range in patches
             var r = new System.Random(91);
             float R() => (float)r.NextDouble();
-            Color pine = new Color(0.07f, 0.16f, 0.21f);
+            Color pine = new Color(0.3f, 0.5f, 0.6f);
             for (int i = 0; i < 360; i++)
             {
                 float px = left + 1f + R() * (PeaksW - 2f);
@@ -191,8 +191,8 @@ namespace SoccerFight
                     pc, 0f, new Rect(px - w - 0.05f, by - 0.05f, w * 2f + 0.1f, h * 1.2f + 0.1f));
             }
 
-            // moonlit crests keep the far range readable even after the depth darkening
-            c.RimLight(new Vector2(0.03f, 0.04f), new Color(0.76f, 0.9f, 0.96f), 0.75f);
+            // sunlit crests keep the far range readable through the haze
+            c.RimLight(new Vector2(0.03f, 0.04f), new Color(1f, 0.97f, 0.9f), 0.6f);
             return c;
         }
 
@@ -210,7 +210,7 @@ namespace SoccerFight
                 float plateau = S01(1f - Mathf.Abs(ux - StadiumX) / 3.8f) * 0.25f + S01(1f - Mathf.Abs(ux - TowerX) / 1.3f) * 0.2f;
                 hill[x] = 0.5f + 0.35f * Fbm(ux * 0.1f, 21f) + 0.15f * Fbm(ux * 0.45f, 22f) + plateau;
             }
-            Color ground = new Color(0.1f, 0.2f, 0.25f), mist = new Color(0.34f, 0.52f, 0.58f), valley = new Color(0.08f, 0.16f, 0.21f);
+            Color ground = new Color(0.36f, 0.64f, 0.38f), mist = new Color(0.72f, 0.87f, 0.82f), valley = new Color(0.4f, 0.62f, 0.45f);
             c.Field(p =>
             {
                 int x = Mathf.Clamp((int)((p.x - left) * ppu), 0, W - 1);
@@ -225,7 +225,7 @@ namespace SoccerFight
 
             var r = new System.Random(57);
             float R() => (float)r.NextDouble();
-            Color backTree = new Color(0.17f, 0.3f, 0.36f), frontTree = new Color(0.08f, 0.17f, 0.21f);
+            Color backTree = new Color(0.3f, 0.56f, 0.42f), frontTree = new Color(0.2f, 0.46f, 0.3f);
 
             // back row of hazy firs
             for (float tx = left + 0.4f; tx < -left - 0.4f; tx += 0.12f + R() * 0.2f)
@@ -235,24 +235,28 @@ namespace SoccerFight
                 Conifer(c, new Vector2(tx, hill[Col(c, tx)] - 0.06f), h, Mul(backTree, 0.9f + R() * 0.2f), 0.22f + R() * 0.08f);
             }
 
-            // the old stadium bowl: three tiers of arches, the right end collapsed
+            // the stadium on the hill: a cream bowl with three tiers of arches, colourful seat rows
+            // showing through them, a slate roof lip and pennants flying along the rim
             float sb = hill[Col(c, StadiumX)] - 0.08f;
             const float halfW = 2.7f, height = 1.15f, tierH = 0.34f;
-            Color facade = new Color(0.17f, 0.28f, 0.34f), facadeLit = new Color(0.32f, 0.47f, 0.52f), dark = new Color(0.04f, 0.08f, 0.11f);
+            Color facade = new Color(0.82f, 0.78f, 0.74f), facadeLit = new Color(1f, 0.96f, 0.86f);
+            Color[] seats = { Palette.Seat2, Palette.Seat1, Palette.Seat3 };
+            float BowlTop(float x)
+            {
+                float u = (x - StadiumX) / halfW;
+                return sb + height * (0.92f + 0.08f * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u)));
+            }
             SdfCanvas.SdfFn bowl = q =>
             {
-                float u = (q.x - StadiumX) / halfW;
-                float top = sb + height * (0.92f + 0.08f * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u)))
-                            - S01((u - 0.35f) / 0.5f) * (0.66f + 0.2f * Noise.Perlin(q.x * 7f, 3.3f)) - 0.04f * Noise.Perlin(q.x * 16f, 1.1f);
                 float body = Sdf.Box(q, new Vector2(StadiumX, sb + height * 0.5f), new Vector2(halfW, height * 0.5f + 0.2f), 0.28f);
-                return Mathf.Max(body, q.y - top);
+                return Mathf.Max(body, q.y - BowlTop(q.x));
             };
             c.Fill(bowl, q =>
             {
                 float u = Mathf.Clamp((q.x - StadiumX) / halfW, -0.999f, 0.999f);
                 float round = Mathf.Sqrt(1f - u * u);
-                Color col = Color.Lerp(facade, facadeLit, S01((u + 0.2f) / 1.2f) * 0.6f);
-                col = Mul(col, 0.72f + 0.28f * round);
+                Color col = Color.Lerp(facade, facadeLit, S01((u + 0.2f) / 1.2f) * 0.7f);
+                col = Mul(col, 0.8f + 0.2f * round);
                 float lv = q.y - sb;
                 int tier = Mathf.FloorToInt(lv / tierH);
                 float ty = lv - tier * tierH;
@@ -261,19 +265,37 @@ namespace SoccerFight
                 float ax = Mathf.Repeat(s, 0.26f) - 0.13f;
                 float open = Mathf.Min(Sdf.Box(new Vector2(ax, ty), new Vector2(0f, 0.11f), new Vector2(0.075f, 0.1f)), Sdf.Circle(new Vector2(ax, ty), new Vector2(0f, 0.2f), 0.075f));
                 if (tier >= 0 && tier < 3)
-                    col = Color.Lerp(col, Color.Lerp(dark, Mul(dark, 1.8f), S01(ty / 0.3f)), Mathf.Clamp01(0.5f - open * round * ppu));
-                if (Mathf.Abs(ty - (tierH - 0.02f)) < 0.014f) col = Mul(col, 1.2f);
+                {
+                    // seat rows seen through the arch: striped, darker at the top of the opening
+                    Color seat = seats[tier];
+                    float row = Mathf.Repeat(ty * 38f, 1f) < 0.5f ? 1f : 0.82f;
+                    Color inside = Mul(seat, row * Mathf.Lerp(0.95f, 0.62f, S01(ty / 0.3f)));
+                    col = Color.Lerp(col, inside, Mathf.Clamp01(0.5f - open * round * ppu));
+                }
+                if (Mathf.Abs(ty - (tierH - 0.02f)) < 0.014f) col = Mul(col, 1.08f);
+                // slate roof lip along the top
+                if (BowlTop(q.x) - q.y < 0.07f) col = Color.Lerp(Palette.Slate, Mul(Palette.Slate, 1.35f), S01((u + 0.2f) / 1.2f));
                 col.a = 1f;
                 return col;
             }, 0f, new Rect(StadiumX - halfW - 0.2f, sb - 0.3f, halfW * 2f + 0.4f, height + 0.6f));
 
-            // floodlight masts at both ends: the left one leans broken and dark, the right one still burns
-            Color steel = new Color(0.1f, 0.18f, 0.22f);
+            // pennants on thin poles along the rim
+            for (int k = 0; k < 9; k++)
+            {
+                float fx = StadiumX - halfW + 0.35f + k * (halfW * 2f - 0.7f) / 8f;
+                Vector2 pb = new Vector2(fx, BowlTop(fx) - 0.02f), pt = pb + new Vector2(0f, 0.28f);
+                c.Fill(q => Sdf.Capsule(q, pb, pt, 0.006f), new Color(0.9f, 0.9f, 0.95f), 0f, Around(pb, pt, 0.03f));
+                Color fc = seats[k % 3];
+                c.Fill(q => Sdf.Triangle(q, pt, pt + new Vector2(0f, -0.1f), pt + new Vector2(0.17f, -0.04f)), fc, 0f, new Rect(pt.x - 0.02f, pt.y - 0.13f, 0.22f, 0.16f));
+            }
+
+            // floodlight masts at both ends
+            Color steel = new Color(0.6f, 0.64f, 0.74f);
             for (int side = -1; side <= 1; side += 2)
             {
                 float mx = StadiumX + side * (halfW + 0.12f);
                 float mb = hill[Col(c, mx)] - 0.04f;
-                float lean = side < 0 ? -0.13f : 0.03f;
+                float lean = side < 0 ? -0.02f : 0.02f;
                 Vector2 top = new Vector2(mx + lean, mb + 1.9f);
                 Vector2 l0 = new Vector2(mx - 0.1f, mb), r0 = new Vector2(mx + 0.1f, mb);
                 Vector2 l1 = top + new Vector2(-0.03f, 0f), r1 = top + new Vector2(0.03f, 0f);
@@ -285,37 +307,38 @@ namespace SoccerFight
                     Vector2 b = k % 2 == 0 ? Vector2.Lerp(r0, r1, t1) : Vector2.Lerp(l0, l1, t1);
                     c.Fill(q => Sdf.Capsule(q, a, b, 0.005f), steel, 0f, Around(a, b, 0.05f));
                 }
-                float tilt = side < 0 ? -28f : 14f;
+                float tilt = side < 0 ? -8f : 8f;
                 Vector2 hc = top + new Vector2(0f, 0.12f);
                 c.Fill(q => Sdf.Box(q, hc, new Vector2(0.2f, 0.11f), 0.015f, tilt), Mul(steel, 1.3f), 0f, new Rect(hc.x - 0.3f, hc.y - 0.3f, 0.6f, 0.6f));
                 for (int gx = 0; gx < 4; gx++)
                     for (int gy = 0; gy < 3; gy++)
                     {
                         Vector2 lp = hc + MathUtil.Rotate(new Vector2(-0.135f + gx * 0.09f, -0.065f + gy * 0.065f), tilt);
-                        bool lit = side > 0 && MathUtil.Hash(gx * 7 + gy * 13 + 3) > -0.35f;
-                        Color lc = lit ? new Color(0.92f, 0.98f, 1f) : new Color(0.2f, 0.27f, 0.3f);
+                        bool lit = MathUtil.Hash(gx * 7 + gy * 13 + 3 + side) > -0.35f;
+                        Color lc = lit ? new Color(1f, 1f, 0.94f) : new Color(0.78f, 0.82f, 0.9f);
                         c.Fill(q => Sdf.Circle(q, lp, 0.022f), lc, 0f, new Rect(lp.x - 0.05f, lp.y - 0.05f, 0.1f, 0.1f));
                     }
-                if (side > 0) ForestLights.Add(new Vector3(hc.x, hc.y, 1.1f));
+                ForestLights.Add(new Vector3(hc.x, hc.y, 1.1f));
             }
 
             // bell tower with a broken roof
             float tb = hill[Col(c, TowerX)] - 0.08f;
             const float tw = 0.22f, th = 1.7f;
-            Color tstone = new Color(0.16f, 0.26f, 0.32f);
+            Color tstone = new Color(0.8f, 0.76f, 0.74f), dark = new Color(0.36f, 0.4f, 0.55f);
             SdfCanvas.SdfFn tower = q =>
             {
                 float d = Sdf.Box(q, new Vector2(TowerX, tb + th * 0.5f), new Vector2(tw, th * 0.5f));
                 float roof = Sdf.Triangle(q, new Vector2(TowerX - tw - 0.04f, tb + th), new Vector2(TowerX + tw + 0.04f, tb + th), new Vector2(TowerX, tb + th + 0.5f));
-                roof = Mathf.Max(roof, q.x - (TowerX + 0.03f + 0.07f * Noise.Perlin(q.y * 12f, 2f)));
                 d = Mathf.Min(d, roof);
                 d = Mathf.Min(d, Sdf.Box(q, new Vector2(TowerX - 0.42f, tb + 0.24f + 0.07f * Noise.Perlin(q.x * 8f, 5f)), new Vector2(0.22f, 0.26f)));
                 return d;
             };
             c.Fill(tower, q =>
             {
-                Color col = Mul(tstone, 0.85f + 0.3f * S01((q.x - TowerX + tw) / (2f * tw)));
-                if (Mathf.Repeat(q.y - tb, 0.1f) < 0.011f) col = Mul(col, 0.8f);
+                float side = S01((q.x - TowerX + tw) / (2f * tw));
+                Color col = Mul(tstone, 0.85f + 0.3f * side);
+                if (Mathf.Repeat(q.y - tb, 0.1f) < 0.011f) col = Mul(col, 0.88f);
+                if (q.y > tb + th) col = Color.Lerp(new Color(0.72f, 0.28f, 0.24f), new Color(0.95f, 0.45f, 0.32f), side);   // red tiled roof
                 col.a = 1f;
                 return col;
             }, 0f, new Rect(TowerX - 0.75f, tb - 0.1f, 1.1f, th + 0.7f));
@@ -323,7 +346,7 @@ namespace SoccerFight
             c.Fill(q => Mathf.Min(Sdf.Box(q, bo + new Vector2(0f, -0.045f), new Vector2(0.1f, 0.12f)), Sdf.Circle(q, bo + new Vector2(0f, 0.075f), 0.1f)), dark, 0f,
                 new Rect(bo.x - 0.15f, bo.y - 0.22f, 0.3f, 0.45f));
             c.Fill(q => Mathf.Min(Sdf.Ellipse(q, bo + new Vector2(0f, -0.015f), new Vector2(0.05f, 0.065f)), Sdf.Box(q, bo + new Vector2(0f, -0.075f), new Vector2(0.065f, 0.015f))),
-                new Color(0.2f, 0.24f, 0.2f), 0f, new Rect(bo.x - 0.12f, bo.y - 0.15f, 0.24f, 0.24f));
+                new Color(0.98f, 0.78f, 0.3f), 0f, new Rect(bo.x - 0.12f, bo.y - 0.15f, 0.24f, 0.24f));
 
             // front row: taller firs and a few broadleaf trees hiding the feet of the buildings
             for (float tx = left + 0.3f; tx < -left - 0.3f; tx += 0.14f + R() * 0.26f)
@@ -334,10 +357,10 @@ namespace SoccerFight
                 float h = nearBuilding ? 0.22f + R() * 0.24f : 0.3f + R() * 0.46f;
                 Vector2 b = new Vector2(tx, hill[Col(c, tx)] - 0.12f);
                 Color col = Mul(frontTree, 0.85f + R() * 0.3f);
-                if (R() < 0.18f) RoundTree(c, b, h * 0.85f, col, r);
+                if (R() < 0.55f) RoundTree(c, b, h * 0.85f, col, r);
                 else Conifer(c, b, h, col, 0.2f + R() * 0.1f);
             }
-            c.RimLight(new Vector2(0.03f, 0.04f), new Color(0.62f, 0.82f, 0.88f), 0.6f);
+            c.RimLight(new Vector2(0.03f, 0.04f), new Color(1f, 0.96f, 0.82f), 0.6f);
 
             // lit windows (after the rim so they stay warm)
             Vector2 wl = new Vector2(TowerX + 0.06f, tb + 0.95f);
@@ -398,7 +421,7 @@ namespace SoccerFight
             var top = new float[W];
             for (int x = 0; x < W; x++) top[x] = AqTopExact(left + (x + 0.5f) / ppu);
 
-            Color mist = new Color(0.3f, 0.47f, 0.53f);
+            Color mist = new Color(0.74f, 0.86f, 0.82f);
             c.Field(p =>
             {
                 int xi = Mathf.Clamp((int)((p.x - left) * ppu), 0, W - 1);
@@ -444,7 +467,7 @@ namespace SoccerFight
                 col = Mul(col, 1f - Mathf.Max(0f, stain - 0.45f) * 0.5f * S01((t - p.y) / 1.4f) * S01(p.y));
                 float cn = Mathf.Abs(Noise.Perlin(p.x * 2.1f + 5f, p.y * 2.1f) - 0.5f);
                 if (cn < 0.01f && Noise.Perlin(p.x * 0.6f, p.y * 0.6f + 3f) > 0.56f) col = Mul(col, 0.55f);
-                col = Color.Lerp(col, mist, S01(1f - p.y / 1.8f) * 0.5f);
+                col = Color.Lerp(col, mist, S01(1f - p.y / 1.8f) * 0.3f);
                 col.a = a * EnvironmentArt.EdgeFade(p.x, AqW * 0.5f, 1.5f);
                 return col;
             });
@@ -465,7 +488,7 @@ namespace SoccerFight
                     c.Fill(q => Sdf.Box(q, bc, half, 0.025f, ang), q => Mul(rubble, 0.7f + 0.5f * S01((q.y - bc.y + half.y) / (2f * half.y))),
                         0f, new Rect(bc.x - 0.4f, bc.y - 0.4f, 0.8f, 0.8f));
                 }
-            Color shrub = new Color(0.08f, 0.2f, 0.21f);
+            Color shrub = Color.Lerp(Palette.Bush, Palette.FolMid, 0.3f);
             for (float x = left + 0.3f; x < -left - 0.3f; x += 0.5f + R() * 1.1f)
             {
                 Vector2 bp = new Vector2(x, 0.05f + R() * 0.25f);
@@ -595,7 +618,7 @@ namespace SoccerFight
             // knot hole
             Vector2 k = new Vector2(CenterX(3.1f) + 0.1f, 3.1f);
             c.Fill(q => Sdf.Ellipse(q, k, new Vector2(0.14f, 0.22f)), Mul(Palette.Bark, 1.4f).WithAlpha(1f), 0f, new Rect(k.x - 0.3f, k.y - 0.4f, 0.6f, 0.8f));
-            c.Fill(q => Sdf.Ellipse(q, k + new Vector2(0.01f, -0.02f), new Vector2(0.09f, 0.16f)), new Color(0.01f, 0.03f, 0.04f), 0f, new Rect(k.x - 0.3f, k.y - 0.4f, 0.6f, 0.8f));
+            c.Fill(q => Sdf.Ellipse(q, k + new Vector2(0.01f, -0.02f), new Vector2(0.09f, 0.16f)), new Color(0.26f, 0.14f, 0.09f), 0f, new Rect(k.x - 0.3f, k.y - 0.4f, 0.6f, 0.8f));
             c.RimLight(new Vector2(0.05f, 0.03f), Palette.BarkLight, 0.7f);
             c.EdgeBand(Vector2.up, 0.08f, Palette.Moss, p => S01((Noise.Perlin(p.x * 1.9f + 4f, p.y * 1.9f) - 0.38f) / 0.15f));
             TrunkMoss.Add(Vector2.Lerp(bs, bm, 0.55f) + new Vector2(0f, -0.1f));
@@ -641,7 +664,7 @@ namespace SoccerFight
                     float mud = S01((0.2f - Mathf.Abs(D - 0.5f)) / 0.12f) * S01((ax - 15.1f) / 0.6f) * S01((17.2f - ax) / 0.3f);
                     mud = Mathf.Max(mud, S01(1f - new Vector2((ax - 13.36f) / 0.45f, dy / 0.05f).magnitude));
                     mud *= S01((Noise.Perlin(p.x * 5f, p.y * 14f) - 0.25f) / 0.3f);
-                    col = new Color(0.16f, 0.19f, 0.15f, mud * 0.75f);
+                    col = new Color(0.62f, 0.46f, 0.3f, mud * 0.7f);
                     d = Mathf.Min(d, Mathf.Abs(ax - 16.9f) - lw);
                     float inBox = Mathf.Max(11.6f - ax, ax - 16.9f);
                     d = Mathf.Min(d, Mathf.Max(Mathf.Abs(ax - 11.6f) - lw, Mathf.Abs(D - 0.5f) * dl - 0.296f * dl));
@@ -654,7 +677,7 @@ namespace SoccerFight
                     d = Mathf.Min(d, Mathf.Max(arc, ax - 11.6f));
                 }
                 float chalk = Mathf.Clamp01(0.5f - d * ppu) * (0.5f + 0.5f * Noise.Perlin(p.x * 9f, p.y * 30f)) * 0.75f;
-                Color white = new Color(0.9f, 1f, 0.96f);
+                Color white = new Color(1f, 1f, 1f);
                 float outA = chalk + col.a * (1f - chalk);
                 if (outA <= 0.001f) return Clear;
                 Color o = (white * chalk + col * col.a * (1f - chalk)) / outA;
@@ -669,15 +692,15 @@ namespace SoccerFight
             var c = new SdfCanvas(new Rect(-0.85f, -0.13f, 1.7f, 0.26f), 120f);
             SdfCanvas.SdfFn outer = p => Sdf.Ellipse(p, Vector2.zero, new Vector2(0.78f, 0.095f)) + 0.012f * Noise.Perlin(p.x * 9f, 1.3f);
             SdfCanvas.SdfFn water = p => Sdf.Ellipse(p, Vector2.zero, new Vector2(0.7f, 0.075f)) + 0.012f * Noise.Perlin(p.x * 9f, 1.3f);
-            c.Fill(outer, new Color(0.12f, 0.22f, 0.18f, 0.45f), 0.02f);
+            c.Fill(outer, new Color(0.48f, 0.36f, 0.24f, 0.5f), 0.02f);
             c.Fill(water, p =>
             {
-                // the water mirrors the night sky: lighter towards the far edge, dark at the near edge
+                // the water mirrors the blue sky: lighter towards the far edge, deeper at the near edge
                 float v = Mathf.Clamp01(p.y / 0.15f + 0.5f);
-                Color col = Color.Lerp(new Color(0.11f, 0.25f, 0.3f), new Color(0.24f, 0.44f, 0.5f), v);
-                col = Color.Lerp(col, new Color(0.5f, 0.74f, 0.78f), S01((v - 0.82f) / 0.18f) * 0.6f);
-                // the moon's reflection: a soft streak of light
-                col = Color.Lerp(col, new Color(0.7f, 0.92f, 0.98f), Mathf.Exp(-Sq((p.x - 0.18f) / 0.16f) - Sq((p.y + 0.005f) / 0.022f)) * 0.8f);
+                Color col = Color.Lerp(new Color(0.3f, 0.58f, 0.86f), new Color(0.55f, 0.8f, 0.96f), v);
+                col = Color.Lerp(col, new Color(0.85f, 0.95f, 1f), S01((v - 0.82f) / 0.18f) * 0.6f);
+                // the sun glinting: a soft streak of light
+                col = Color.Lerp(col, new Color(1f, 1f, 0.95f), Mathf.Exp(-Sq((p.x - 0.18f) / 0.16f) - Sq((p.y + 0.005f) / 0.022f)) * 0.8f);
                 col.a = 1f;
                 return col;
             }, 0.004f);
@@ -696,7 +719,7 @@ namespace SoccerFight
             var c = new SdfCanvas(new Rect(-0.16f, -0.13f, 0.32f, 0.26f), 160f);
             float seed = k * 7.3f;
             c.Fill(p => Sdf.Ellipse(p, Vector2.zero, new Vector2(0.12f - k * 0.02f, 0.085f - k * 0.01f)) + 0.02f * Noise.Perlin(p.x * 20f + seed, p.y * 20f),
-                p => Color.Lerp(new Color(0.2f, 0.29f, 0.32f), new Color(0.42f, 0.55f, 0.58f), S01((p.x + p.y + 0.1f) / 0.25f)).WithAlpha(1f));
+                p => Color.Lerp(new Color(0.5f, 0.52f, 0.66f), new Color(0.86f, 0.84f, 0.8f), S01((p.x + p.y + 0.1f) / 0.25f)).WithAlpha(1f));
             c.Paint(p => Sdf.Ellipse(p, new Vector2(-0.02f, 0.05f), new Vector2(0.08f, 0.03f)), Palette.Moss.WithAlpha(0.7f), 0.02f);
             return c;
         }

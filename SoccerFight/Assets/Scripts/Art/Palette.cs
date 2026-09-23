@@ -3,8 +3,9 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// Color script: cool, misty night forest (teal/blue) so the warm player kit, the white ball
-    /// and the magenta monsters pop — the same contrast trick Ori and Hollow Knight use.
+    /// Color script: a bright, saturated cartoon day in the spirit of Project Rise — blue sky, juicy
+    /// greens, cream stone, warm sun, lavender shadows. Characters carry the strongest values so they
+    /// still pop in front of the light backdrop.
     /// </summary>
     public static class Palette
     {
@@ -25,10 +26,10 @@ namespace SoccerFight
         public static readonly Color Boot = Hex("#151C28");
         public static readonly Color BootLight = Hex("#35465C");
         public static readonly Color Neon = Hex("#3DF2FF");
-        public static readonly Color EyeDark = Hex("#1A1420");
-        public static readonly Color PlayerLine = Hex("#0B1620");
-        public static readonly Color MoonRim = Hex("#BDF3FF");
-        public static readonly Color BackLimbTint = new Color(0.56f, 0.65f, 0.73f, 1f);
+        public static readonly Color EyeDark = Hex("#231C2C");
+        public static readonly Color PlayerLine = Hex("#2C2640");   // soft cartoon outline, not black
+        public static readonly Color MoonRim = Hex("#FFF0C8");   // sun rim on characters
+        public static readonly Color BackLimbTint = new Color(0.74f, 0.78f, 0.88f, 1f);
         public static readonly Color Heal = Hex("#7CFFB8");
 
         // Ball
@@ -55,54 +56,66 @@ namespace SoccerFight
         public static readonly Color WispBottom = Hex("#1A1F5C");
         public static readonly Color WispGlow = Hex("#7AA8FF");
 
-        // Environment
-        public static readonly Color SkyTop = Hex("#040914");
-        public static readonly Color SkyMid = Hex("#0A1F33");
-        public static readonly Color SkyHorizon = Hex("#1D5264");
-        public static readonly Color Moon = Hex("#E4FBFF");
-        public static readonly Color MoonGlow = Hex("#6FD2EC");
-        public static readonly Color Fog = Hex("#78C9D4");
-        public static readonly Color FarTop = Hex("#1B4B5D");
-        public static readonly Color FarBottom = Hex("#2A6475");
-        public static readonly Color MidTop = Hex("#0D2A3A");
-        public static readonly Color MidBottom = Hex("#1A4A5A");
-        public static readonly Color RuinTop = Hex("#0A2130");
-        public static readonly Color RuinBottom = Hex("#133A4A");
-        public static readonly Color RuinRim = Hex("#3E8A98");
-        public static readonly Color Bush = Hex("#06151E");
+        // Environment: a sunny cartoon day. The sun stands upper right (where the moon used to be, so
+        // every rim light keeps its direction); shadows lean cool and lavender, far things fade into a
+        // pale blue haze instead of into the dark.
+        public static readonly Color SkyTop = Hex("#3F95DB");
+        public static readonly Color SkyMid = Hex("#7CC3EE");
+        public static readonly Color SkyHorizon = Hex("#D9F1F7");
+        public static readonly Color Moon = Hex("#FFF8DE");       // the sun disc
+        public static readonly Color MoonGlow = Hex("#FFE7A6");   // sun halo and light shafts
+        public static readonly Color Haze = Hex("#AFD6F0");       // aerial perspective
+        public static readonly Color Fog = Hex("#E4F3FA");        // drifting haze bands
+        public static readonly Color CloudLight = Hex("#FFFFFF");
+        public static readonly Color CloudShade = Hex("#AEBDE6");
+        public static readonly Color FarTop = Hex("#7F9FD4");
+        public static readonly Color FarBottom = Hex("#9FC4DE");
+        public static readonly Color MidTop = Hex("#3E8A5A");
+        public static readonly Color MidBottom = Hex("#8CC08A");
+        public static readonly Color RuinTop = Hex("#8B8FAE");
+        public static readonly Color RuinBottom = Hex("#A9B79A");
+        public static readonly Color RuinRim = Hex("#FFF3D2");
+        public static readonly Color Bush = Hex("#2F7D3E");
         public static readonly Color Lantern = Hex("#FFC46B");
-        public static readonly Color Firefly = Hex("#C8FF8A");
-        public static readonly Color GrassEdge = Hex("#86F5CB");
-        public static readonly Color PitchA = Hex("#2F8667");
-        public static readonly Color PitchB = Hex("#246A51");
-        public static readonly Color PitchBack = Hex("#1C5646");
-        public static readonly Color EarthTop = Hex("#0C2427");
-        public static readonly Color EarthBottom = Hex("#03090C");
-        public static readonly Color Foreground = Hex("#02070A");
+        public static readonly Color Firefly = Hex("#FFF4B0");    // pollen and sparkles
+        public static readonly Color GrassEdge = Hex("#B6E85C");
+        public static readonly Color PitchA = Hex("#66BE3F");
+        public static readonly Color PitchB = Hex("#56AD35");
+        public static readonly Color PitchBack = Hex("#4E9E3A");
+        public static readonly Color EarthTop = Hex("#A56A40");
+        public static readonly Color EarthBottom = Hex("#5E3624");
+        public static readonly Color Foreground = Hex("#1E5A36");
 
-        // Vegetation (moonlit teal greens + bioluminescent accents)
-        public static readonly Color FolDark = Hex("#0A2A2B");
-        public static readonly Color FolMid = Hex("#1A5A4C");
-        public static readonly Color FolLight = Hex("#3FA07F");
-        public static readonly Color FolRim = Hex("#8CF2D2");
-        public static readonly Color Fern = Hex("#1B6552");
-        public static readonly Color FernLight = Hex("#46AE87");
-        public static readonly Color Petal = Hex("#A8F6FF");
-        public static readonly Color PetalWarm = Hex("#FFD7A8");
-        public static readonly Color MushCap = Hex("#2FC4D8");
-        public static readonly Color MushCapDark = Hex("#156E86");
-        public static readonly Color MushStem = Hex("#CFE8E2");
-        public static readonly Color Ivy = Hex("#18503F");
-        public static readonly Color IvyLight = Hex("#35906A");
-        public static readonly Color Moss = Hex("#2C6A58");
-        public static readonly Color Banner = Hex("#A8473B");
-        public static readonly Color BannerLight = Hex("#D26A55");
-        public static readonly Color Crystal = Hex("#6FF0FF");
-        public static readonly Color Bark = Hex("#10303D");
-        public static readonly Color BarkLight = Hex("#2E6A78");
-        public static readonly Color Stone = Hex("#16394A");
-        public static readonly Color StoneLight = Hex("#2D6576");
-        public static readonly Color Mortar = Hex("#0A1F2B");
+        // Vegetation: juicy greens with yellow sunlit tops and teal shadows
+        public static readonly Color FolDark = Hex("#2A7447");
+        public static readonly Color FolMid = Hex("#4DA43E");
+        public static readonly Color FolLight = Hex("#8BCB45");
+        public static readonly Color FolRim = Hex("#E2F57E");
+        public static readonly Color Fern = Hex("#3C9446");
+        public static readonly Color FernLight = Hex("#7FC64B");
+        public static readonly Color Petal = Hex("#FFFFFF");
+        public static readonly Color PetalWarm = Hex("#FFD34E");
+        public static readonly Color MushCap = Hex("#E8503A");
+        public static readonly Color MushCapDark = Hex("#A8342C");
+        public static readonly Color MushStem = Hex("#F6EBD3");
+        public static readonly Color Ivy = Hex("#3E8E3E");
+        public static readonly Color IvyLight = Hex("#86C84C");
+        public static readonly Color Moss = Hex("#74B64A");
+        public static readonly Color Banner = Hex("#E0473C");
+        public static readonly Color BannerLight = Hex("#FF7E5E");
+        public static readonly Color Crystal = Hex("#7FE3FF");
+        public static readonly Color Bark = Hex("#7B4D33");
+        public static readonly Color BarkLight = Hex("#C08858");
+        public static readonly Color Stone = Hex("#9A9DB8");      // Project-Rise style carved stone: cool lavender grey …
+        public static readonly Color StoneLight = Hex("#E6DECB"); // … warming to sunlit cream
+        public static readonly Color Mortar = Hex("#6C6F8C");
+        public static readonly Color Wood = Hex("#9A6038");
+        public static readonly Color WoodLight = Hex("#D39A5E");
+        public static readonly Color WoodDark = Hex("#5E3622");
+        public static readonly Color Slate = Hex("#4E6E82");       // stadium roofs, seats in shadow
+        public static readonly Color Seat1 = Hex("#E8513F");
+        public static readonly Color Seat2 = Hex("#2F8FE0");
+        public static readonly Color Seat3 = Hex("#FFC23D");
 
         // Skill accents (one hue per ability so the bar reads at a glance)
         public static readonly Color Turf = Hex("#9BE564");        // Grätsche
@@ -125,11 +138,13 @@ namespace SoccerFight
         public static readonly Color BallRib = Hex("#1B1413");
 
         // UI
-        public static readonly Color UiGlass = Hex("#0C1522");
+        public static readonly Color UiGlass = Hex("#2C4452");   // slate stone of HUD plates
         public static readonly Color UiRim = Hex("#FFFFFF");
         public static readonly Color UiText = Hex("#F2F6FA");
-        public static readonly Color UiMuted = Hex("#8FA3B8");
+        public static readonly Color UiMuted = Hex("#D4E4EA");
         public static readonly Color HpA = Hex("#FF3D5E");
         public static readonly Color HpB = Hex("#FF7F50");
+        public static readonly Color LifeLow = Hex("#F2553A");   // the player's bar: green when healthy, warm red when low
+        public static readonly Color Life = Hex("#7CD447");
     }
 }

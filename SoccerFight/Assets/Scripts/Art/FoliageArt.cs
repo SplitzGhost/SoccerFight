@@ -131,13 +131,13 @@ namespace SoccerFight
                 float w0 = (tall ? 0.018f : 0.024f) + Rnd(r) * 0.012f;
                 float shade = k / (float)blades;
                 Color top = Color.Lerp(Palette.FolMid, Palette.FolLight, 0.35f + 0.65f * Rnd(r) * shade);
-                if (tall) top = Color.Lerp(top, new Color(0.45f, 0.62f, 0.45f), 0.25f);
+                if (tall) top = Color.Lerp(top, new Color(0.72f, 0.82f, 0.4f), 0.25f);
                 Blade(c, new Vector2(bx, 0f), new Vector2(bx + lean, h), 0.28f, w0, Palette.FolDark, top);
                 if (tall && Rnd(r) > 0.45f)
                 {
                     Vector2 tip = new Vector2(bx + lean, h);
                     float ang = 90f - lean * 30f;
-                    Leaf(c, tip + MathUtil.Dir(ang) * 0.02f, ang, 0.09f, 0.022f, new Color(0.5f, 0.68f, 0.52f), 0f);
+                    Leaf(c, tip + MathUtil.Dir(ang) * 0.02f, ang, 0.09f, 0.022f, new Color(0.64f, 0.84f, 0.38f), 0f);
                 }
             }
             c.RimLight(new Vector2(0.012f, 0.004f), Palette.FolRim, 0.55f);
@@ -161,7 +161,7 @@ namespace SoccerFight
                     Vector2 hc = new Vector2(bx + lean * 0.93f, h * 0.9f);
                     float ang = 90f - lean * 18f;
                     c.Fill(p => Sdf.Capsule(p, hc - MathUtil.Dir(ang) * 0.07f, hc + MathUtil.Dir(ang) * 0.07f, 0.028f),
-                        new Color(0.22f, 0.2f, 0.17f), 0f, new Rect(hc.x - 0.15f, hc.y - 0.15f, 0.3f, 0.3f));
+                        new Color(0.55f, 0.33f, 0.18f), 0f, new Rect(hc.x - 0.15f, hc.y - 0.15f, 0.3f, 0.3f));
                 }
             }
             c.RimLight(new Vector2(0.01f, 0.004f), Palette.FolRim, 0.45f);
@@ -272,7 +272,7 @@ namespace SoccerFight
             foreach (var m in items)
             {
                 Vector2 b = new Vector2(m.x, 0f), top = new Vector2(m.x + m.lean, m.h);
-                c.Fill(p => Sdf.Tapered(p, b, m.cw * 0.28f, top, m.cw * 0.2f), Vertical(0f, m.h, new Color(0.45f, 0.6f, 0.58f), Palette.MushStem), 0f,
+                c.Fill(p => Sdf.Tapered(p, b, m.cw * 0.28f, top, m.cw * 0.2f), Vertical(0f, m.h, new Color(0.84f, 0.76f, 0.64f), Palette.MushStem), 0f,
                     new Rect(m.x - 0.15f, -0.02f, 0.3f, m.h + 0.05f));
                 Vector2 cc = top + new Vector2(0f, -0.005f);
                 float capH = m.cw * 0.62f;
@@ -285,11 +285,11 @@ namespace SoccerFight
                 {
                     Vector2 sp = cc + new Vector2((Rnd(r) - 0.5f) * m.cw * 1.3f, capH * (0.25f + Rnd(r) * 0.55f));
                     float sr = m.cw * (0.08f + Rnd(r) * 0.07f);
-                    c.Paint(p => Sdf.Circle(p, sp, sr), new Color(0.85f, 1f, 1f, 0.9f), 0.003f, new Rect(sp.x - 0.04f, sp.y - 0.04f, 0.08f, 0.08f));
+                    c.Paint(p => Sdf.Circle(p, sp, sr), new Color(1f, 1f, 0.97f, 0.95f), 0.003f, new Rect(sp.x - 0.04f, sp.y - 0.04f, 0.08f, 0.08f));
                 }
                 v.Glows.Add(new GlowSpot { Pos = cc + new Vector2(0f, capH * 0.4f), Size = m.cw * 9f, Color = Palette.MushCap });
             }
-            c.RimLight(new Vector2(0.006f, 0.006f), new Color(0.8f, 1f, 1f), 0.4f);
+            c.RimLight(new Vector2(0.006f, 0.006f), new Color(1f, 0.95f, 0.85f), 0.4f);
             return c;
         }
 
@@ -358,10 +358,10 @@ namespace SoccerFight
                 for (int i = 0; i < blobs.Count; i++) m = Sdf.SmoothUnion(m, Sdf.Circle(p, blobs[i].c, blobs[i].r), 0.25f);
                 return m;
             };
-            Color dark = new Color(0.035f, 0.13f, 0.16f), light = new Color(0.12f, 0.36f, 0.38f);
+            Color dark = new Color(0.17f, 0.46f, 0.3f), light = new Color(0.56f, 0.8f, 0.3f);
             LeafMass(c, r, mass, new Rect(-width * 0.56f, 0f, width * 1.12f, h + 0.15f), (int)(width * 190f), 0.13f,
                 dark, light, new Vector2(0.55f, 0.85f));
-            c.RimLight(new Vector2(0.03f, 0.03f), new Color(0.35f, 0.72f, 0.74f), 0.55f);
+            c.RimLight(new Vector2(0.03f, 0.03f), Palette.FolRim, 0.55f);
             return c;
         }
 
@@ -403,7 +403,7 @@ namespace SoccerFight
         {
             var r = new System.Random(seed);
             var c = new SdfCanvas(new Rect(-0.32f, -length - 0.1f, 0.64f, length + 0.14f), 200f);
-            Color dark = new Color(0.06f, 0.13f, 0.14f), light = new Color(0.22f, 0.34f, 0.31f);
+            Color dark = new Color(0.36f, 0.22f, 0.14f), light = new Color(0.62f, 0.44f, 0.27f);
             int strands = 2 + r.Next(2);
             for (int k = 0; k < strands; k++)
             {
@@ -429,7 +429,7 @@ namespace SoccerFight
                     prev = next;
                 }
             }
-            c.RimLight(new Vector2(0.01f, 0.008f), new Color(0.45f, 0.72f, 0.66f), 0.5f);
+            c.RimLight(new Vector2(0.01f, 0.008f), new Color(0.9f, 0.72f, 0.48f), 0.5f);
             return c;
         }
 
@@ -463,8 +463,8 @@ namespace SoccerFight
             var r = new System.Random(seed);
             const float W = 0.5f, H = 1.3f;
             var c = new SdfCanvas(new Rect(-0.34f, -H - 0.1f, 0.68f, H + 0.16f), 190f);
-            Color cloth = style == 0 ? Palette.Banner : new Color(0.16f, 0.42f, 0.5f);
-            Color clothLight = style == 0 ? Palette.BannerLight : new Color(0.3f, 0.62f, 0.68f);
+            Color cloth = style == 0 ? Palette.Banner : new Color(0.16f, 0.46f, 0.86f);
+            Color clothLight = style == 0 ? Palette.BannerLight : new Color(0.42f, 0.7f, 1f);
             // tattered bottom: zig-zag cuts
             SdfCanvas.SdfFn shape = p =>
             {
@@ -490,9 +490,9 @@ namespace SoccerFight
                 c.Paint(p => Sdf.Circle(p, pc, 0.022f), cloth * 0.6f, 0.003f);
             }
             // pole
-            c.Fill(p => Sdf.Capsule(p, new Vector2(-0.3f, 0.01f), new Vector2(0.3f, 0.01f), 0.022f), new Color(0.12f, 0.1f, 0.09f));
-            c.Fill(p => Sdf.Circle(p, new Vector2(-0.3f, 0.01f), 0.03f), new Color(0.5f, 0.42f, 0.28f));
-            c.Fill(p => Sdf.Circle(p, new Vector2(0.3f, 0.01f), 0.03f), new Color(0.5f, 0.42f, 0.28f));
+            c.Fill(p => Sdf.Capsule(p, new Vector2(-0.3f, 0.01f), new Vector2(0.3f, 0.01f), 0.022f), new Color(0.38f, 0.23f, 0.14f));
+            c.Fill(p => Sdf.Circle(p, new Vector2(-0.3f, 0.01f), 0.03f), new Color(0.98f, 0.78f, 0.3f));
+            c.Fill(p => Sdf.Circle(p, new Vector2(0.3f, 0.01f), 0.03f), new Color(0.98f, 0.78f, 0.3f));
             return c;
         }
 

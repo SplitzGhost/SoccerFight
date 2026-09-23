@@ -255,7 +255,7 @@ namespace SoccerFight
             Ball.ResetTo(Player.Pos + new Vector2(0.5f, Art.BallRadius));
             Waves.Restart();
             if (startRun) Director.StartRun();
-            else { Player.ApplyStats(true); Director.Idle(); }
+            else { Player.ApplyStats(true); Director.Idle(); Grade.Transition(Run.Theme, 0f); }   // the title screen is always in daylight
             Hud.ResetState();
             if (startRun) Hud.ShowStageCard(Run.Stage, Run.Theme);
             Cam.SetZoom(1f);

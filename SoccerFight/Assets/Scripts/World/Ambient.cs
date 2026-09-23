@@ -57,10 +57,10 @@ namespace SoccerFight
             {
                 bool inFront = i % 3 == 2;
                 var sr = Art.MakeSprite("Cloud", cloudGroup, EnvironmentArt.Clouds[i % EnvironmentArt.Clouds.Length], inFront ? -981 : -987);
-                float s = 0.9f + R() * 0.7f;
+                float s = 0.7f + R() * 0.5f;
                 sr.transform.localScale = new Vector3(i % 2 == 0 ? s : -s, s, 1f);
-                sr.transform.localPosition = new Vector3(R() * 44f - 22f, 4.6f + R() * 3f, 0f);
-                sr.color = new Color(1f, 1f, 1f, inFront ? 0.55f : 0.8f);
+                sr.transform.localPosition = new Vector3(i * 8f - 22f + R() * 3f, 5.4f + R() * 2.6f, 0f);
+                sr.color = new Color(1f, 1f, 1f, inFront ? 0.8f : 0.95f);
                 clouds.Add(new Cloud { t = sr.transform, speed = 0.05f + R() * 0.12f });
             }
 
@@ -81,8 +81,8 @@ namespace SoccerFight
             waterShade = shade;
             waterBack = Art.MakeMeshMaterial("SF Waterfall Back", EnvironmentArt.WaterfallTex, 1f, false, false);
             waterFront = Art.MakeMeshMaterial("SF Waterfall Front", EnvironmentArt.WaterfallTex, 1.3f, true, false);
-            WaterQuad(far, "Waterfall Back", top, 0.62f, len, waterBack, -899, Shade(new Color(0.55f, 0.8f, 0.86f, 0.55f), shade));
-            WaterQuad(far, "Waterfall Front", top, 0.42f, len, waterFront, -898, Shade(new Color(0.7f, 0.92f, 0.96f, 0.5f), shade));
+            WaterQuad(far, "Waterfall Back", top, 0.62f, len, waterBack, -899, Shade(new Color(0.62f, 0.86f, 0.98f, 0.75f), shade));
+            WaterQuad(far, "Waterfall Front", top, 0.42f, len, waterFront, -898, Shade(new Color(0.85f, 0.97f, 1f, 0.45f), shade));
             for (int i = 0; i < 7; i++)
             {
                 var sr = Art.MakeSprite("Mist", far, Art.SoftGlow, -897, Art.SpriteMat, new Color(0.8f, 0.94f, 0.97f, 0f));
@@ -180,7 +180,7 @@ namespace SoccerFight
             {
                 bool front = i >= 12;
                 var sr = Art.MakeSprite("Leaf", world, EnvironmentArt.Leaves[i % EnvironmentArt.Leaves.Length], front ? 620 : -85);
-                sr.color = front ? new Color(0.35f, 0.45f, 0.48f, 0.95f) : new Color(0.75f, 0.85f, 0.88f, 0.9f);
+                sr.color = front ? new Color(0.78f, 0.9f, 0.72f, 0.95f) : new Color(1f, 1f, 1f, 0.9f);
                 var leaf = new FallingLeaf
                 {
                     sr = sr, front = front, scale = front ? 1.8f + R() * 0.6f : 0.8f + R() * 0.4f,
@@ -200,7 +200,7 @@ namespace SoccerFight
             {
                 var tw = twinkles[i];
                 float s = 0.5f + 0.5f * Mathf.Sin(t * tw.speed + tw.phase);
-                tw.sr.color = new Color(0.85f, 0.95f, 1f, tw.baseA * s * s);
+                tw.sr.color = new Color(0.85f, 0.95f, 1f, tw.baseA * s * s * WorldEnvironment.Night);
             }
 
             for (int i = 0; i < clouds.Count; i++)
@@ -225,6 +225,7 @@ namespace SoccerFight
                 a *= a;
                 s.glow.transform.localPosition = pos;
                 s.core.transform.localPosition = pos;
+                a *= WorldEnvironment.Night;
                 s.glow.color = new Color(0.6f, 0.95f, 1f, 0.5f * a);
                 s.core.color = new Color(0.85f, 1f, 1f, 0.8f * a);
             }
@@ -235,6 +236,7 @@ namespace SoccerFight
                 float swing = Mathf.Sin(t * 1.25f + l.seed) * 3.2f + Mathf.Sin(t * 0.47f + l.seed * 2f) * 1.2f + wind * 6f;
                 l.pivot.localRotation = Quaternion.Euler(0f, 0f, swing);
                 float flicker = 0.82f + 0.18f * Mathf.PerlinNoise(t * 3.3f, l.seed) + 0.05f * Mathf.Sin(t * 19f + l.seed);
+                flicker *= Mathf.Lerp(0.12f, 1f, WorldEnvironment.Night);
                 l.glow.color = Palette.Lantern.WithAlpha(0.5f * flicker);
                 l.halo.color = Palette.Lantern.WithAlpha(0.22f * flicker);
                 Vector3 center = l.pivot.localPosition + l.pivot.localRotation * new Vector3(0f, -l.chain - 0.27f, 0f);

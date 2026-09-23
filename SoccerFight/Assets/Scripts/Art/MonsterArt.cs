@@ -225,7 +225,7 @@ namespace SoccerFight
         static float Hash(int n) => MathUtil.Hash(n);
         static Rect Box(float x, float y, float w, float h) => new Rect(x, y, w, h);
 
-        /// <summary>Light along the upper back edge (the monster faces +x; the moon sits behind it).</summary>
+        /// <summary>Light along the upper back edge (the monster faces +x).</summary>
         static void Rim(SdfCanvas c, SdfCanvas.SdfFn body, Color col, float w = 0.042f)
             => c.Paint(p => Sdf.Intersect(body(p) + 0.01f, -body(p + new Vector2(-w * 0.8f, w))), col, 0.012f);
 
@@ -251,7 +251,22 @@ namespace SoccerFight
             });
         }
 
-        static void DrawBody(LookDef d, Rect rect, float ppu, System.Action<SdfCanvas> draw) => Draw(d, "Body", rect, ppu, Vector2.zero, draw, s => d.Body = s);
+        static void DrawBody(LookDef d, Rect rect, float ppu, System.Action<SdfCanvas> draw)
+        {
+            Color top = d.Top;
+            Draw(d, "Body", rect, ppu, Vector2.zero, c => { draw(c); Toon(c, top, 0.016f); }, s => d.Body = s);
+        }
+
+        /// <summary>
+        /// The Project Rise finish on every body and part: a sunlit edge on the upper front, a band of
+        /// shade on the lower back and a soft dark cartoon outline around the silhouette.
+        /// </summary>
+        static void Toon(SdfCanvas c, Color top, float outline)
+        {
+            c.RimLight(new Vector2(0.022f, 0.03f), Color.Lerp(top, new Color(1f, 0.98f, 0.9f), 0.7f).WithAlpha(0.85f), 0.55f);
+            c.RimLight(new Vector2(-0.03f, -0.04f), Dk(top, 0.5f), 0.3f);
+            c.Outline(Color.Lerp(Dk(top, 0.75f), new Color(0.16f, 0.12f, 0.24f), 0.5f), outline);
+        }
 
         static PartDef Part(LookDef d, string name, float x, float y, int order, PartDef parent = null)
         {
@@ -261,7 +276,7 @@ namespace SoccerFight
         }
 
         static void Share(LookDef d, string name, Rect rect, float ppu, System.Action<SdfCanvas> draw, params PartDef[] users)
-            => Draw(d, name, rect, ppu, Vector2.zero, draw, s => { foreach (var u in users) u.Sprite = s; });
+            => Draw(d, name, rect, ppu, Vector2.zero, c => { draw(c); Toon(c, d.Top, 0.011f); }, s => { foreach (var u in users) u.Sprite = s; });
 
         static EyeDef EyeAt(LookDef d, float x, float y, float size, PartDef parent = null)
         {

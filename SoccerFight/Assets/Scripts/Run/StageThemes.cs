@@ -36,6 +36,12 @@ namespace SoccerFight
         public float Hue, Saturation = 1f, Brightness = 1f, Contrast = 1f;
         public Color Tint = Color.white;
         public float Vignette;
+        // sky, haze and time of day (null = the default sunny sky and haze)
+        public Color? SkyTop, SkyHorizon, Haze;
+        /// <summary>0 = day, 1 = night: stars, lamps, glowing plants and fireflies.</summary>
+        public float Night;
+        /// <summary>How much of the sun shows (1 = full, 0 = hidden behind rain clouds or rock).</summary>
+        public float Sun = 1f;
         // atmosphere
         public Weather Weather;
         public Color AmbientColor = Color.white;
@@ -57,13 +63,13 @@ namespace SoccerFight
         {
             new StageTheme
             {
-                Name = "MONDLICHT-RUINEN", Tagline = "Wo alles begann",
-                Description = "Überwucherte Arkaden eines vergessenen Stadions im kalten Mondlicht. Glühwürmchen, schwingende Laternen und Nebel über dem Rasen.",
-                Background = "Mondhimmel mit Wolkenbänken, ferne Gipfel, Aquädukt und Säulengang, dichtes Blattwerk, schwebende Moosfelsen als Plattformen.",
+                Name = "SONNENARENA", Tagline = "Wo alles begann",
+                Description = "Ein altes Stadion mitten auf einer sonnigen Wiese. Bunte Tribünen, flatternde Wimpel, frisch gemähter Rasen und Pollen in der Luft.",
+                Background = "Blauer Himmel mit dicken Wolken, ferne Berge, Stadion auf dem Hügel, Aquädukt und Säulengang, saftiges Grün, schwebende Felsen als Plattformen.",
                 MechanicName = "KEINE", MechanicText = "Der Einstieg: lerne Schuss, Power-Schuss und die Plattformen kennen.",
                 Mechanic = StageMechanic.None, Weather = Weather.Fireflies, AmbientColor = H("#C8FF8A"), Accent = H("#5CF0FF"),
-                BlobTop = H("#6A45A8"), BlobBottom = H("#2A1650"), Glow = H("#FF4FD8"), Eye = H("#FFE98A"),
-                WispTop = H("#3E5AC8"), WispBottom = H("#1A1F5C"), WispGlow = H("#7AA8FF"), Feature = MonsterFeature.Horns, PlatformStyles = new[] { Level.Style.Terrace, Level.Style.Capital, Level.Style.Rock },
+                BlobTop = H("#B784FF"), BlobBottom = H("#5E36B8"), Glow = H("#FFB23E"), Eye = H("#FFF6D0"),
+                WispTop = H("#FFC454"), WispBottom = H("#E06A1E"), WispGlow = H("#FFE9A0"), Feature = MonsterFeature.Horns, PlatformStyles = new[] { Level.Style.Terrace, Level.Style.Capital, Level.Style.Rock },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 10f, 1, "DÜSTERLING"),
@@ -80,10 +86,11 @@ namespace SoccerFight
                 Description = "Ein Herbstwald im letzten Abendlicht. Das Laub glüht rot und golden, schräge Lichtstrahlen fallen durch die Kronen.",
                 Background = "Bernsteinfarbener Himmel, warmer Dunst zwischen den Stämmen, Laubregen vor der Kamera, goldene Lichtschächte.",
                 MechanicName = "WINDBÖEN", MechanicText = "Starke Böen schieben Spieler, Ball und Gegner zur Seite.",
-                Mechanic = StageMechanic.Wind, Hue = -156f, Saturation = 0.95f, Brightness = 1.02f, Contrast = 1.04f, Tint = new Color(1.16f, 0.86f, 0.62f),
+                Mechanic = StageMechanic.Wind, Hue = -18f, Saturation = 1.05f, Brightness = 0.96f, Contrast = 1.05f, Tint = new Color(1.16f, 0.94f, 0.7f),
+                SkyTop = H("#5C8FD6"), SkyHorizon = H("#FFD29A"), Haze = H("#F4D9B8"), Night = 0.1f,
                 Weather = Weather.Leaves, AmbientColor = H("#FF9A4A"), Accent = H("#FFB347"),
-                BlobTop = H("#8A5230"), BlobBottom = H("#3A1E14"), Glow = H("#FFB347"), Eye = H("#FFF1A8"),
-                WispTop = H("#D9A441"), WispBottom = H("#7A4A1A"), WispGlow = H("#FFE08A"), Feature = MonsterFeature.Thorns, PlatformStyles = new[] { Level.Style.Mushroom, Level.Style.Plank, Level.Style.Rock },
+                BlobTop = H("#5FE0B8"), BlobBottom = H("#1E8A7E"), Glow = H("#FFE07A"), Eye = H("#FFF6C8"),
+                WispTop = H("#78E4F4"), WispBottom = H("#2A86B4"), WispGlow = H("#D8FAFF"), Feature = MonsterFeature.Thorns, PlatformStyles = new[] { Level.Style.Mushroom, Level.Style.Plank, Level.Style.Rock },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 8f, 1, "DORNLING"),
@@ -101,10 +108,11 @@ namespace SoccerFight
                 Description = "Regennasse Türme, eiserne Zäune und flackernde Laternen. Über allem hängt ein Gewitter, das nie weiterzieht.",
                 Background = "Kalte Blautöne, schräger Starkregen mit Spritzern am Boden, Blitze erhellen kurz die Silhouetten der Türme.",
                 MechanicName = "GEWITTER", MechanicText = "Blitze schlagen an markierten Stellen ein – sie treffen dich und die Gegner.",
-                Mechanic = StageMechanic.Lightning, Hue = 18f, Saturation = 0.5f, Brightness = 0.9f, Contrast = 1.08f, Tint = new Color(0.84f, 0.95f, 1.12f),
+                Mechanic = StageMechanic.Lightning, Hue = 12f, Saturation = 0.55f, Brightness = 0.7f, Contrast = 1.05f, Tint = new Color(0.9f, 0.97f, 1.12f),
+                SkyTop = H("#4E5D74"), SkyHorizon = H("#AEBACB"), Haze = H("#9FAAB9"), Night = 0.4f, Sun = 0f,
                 Weather = Weather.Rain, AmbientColor = H("#B8D8FF"), Accent = H("#7FD4FF"),
-                BlobTop = H("#4B5E7A"), BlobBottom = H("#1C2433"), Glow = H("#7FD4FF"), Eye = H("#E8F6FF"),
-                WispTop = H("#FFD27A"), WispBottom = H("#8A5E24"), WispGlow = H("#FFE7A3"), Feature = MonsterFeature.Lamps, PlatformStyles = new[] { Level.Style.Plank, Level.Style.Capital, Level.Style.Block },
+                BlobTop = H("#FF8A5E"), BlobBottom = H("#B23C3C"), Glow = H("#FFE3A0"), Eye = H("#FFF6E8"),
+                WispTop = H("#FFD27A"), WispBottom = H("#B07A2E"), WispGlow = H("#FFE7A3"), Feature = MonsterFeature.Lamps, PlatformStyles = new[] { Level.Style.Plank, Level.Style.Capital, Level.Style.Block },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Lantern, 6f, 1, "LATERNENGEIST"),
@@ -122,10 +130,11 @@ namespace SoccerFight
                 Description = "Eine violette Höhle tief unter dem Stadion. Leuchtpilze, Kristalladern und Sporen, die wie Sterne schweben.",
                 Background = "Tiefes Indigo, biolumineszente Akzente, kaum Himmel – nur Kristalllicht und der eigene Ball erhellen die Szene.",
                 MechanicName = "DUNKELHEIT", MechanicText = "Die Sicht ist eingeschränkt. Dein Ball wird zur Lichtquelle.",
-                Mechanic = StageMechanic.Darkness, Hue = 88f, Saturation = 1.15f, Brightness = 1.12f, Contrast = 1.04f, Tint = new Color(0.95f, 0.88f, 1.18f), Vignette = 0.03f,
+                Mechanic = StageMechanic.Darkness, Hue = 15f, Saturation = 1.1f, Brightness = 0.42f, Contrast = 1.08f, Tint = new Color(0.78f, 0.68f, 1.45f), Vignette = 0.03f,
+                SkyTop = H("#120A2A"), SkyHorizon = H("#3E2A70"), Haze = H("#33285E"), Night = 1f, Sun = 0f,
                 Weather = Weather.Spores, AmbientColor = H("#7CFFE0"), Accent = H("#B070FF"),
-                BlobTop = H("#3A2A6A"), BlobBottom = H("#140C2E"), Glow = H("#6BF2FF"), Eye = H("#C8FFF6"),
-                WispTop = H("#2A1E4A"), WispBottom = H("#0C0818"), WispGlow = H("#B070FF"), Feature = MonsterFeature.Crystals, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Mushroom, Level.Style.Rock },
+                BlobTop = H("#62F0CF"), BlobBottom = H("#1E8A9C"), Glow = H("#6BF2FF"), Eye = H("#F0FFFB"),
+                WispTop = H("#8AF4FF"), WispBottom = H("#2E80C4"), WispGlow = H("#D8FCFF"), Feature = MonsterFeature.Crystals, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Mushroom, Level.Style.Rock },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Shade, 6f, 1, "SCHEMEN"),
@@ -143,10 +152,11 @@ namespace SoccerFight
                 Description = "Die Ruinen einer Vulkanschmiede. Lava pulsiert unter dem Rasen, Funken steigen auf, die Luft flimmert.",
                 Background = "Glühendes Rot-Orange gegen schwarzen Basalt, aufsteigende Glut, Rauchschwaden vor dem Himmel.",
                 MechanicName = "LAVAGEYSIRE", MechanicText = "Markierte Bodenstellen brechen aus und schleudern alles in die Luft.",
-                Mechanic = StageMechanic.Geysers, Hue = -165f, Saturation = 1.1f, Brightness = 0.82f, Contrast = 1.14f, Tint = new Color(1.22f, 0.8f, 0.5f),
+                Mechanic = StageMechanic.Geysers, Hue = -35f, Saturation = 1.1f, Brightness = 0.58f, Contrast = 1.1f, Tint = new Color(1.35f, 0.82f, 0.62f),
+                SkyTop = H("#2A1424"), SkyHorizon = H("#E0643A"), Haze = H("#9C4A3A"), Night = 0.65f,
                 Weather = Weather.Embers, AmbientColor = H("#FF8A3A"), Accent = H("#FF6A2A"),
-                BlobTop = H("#3E2A24"), BlobBottom = H("#140C0A"), Glow = H("#FF6A2A"), Eye = H("#FFE36A"),
-                WispTop = H("#FF8A3A"), WispBottom = H("#7A1E0A"), WispGlow = H("#FFB070"), Feature = MonsterFeature.Flames, PlatformStyles = new[] { Level.Style.Block, Level.Style.Rock, Level.Style.Capital },
+                BlobTop = H("#5A4652"), BlobBottom = H("#1E1418"), Glow = H("#FF8A30"), Eye = H("#FFE36A"),
+                WispTop = H("#FFF0A0"), WispBottom = H("#E0A020"), WispGlow = H("#FFF8D0"), Feature = MonsterFeature.Flames, PlatformStyles = new[] { Level.Style.Block, Level.Style.Rock, Level.Style.Capital },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Bomber, 7f, 1, "GLUTBOMBE"),
@@ -164,10 +174,11 @@ namespace SoccerFight
                 Description = "Verschneite Gipfel unter einem Polarlicht. Alles ist still, bleich und glitzernd – und spiegelglatt.",
                 Background = "Blasses Blau-Weiß, Schneetreiben, ein grünes Polarlicht über den Bergen, vereiste Säulen.",
                 MechanicName = "GLATTEIS", MechanicText = "Beim Bremsen und Wenden rutschst du weiter – plane deine Wege.",
-                Mechanic = StageMechanic.Ice, Hue = 12f, Saturation = 0.36f, Brightness = 1.2f, Contrast = 0.95f, Tint = new Color(0.92f, 0.98f, 1.08f),
+                Mechanic = StageMechanic.Ice, Hue = 25f, Saturation = 0.35f, Brightness = 1.1f, Contrast = 0.95f, Tint = new Color(0.96f, 1f, 1.1f),
+                SkyTop = H("#5FA6E6"), SkyHorizon = H("#EEF8FF"), Haze = H("#E6F3FC"), Night = 0f,
                 Weather = Weather.Snow, AmbientColor = H("#F2FAFF"), Accent = H("#9BE8FF"),
-                BlobTop = H("#CDE8F5"), BlobBottom = H("#6C8FB0"), Glow = H("#9BE8FF"), Eye = H("#1C3A5A"),
-                WispTop = H("#E6FAFF"), WispBottom = H("#7FB4D6"), WispGlow = H("#BFF3FF"), Feature = MonsterFeature.Ice, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Terrace, Level.Style.Rock },
+                BlobTop = H("#7C8CFF"), BlobBottom = H("#3440B0"), Glow = H("#9BE8FF"), Eye = H("#F2F8FF"),
+                WispTop = H("#6A86FF"), WispBottom = H("#2A3AB0"), WispGlow = H("#BFD8FF"), Feature = MonsterFeature.Ice, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Terrace, Level.Style.Rock },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 6f, 1, "FROSTLING"),
@@ -185,10 +196,11 @@ namespace SoccerFight
                 Description = "Schwebende Ruinen über einem Wolkenmeer. Das Milchstraßenband zieht über den Himmel, die Luft trägt kaum noch.",
                 Background = "Tiefes Indigo mit Sternenstaub, schimmernde Wolkenränder, treibende Funken.",
                 MechanicName = "SCHWERELOS", MechanicText = "Geringe Schwerkraft: höhere Sprünge, langsam fallende Bälle.",
-                Mechanic = StageMechanic.LowGravity, Hue = 48f, Saturation = 1.3f, Brightness = 1f, Contrast = 1.05f, Tint = new Color(0.94f, 0.94f, 1.14f),
+                Mechanic = StageMechanic.LowGravity, Hue = 15f, Saturation = 1.15f, Brightness = 0.44f, Contrast = 1.05f, Tint = new Color(1.12f, 0.72f, 1.45f),
+                SkyTop = H("#0E0A30"), SkyHorizon = H("#6A3A96"), Haze = H("#4E3A88"), Night = 1f, Sun = 0.55f,
                 Weather = Weather.Stars, AmbientColor = H("#FFF3C4"), Accent = H("#FF7AE0"),
-                BlobTop = H("#2A2255"), BlobBottom = H("#0A081E"), Glow = H("#FF7AE0"), Eye = H("#FFF6B0"),
-                WispTop = H("#FFF3C4"), WispBottom = H("#8A6ACF"), WispGlow = H("#FFE89A"), Feature = MonsterFeature.Stars, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Rock },
+                BlobTop = H("#FFD24A"), BlobBottom = H("#C0761A"), Glow = H("#FFF3A0"), Eye = H("#FFFBE0"),
+                WispTop = H("#FFF3C4"), WispBottom = H("#B38BE8"), WispGlow = H("#FFE89A"), Feature = MonsterFeature.Stars, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Rock },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Shade, 5f, 1, "LEERENKEIM"),
@@ -206,10 +218,11 @@ namespace SoccerFight
                 Description = "Ein roter Mond verschlingt die Sonne über dem zerborstenen Stadion. Alles, was du besiegt hast, kehrt zurück.",
                 Background = "Karmesin und Schwarz, Aschefall, Risse aus Leere im Himmel, harte Kontraste.",
                 MechanicName = "EKLIPSE", MechanicText = "Pulse der Dunkelheit machen alle Gegner für einige Sekunden schneller und stärker.",
-                Mechanic = StageMechanic.Eclipse, Hue = 160f, Saturation = 0.95f, Brightness = 0.72f, Contrast = 1.2f, Tint = new Color(1.1f, 0.85f, 0.9f), Vignette = 0.12f,
+                Mechanic = StageMechanic.Eclipse, Hue = 0f, Saturation = 0.7f, Brightness = 0.38f, Contrast = 1.12f, Tint = new Color(1.4f, 0.72f, 0.8f), Vignette = 0.1f,
+                SkyTop = H("#0E040A"), SkyHorizon = H("#5C1422"), Haze = H("#401824"), Night = 0.9f,
                 Weather = Weather.Ash, AmbientColor = H("#C9B8BC"), Accent = H("#FF2A4A"),
-                BlobTop = H("#2A121C"), BlobBottom = H("#07030A"), Glow = H("#FF2A4A"), Eye = H("#FF8A9A"),
-                WispTop = H("#3A0E22"), WispBottom = H("#0A0206"), WispGlow = H("#FF4A6A"), Feature = MonsterFeature.Void, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Terrace, Level.Style.Plank },
+                BlobTop = H("#EADAE4"), BlobBottom = H("#8A6480"), Glow = H("#FF3A5A"), Eye = H("#FF4A6A"),
+                WispTop = H("#FFD0DA"), WispBottom = H("#B06A84"), WispGlow = H("#FF4A6A"), Feature = MonsterFeature.Void, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Terrace, Level.Style.Plank },
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 4f, 1, "LEERENBRUT"),
@@ -229,7 +242,7 @@ namespace SoccerFight
 
         public static StageTheme For(int stage) => All[(Mathf.Max(1, stage) - 1) % All.Length];
 
-        /// <summary>Cycle suffix after the first loop ("MONDLICHT-RUINEN II").</summary>
+        /// <summary>Cycle suffix after the first loop ("SONNENARENA II").</summary>
         public static string Title(int stage)
         {
             int loop = (Mathf.Max(1, stage) - 1) / All.Length;

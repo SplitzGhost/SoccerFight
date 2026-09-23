@@ -251,14 +251,14 @@ namespace SoccerFight
 
             Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), lean);
             float headRot = lean * 0.6f + Mathf.Clamp(lookAt.y, -1f, 1f) * 5f - contact * 6f;
-            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0f, 0.065f), lean * 0.6f);
+            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0f, 0.05f), lean * 0.6f);
 
             Leg(farShin, farThigh, farBoot, farGlow, farHip, farKnee, fAnkle, 0f);
             Place(neck, neckBase, lean * 0.6f);
             Place(pelvis, hip, lean * 0.35f);
             Leg(nearShin, nearThigh, nearBoot, nearGlow, nearHip, nearKnee, nAnkle, nearBootRot);
             Place(torso, hip, lean);
-            Place(tuft, headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot), headRot + 6f + Mathf.Sin(t * 5f) * 3f * armOut);
+            Place(tuft, headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f) * PlayerDims.HeadScale, headRot), headRot + 6f + Mathf.Sin(t * 5f) * 3f * armOut);
             Place(head, headPos, headRot);
         }
 

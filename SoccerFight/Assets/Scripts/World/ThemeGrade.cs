@@ -7,15 +7,21 @@ namespace SoccerFight
     /// Gives every stage its own look without regenerating the world: all environment renderers get
     /// graded material clones, and one global colour matrix (hue rotation, saturation, brightness,
     /// contrast, tint) re-lights the whole backdrop. Player, ball, monsters and effects keep their
-    /// true colours. Stage changes crossfade the matrix. Also runs the stage's weather particles.
+    /// true colours. The sky gradient gets its own matrix (it maps onto the stage's sky colours), the
+    /// haze colour and the night amount (stars, lamps, fireflies) follow the stage too. Stage changes
+    /// crossfade all of it. Also runs the stage's weather particles.
     /// </summary>
     public sealed class ThemeGrade
     {
         static readonly int GradeId = Shader.PropertyToID("_SF_EnvGrade");
         static readonly int GradedId = Shader.PropertyToID("_EnvGraded");
+        static readonly int SkyGradeId = Shader.PropertyToID("_SF_SkyGrade");
 
         readonly Dictionary<Material, Material> clones = new Dictionary<Material, Material>();
         Matrix4x4 from = Matrix4x4.identity, to = Matrix4x4.identity, cur = Matrix4x4.identity;
+        Matrix4x4 skyFrom = Matrix4x4.identity, skyTo = Matrix4x4.identity, skyCur = Matrix4x4.identity;
+        Color hazeFrom, hazeTo, hazeCur;
+        float nightFrom, nightTo, sunFrom, sunTo;
         float t = 1f, dur;
         StageTheme theme;
         CameraRig cam;
@@ -29,7 +35,9 @@ namespace SoccerFight
         {
             cam = cameraRig;
             Shader.SetGlobalMatrix(GradeId, Matrix4x4.identity);
-            Adopt(env.Root, new HashSet<Transform> { env.LeftPortal, env.RightPortal });
+            Shader.SetGlobalMatrix(SkyGradeId, Matrix4x4.identity);
+            hazeCur = hazeFrom = hazeTo = Palette.Haze;
+            Adopt(env.Root, new HashSet<Transform> { env.LeftPortal, env.RightPortal, env.SkyGradient.transform });
 
             ballLight = Art.MakeSprite("Ball Light", parent, Art.SoftGlow, -40, Art.SpriteGlowMat, Color.clear);
             ballLight.transform.localScale = Vector3.one * 7f;
@@ -83,9 +91,9 @@ namespace SoccerFight
             sat.m10 = (1f - s) * lr;     sat.m11 = (1f - s) * lg + s; sat.m12 = (1f - s) * lb;
             sat.m20 = (1f - s) * lr;     sat.m21 = (1f - s) * lg;     sat.m22 = (1f - s) * lb + s;
 
-            // contrast pivots on a dark mid-tone (the scene lives in the shadows)
+            // contrast pivots on a mid-tone of the bright day scene
             float c = th.Contrast, b = th.Brightness;
-            const float pivot = 0.12f;
+            const float pivot = 0.35f;
             var m = sat * hue;
             var result = Matrix4x4.identity;
             for (int r = 0; r < 3; r++)
@@ -95,6 +103,28 @@ namespace SoccerFight
                 result[r, 3] = (1f - c) * pivot * tint;
             }
             return result;
+        }
+
+        /// <summary>
+        /// Sky matrix: the baked day gradient runs from the pale horizon to the deep blue top; its red
+        /// channel tells how far up a pixel sits, so an affine map on red repaints it as a gradient
+        /// between the stage's own horizon and top colours (linear space, like the shader).
+        /// </summary>
+        public static Matrix4x4 SkyMatrix(StageTheme th)
+        {
+            if (th.SkyTop == null && th.SkyHorizon == null) return Matrix4x4.identity;   // the baked day sky as it is
+            Color baseH = Palette.SkyHorizon.linear, baseT = Palette.SkyTop.linear;
+            Color h = (th.SkyHorizon ?? Palette.SkyHorizon).linear, top = (th.SkyTop ?? Palette.SkyTop).linear;
+            float span = Mathf.Max(0.05f, baseH.r - baseT.r);
+            var m = Matrix4x4.zero;
+            for (int r = 0; r < 3; r++)
+            {
+                float d = top[r] - h[r];
+                m[r, 0] = -d / span;             // t = (baseH.r - red) / span
+                m[r, 3] = h[r] + d * baseH.r / span;
+            }
+            m[3, 3] = 1f;
+            return m;
         }
 
         static Matrix4x4 Lerp(Matrix4x4 a, Matrix4x4 b, float k)
@@ -109,10 +139,30 @@ namespace SoccerFight
             theme = next;
             from = cur;
             to = Matrix(next);
+            skyFrom = skyCur;
+            skyTo = SkyMatrix(next);
+            hazeFrom = hazeCur;
+            hazeTo = next.Haze ?? Palette.Haze;
+            nightFrom = WorldEnvironment.Night;
+            nightTo = next.Night;
+            sunFrom = WorldEnvironment.SunK;
+            sunTo = next.Sun;
             dur = seconds;
             t = 0f;
-            if (seconds <= 0f) { cur = to; t = 1f; Shader.SetGlobalMatrix(GradeId, cur); }
+            if (seconds <= 0f) { t = 1f; Apply(1f); }
             Game.I.Post.SetTheme(next.Vignette, next.Mechanic == StageMechanic.Darkness);
+        }
+
+        void Apply(float k)
+        {
+            cur = Lerp(from, to, k);
+            skyCur = Lerp(skyFrom, skyTo, k);
+            hazeCur = Color.Lerp(hazeFrom, hazeTo, k);
+            Shader.SetGlobalMatrix(GradeId, cur);
+            Shader.SetGlobalMatrix(SkyGradeId, skyCur);
+            Art.SetHaze(hazeCur);
+            WorldEnvironment.Night = Mathf.Lerp(nightFrom, nightTo, k);
+            WorldEnvironment.SunK = Mathf.Lerp(sunFrom, sunTo, k);
         }
 
         public void Update(float dt, Player player, Ball ball)
@@ -120,8 +170,7 @@ namespace SoccerFight
             if (t < 1f)
             {
                 t = Mathf.Min(1f, t + dt / Mathf.Max(0.01f, dur));
-                cur = Lerp(from, to, MathUtil.Smooth01(t));
-                Shader.SetGlobalMatrix(GradeId, cur);
+                Apply(MathUtil.Smooth01(t));
             }
             if (theme == null) return;
 

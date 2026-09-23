@@ -44,7 +44,7 @@ namespace SoccerFight
         public static Image Emblem(Transform parent, Sprite icon, Vector2 pos, float size, Color accent, out Image ring)
         {
             UiKit.Img("EmblemGlow", parent, UiArt.Glow, accent.WithAlpha(0.2f), pos, Vector2.one * size * 1.9f);
-            UiKit.Img("EmblemDisc", parent, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.85f), pos, Vector2.one * size);
+            UiKit.Img("EmblemDisc", parent, MenuArt.Round, new Color(0.13f, 0.21f, 0.28f, 0.85f), pos, Vector2.one * size);
             ring = UiKit.Img("EmblemRing", parent, MenuArt.RoundFrame, Soft(accent).WithAlpha(0.85f), pos, Vector2.one * (size + 4f));
             var img = UiKit.Img("Emblem", parent, icon, Color.white, pos, Vector2.one * size * 0.66f);
             img.preserveAspect = true;
@@ -189,16 +189,16 @@ namespace SoccerFight
             float ph = top - bottom, pw = W - 20f;
             portrait = UiKit.Node("Portrait", Root, new Vector2(0f, (top + bottom) * 0.5f), new Vector2(pw, ph));
             portrait.gameObject.AddComponent<RectMask2D>();
-            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.07f), Vector2.zero, new Vector2(pw, ph));
+            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.13f, 0.21f, 0.28f), def.Accent, 0.07f), Vector2.zero, new Vector2(pw, ph));
             wash = UiKit.Img("Light", portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 30f), new Vector2(560f, 560f));
             UiKit.Img("Moon", portrait, UiArt.Glow, new Color(0.75f, 0.95f, 1f, 0.12f), new Vector2(90f, ph * 0.5f - 40f), new Vector2(300f, 300f));
             spot = UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-10f, -ph * 0.5f + 34f), new Vector2(300f, 70f));
-            UiKit.Img("TopShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.6f), new Vector2(0f, ph * 0.5f), new Vector2(pw * 1.6f, 60f));
+            UiKit.Img("TopShade", portrait, UiArt.LineFade, new Color(0.1f, 0.16f, 0.22f, 0.6f), new Vector2(0f, ph * 0.5f), new Vector2(pw * 1.6f, 60f));
             figure = new PortraitSlot(portrait, def, new Vector2(-20f, -ph * 0.5f - 130f), 222f);
-            UiKit.Img("FrontShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.75f), new Vector2(0f, -ph * 0.5f + 30f), new Vector2(pw * 1.6f, 90f));
+            UiKit.Img("FrontShade", portrait, UiArt.LineFade, new Color(0.1f, 0.16f, 0.22f, 0.75f), new Vector2(0f, -ph * 0.5f + 30f), new Vector2(pw * 1.6f, 90f));
             MenuArt.Label("FrontName", portrait, def.Name, 56f, Color.white, new Vector2(-pw * 0.5f + 24f + 200f, -ph * 0.5f + 40f), new Vector2(400f, 80f), TextAlignmentOptions.Left, 12f);
             // locked: a dark veil over the portrait with a lock and the price
-            veil = UiKit.Img("FrontVeil", portrait, null, new Color(0.01f, 0.02f, 0.04f, 0.55f), Vector2.zero, new Vector2(pw, ph));
+            veil = UiKit.Img("FrontVeil", portrait, null, new Color(0.08f, 0.13f, 0.2f, 0.55f), Vector2.zero, new Vector2(pw, ph));
             lockIcon = UiKit.Img("FrontLock", portrait, UiArt.IconLock, Color.white.WithAlpha(0.9f), new Vector2(0f, 40f), new Vector2(64f, 64f));
             veilPrice = new PriceTag(portrait, new Vector2(0f, -14f), 30f);
             veilPrice.Root.name = "FrontPrice";
@@ -206,7 +206,7 @@ namespace SoccerFight
 
             // header: class diamond, class name, record
             float hy = H * 0.5f - 38f;
-            var badge = UiKit.Img("Badge", Root, MenuArt.Badge, Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f), new Vector2(-W * 0.5f + 40f, hy), new Vector2(58f, 58f));
+            var badge = UiKit.Img("Badge", Root, MenuArt.Badge, Color.Lerp(def.Accent, new Color(0.2f, 0.31f, 0.39f), 0.35f), new Vector2(-W * 0.5f + 40f, hy), new Vector2(58f, 58f));
             var icon = UiKit.Img("ClassIcon", badge.transform, cls.Icon(), Color.white, Vector2.zero, new Vector2(30f, 30f));
             icon.preserveAspect = true;
             var role = MenuArt.Label("Role", Root, cls.Name, 24f, MetaUi.Soft(def.Accent), new Vector2(-W * 0.5f + 80f + 110f, hy), new Vector2(220f, 40f), TextAlignmentOptions.Left, 6f);
@@ -371,7 +371,7 @@ namespace SoccerFight
             const float pw = 168f, ph = H - 16f;
             var portrait = UiKit.Node("Portrait", Root, new Vector2(-W * 0.5f + 8f + pw * 0.5f, 0f), new Vector2(pw, ph));
             portrait.gameObject.AddComponent<RectMask2D>();
-            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.08f), Vector2.zero, new Vector2(pw, ph));
+            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.13f, 0.21f, 0.28f), def.Accent, 0.08f), Vector2.zero, new Vector2(pw, ph));
             UiKit.Img("Light", portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 10f), new Vector2(300f, 320f));
             UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-4f, -ph * 0.5f + 18f), new Vector2(170f, 40f));
             figure = new PortraitSlot(portrait, def, new Vector2(-10f, -ph * 0.5f + 8f), 118f);
