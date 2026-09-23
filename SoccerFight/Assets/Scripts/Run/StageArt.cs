@@ -53,6 +53,7 @@ namespace SoccerFight
             preparedStage = preparedSeed = -1;
             Level.Set(layout);
             Game.I.Environment.Platforms.Show(looks);
+            Game.I.Environment.SetStagePresentation(stage);
             MonsterArt.Trim(StageThemes.For(stage), StageThemes.For(Mathf.Max(1, stage - 1)));
             return true;
         }

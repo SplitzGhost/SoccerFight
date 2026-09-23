@@ -1,7 +1,7 @@
 # SportFighter
 
 2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gibt keine importierten Sprites.
+Grafik, Animation, Effekte und HUD werden überwiegend zur Laufzeit im Code erzeugt. Die neue Mondlicht-Ruinen-Kulisse für Stage 1 besteht aus drei eigens erstellten 2D-Parallax-Ebenen; Spieler, Plattformen, Rasen, Gegner und Effekte bleiben dynamisch im Spiel.
 
 ## Ein Lauf
 
@@ -226,6 +226,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   Runenblock, Holzsteg an Ketten, Riesenpilz). Alle sind von unten durchspringbar; wer auf einer bewegten steht, fährt
   mit. Blobs springen dem Spieler gezielt hinterher (erkennbar am langen Ducken davor) und hüpfen von der Kante, wenn der
   Spieler unten ist. Ball, Schatten, Gras und Rainbow Flick funktionieren auf jeder Ebene.
+- **Stage 1 – Mondlicht-Ruinen:** Drei gemalte Ebenen zeigen den fernen Mond und die Berge, dahinterliegende Wälder und Aquädukte sowie nahe, überwucherte Säulen und Bäume. Die Fernebene folgt der Kamera stark, die Mittelebene weniger und der nahe Rahmen am langsamsten; dadurch ziehen nahe Formen sichtbar schneller am Spieler vorbei. Die dynamischen Plattformen und der Rasen liegen spielbar davor; Fußball-Kreidelinien und Pfützen sind in dieser Stage ausgeblendet. Ab Stage 2 erscheint wieder die prozedurale Parallax-Welt.
 - **Tiefe:** acht Parallax-Ebenen hinter dem Spielfeld (Büsche, Säulen und Riesenstamm, Arkaden-Ruine, Aquädukt mit
   Wasserlauf, große Bäume, Waldhügel mit verfallenem Stadion und Flutlichtmast, Berge mit Wasserfall, schneebedeckte Gipfel vor
   dem Mond). Jede Ebene bewegt sich entsprechend ihrer Entfernung mit der Kamera, horizontal wie vertikal, und wird nach

@@ -29,6 +29,9 @@ namespace SoccerFight
         readonly Ambient ambient = new Ambient();
 
         Transform root;
+        Transform stageOneFar, stageOneMid, stageOneNear;
+        Transform pitchMarkings, pitchPuddles;
+        SpriteRenderer pitchSurface;
         CameraRig cam;
         System.Random rng;
         float moteTimer, splashTimer;
@@ -96,7 +99,49 @@ namespace SoccerFight
             BuildGround();
             BuildPlatforms();
             BuildForeground();
+            BuildStageOneArtwork();
             BuildFireflies();
+        }
+
+        /// <summary>Schaltet die neue Kulisse der ersten Stage um; Plattformen und Spielfeld bleiben aktiv.</summary>
+        public void SetStagePresentation(int stage)
+        {
+            bool illustratedOpening = stage == 1;
+            for (int i = 0; i < layers.Count; i++)
+            {
+                Transform layer = layers[i].t;
+                bool openingLayer = layer == stageOneFar || layer == stageOneMid || layer == stageOneNear;
+                layer.gameObject.SetActive(illustratedOpening ? openingLayer : !openingLayer);
+            }
+            if (pitchMarkings != null) pitchMarkings.gameObject.SetActive(!illustratedOpening);
+            if (pitchPuddles != null) pitchPuddles.gameObject.SetActive(!illustratedOpening);
+            if (pitchSurface != null) pitchSurface.color = illustratedOpening ? new Color(0.88f, 1.12f, 0.76f, 1f) : Color.white;
+        }
+
+        void BuildStageOneArtwork()
+        {
+            // Jede Bildebene folgt der Kamera anders stark: Ferne Kulissen wandern kaum,
+            // nahe Silhouetten ziehen deutlich schneller am Spieler vorbei.
+            stageOneFar = AddStageOneImage("Stage 1 Far Sky", "Stage1/FarSky", new Vector2(5f, cam.BaseY), 0.94f, 0.9f, 46f, -1000);
+            stageOneMid = AddStageOneImage("Stage 1 Middle Ruins", "Stage1/MiddleRuins", new Vector2(0f, 1f), 0.56f, 0.44f, 44f, -900);
+            stageOneNear = AddStageOneImage("Stage 1 Foreground Frame", "Stage1/ForegroundFrame", new Vector2(0f, 0.2f), 0.14f, 0.12f, 34f, 180);
+        }
+
+        Transform AddStageOneImage(string layerName, string resource, Vector2 origin, float px, float py, float width, int order)
+        {
+            var layer = AddLayer(layerName, origin, px, py);
+            layer.gameObject.SetActive(false);
+            var sprites = Resources.LoadAll<Sprite>(resource);
+            if (sprites == null || sprites.Length == 0)
+            {
+                Debug.LogError("Stage-1-Hintergrundebene fehlt: Resources/" + resource + ".png");
+                return layer;
+            }
+            var art = sprites[0];
+            var image = Art.MakeSprite(layerName + " Artwork", layer, art, order);
+            float scale = width / art.bounds.size.x;
+            image.transform.localScale = Vector3.one * scale;
+            return layer;
         }
 
         // ------------------------------------------------------------------ sky
@@ -327,30 +372,34 @@ namespace SoccerFight
         void BuildGround()
         {
             var ground = Group("Ground");
-            var pitch = Art.MakeSprite("Pitch", ground, EnvironmentArt.PitchTile, -100);
-            pitch.drawMode = SpriteDrawMode.Tiled;
-            pitch.size = new Vector2(52f, EnvironmentArt.PitchH);
-            pitch.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH, 0f);
+            pitchSurface = Art.MakeSprite("Pitch", ground, EnvironmentArt.PitchTile, -100);
+            pitchSurface.drawMode = SpriteDrawMode.Tiled;
+            pitchSurface.size = new Vector2(52f, EnvironmentArt.PitchH);
+            pitchSurface.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH, 0f);
             var earth = Art.MakeSprite("Earth", ground, EnvironmentArt.EarthTile, -110);
             earth.drawMode = SpriteDrawMode.Tiled;
             earth.size = new Vector2(52f, EnvironmentArt.EarthH);
             earth.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH + 0.13f - EnvironmentArt.EarthH, 0f);
 
             // chalk: halfway line, centre circle, both penalty areas with the goal mouths worn to mud
-            Art.MakeSprite("Markings Centre", ground, DepthArt.MarkCenter, -99);
-            Art.MakeSprite("Markings Left", ground, DepthArt.MarkLeft, -99).transform.localPosition = new Vector3(-DepthArt.MarkBoxCenter, 0f, 0f);
-            Art.MakeSprite("Markings Right", ground, DepthArt.MarkRight, -99).transform.localPosition = new Vector3(DepthArt.MarkBoxCenter, 0f, 0f);
+            pitchMarkings = new GameObject("Pitch Markings").transform;
+            pitchMarkings.SetParent(ground, false);
+            Art.MakeSprite("Markings Centre", pitchMarkings, DepthArt.MarkCenter, -99);
+            Art.MakeSprite("Markings Left", pitchMarkings, DepthArt.MarkLeft, -99).transform.localPosition = new Vector3(-DepthArt.MarkBoxCenter, 0f, 0f);
+            Art.MakeSprite("Markings Right", pitchMarkings, DepthArt.MarkRight, -99).transform.localPosition = new Vector3(DepthArt.MarkBoxCenter, 0f, 0f);
 
             // rain puddles that mirror the moon and splash when someone runs through
+            pitchPuddles = new GameObject("Moonlit Pitch Puddles").transform;
+            pitchPuddles.SetParent(ground, false);
             float[] puddleX = { -7.4f, 7.1f, -12.6f };
             for (int i = 0; i < puddleX.Length; i++)
             {
                 float y = 0.06f + 0.05f * (i % 2);
-                var p = Art.MakeSprite("Puddle", ground, DepthArt.Puddle, -98);
+                var p = Art.MakeSprite("Puddle", pitchPuddles, DepthArt.Puddle, -98);
                 float s = i == 2 ? 0.75f : 1f;
                 p.transform.localPosition = new Vector3(puddleX[i], y, 0f);
                 p.transform.localScale = new Vector3(s, 1f, 1f);
-                var shine = Art.MakeSprite("Shine", ground, Art.SoftGlow, -97, Art.SpriteAddMat, new Color(0.7f, 0.92f, 1f, 0f));
+                var shine = Art.MakeSprite("Shine", pitchPuddles, Art.SoftGlow, -97, Art.SpriteAddMat, new Color(0.7f, 0.92f, 1f, 0f));
                 shine.transform.localPosition = new Vector3(puddleX[i] + 0.18f * s, y, 0f);
                 shine.transform.localScale = new Vector3(0.9f * s, 0.1f, 1f);
                 puddles.Add(new Puddle { shine = shine, x = puddleX[i], y = y, halfW = 0.7f * s, phase = R() * 10f });
