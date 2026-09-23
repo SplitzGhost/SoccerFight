@@ -1,6 +1,7 @@
 # Veröffentlicht den aktuellen Stand: Quellcode -> main, WebGL-Build -> gh-pages (GitHub Pages).
 # Läuft automatisch nach jeder Claude-Antwort (Stop-Hook in .claude/settings.local.json),
 # kann aber auch von Hand gestartet werden:  powershell -File tools\publish.ps1 [-Force]
+# Nur im Hauptordner; siehe AGENTS.md, Abschnitt Zusammenarbeit.
 param([switch]$Force)
 
 $root    = Split-Path $PSScriptRoot -Parent
@@ -17,8 +18,17 @@ $unity   = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe'
 # Pushes melden sich über die GitHub-CLI an (gh auth login), ohne die globale Git-Konfiguration zu ändern
 $cred    = @('-c', 'credential.helper=', '-c', "credential.helper=!'C:/Program Files/GitHub CLI/gh.exe' auth git-credential")
 
+# Nur der Hauptordner veröffentlicht. Zweite Arbeitsordner (git worktree, z. B. der von Codex)
+# committen selbst und werden von Hand nach main gemergt.
+$common = [IO.Path]::GetFullPath((git -C $root rev-parse --path-format=absolute --git-common-dir))
+if ((Split-Path $common -Parent) -ne $root) { exit 0 }
+
 New-Item -ItemType Directory -Force $work | Out-Null
 function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Add-Content $log -Encoding utf8 }
+
+# Arbeitet gerade eine andere KI im Hauptordner, liegt dort .codex-busy: dann nichts committen oder
+# bauen, sonst landen halbfertige Änderungen auf main und der Webseite. Die nächste Runde holt es nach.
+if (Test-Path (Join-Path $root '.codex-busy')) { Log 'pausiert: .codex-busy liegt im Hauptordner'; exit 0 }
 
 # Nur ein Lauf gleichzeitig. Wer während eines Laufs dazukommt, hinterlässt eine Markierung,
 # und der laufende Prozess macht danach noch eine Runde.

@@ -7,7 +7,11 @@ $root   = Split-Path $PSScriptRoot -Parent
 $mirror = Join-Path $root '.build\project'
 $unity  = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe'
 
-$mutex = New-Object System.Threading.Mutex($false, 'SoccerFightPublish')
+# Der Hauptordner teilt seine Build-Kopie mit publish.ps1. Ein zweiter Arbeitsordner (git worktree)
+# hat seine eigene Kopie und damit auch einen eigenen Mutex.
+$common = [IO.Path]::GetFullPath((git -C $root rev-parse --path-format=absolute --git-common-dir))
+$name   = if ((Split-Path $common -Parent) -eq $root) { 'SoccerFightPublish' } else { 'SoccerFightCapture-' + (Split-Path $root -Leaf) }
+$mutex  = New-Object System.Threading.Mutex($false, $name)
 [void]$mutex.WaitOne()
 try {
     foreach ($d in 'Assets', 'Packages', 'ProjectSettings') {

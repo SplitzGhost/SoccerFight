@@ -28,3 +28,6 @@ Inspiration/
 # Lokale Build-Kopie für WebGL und persönliche Claude-Einstellungen
 .build/
 .claude/settings.local.json
+
+# Markierung: eine andere KI arbeitet gerade im Hauptordner (publish.ps1 pausiert)
+.codex-busy
