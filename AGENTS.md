@@ -90,6 +90,9 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - Spielstand: ein JSON in PlayerPrefs `sf_profile`. Tests/Captures nutzen `Profile.UseTransient()`.
 - `ProjectSettings` productName bleibt absichtlich `SoccerFight` (sonst geht der WebGL-Spielstand verloren).
 - `Inspiration/` ist gitignored (urheberrechtlich geschützte Referenzbilder) – ansehen ja, nie committen.
+- Stage 1 hat eine eigene Kulisse (`Art/Stage1Art.cs`, `World/WorldEnvironment.Stage1.cs`) und eigene Plattformen
+  (`PlatformArt.BuildRuinSlab`); `WorldEnvironment.SetStagePresentation` schaltet zwischen ihr und der klassischen Welt
+  um. Änderungen an der klassischen Kulisse sieht man deshalb erst ab Stage 2. Screenshots: Szenario `stage1`.
 - Online-Duo: Code in `Assets/Scripts/Net/` (`NetLink`, `Coop`, `RemotePlayer`, Partials `*.Net.cs`),
   host-autoritativ über Unity Relay (wss). Änderungen an Player/Monster/Ball/RunDirector auf Duo-Sync prüfen.
 
@@ -104,6 +107,8 @@ Der Nutzer hat meist den Unity-Editor offen, der das Projekt sperrt. Deshalb:
   `look`, `bestiary`, `layouts`. Das erste Mal in einem neuen Ordner dauert es lange (~20 min Import).
   Den `-Out`-Ordner unter `.build\` legen (z. B. `.build\cap\menu`) – der ist gitignored, sonst landen die
   Screenshots im Commit.
+- Endet `capture.ps1` sofort mit `exit 1, 0 Bilder`, hängt meist noch ein alter Unity-Batchprozess auf `.build/project`:
+  ihn beenden (nicht den Editor des Nutzers!) und `.build/project/Temp/UnityLockfile` löschen.
 - Kompilierfehler im offenen Editor: `SoccerFight/Logs/Editor.log` nach `error CS` durchsuchen.
 - **Nie** den Kopf des Editor.log oder die Kommandozeilen von Unity-Prozessen ausgeben – dort steht ein
   Zugangstoken.
