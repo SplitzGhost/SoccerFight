@@ -1,7 +1,7 @@
 # SportFighter
 
 2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Grafik, Animation, Effekte und HUD werden überwiegend zur Laufzeit im Code erzeugt. Stage 1 nutzt einzeln aufgebaute, unterschiedlich schnell mitlaufende Tiefenebenen sowie eigens aufgehellte, getrennte Plattformgrafiken; Rasen, Gegner und Effekte bleiben dynamisch und spielbar.
+Grafik, Animation, Effekte und HUD werden überwiegend zur Laufzeit im Code erzeugt. Stage 1 hat eine eigene, nach einem Referenzbild gemalte Kulisse aus zwölf unterschiedlich schnell mitlaufenden Ebenen und eigene Plattformen – ebenfalls komplett im Code erzeugt.
 
 ## Ein Lauf
 
@@ -226,7 +226,16 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   Runenblock, Holzsteg an Ketten, Riesenpilz). Alle sind von unten durchspringbar; wer auf einer bewegten steht, fährt
   mit. Blobs springen dem Spieler gezielt hinterher (erkennbar am langen Ducken davor) und hüpfen von der Kante, wenn der
   Spieler unten ist. Ball, Schatten, Gras und Rainbow Flick funktionieren auf jeder Ebene.
-- **Stage 1 – Mondlicht-Ruinen:** Drei gemalte Ebenen zeigen den fernen Mond und die Berge, dahinterliegende Wälder und Aquädukte sowie nahe, überwucherte Säulen und Bäume. Die Fernebene folgt der Kamera stark, die Mittelebene weniger und der nahe Rahmen am langsamsten; dadurch ziehen nahe Formen sichtbar schneller am Spieler vorbei. Die dynamischen Plattformen und der Rasen liegen spielbar davor; Fußball-Kreidelinien und Pfützen sind in dieser Stage ausgeblendet. Ab Stage 2 erscheint wieder die prozedurale Parallax-Welt.
+- **Stage 1 – Mondlicht-Ruinen:** eigene Kulisse nach einem Referenzbild, in hoher Auflösung im Code gezeichnet
+  (`Art/Stage1Art.cs`, aufgebaut in `World/WorldEnvironment.Stage1.cs`). Von hinten nach vorn: tiefblauer Himmel mit
+  großem Vollmond hinter einer Wolkenbank, blaue Berge, Klippen mit Aquädukt, Turmruinen, Wasserfall und leuchtenden
+  Kristallen, ein Waldtal mit Fluss, Steinbrücke und Säule im Wasser, dunkle Baumgruppen mit Säulenstümpfen, große
+  Rahmenbäume, zwei Fackelruinen (eine mit lila Banner), Büsche, eine hellgrüne Wiese mit ausgetretenen Sandstellen über
+  einer moosigen Quadermauer mit Ranken und dunkle Blätter im Vordergrund. Jede Ebene läuft unterschiedlich schnell mit der
+  Kamera (ferne kaum, nahe stark, der Vordergrund gegenläufig). Bewegt: ziehende Wolken, fallendes Wasser, glitzernder
+  Fluss, pulsierende Kristalle, flackernde Fackeln mit Funken, warme Glühwürmchen, Pflanzen und Banner im Wind. Die
+  Plattformen sind schwebende Quaderplatten mit dicker Grasdecke und Ranken (`PlatformArt.BuildRuinSlab`). Ab Stage 2
+  erscheint wieder die klassische Parallax-Welt.
 - **Tiefe:** acht Parallax-Ebenen hinter dem Spielfeld (Büsche, Säulen und Riesenstamm, Arkaden-Ruine, Aquädukt mit
   Wasserlauf, große Bäume, Waldhügel mit verfallenem Stadion und Flutlichtmast, Berge mit Wasserfall, schneebedeckte Gipfel vor
   dem Mond). Jede Ebene bewegt sich entsprechend ihrer Entfernung mit der Kamera, horizontal wie vertikal, und wird nach
@@ -239,8 +248,8 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 | Ordner | Inhalt |
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
-| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), Umgebung (`EnvironmentArt`), tiefe Ebenen und Spielfeldlinien (`DepthArt`), Plattformen (`PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen) und Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
-| `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
+| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), Umgebung (`EnvironmentArt`), tiefe Ebenen und Spielfeldlinien (`DepthArt`), Plattformen (`PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen), Pflanzen (`FoliageArt`) und die Stage-1-Kulisse samt eigener Pflanzen (`Stage1Art`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
+| `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), Parallax-Ebenen mit Tiefenabdunklung (`WorldEnvironment`, die Kulisse von Stage 1 in `WorldEnvironment.Stage1`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
 | `Meta/` | Fortschritt über Läufe hinweg, alles datengetrieben: Währungen (`Currencies`), Speicherstand und Geldbörse (`Profile`, `Wallet`), Klassen und ihre Talente (`ClassDefs`, Zahlen in `ClassTuning`), dauerhafte Passive aus Talent/Perk/gekauften Stufen (`Passives`), Fähigkeiten mit Kategorie, Preis und Klassen-Sperre (`SkillCatalog`), Shop-Katalog und Kasse (`Shop`), Münz-Regeln (`CoinRewards`) |
@@ -282,6 +291,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen der Stile in `PlatformArt.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Tiefenwirkung:** Parallax-Faktoren in `WorldEnvironment.AddLayer(...)`-Aufrufen, Abdunklung pro Ebene über die `D*`-Konstanten und `DepthTint`
+- **Stage-1-Kulisse:** Motive, Farben und Auflösung jeder Ebene in `Art/Stage1Art.cs` (`Build*`), Parallax, Positionen von Wolken, Bäumen, Fackelruinen und Blättern in `WorldEnvironment.BuildStageOne`
 - **Glow/Bloom:** `PostFx.cs` und die Material-Intensitäten in `Art.cs`
 - **Wind:** Stärke von Neigung und Böen in `WorldEnvironment.Update`, Wellenform im Shader `SF_Foliage`
 - **Pflanzendichte:** die Schleifen in `WorldEnvironment.BuildNear/BuildGround/BuildRuins`

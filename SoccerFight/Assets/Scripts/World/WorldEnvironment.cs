@@ -10,7 +10,7 @@ namespace SoccerFight
     /// darker the further back it lies, mist pooling between them, hundreds of wind-animated plants,
     /// ambient life, the marked pitch and the platforms. Drives the global wind / interaction inputs.
     /// </summary>
-    public sealed class WorldEnvironment
+    public sealed partial class WorldEnvironment
     {
         struct Layer { public Transform t; public Vector2 basePos; public float px, py; }
         struct Fog { public SpriteRenderer sr; public float speed, offset, baseX; }
@@ -29,10 +29,11 @@ namespace SoccerFight
         readonly Ambient ambient = new Ambient();
 
         Transform root;
-        Transform foreground;
-        Transform pitchMarkings, pitchPuddles;
-        SpriteRenderer pitchSurface;
-        Transform pitchLip;
+        // Teile, die nur die klassische Kulisse (ab Stage 2) zeigt; Stage 1 hat ihre eigenen
+        Transform classicGround;
+        Transform stars, bats;
+        int classicLayers;
+        SpriteRenderer pitchSurface, earthSurface;
         CameraRig cam;
         System.Random rng;
         float moteTimer, splashTimer;
@@ -100,20 +101,28 @@ namespace SoccerFight
             BuildGround();
             BuildPlatforms();
             BuildForeground();
+            classicLayers = layers.Count;
+            BuildStageOne();
             BuildFireflies();
+            SetStagePresentation(1);
         }
 
-        /// <summary>Schaltet die neue Kulisse der ersten Stage um; Plattformen und Spielfeld bleiben aktiv.</summary>
+        /// <summary>
+        /// Stage 1 zeigt ihre eigene Kulisse (Mondlicht-Ruinen nach dem Referenzbild), alle späteren Stages
+        /// die klassische. Sterne und Fledermäuse gehören zu beiden; Plattformen, Tore und Spielfeld bleiben.
+        /// </summary>
         public void SetStagePresentation(int stage)
         {
-            bool stageOne = stage == 1;
-            // Alle Tiefenebenen bleiben echte, getrennte Weltobjekte. Nur der untere
-            // Blätterrahmen wird in Stage 1 ausgeblendet, damit nichts vor die Spielfläche ragt.
-            if (foreground != null) foreground.gameObject.SetActive(!stageOne);
-            if (pitchMarkings != null) pitchMarkings.gameObject.SetActive(!stageOne);
-            if (pitchPuddles != null) pitchPuddles.gameObject.SetActive(!stageOne);
-            if (pitchLip != null) pitchLip.gameObject.SetActive(!stageOne);
-            if (pitchSurface != null) pitchSurface.color = stageOne ? new Color(1f, 1.08f, 0.94f, 1f) : Color.white;
+            stageOneShown = stage == 1;
+            for (int i = 0; i < layers.Count; i++)
+            {
+                var t = layers[i].t;
+                bool shared = t == stars || t == bats;
+                t.gameObject.SetActive(shared || (i < classicLayers ? !stageOneShown : stageOneShown));
+            }
+            classicGround.gameObject.SetActive(!stageOneShown);
+            stageOneGround.gameObject.SetActive(stageOneShown);
+            ShowStageOneGround(stageOneShown);
         }
 
         // ------------------------------------------------------------------ sky
@@ -123,11 +132,11 @@ namespace SoccerFight
             var sky = AddLayer("Sky", new Vector2(0f, -1.6f), 1f, 1f);
             Art.MakeSprite("Gradient", sky, EnvironmentArt.Sky, -1000).transform.localScale = new Vector3(240f, 1f, 1f);
 
-            var stars = AddLayer("Stars", new Vector2(0f, 2.6f), 0.985f, 0.97f);
+            stars = AddLayer("Stars", new Vector2(0f, 2.6f), 0.985f, 0.97f);
             Art.MakeSprite("Stars", stars, EnvironmentArt.Stars, -995, Art.SpriteAddMat, new Color(1, 1, 1, 0.85f)).transform.localScale = new Vector3(1.6f, 1f, 1f);
 
             var clouds = AddLayer("Clouds", Vector2.zero, 0.96f, 0.94f);
-            var bats = AddLayer("Bats", Vector2.zero, 0.9f, 0.86f);
+            bats = AddLayer("Bats", Vector2.zero, 0.9f, 0.86f);
             ambient.BuildSky(stars, clouds, bats);
 
             var moon = AddLayer("Moon", new Vector2(5.4f, 6.6f), 0.975f, 0.96f);
@@ -348,21 +357,23 @@ namespace SoccerFight
             pitchSurface.drawMode = SpriteDrawMode.Tiled;
             pitchSurface.size = new Vector2(52f, EnvironmentArt.PitchH);
             pitchSurface.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH, 0f);
-            var earth = Art.MakeSprite("Earth", ground, EnvironmentArt.EarthTile, -110);
-            earth.drawMode = SpriteDrawMode.Tiled;
-            earth.size = new Vector2(52f, EnvironmentArt.EarthH);
-            earth.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH + 0.13f - EnvironmentArt.EarthH, 0f);
+            earthSurface = Art.MakeSprite("Earth", ground, EnvironmentArt.EarthTile, -110);
+            earthSurface.drawMode = SpriteDrawMode.Tiled;
+            earthSurface.size = new Vector2(52f, EnvironmentArt.EarthH);
+            earthSurface.transform.localPosition = new Vector3(-26f, EnvironmentArt.PitchTop - EnvironmentArt.PitchH + 0.13f - EnvironmentArt.EarthH, 0f);
+            classicGround = new GameObject("Classic Ground").transform;
+            classicGround.SetParent(ground, false);
 
             // chalk: halfway line, centre circle, both penalty areas with the goal mouths worn to mud
-            pitchMarkings = new GameObject("Pitch Markings").transform;
-            pitchMarkings.SetParent(ground, false);
+            var pitchMarkings = new GameObject("Pitch Markings").transform;
+            pitchMarkings.SetParent(classicGround, false);
             Art.MakeSprite("Markings Centre", pitchMarkings, DepthArt.MarkCenter, -99);
             Art.MakeSprite("Markings Left", pitchMarkings, DepthArt.MarkLeft, -99).transform.localPosition = new Vector3(-DepthArt.MarkBoxCenter, 0f, 0f);
             Art.MakeSprite("Markings Right", pitchMarkings, DepthArt.MarkRight, -99).transform.localPosition = new Vector3(DepthArt.MarkBoxCenter, 0f, 0f);
 
             // rain puddles that mirror the moon and splash when someone runs through
-            pitchPuddles = new GameObject("Moonlit Pitch Puddles").transform;
-            pitchPuddles.SetParent(ground, false);
+            var pitchPuddles = new GameObject("Moonlit Pitch Puddles").transform;
+            pitchPuddles.SetParent(classicGround, false);
             float[] puddleX = { -7.4f, 7.1f, -12.6f };
             for (int i = 0; i < puddleX.Length; i++)
             {
@@ -380,7 +391,7 @@ namespace SoccerFight
             // stones and broken drums lying along the far edge of the pitch
             for (int i = 0; i < 12; i++)
             {
-                var st = Art.MakeSprite("Stone", ground, DepthArt.Pebbles[i % DepthArt.Pebbles.Length], -96, Art.SpriteMat, new Color(0.85f, 0.92f, 0.95f, 1f));
+                var st = Art.MakeSprite("Stone", classicGround, DepthArt.Pebbles[i % DepthArt.Pebbles.Length], -96, Art.SpriteMat, new Color(0.85f, 0.92f, 0.95f, 1f));
                 st.transform.localPosition = new Vector3(Range(-25f, 25f), Range(0.27f, 0.34f), 0f);
                 float s = Range(0.7f, 1.5f);
                 st.transform.localScale = new Vector3(R() > 0.5f ? s : -s, s, 1f);
@@ -397,19 +408,17 @@ namespace SoccerFight
                 float s = flower ? Range(0.45f, 0.6f) : Range(0.55f, 1.0f);
                 backEdge.Add(v, new Vector2(x, Range(0.27f, 0.35f)), s, Color.white, 1f, 1f, R() > 0.5f);
             }
-            backEdge.Build(ground, "Pitch Back Grass", -95, FoliageLayer.MakeMaterial("SF Foliage Pitch", 0f, 1f),
+            backEdge.Build(classicGround, "Pitch Back Grass", -95, FoliageLayer.MakeMaterial("SF Foliage Pitch", 0f, 1f),
                 FoliageLayer.MakeMaterial("SF Foliage Pitch Glow", 0f, 1f, true, 0.8f), -94);
 
             // tufts on the front lip (in front of the players, below their feet)
-            pitchLip = new GameObject("Pitch Lip Grass").transform;
-            pitchLip.SetParent(ground, false);
             var lip = new FoliageLayer();
             for (float x = -26f; x < 26f; x += Range(0.14f, 0.36f))
             {
                 var v = R() > 0.85f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Grass);
                 lip.Add(v, new Vector2(x, Range(-0.47f, -0.41f)), Range(0.4f, 0.75f), new Color(0.95f, 1f, 1f, 1f), 1f, 0.7f, R() > 0.5f);
             }
-            lip.Build(pitchLip, "Tufts", 150, FoliageLayer.MakeMaterial("SF Foliage Lip", 0f, 1f));
+            lip.Build(classicGround, "Pitch Lip Grass", 150, FoliageLayer.MakeMaterial("SF Foliage Lip", 0f, 1f));
 
             // crystals and stones embedded in the earth wall
             var earthDecor = new FoliageLayer();
@@ -417,7 +426,7 @@ namespace SoccerFight
                 earthDecor.Add(Pick(FoliageArt.Stones), new Vector2(Range(-26f, 26f), Range(-2.9f, -0.75f)), Range(0.8f, 1.6f), new Color(0.75f, 0.85f, 0.88f, 1f));
             for (int i = 0; i < 9; i++)
                 earthDecor.Add(Pick(FoliageArt.Crystals), new Vector2(Range(-26f, 26f), Range(-2.4f, -1.0f)), Range(1.0f, 1.5f), Color.white, 0f, 0f, R() > 0.5f, Range(-25f, 25f));
-            earthDecor.Build(ground, "Earth Decor", -108, FoliageLayer.MakeMaterial("SF Foliage Earth", 0f, 0f),
+            earthDecor.Build(classicGround, "Earth Decor", -108, FoliageLayer.MakeMaterial("SF Foliage Earth", 0f, 0f),
                 FoliageLayer.MakeMaterial("SF Foliage Earth Glow", 0f, 0f, true, 0.45f), -107);
 
             // a thin ground mist drifting over the back of the pitch
@@ -464,8 +473,7 @@ namespace SoccerFight
 
         void BuildForeground()
         {
-            foreground = AddLayer("Foreground", Vector2.zero, -0.35f, -0.2f);
-            var fg = foreground;
+            var fg = AddLayer("Foreground", Vector2.zero, -0.35f, -0.2f);
             var fronds = new FoliageLayer();
             float[] xs = { -23f, -14f, -6.5f, 2.5f, 10.5f, 18f, 26f };
             foreach (float x in xs)
@@ -597,7 +605,7 @@ namespace SoccerFight
                 pos.x += c.x * f.parallax;
                 float blink = Mathf.Clamp01(0.35f + 0.65f * Mathf.Sin(t * 1.1f + f.phase * 3f)) * (0.6f + 0.4f * Mathf.PerlinNoise(t * 2f, f.phase));
                 f.sr.transform.localPosition = pos;
-                f.sr.color = Palette.Firefly.WithAlpha(blink * (f.parallax < 0f ? 0.35f : 0.9f));
+                f.sr.color = (stageOneShown ? StageOneFirefly : Palette.Firefly).WithAlpha(blink * (f.parallax < 0f ? 0.35f : 0.9f));
             }
 
             var fx = FxSystem.I;
@@ -617,6 +625,7 @@ namespace SoccerFight
             }
 
             ambient.Update(dt, time, c, Wind);
+            if (stageOneShown) UpdateStageOne(dt, time, c);
         }
 
         void UpdatePuddles(float dt, float time, Player player, FxSystem fx)

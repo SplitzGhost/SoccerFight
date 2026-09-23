@@ -35,6 +35,7 @@ namespace SoccerFight
         Transform group;
         PlatformLook[] shown;
         Material grassMat, grassGlowMat, lipMat, hangMat;
+        Material ruinGrassMat, ruinLipMat, ruinHangMat;
         System.Random rng = new System.Random(77);
         float speckTimer;
 
@@ -50,6 +51,16 @@ namespace SoccerFight
             grassGlowMat = FoliageLayer.MakeMaterial("SF Foliage Platform Glow", 0f, 1f, true, 0.8f);
             lipMat = FoliageLayer.MakeMaterial("SF Foliage Platform Lip", 0f, 1f);
             hangMat = FoliageLayer.MakeMaterial("SF Foliage Hangings", 0f, 0.8f);
+            ruinGrassMat = Stage1Mat("SF S1 Platform Grass", 1f);
+            ruinLipMat = Stage1Mat("SF S1 Platform Lip", 1f);
+            ruinHangMat = Stage1Mat("SF S1 Platform Vines", 0.8f);
+        }
+
+        static Material Stage1Mat(string name, float wind)
+        {
+            var m = FoliageLayer.MakeMaterial(name, 0f, wind);
+            m.mainTexture = Stage1Art.PlantAtlas;
+            return m;
         }
 
         /// <summary>Replace the shown platforms (frees the textures of the previous layout).</summary>
@@ -85,6 +96,24 @@ namespace SoccerFight
             var lip = new FoliageLayer();
             var hang = new FoliageLayer();
             float x0 = p.BaseX0, x1 = p.BaseX1, y = p.BaseY;
+            if (look.Ruin)
+            {
+                // Stage 1: sattgrünes Gras, Blumen und Ranken wie im Referenzbild
+                for (float x = x0 + 0.04f; x < x1 - 0.04f; x += Range(0.07f, 0.16f))
+                {
+                    var fv = R() < 0.9f ? Pick(Stage1Art.Grass) : Pick(Stage1Art.Flowers);
+                    back.Add(fv, new Vector2(x, y + Range(0.05f, 0.12f)), Range(0.45f, 0.8f), Color.white, 1f, 1f, R() > 0.5f);
+                }
+                for (float x = x0 - 0.05f; x < x1 + 0.05f; x += Range(0.14f, 0.3f))
+                    lip.Add(Pick(Stage1Art.Grass), new Vector2(x, y - Range(0.1f, 0.15f)), Range(0.3f, 0.5f), Color.white, 1f, 0.7f, R() > 0.5f);
+                foreach (var h in look.Hangs)
+                    if (R() < 0.8f) hang.Add(Pick(Stage1Art.Vines), h, Range(0.5f, 0.95f), Color.white, 1f, 0.5f, R() > 0.5f);
+                if (hang.Count > 0) hang.Build(v.Root, "Vines", -83, ruinHangMat);
+                back.Build(v.Root, "Grass", -80, ruinGrassMat);
+                lip.Build(v.Root, "Lip Grass", 50, ruinLipMat);
+                Place(v);
+                return;
+            }
             bool rock = p.Kind == Level.Style.Rock;
 
             switch (p.Kind)

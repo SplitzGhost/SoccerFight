@@ -97,6 +97,7 @@ namespace SoccerFight
             else if (scenario == "meta") yield return MetaTour();
             else if (scenario == "duo") yield return Duo();
             else if (scenario == "hoops") yield return Hoops();
+            else if (scenario == "stage1") yield return StageOneLook();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -454,6 +455,32 @@ namespace SoccerFight
             Debug.Log($"[Capture] {what}: grounded={P.Grounded} platform={P.OnPlatform} pos=({P.Pos.x:F2}, {P.Pos.y:F2})");
 
         /// <summary>Depth layers, platforms, blobs leaping after the player, dropping through, flicking from above.</summary>
+        /// <summary>Stage 1 (Mondlicht-Ruinen): Gesamtbild wie das Referenzbild, die Parallaxe links/rechts/oben, Nahaufnahmen.</summary>
+        IEnumerator StageOneLook()
+        {
+            Aim(new Vector2(5f, 1.6f));
+            P.Pos = new Vector2(-1.5f, 0f); P.Vel = Vector2.zero;
+            G.Ball.ResetTo(P.Pos + new Vector2(0.6f, Art.BallRadius));
+            yield return Seconds(1.5f);
+            yield return Shot("s1_00_play");
+            G.Hud.SetVisible(false);
+            (string name, Vector2 at, float size)[] views =
+            {
+                ("s1_01_center", new Vector2(0f, 3f), 4.9f), ("s1_02_left", new Vector2(-9.5f, 3f), 4.9f), ("s1_03_right", new Vector2(9.5f, 3f), 4.9f),
+                ("s1_04_high", new Vector2(2f, 5.4f), 5.2f), ("s1_05_mid_left", new Vector2(-4f, 3f), 4.9f), ("s1_06_platform", new Vector2(-2.6f, 1.6f), 1.8f),
+                ("s1_07_torch", new Vector2(-7.2f, 1.4f), 1.9f), ("s1_08_far", new Vector2(1f, 5.2f), 2.6f), ("s1_09_wall", new Vector2(4f, -0.6f), 1.6f),
+                ("s1_10_goal", new Vector2(9.5f, 2.2f), 4.9f)
+            };
+            foreach (var v in views)
+            {
+                G.Cam.SetOverride(v.at, v.size);
+                yield return Frames(4);
+                yield return Shot(v.name);
+            }
+            G.Cam.ClearOverride();
+            G.Hud.SetVisible(true);
+        }
+
         IEnumerator Platforms()
         {
             Aim(new Vector2(5f, 1.6f));
