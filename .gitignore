@@ -28,6 +28,8 @@ Inspiration/
 # Lokale Build-Kopie für WebGL und persönliche Claude-Einstellungen
 .build/
 .claude/settings.local.json
+# Markierung „Codex arbeitet gerade im Hauptordner“ (siehe AGENTS.md)
+.codex-busy
 
 # Markierung: eine andere KI arbeitet gerade im Hauptordner (publish.ps1 pausiert)
 .codex-busy

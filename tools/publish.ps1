@@ -28,7 +28,13 @@ function Log($msg) { "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg" | Add-Con
 
 # Arbeitet gerade eine andere KI im Hauptordner, liegt dort .codex-busy: dann nichts committen oder
 # bauen, sonst landen halbfertige Änderungen auf main und der Webseite. Die nächste Runde holt es nach.
-if (Test-Path (Join-Path $root '.codex-busy')) { Log 'pausiert: .codex-busy liegt im Hauptordner'; exit 0 }
+# Eine Markierung, die älter als 4 Stunden ist, hat jemand vergessen (Absturz): dann wegräumen.
+$busy = Join-Path $root '.codex-busy'
+if (Test-Path $busy) {
+    if ((Get-Item $busy).LastWriteTime -gt (Get-Date).AddHours(-4)) { Log 'pausiert: .codex-busy liegt im Hauptordner'; exit 0 }
+    Remove-Item $busy -Force
+    Log '.codex-busy war älter als 4 Stunden und wurde entfernt'
+}
 
 # Nur ein Lauf gleichzeitig. Wer während eines Laufs dazukommt, hinterlässt eine Markierung,
 # und der laufende Prozess macht danach noch eine Runde.
