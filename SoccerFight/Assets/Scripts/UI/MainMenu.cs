@@ -732,16 +732,7 @@ namespace SoccerFight
             RefreshChallenge();
         }
 
-        void RefreshChallenge()
-        {
-            var c = ChallengeLevels.Current;
-            bool unlocked = ChallengeLevels.IsUnlocked(c, Characters.Current);
-            modeName.text = "LEVEL " + c.Number + "  ·  " + c.Name;
-            modeSub.text = c.Stages + " STAGES  ·  BELOHNUNG ×" + c.CrystalMultiplier.ToString("0.0")
-                + (unlocked ? "" : "  ·  AB STUFE " + c.RequiredCharacterLevel);
-            modeName.color = unlocked ? Color.white : MetaUi.Muted;
-            modeSub.color = unlocked ? Muted : MetaUi.Danger;
-        }
+        void RefreshChallenge() => UpdateMode();
 
         void Quit()
         {
@@ -969,16 +960,23 @@ namespace SoccerFight
         /// <summary>Capture tool: type a room code on the duo page.</summary>
         public void DebugDuoType(string code) => duo.DebugType(code);
 
-        /// <summary>The mode card names the run SPIELEN starts: alone, or the duo with the partner in the room.</summary>
+        /// <summary>The mode card names the run SPIELEN starts: the chosen level, alone or with the partner in the room.</summary>
         void UpdateMode()
         {
             var room = Coop.S;
+            var c = ChallengeLevels.Current;
+            bool unlocked = ChallengeLevels.IsUnlocked(c, Characters.Current);
             bool duoReady = room != null && room.Link.Connected && room.PartnerHello;
-            string name = duoReady ? "DUO-LAUF" : room != null ? "DUO-RAUM OFFEN" : "ROGUELITE-LAUF";
-            string sub = duoReady ? "MIT " + (room.PartnerName ?? "").ToUpperInvariant() + (room.Link.IsHost ? "  ·  DU BIST HOST" : "")
-                : room != null ? "WARTE AUF MITSPIELER" : "8 STAGES  ·  WELLEN  ·  BOSSE";
+            string level = "LEVEL " + c.Number + "  ·  ";
+            string name = duoReady ? "DUO-LAUF" : room != null ? "DUO-RAUM OFFEN" : c.Name;
+            string sub = !unlocked ? level + "AB CHARAKTER-STUFE " + c.RequiredCharacterLevel
+                : duoReady ? level + "MIT " + (room.PartnerName ?? "").ToUpperInvariant()
+                : room != null ? "WARTE AUF MITSPIELER"
+                : level + c.Stages + " STAGES  ·  KRISTALLE ×" + c.CrystalMultiplier.ToString("0.0");
             if (modeName.text != name) modeName.text = name;
             if (modeSub.text != sub) modeSub.text = sub;
+            modeName.color = unlocked ? Color.white : MetaUi.Muted;
+            modeSub.color = unlocked ? Muted : MetaUi.Danger;
         }
 
         Vector2 AimNorm()
