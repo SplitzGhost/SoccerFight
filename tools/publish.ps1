@@ -44,11 +44,17 @@ try {
             git commit -q -m "Auto-Update: $names"
             Log "commit: $names"
         }
-        if ([int](git rev-list --count '@{u}..HEAD') -gt 0) {
-            $res = git @cred push -q origin HEAD 2>&1
+        # Neue Branches haben noch kein Upstream: dann einmal mit -u pushen
+        $upstream = git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null
+        if (-not $upstream -or [int](git rev-list --count '@{u}..HEAD') -gt 0) {
+            $res = git @cred push -q -u origin HEAD 2>&1
             if ($LASTEXITCODE -ne 0) { Log "push FAILED: $res"; break }
             Log 'push ok'
         }
+
+        # Die Webseite zeigt nur main. Andere Branches (z. B. redesign) werden nur gesichert.
+        $branch = git rev-parse --abbrev-ref HEAD
+        if ($branch -ne 'main') { Log "branch ${branch}: nur gepusht, Webseite bleibt auf main"; continue }
 
         # 2) WebGL nur neu bauen, wenn sich Spielinhalte geändert haben
         $tree = (git rev-parse HEAD:SoccerFight/Assets HEAD:SoccerFight/Packages HEAD:SoccerFight/ProjectSettings) -join ','
