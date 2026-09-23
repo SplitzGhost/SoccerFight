@@ -29,9 +29,10 @@ namespace SoccerFight
         readonly Ambient ambient = new Ambient();
 
         Transform root;
-        Transform stageOneFar, stageOneMid, stageOneNear;
+        Transform foreground;
         Transform pitchMarkings, pitchPuddles;
         SpriteRenderer pitchSurface;
+        Transform pitchLip;
         CameraRig cam;
         System.Random rng;
         float moteTimer, splashTimer;
@@ -99,49 +100,20 @@ namespace SoccerFight
             BuildGround();
             BuildPlatforms();
             BuildForeground();
-            BuildStageOneArtwork();
             BuildFireflies();
         }
 
         /// <summary>Schaltet die neue Kulisse der ersten Stage um; Plattformen und Spielfeld bleiben aktiv.</summary>
         public void SetStagePresentation(int stage)
         {
-            bool illustratedOpening = stage == 1;
-            for (int i = 0; i < layers.Count; i++)
-            {
-                Transform layer = layers[i].t;
-                bool openingLayer = layer == stageOneFar || layer == stageOneMid || layer == stageOneNear;
-                layer.gameObject.SetActive(illustratedOpening ? openingLayer : !openingLayer);
-            }
-            if (pitchMarkings != null) pitchMarkings.gameObject.SetActive(!illustratedOpening);
-            if (pitchPuddles != null) pitchPuddles.gameObject.SetActive(!illustratedOpening);
-            if (pitchSurface != null) pitchSurface.color = illustratedOpening ? new Color(0.88f, 1.12f, 0.76f, 1f) : Color.white;
-        }
-
-        void BuildStageOneArtwork()
-        {
-            // Jede Bildebene folgt der Kamera anders stark: Ferne Kulissen wandern kaum,
-            // nahe Silhouetten ziehen deutlich schneller am Spieler vorbei.
-            stageOneFar = AddStageOneImage("Stage 1 Far Sky", "Stage1/FarSky", new Vector2(5f, cam.BaseY), 0.94f, 0.9f, 46f, -1000);
-            stageOneMid = AddStageOneImage("Stage 1 Middle Ruins", "Stage1/MiddleRuins", new Vector2(0f, 1f), 0.56f, 0.44f, 44f, -900);
-            stageOneNear = AddStageOneImage("Stage 1 Foreground Frame", "Stage1/ForegroundFrame", new Vector2(0f, 0.2f), 0.14f, 0.12f, 34f, 180);
-        }
-
-        Transform AddStageOneImage(string layerName, string resource, Vector2 origin, float px, float py, float width, int order)
-        {
-            var layer = AddLayer(layerName, origin, px, py);
-            layer.gameObject.SetActive(false);
-            var sprites = Resources.LoadAll<Sprite>(resource);
-            if (sprites == null || sprites.Length == 0)
-            {
-                Debug.LogError("Stage-1-Hintergrundebene fehlt: Resources/" + resource + ".png");
-                return layer;
-            }
-            var art = sprites[0];
-            var image = Art.MakeSprite(layerName + " Artwork", layer, art, order);
-            float scale = width / art.bounds.size.x;
-            image.transform.localScale = Vector3.one * scale;
-            return layer;
+            bool stageOne = stage == 1;
+            // Alle Tiefenebenen bleiben echte, getrennte Weltobjekte. Nur der untere
+            // Blätterrahmen wird in Stage 1 ausgeblendet, damit nichts vor die Spielfläche ragt.
+            if (foreground != null) foreground.gameObject.SetActive(!stageOne);
+            if (pitchMarkings != null) pitchMarkings.gameObject.SetActive(!stageOne);
+            if (pitchPuddles != null) pitchPuddles.gameObject.SetActive(!stageOne);
+            if (pitchLip != null) pitchLip.gameObject.SetActive(!stageOne);
+            if (pitchSurface != null) pitchSurface.color = stageOne ? new Color(1f, 1.08f, 0.94f, 1f) : Color.white;
         }
 
         // ------------------------------------------------------------------ sky
@@ -429,13 +401,15 @@ namespace SoccerFight
                 FoliageLayer.MakeMaterial("SF Foliage Pitch Glow", 0f, 1f, true, 0.8f), -94);
 
             // tufts on the front lip (in front of the players, below their feet)
+            pitchLip = new GameObject("Pitch Lip Grass").transform;
+            pitchLip.SetParent(ground, false);
             var lip = new FoliageLayer();
             for (float x = -26f; x < 26f; x += Range(0.14f, 0.36f))
             {
                 var v = R() > 0.85f ? Pick(FoliageArt.Clover) : Pick(FoliageArt.Grass);
                 lip.Add(v, new Vector2(x, Range(-0.47f, -0.41f)), Range(0.4f, 0.75f), new Color(0.95f, 1f, 1f, 1f), 1f, 0.7f, R() > 0.5f);
             }
-            lip.Build(ground, "Pitch Lip Grass", 150, FoliageLayer.MakeMaterial("SF Foliage Lip", 0f, 1f));
+            lip.Build(pitchLip, "Tufts", 150, FoliageLayer.MakeMaterial("SF Foliage Lip", 0f, 1f));
 
             // crystals and stones embedded in the earth wall
             var earthDecor = new FoliageLayer();
@@ -490,7 +464,8 @@ namespace SoccerFight
 
         void BuildForeground()
         {
-            var fg = AddLayer("Foreground", Vector2.zero, -0.35f, -0.2f);
+            foreground = AddLayer("Foreground", Vector2.zero, -0.35f, -0.2f);
+            var fg = foreground;
             var fronds = new FoliageLayer();
             float[] xs = { -23f, -14f, -6.5f, 2.5f, 10.5f, 18f, 26f };
             foreach (float x in xs)

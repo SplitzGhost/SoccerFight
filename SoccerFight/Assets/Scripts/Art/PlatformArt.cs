@@ -35,6 +35,7 @@ namespace SoccerFight
             public float X0, X1, T, Seed;
             public int SeedI;
             public Level.Style Kind;
+            public bool Opening;
             public float Width => X1 - X0;
             public float Center => (X0 + X1) * 0.5f;
         }
@@ -42,7 +43,7 @@ namespace SoccerFight
         static Spec SpecOf(Level.Platform p) => new Spec { X0 = p.BaseX0, X1 = p.BaseX1, T = p.BaseY, Seed = p.Seed, SeedI = p.Seed, Kind = p.Kind };
 
         /// <summary>Queue the art for a layout. The sprites arrive through the ArtQueue.</summary>
-        public static PlatformLook[] Prepare(Level.Platform[] layout, string tag)
+        public static PlatformLook[] Prepare(Level.Platform[] layout, string tag, bool opening = false)
         {
             var looks = new PlatformLook[layout.Length];
             for (int i = 0; i < layout.Length; i++)
@@ -50,6 +51,7 @@ namespace SoccerFight
                 var a = new PlatformLook { P = layout[i] };
                 looks[i] = a;
                 var s = SpecOf(layout[i]);
+                s.Opening = opening;
                 a.BodyCenter = BodyRect(s).center;
                 ArtQueue.Add(tag + " Platform" + i, () => BuildBody(a, s), a.BodyCenter, sp => { a.Body = sp; a.Owned.Add(sp); }, false, true);
                 if (s.Kind == Level.Style.Terrace || s.Kind == Level.Style.Capital || s.Kind == Level.Style.Mushroom)
@@ -139,10 +141,12 @@ namespace SoccerFight
         /// The walkable top in slight perspective: v = 0 at the front edge, 1 at the back edge. Stone
         /// shows worn flagstones through moss, rocks are grown over with turf, decks are boards.
         /// </summary>
-        static Color TopColor(Vector2 p, float top, Surface kind, float seed)
+        static Color TopColor(Vector2 p, float top, Surface kind, float seed, bool opening = false)
         {
             float v = Mathf.Clamp01((p.y - (top - TopFront)) / (TopFront + TopBack));
-            Color turf = Color.Lerp(new Color(0.2f, 0.52f, 0.42f), new Color(0.12f, 0.34f, 0.3f), v);
+            Color turf = opening
+                ? Color.Lerp(new Color(0.37f, 0.75f, 0.22f), new Color(0.22f, 0.48f, 0.2f), v)
+                : Color.Lerp(new Color(0.2f, 0.52f, 0.42f), new Color(0.12f, 0.34f, 0.3f), v);
             float grain = Noise.Perlin(p.x * 30f + seed, p.y * 9f);
             float patch = Noise.Perlin(p.x * 2.1f + seed * 3f, p.y * 4f);
             float slant = p.x + (v - 0.5f) * 0.35f;
@@ -218,8 +222,10 @@ namespace SoccerFight
             }
         }
 
-        static Color FaceStone(Vector2 p, float light) =>
-            Color.Lerp(new Color(0.15f, 0.26f, 0.3f), new Color(0.33f, 0.49f, 0.53f), Mathf.Clamp01(light)).WithAlpha(1f);
+        static Color FaceStone(Vector2 p, float light, bool opening = false) =>
+            (opening
+                ? Color.Lerp(new Color(0.22f, 0.31f, 0.43f), new Color(0.55f, 0.65f, 0.76f), Mathf.Clamp01(light))
+                : Color.Lerp(new Color(0.15f, 0.26f, 0.3f), new Color(0.33f, 0.49f, 0.53f), Mathf.Clamp01(light))).WithAlpha(1f);
 
         /// <summary>Sparse hairline cracks: noise contour lines, but only inside a few weathered patches.</summary>
         static bool Crack(Vector2 p, float seed) =>
@@ -255,7 +261,7 @@ namespace SoccerFight
                 d = Mathf.Min(d, Sdf.Box(q, new Vector2(x1 - 0.12f, T + 0.33f), new Vector2(0.07f, 0.27f), 0.01f));
                 return d;
             };
-            c.Fill(balustrade, q => Mul(FaceStone(q, 0.25f + 0.35f * S01((q.x - x0) / pl.Width)), 0.78f + 0.15f * Noise.Perlin(q.x * 9f, q.y * 9f)),
+            c.Fill(balustrade, q => Mul(FaceStone(q, 0.25f + 0.35f * S01((q.x - x0) / pl.Width), pl.Opening), 0.78f + 0.15f * Noise.Perlin(q.x * 9f, q.y * 9f)),
                 0f, new Rect(x0 - 0.1f, T + 0.05f, pl.Width + 0.2f, 0.7f));
 
             // the slab: walkable top + carved cornice face, crumbling at both ends
@@ -267,23 +273,23 @@ namespace SoccerFight
             };
             c.Fill(slab, q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Stone, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Stone, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 float lit = 0.35f + 0.25f * S01((q.x - x0) / pl.Width);
                 Color col;
-                if (f < 0.05f) col = FaceStone(q, lit + 0.35f);                                         // fillet
-                else if (f < 0.19f) col = FaceStone(q, lit + 0.3f * Mathf.Cos((f - 0.05f) / 0.14f * Mathf.PI));   // cyma
+                if (f < 0.05f) col = FaceStone(q, lit + 0.35f, pl.Opening);                                         // fillet
+                else if (f < 0.19f) col = FaceStone(q, lit + 0.3f * Mathf.Cos((f - 0.05f) / 0.14f * Mathf.PI), pl.Opening);   // cyma
                 else if (f < 0.29f)
                 {
                     bool gap = Mathf.Repeat(q.x - x0, 0.12f) > 0.075f;                                  // dentils
-                    col = FaceStone(q, gap ? lit - 0.45f : lit + 0.1f);
+                    col = FaceStone(q, gap ? lit - 0.45f : lit + 0.1f, pl.Opening);
                 }
                 else if (f < 0.44f)
                 {
-                    col = FaceStone(q, lit);                                                            // fascia blocks
+                    col = FaceStone(q, lit, pl.Opening);                                                            // fascia blocks
                     if (Mathf.Repeat(q.x - x0 + MathUtil.Hash(pl.SeedI) * 0.4f, 0.8f) < 0.014f) col = Mul(col, 0.62f);
                 }
-                else col = FaceStone(q, lit - 0.4f);                                                    // chamfer
+                else col = FaceStone(q, lit - 0.4f, pl.Opening);                                                    // chamfer
                 col = Mul(col, 0.9f + 0.18f * Noise.Perlin(q.x * 13f, q.y * 13f));
                 float stain = Noise.Perlin(q.x * 4.3f, seed);
                 col = Mul(col, 1f - Mathf.Max(0f, stain - 0.5f) * 0.6f * S01(f / 0.3f));
@@ -322,14 +328,14 @@ namespace SoccerFight
             {
                 float t = Mathf.Clamp01(((T - abacusBottom) - q.y) / (echinusBottom - abacusBottom));
                 float sx = Mathf.Clamp((q.x - cx) / hwTop, -1f, 1f);
-                return Mul(FaceStone(q, 0.45f + 0.35f * sx - 0.35f * t), 0.92f + 0.12f * Noise.Perlin(q.x * 11f, q.y * 11f));
+                return Mul(FaceStone(q, 0.45f + 0.35f * sx - 0.35f * t, pl.Opening), 0.92f + 0.12f * Noise.Perlin(q.x * 11f, q.y * 11f));
             }, 0f, new Rect(cx - hwTop - 0.1f, T - echinusBottom - 0.1f, hwTop * 2f + 0.2f, 0.5f));
             for (int k = 0; k < 3; k++)
             {
                 float y = T - echinusBottom - 0.025f - k * 0.05f;
                 float kk = k;
                 c.Fill(q => Sdf.Box(q, new Vector2(cx, y), new Vector2(0.46f - kk * 0.01f, 0.018f), 0.01f),
-                    q => FaceStone(q, 0.35f + 0.3f * Mathf.Clamp((q.x - cx) / 0.45f, -1f, 1f)), 0f, new Rect(cx - 0.6f, y - 0.1f, 1.2f, 0.2f));
+                    q => FaceStone(q, 0.35f + 0.3f * Mathf.Clamp((q.x - cx) / 0.45f, -1f, 1f), pl.Opening), 0f, new Rect(cx - 0.6f, y - 0.1f, 1.2f, 0.2f));
             }
 
             // abacus: the heavy square slab that is the walkable surface
@@ -341,10 +347,10 @@ namespace SoccerFight
             };
             c.Fill(slab, q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Stone, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Stone, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 float lit = 0.35f + 0.3f * S01((q.x - x0) / pl.Width);
-                Color col = FaceStone(q, f < 0.04f ? lit + 0.35f : f > abacusBottom - TopFront - 0.04f ? lit - 0.4f : lit);
+                Color col = FaceStone(q, f < 0.04f ? lit + 0.35f : f > abacusBottom - TopFront - 0.04f ? lit - 0.4f : lit, pl.Opening);
                 if (Mathf.Abs(f - 0.11f) < 0.01f) col = Mul(col, 0.7f);
                 col = Mul(col, 0.9f + 0.18f * Noise.Perlin(q.x * 13f, q.y * 13f));
                 if (Crack(q, seed)) col = Mul(col, 0.62f);
@@ -398,7 +404,7 @@ namespace SoccerFight
                 float a = Mathf.Clamp01(0.5f - d * ppu);
                 if (a <= 0f) return Clear;
                 Color col;
-                if (p.y > T - TopFront) col = TopColor(p, T, Surface.Turf, seed);
+                if (p.y > T - TopFront) col = TopColor(p, T, Surface.Turf, seed, pl.Opening);
                 else
                 {
                     float below = (T - TopFront) - p.y;
@@ -507,7 +513,7 @@ namespace SoccerFight
             };
             c.Fill(crust, q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Crystal, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Crystal, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 Color col = Color.Lerp(new Color(0.2f, 0.3f, 0.36f), new Color(0.1f, 0.15f, 0.2f), S01(f / 0.2f));
                 col = Mul(col, 0.8f + 0.35f * S01((q.x - x0) / pl.Width) + 0.1f * Noise.Perlin(q.x * 12f, q.y * 12f));
@@ -571,10 +577,10 @@ namespace SoccerFight
             var spec = pl;
             c.Fill(q => BlockShape(spec, q), q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Rune, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Rune, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 float lit = 0.3f + 0.35f * S01((q.x - x0) / pl.Width);
-                Color col = FaceStone(q, f < 0.05f ? lit + 0.4f : lit);
+                Color col = FaceStone(q, f < 0.05f ? lit + 0.4f : lit, pl.Opening);
                 // two courses of big ashlar blocks
                 float course = f < 0.42f ? 0f : 1f;
                 float bx = Mathf.Repeat(q.x - x0 + course * 0.45f + MathUtil.Hash(pl.SeedI) * 0.3f, 0.9f);
@@ -658,7 +664,7 @@ namespace SoccerFight
             };
             c.Fill(deck, q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Wood, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Wood, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 // edge beam: horizontal boards with end grain and nails
                 float row = f < 0.09f ? 0f : 1f;
@@ -725,7 +731,7 @@ namespace SoccerFight
             };
             c.Fill(capFn, q =>
             {
-                if (q.y > T - TopFront) return TopColor(q, T, Surface.Cap, seed);
+                if (q.y > T - TopFront) return TopColor(q, T, Surface.Cap, seed, pl.Opening);
                 float f = (T - TopFront) - q.y;
                 float dx = (q.x - cx) / hw;
                 Color col = Color.Lerp(cap, capDark, S01(f / 0.5f));

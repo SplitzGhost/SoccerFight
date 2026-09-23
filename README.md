@@ -1,7 +1,7 @@
 # SportFighter
 
 2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Grafik, Animation, Effekte und HUD werden überwiegend zur Laufzeit im Code erzeugt. Die neue Mondlicht-Ruinen-Kulisse für Stage 1 besteht aus drei eigens erstellten 2D-Parallax-Ebenen; Spieler, Plattformen, Rasen, Gegner und Effekte bleiben dynamisch im Spiel.
+Grafik, Animation, Effekte und HUD werden überwiegend zur Laufzeit im Code erzeugt. Stage 1 nutzt einzeln aufgebaute, unterschiedlich schnell mitlaufende Tiefenebenen sowie eigens aufgehellte, getrennte Plattformgrafiken; Rasen, Gegner und Effekte bleiben dynamisch und spielbar.
 
 ## Ein Lauf
 

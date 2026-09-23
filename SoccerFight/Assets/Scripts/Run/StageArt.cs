@@ -37,7 +37,7 @@ namespace SoccerFight
             preparedSeed = seed;
             var theme = StageThemes.For(stage);
             layout = stage <= 1 ? Level.Classic() : Level.Generate(theme.PlatformStyles, seed * 31 + stage * 7919);
-            looks = PlatformArt.Prepare(layout, "S" + stage);
+            looks = PlatformArt.Prepare(layout, "S" + stage, stage == 1);
             MonsterArt.Prepare(theme);
             ArtQueue.Kick();
         }
