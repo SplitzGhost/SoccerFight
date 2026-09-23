@@ -43,9 +43,14 @@
         // on F3, no zoom, no scrolling, and the side mouse buttons don't navigate back or forward.
         // (F11 fullscreen and F12 dev tools stay with the browser. Ctrl+W/T/N can't be taken over by a
         // page, except in the game's own fullscreen via the Keyboard Lock API below.)
+        // Plain letters, digits and symbols pass through: blocking their keydown would also stop the
+        // browser from producing the typed character, and the game reads text from it (room codes).
+        var browserKeys = { Tab: 1, Backspace: 1, " ": 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1,
+                            PageUp: 1, PageDown: 1, Home: 1, End: 1, "/": 1, "'": 1, ContextMenu: 1 };
         function ownKey(e) {
           if (e.key === "F11" || e.key === "F12") return;
-          e.preventDefault();
+          var fkey = /^F\d+$/.test(e.key);
+          if (fkey || e.ctrlKey || e.metaKey || e.altKey || browserKeys[e.key]) e.preventDefault();
         }
         window.addEventListener("keydown", ownKey, true);
         window.addEventListener("keyup", ownKey, true);
