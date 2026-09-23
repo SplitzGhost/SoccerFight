@@ -367,13 +367,13 @@ namespace SoccerFight
             UiKit.Img("EmblemRing", face, MenuArt.RoundFrame, MetaUi.Soft(MenuArt.Accent).WithAlpha(0.9f), new Vector2(-160f, 16f), new Vector2(104f, 104f));
             UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(60f, 60f)).preserveAspect = true;
             MenuArt.Label("Overline", face, "SPIELMODUS", 15f, MenuArt.Accent, new Vector2(66f, 52f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
-            modeName = MenuArt.Label("Name", face, "ROGUELITE-LAUF", 30f, Color.white, new Vector2(66f, 20f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
-            modeSub = MenuArt.Label("Sub", face, "8 STAGES  ·  WELLEN  ·  BOSSE", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
+            modeName = MenuArt.Label("Name", face, "LEVEL 1", 30f, Color.white, new Vector2(66f, 20f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
+            modeSub = MenuArt.Label("Sub", face, "3 STAGES  ·  EINFACH", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
             var change = UiKit.Node("Change", face, new Vector2(0f, -62f), new Vector2(440f, 38f));
             UiKit.Img("Strip", change, MenuArt.CardBody, new Color(0.3f, 0.8f, 0.95f, 0.14f), Vector2.zero, new Vector2(440f, 38f), Image.Type.Sliced);
             UiKit.Img("SwapIcon", change, MenuArt.IconSwap, MenuArt.Accent, new Vector2(-100f, 0f), new Vector2(20f, 20f));
-            MenuArt.Label("Text", change, "SOLO ODER DUO", 16f, new Color(0.75f, 0.96f, 1f), new Vector2(18f, 0f), new Vector2(240f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
-            Move(mode.Root, new Vector2(700f, 0f), 0.22f, Button(mode, "mode", () => Open(MenuPage.Friends)));
+            MenuArt.Label("Text", change, "LEVEL WECHSELN", 16f, new Color(0.75f, 0.96f, 1f), new Vector2(18f, 0f), new Vector2(240f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
+            Move(mode.Root, new Vector2(700f, 0f), 0.22f, Button(mode, "mode", CycleChallenge));
 
             // the one warm, solid thing on the screen: lantern gold, like the power shot's ring
             playHalo = UiKit.Img("PlayHalo", rightCol, UiArt.Glow, Gold.WithAlpha(0.3f), new Vector2(0f, -100f), new Vector2(720f, 260f));
@@ -665,6 +665,7 @@ namespace SoccerFight
             foreach (var t in targets) t.Hover = t.HoverVel = t.Punch = t.PunchVel = t.Hit = 0f;
             RefreshCharacter(true);
             RefreshRecord();
+            RefreshChallenge();
             canvas.gameObject.SetActive(true);
             // why a duo run ended (the partner left, the connection broke)
             if (Coop.S != null && !string.IsNullOrEmpty(Coop.S.Notice)) { ShowToast(Coop.S.Notice.ToUpperInvariant(), Vector2.zero); Coop.S.Notice = null; }
@@ -696,12 +697,25 @@ namespace SoccerFight
         {
             if (state != State.Menu) return;
             if (!Profile.Onboarded) { Open(MenuPage.Starter); return; }
+            var challenge = ChallengeLevels.Current;
+            int characterLevel = CharacterProgression.Level(Characters.Current);
+            if (!ChallengeLevels.IsUnlocked(challenge, Characters.Current))
+            {
+                ShowToast("LEVEL " + challenge.Number + " BRAUCHT CHARAKTER-STUFE " + challenge.RequiredCharacterLevel + "  ·  AKTUELL " + characterLevel,
+                    root.InverseTransformPoint(modeButton.Root.TransformPoint(Vector3.zero)));
+                return;
+            }
             // in a duo room the host starts for both; alone in an open room there is nobody to play with yet
             var room = Coop.S;
             if (room != null)
             {
                 if (!room.Link.IsHost) { ShowToast(room.Link.Connected ? "DER HOST STARTET DEN LAUF" : "DU BIST NOCH IN KEINEM RAUM", Vector2.zero); return; }
                 if (!room.Link.Connected || !room.PartnerHello) { ShowToast("WARTE AUF DEINEN MITSPIELER  ·  ODER SCHLIESS DEN RAUM", Vector2.zero); Open(MenuPage.Friends); return; }
+                if (room.PartnerLevel < challenge.RequiredCharacterLevel)
+                {
+                    ShowToast(room.PartnerName.ToUpperInvariant() + " BRAUCHT FÜR LEVEL " + challenge.Number + " CHARAKTER-STUFE " + challenge.RequiredCharacterLevel, Vector2.zero);
+                    return;
+                }
             }
             state = State.Starting;
             stateT = 0f;
@@ -709,6 +723,24 @@ namespace SoccerFight
             heroT = -1f;
             IsOpen = false;
             figure.Kick();
+        }
+
+        void CycleChallenge()
+        {
+            int next = ChallengeLevels.Selected % ChallengeLevels.All.Length + 1;
+            ChallengeLevels.Select(next);
+            RefreshChallenge();
+        }
+
+        void RefreshChallenge()
+        {
+            var c = ChallengeLevels.Current;
+            bool unlocked = ChallengeLevels.IsUnlocked(c, Characters.Current);
+            modeName.text = "LEVEL " + c.Number + "  ·  " + c.Name;
+            modeSub.text = c.Stages + " STAGES  ·  BELOHNUNG ×" + c.CrystalMultiplier.ToString("0.0")
+                + (unlocked ? "" : "  ·  AB STUFE " + c.RequiredCharacterLevel);
+            modeName.color = unlocked ? Color.white : MetaUi.Muted;
+            modeSub.color = unlocked ? Muted : MetaUi.Danger;
         }
 
         void Quit()
@@ -824,6 +856,7 @@ namespace SoccerFight
             tagBadge.color = Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f);
             tagIcon.sprite = MenuArt.ClassIcon(def.Class);
             tagButton.Color = def.Accent;
+            RefreshChallenge();
             if (changed) swapFlash = 1f;
         }
 

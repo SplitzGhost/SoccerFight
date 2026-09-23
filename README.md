@@ -5,6 +5,12 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
 
 ## Ein Lauf
 
+- **Fünf Level:** Vor dem Start wird eine endliche Route gewählt. Level 1 ist ab Charakter-Stufe 1 offen und endet
+  nach 3 Stages; Level 2 braucht Stufe 3 und hat 4 Stages, Level 3 braucht Stufe 5 und hat 5 Stages, Level 4 braucht
+  Stufe 7 und hat 6 Stages, Level 5 braucht Stufe 9 und umfasst alle 8 Stage-Themen. Höhere Level beginnen auf einer
+  deutlich stärkeren Schwierigkeitsstufe und zahlen entsprechend mehr Kristalle. Jede Route kann beliebig oft
+  wiederholt und gewonnen werden.
+
 - **Stage → Wellen → Boss:** Stage 1 hat 3 Wellen, Stage 2 hat 4, ab Stage 3 sind es 5, danach kommt der Stage-Boss.
   Die Schwierigkeit ist eine durchgehende Kurve (`Difficulty.cs`): Jede Welle +1 Stufe, jede neue Stage beginnt
   0,35 Stufen unter dem Ende der vorigen – die letzte Welle einer Stage ist also etwas härter als die erste der nächsten.
@@ -18,6 +24,8 @@ Alles (Grafik, Animation, Effekte, HUD) wird zur Laufzeit im Code erzeugt, es gi
 - **Münzen:** Jeder besiegte Gegner lässt Münzen fallen (Elite 4, Miniboss 12, Boss 30, pro Stage +12 %), jede
   geschaffte Stage regnet einen Bonus herab. Sie springen auf den Rasen, glitzern kurz und fliegen dann von selbst in
   den Zähler oben rechts – siehe „Fortschritt“.
+- **Kristalle:** Jede geschaffte Welle und jede geschaffte Stage zahlt Kristalle direkt ins Profil. Der Betrag wächst
+  innerhalb eines Laufs mit der Stage und wird in höheren Leveln mit ×1,5 / ×2,1 / ×2,9 / ×4 verstärkt.
 - **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
   Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
   Glutschmiede (Lavageysire), Frostgipfel (Glatteis), Sternengarten (geringe Schwerkraft), Eklipse (Verstärkungs-Pulse).
@@ -113,7 +121,13 @@ geschossen wird nur daneben.
 Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 
 
-## Fortschritt: Klassen, Spieler, Fähigkeiten, Münzen
+## Fortschritt: Klassen, Spieler, Fähigkeiten, Münzen und Kristalle
+
+**Charakter-Stufen 1–10** (`Meta/CharacterProgression.cs`): Jeder gekaufte oder als Starter gewählte Charakter
+beginnt auf Stufe 1 und wird separat gespeichert. Ist er in der Spieler-Seite gewählt, zeigt sein Knopf das nächste
+Kristall-Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht allgemeinen Angriff, maximales Leben,
+Schadensminderung, Fähigkeits-Abklingzeiten und Wirkungsfläche; kleine Tempoboni kommen dazu. Stufe 10 ist das Maximum.
+Die Charakter-Stufen 1 / 3 / 5 / 7 / 9 öffnen die fünf Level.
 
 **Drei Klassen, drei Talente** (`Meta/ClassDefs.cs`, alle Zahlen in `ClassTuning`):
 

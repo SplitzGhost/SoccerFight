@@ -153,7 +153,7 @@ namespace SoccerFight
         int numberCursor;
 
         CanvasGroup deathGroup;
-        TextMeshProUGUI deathSub, deathStats, deathBest;
+        TextMeshProUGUI deathLabel, deathTitle, deathSub, deathStats, deathBest;
         RectTransform deathBuild;
 
         CanvasGroup hintGroup;
@@ -568,8 +568,8 @@ namespace SoccerFight
             deathGroup.alpha = 0f;
             Stretch(Img("Dim", death, null, new Color(0.01f, 0.02f, 0.05f, 0.72f), Vector2.zero, Vector2.zero));
             Img("Aura", death, UiArt.Glow, Palette.Hurt.WithAlpha(0.08f), new Vector2(0f, 60f), new Vector2(1500f, 700f));
-            Text("Label", death, "LAUF BEENDET", 16f, Palette.Hurt, TextAlignmentOptions.Center, new Vector2(0f, 190f), new Vector2(900f, 24f), true, true, 14f);
-            Text("Title", death, "BESIEGT", 96f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 120f), new Vector2(1000f, 120f), true, true, 22f);
+            deathLabel = Text("Label", death, "LAUF BEENDET", 16f, Palette.Hurt, TextAlignmentOptions.Center, new Vector2(0f, 190f), new Vector2(900f, 24f), true, true, 14f);
+            deathTitle = Text("Title", death, "BESIEGT", 96f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 120f), new Vector2(1000f, 120f), true, true, 22f);
             deathSub = Text("Sub", death, "", 22f, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 46f), new Vector2(1200f, 30f), true, true, 5f);
             deathStats = Text("Stats", death, "", 17f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 6f), new Vector2(1200f, 26f), true, true, 4f);
             deathBuild = Node("Build", death, new Vector2(0.5f, 0.5f), new Vector2(0f, -54f), Vector2.zero);
@@ -1363,18 +1363,24 @@ namespace SoccerFight
             toast.alpha = toastT < 1.8f && !paused ? 1f - MathUtil.Smooth01((toastT - 1.3f) / 0.5f) : 0f;
 
             // a duo run is lost only when both players are down
-            bool runLost = Coop.Active ? Game.I.Director.P == RunDirector.Phase.RunOver : player.Dead;
-            float deathTarget = runLost && player.DeadTime > 0.9f ? 1f : 0f;
+            var director = Game.I.Director;
+            bool runOver = director.P == RunDirector.Phase.RunOver;
+            float endTime = player.Dead ? player.DeadTime : director.PhaseTime;
+            float deathTarget = runOver && endTime > 0.9f ? 1f : 0f;
             deathGroup.alpha = MathUtil.Damp(deathGroup.alpha, deathTarget, 5f, dt);
-            if (player.Dead && !deathTextSet)
+            if (runOver && !deathTextSet)
             {
                 deathTextSet = true;
+                deathLabel.text = director.Won ? "LEVEL " + run.Challenge.Number + " GESCHAFFT" : "LAUF BEENDET";
+                deathLabel.color = director.Won ? Palette.Gold : Palette.Hurt;
+                deathTitle.text = director.Won ? "SIEG" : "BESIEGT";
                 string wave = run.IsBossWave ? "BOSSKAMPF" : "WELLE " + Mathf.Max(1, run.Wave) + " / " + run.WavesInStage;
-                deathSub.text = "STAGE " + run.Stage + "  ·  " + StageThemes.Title(run.Stage) + "  ·  " + wave;
+                deathSub.text = director.Won ? run.Challenge.Name + "  ·  " + run.Challenge.Stages + " STAGES" : "STAGE " + run.Stage + "  ·  " + StageThemes.Title(run.Stage) + "  ·  " + wave;
                 int ups = run.PickOrder.Count;
                 deathStats.text = "GEGNER BESIEGT  " + run.Kills + "      ZEIT  " + Clock(run.Time) + "      UPGRADES  " + ups + "      <color=#FFCC5C>MÜNZEN  +" + Currencies.Format(CoinRewards.Earned) + "</color>";
                 int best = RunState.BestStage;
-                deathBest.text = DevMode.UsedThisRun ? "DEV-LAUF  ·  ZÄHLT NICHT FÜR DEN REKORD"
+                deathBest.text = director.Won ? "LEVEL KANN JEDERZEIT ERNEUT GESPIELT WERDEN"
+                    : DevMode.UsedThisRun ? "DEV-LAUF  ·  ZÄHLT NICHT FÜR DEN REKORD"
                     : run.Stage >= best ? "NEUER REKORD  ·  STAGE " + run.Stage : "BESTER LAUF  ·  STAGE " + best;
                 for (int i = deathBuild.childCount - 1; i >= 0; i--) Object.Destroy(deathBuild.GetChild(i).gameObject);
                 var order = new List<string>();
@@ -1388,7 +1394,7 @@ namespace SoccerFight
                     b.rt.anchoredPosition = new Vector2((i - (n - 1) * 0.5f) * 40f, 0f);
                 }
             }
-            else if (!player.Dead) deathTextSet = false;
+            else if (!runOver) deathTextSet = false;
 
             hintGroup.alpha = 1f - MathUtil.Smooth01((time - 9f) / 1.5f);
             UpdateDev(dt, run);

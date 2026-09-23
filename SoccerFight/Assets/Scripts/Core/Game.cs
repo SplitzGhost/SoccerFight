@@ -314,12 +314,13 @@ namespace SoccerFight
             }
 
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
-            if (Player.Dead)
+            if (Player.Dead || Director.P == RunDirector.Phase.RunOver)
             {
-                Player.DeadTime += udt;
+                if (Player.Dead) Player.DeadTime += udt;
                 // a duo run is over only when both are down, and only the host starts the next one
                 bool over = !Coop.Active || Director.P == RunDirector.Phase.RunOver;
-                if (GameInput.RestartPressed && Player.DeadTime > 0.9f && over && !Coop.IsClient) Restart();
+                float overTime = Player.Dead ? Player.DeadTime : Director.PhaseTime;
+                if (GameInput.RestartPressed && overTime > 0.9f && over && !Coop.IsClient) Restart();
             }
 
             Level.Update(dt);

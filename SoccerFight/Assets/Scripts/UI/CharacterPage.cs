@@ -137,7 +137,20 @@ namespace SoccerFight
                 return;
             }
             card.Jiggle = 1f;
-            if (Characters.Current == def) return;
+            if (Characters.Current == def)
+            {
+                int level = CharacterProgression.Level(def);
+                if (level >= CharacterProgression.MaxLevel) { nav.Say(def.Name + " HAT BEREITS STUFE 10", card.Root); return; }
+                int cost = CharacterProgression.UpgradeCost(level);
+                if (!CharacterProgression.TryUpgrade(def))
+                {
+                    nav.Say("DIR FEHLEN " + Currencies.Format(Mathf.Max(0, cost - Wallet.Get(Currencies.Gems))) + " KRISTALLE", card.Root);
+                    return;
+                }
+                if (Game.I != null && Game.I.Player != null) Game.I.Player.ApplyStats(false);
+                nav.Say(def.Name + "  ·  STUFE " + (level + 1) + "  ·  STÄRKER!", card.Root);
+                return;
+            }
             Characters.Select(Characters.IndexOf(def));
         }
 
@@ -152,9 +165,14 @@ namespace SoccerFight
             var def = card.Def;
             bool own = Profile.OwnsCharacter(def.Id);
             bool current = Characters.Current == def;
+            int level = CharacterProgression.Level(def);
             card.IsChosen = current;
             card.Locked = !own;
-            string label = current ? "GEWÄHLT" : own ? "WÄHLEN" : "ZUM SHOP";
+            string label;
+            if (!own) label = "ZUM SHOP";
+            else if (!current) label = "STUFE " + level + "  ·  WÄHLEN";
+            else if (level >= CharacterProgression.MaxLevel) label = "STUFE 10  ·  MAXIMUM";
+            else label = "UPGRADE " + (level + 1) + "  ·  " + CharacterProgression.UpgradeCost(level) + " ◇";
             card.Style(t, TimeFx.UiDelta, label, current, current ? MetaUi.Gold : def.Accent, current);
         }
 

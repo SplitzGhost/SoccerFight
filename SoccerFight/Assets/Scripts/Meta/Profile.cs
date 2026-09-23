@@ -166,6 +166,7 @@ namespace SoccerFight
         {
             if (Characters.Get(id) == null || OwnsCharacter(id)) return;
             data.Characters.Add(id);
+            SetLevel("character:" + id, 1);
             MarkDirty();
         }
 

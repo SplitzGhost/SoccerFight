@@ -15,7 +15,7 @@ namespace SoccerFight
     /// </summary>
     public static class Coop
     {
-        public const ushort Protocol = 1;
+        public const ushort Protocol = 2;
         /// <summary>Seconds a downed player waits before coming back.</summary>
         public const float DownTime = 30f;
 
@@ -274,8 +274,10 @@ namespace SoccerFight
         /// <summary>A duo run is on (it may continue alone if the partner drops).</summary>
         public bool InRun { get; private set; }
         public int RunSeed { get; private set; }
+        public int RunChallenge { get; private set; } = 1;
         public bool PartnerHello { get; private set; }
         public int PartnerCharacter { get; private set; } = -1;
+        public int PartnerLevel { get; private set; } = 1;
         public string PartnerName { get; private set; } = "";
         /// <summary>Why the room ended or what went wrong, for the menu.</summary>
         public string Notice;
@@ -297,7 +299,7 @@ namespace SoccerFight
         readonly List<EliteAffix> affixes = new List<EliteAffix>();
         float stateT, worldT;
         bool helloSent;
-        int helloCharacter = -1;
+        int helloCharacter = -1, helloLevel = -1;
 
         public CoopSession()
         {
@@ -333,9 +335,11 @@ namespace SoccerFight
         {
             helloSent = true;
             helloCharacter = Characters.Index;
+            helloLevel = CharacterProgression.Level(Characters.Current);
             var w = Event(Ev.Hello);
             w.UShort(Coop.Protocol);
             w.Byte((byte)Characters.Index);
+            w.Byte((byte)helloLevel);
             w.String(Characters.Current.Name);
             w.Bool(InRun);
         }
@@ -347,7 +351,7 @@ namespace SoccerFight
             Link.Update(udt);
             if (!Link.Connected) return;
             // introduce ourselves, and again whenever the player changes character in the menu
-            if (!helloSent || helloCharacter != Characters.Index) SendHello();
+            if (!helloSent || helloCharacter != Characters.Index || helloLevel != CharacterProgression.Level(Characters.Current)) SendHello();
             if (!InRun) return;
 
             var game = Game.I;
@@ -407,8 +411,11 @@ namespace SoccerFight
         public int StartRunAsHost()
         {
             RunSeed = Random.Range(1, 1 << 20);
+            RunChallenge = ChallengeLevels.Selected;
             BeginRun();
-            Event(Ev.Launch).Int(RunSeed);
+            var launch = Event(Ev.Launch);
+            launch.Int(RunSeed);
+            launch.Byte((byte)RunChallenge);
             return RunSeed;
         }
 
@@ -566,6 +573,7 @@ namespace SoccerFight
                 {
                     ushort version = r.UShort();
                     PartnerCharacter = r.Byte();
+                    PartnerLevel = r.Byte();
                     PartnerName = r.String() ?? "";
                     r.Bool();
                     PartnerHello = true;
@@ -575,8 +583,10 @@ namespace SoccerFight
                 case Ev.Launch:
                 {
                     int seed = r.Int();
+                    int challenge = r.Byte();
                     if (Link.IsHost) break;
                     RunSeed = seed;
+                    RunChallenge = Mathf.Clamp(challenge, 1, ChallengeLevels.All.Length);
                     BeginRun();
                     game.StartCoopRun();
                     break;

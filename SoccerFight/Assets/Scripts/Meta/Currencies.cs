@@ -28,6 +28,7 @@ namespace SoccerFight
         public Price(CurrencyDef currency, int amount) { Currency = currency; Amount = amount; }
 
         public static Price Coins(int amount) => new Price(Currencies.Coins, amount);
+        public static Price Gems(int amount) => new Price(Currencies.Gems, amount);
         public bool Free => Amount <= 0;
         public override string ToString() => Currencies.Format(Amount);
     }

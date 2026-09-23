@@ -29,6 +29,7 @@ namespace SoccerFight
         public int Remaining => Coop.IsClient ? NetRemaining : (plan.Count - planIndex) + (bossPending ? 1 : 0) + waves.AliveCount;
         public int WaveTotal { get; private set; }
         public bool Fighting => P == Phase.Fighting;
+        public bool Won { get; private set; }
         public int PlanIndex => planIndex;
         public int PlanCount => plan.Count;
 
@@ -58,6 +59,7 @@ namespace SoccerFight
 
         public void StartRun()
         {
+            Won = false;
             run.Reset();
             // a duo run plays both arenas from the host's seed
             if (Coop.S != null && Coop.S.InRun) run.Seed = Coop.S.RunSeed;
@@ -108,6 +110,16 @@ namespace SoccerFight
             StageMechanics.I.SetRunning(false);
             int reached = run.Stage;
             if (!DevMode.UsedThisRun) RunState.RecordStage(reached);
+            Profile.OnRunFinished();
+            Enter(Phase.RunOver);
+        }
+
+        void CompleteRun()
+        {
+            if (P == Phase.RunOver) return;
+            Won = true;
+            StageMechanics.I.SetRunning(false);
+            if (!DevMode.UsedThisRun) RunState.RecordStage(run.Stage + 1);
             Profile.OnRunFinished();
             Enter(Phase.RunOver);
         }
@@ -233,6 +245,7 @@ namespace SoccerFight
                     }
                     if (t > 2.8f)
                     {
+                        if (run.Stage >= run.Challenge.Stages) { CompleteRun(); break; }
                         Coop.SendRewards(true);
                         if (run.UpgradeDue) OpenReward(true);
                         else AfterReward(true);
@@ -295,6 +308,9 @@ namespace SoccerFight
             float heal = player.MaxHp * 0.15f + s.HealOnWave;
             player.Heal(heal, true);
             run.RoundsCleared++;
+            int crystals = ChallengeLevels.WaveCrystals(run.Challenge, run.Stage);
+            Wallet.Add(Currencies.Gems, crystals);
+            Game.I.Hud.ShowToast("WELLE GESCHAFFT  ·  +" + crystals + " KRISTALLE");
             Game.I.Hud.OnWaveCleared(run.Wave, run.WavesInStage, run.UpgradeDue);
             Profile.SaveIfDirty();
             Enter(Phase.WaveCleared);
@@ -359,9 +375,12 @@ namespace SoccerFight
             Game.I.Hud.OnStageCleared(run.Stage, run.Theme);
             // the stage pays out: a shower of coins where the boss fell
             CoinDrops.I?.Shower(lastBossPos, CoinRewards.ForStageClear(run.Stage));
+            int crystals = ChallengeLevels.StageCrystals(run.Challenge, run.Stage);
+            Wallet.Add(Currencies.Gems, crystals);
+            Game.I.Hud.ShowToast("STAGE GESCHAFFT  ·  +" + crystals + " KRISTALLE");
             Profile.SaveIfDirty();
             // start drawing the next arena and its monsters now (threads) or behind the reward screens (WebGL)
-            StageArt.Prepare(run.Stage + 1, run.Seed);
+            if (run.Stage < run.Challenge.Stages) StageArt.Prepare(run.Stage + 1, run.Seed);
             Enter(Phase.StageCleared);
         }
 

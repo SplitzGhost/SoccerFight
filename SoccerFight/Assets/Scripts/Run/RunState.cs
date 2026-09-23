@@ -7,6 +7,8 @@ namespace SoccerFight
     public sealed class RunState
     {
         public int Stage = 1;
+        /// <summary>The finite level route chosen before this run.</summary>
+        public ChallengeDef Challenge;
         public int Wave;                 // 1..WavesInStage, WavesInStage + 1 = boss
         public int Kills;
         public float Time;
@@ -53,7 +55,8 @@ namespace SoccerFight
         public StageTheme Theme => StageThemes.For(Stage);
         public int WavesInStage => Difficulty.WavesInStage(Stage);
         public bool IsBossWave => Wave > WavesInStage;
-        public float Level => IsBossWave ? Difficulty.BossLevel(Stage) : Difficulty.Level(Stage, Mathf.Max(1, Wave));
+        public float Level => (IsBossWave ? Difficulty.BossLevel(Stage) : Difficulty.Level(Stage, Mathf.Max(1, Wave)))
+            + (Challenge != null ? Challenge.DifficultyOffset : 0f);
 
         public static int BestStage
         {
@@ -84,6 +87,8 @@ namespace SoccerFight
 
         public void Reset()
         {
+            int challenge = Coop.Active && Coop.S != null ? Coop.S.RunChallenge : ChallengeLevels.Selected;
+            Challenge = ChallengeLevels.All[Mathf.Clamp(challenge, 1, ChallengeLevels.All.Length) - 1];
             Stage = 1; Wave = 0; Kills = 0; Time = 0f; RoundsCleared = 0; OffersSinceEpic = 0; RevivesUsed = 0;
             Seed = Random.Range(1, 1 << 20);
             Owned.Clear(); PickOrder.Clear();
@@ -140,6 +145,7 @@ namespace SoccerFight
         {
             Stats.Reset();
             MetaPassives.Apply(Stats, Characters.Current);
+            CharacterProgression.Apply(Stats, Characters.Current);
             foreach (var u in UpgradeDb.All)
             {
                 int n = Stacks(u.Id);
