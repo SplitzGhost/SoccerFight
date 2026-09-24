@@ -70,7 +70,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "stages" && scenario != "dev" && scenario != "menu" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -98,6 +98,7 @@ namespace SoccerFight
             else if (scenario == "duo") yield return Duo();
             else if (scenario == "hoops") yield return Hoops();
             else if (scenario == "stage1") yield return StageOneLook();
+            else if (scenario == "stages") yield return StageLooks();
             else yield return All();
 
             Debug.Log("[Capture] finished");
@@ -479,6 +480,42 @@ namespace SoccerFight
             }
             G.Cam.ClearOverride();
             G.Hud.SetVisible(true);
+        }
+
+        /// <summary>Every stage's scenery: play view, high and far views, the whole layout, a close-up.</summary>
+        IEnumerator StageLooks()
+        {
+            string only = Arg("-sfStage");
+            for (int s = 1; s <= StageThemes.All.Length; s++)
+            {
+                if (only != null && only != s.ToString()) continue;
+                G.Director.DebugJump(s, 1, 0, false);
+                FxSystem.I.Clear();
+                P.Pos = new Vector2(-1.5f, 0f); P.Vel = Vector2.zero;
+                G.Ball.ResetTo(P.Pos + new Vector2(0.6f, Art.BallRadius));
+                G.Cam.Snap(P.Pos);
+                Aim(new Vector2(5f, 1.6f));
+                yield return Seconds(1.2f);
+                string id = "st" + s + "_";
+                yield return Shot(id + "0_play");
+                G.Hud.SetVisible(false);
+                (string name, Vector2 at, float size)[] views =
+                {
+                    ("1_all", new Vector2(0f, 4.2f), 9.6f), ("2_left", new Vector2(-9.5f, 3f), 4.9f), ("3_right", new Vector2(9.5f, 3f), 4.9f),
+                    ("4_high", new Vector2(2f, 6.4f), 5.2f), ("5_close", new Vector2(-3f, 1.8f), 2.2f),
+                };
+                foreach (var v in views)
+                {
+                    G.Cam.SetOverride(v.at, v.size);
+                    yield return Frames(4);
+                    yield return Shot(id + v.name);
+                }
+                G.Cam.ClearOverride();
+                G.Hud.SetVisible(true);
+                var sb = new System.Text.StringBuilder();
+                foreach (var p in Level.Platforms) sb.Append(Describe(p)).Append(" piece=").Append(p.Piece).Append(" s=").Append(p.Scale.ToString("F2")).Append("; ");
+                Debug.Log("[Capture] stage " + s + " layout: " + sb);
+            }
         }
 
         IEnumerator Platforms()

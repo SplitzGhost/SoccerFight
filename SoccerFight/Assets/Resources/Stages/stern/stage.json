@@ -1,0 +1,216 @@
+{
+ "id": "stern",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2332,
+   "h": 1008,
+   "ppu": 88,
+   "px": 1166,
+   "py": 220
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2720,
+   "h": 292,
+   "ppu": 106,
+   "px": 0,
+   "py": 284
+  },
+  {
+   "name": "slab_crystal",
+   "role": "float",
+   "tags": [],
+   "w": 424,
+   "h": 268,
+   "ppu": 106,
+   "px": 209,
+   "py": 248,
+   "walk0": -1.858,
+   "walk1": 1.858,
+   "bottom": -2.321,
+   "lights": [
+    {
+     "x": 0.287,
+     "y": -0.71,
+     "r": 1.687,
+     "cr": 1,
+     "cg": 0.667,
+     "cb": 0.863
+    }
+   ]
+  },
+  {
+   "name": "planter",
+   "role": "float",
+   "tags": [],
+   "w": 408,
+   "h": 380,
+   "ppu": 106,
+   "px": 204,
+   "py": 264,
+   "walk0": -1.528,
+   "walk1": 1.528,
+   "bottom": -2.472
+  },
+  {
+   "name": "slab_small",
+   "role": "float",
+   "tags": [],
+   "w": 376,
+   "h": 256,
+   "ppu": 106,
+   "px": 187,
+   "py": 160,
+   "walk0": -1.651,
+   "walk1": 1.651,
+   "bottom": -1.491
+  },
+  {
+   "name": "bar",
+   "role": "float",
+   "tags": [],
+   "w": 468,
+   "h": 88,
+   "ppu": 106,
+   "px": 234,
+   "py": 72,
+   "walk0": -2.075,
+   "walk1": 2.075,
+   "bottom": -0.66
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 428,
+   "h": 364,
+   "ppu": 106,
+   "px": 214,
+   "py": 254,
+   "walk0": -1.887,
+   "walk1": 1.887,
+   "bottom": -2.377
+  },
+  {
+   "name": "armillary",
+   "role": "prop",
+   "tags": [
+    "frame",
+    "mid"
+   ],
+   "w": 288,
+   "h": 468,
+   "ppu": 106,
+   "px": 144,
+   "py": 2
+  },
+  {
+   "name": "planter_box",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 436,
+   "h": 328,
+   "ppu": 106,
+   "px": 218,
+   "py": 2
+  },
+  {
+   "name": "shard",
+   "role": "prop",
+   "tags": [
+    "sky"
+   ],
+   "w": 216,
+   "h": 460,
+   "ppu": 106,
+   "px": 108,
+   "py": 2
+  },
+  {
+   "name": "tower",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 232,
+   "h": 468,
+   "ppu": 106,
+   "px": 116,
+   "py": 2,
+   "lights": [
+    {
+     "x": -0.084,
+     "y": 1.628,
+     "r": 1.542,
+     "cr": 1,
+     "cg": 0.824,
+     "cb": 0.431
+    }
+   ]
+  },
+  {
+   "name": "star",
+   "role": "prop",
+   "tags": [
+    "hang"
+   ],
+   "w": 252,
+   "h": 432,
+   "ppu": 106,
+   "px": 126,
+   "py": 430,
+   "lights": [
+    {
+     "x": 0.062,
+     "y": -2.445,
+     "r": 1.104,
+     "cr": 1,
+     "cg": 0.824,
+     "cb": 0.431
+    }
+   ]
+  },
+  {
+   "name": "plant",
+   "role": "prop",
+   "tags": [
+    "back"
+   ],
+   "w": 332,
+   "h": 348,
+   "ppu": 106,
+   "px": 166,
+   "py": 2
+  }
+ ],
+ "sky": [
+  0.114,
+  0.216,
+  0.592
+ ],
+ "valley": [
+  0.259,
+  0.304,
+  0.463
+ ],
+ "haze": [
+  0.322,
+  0.421,
+  0.754
+ ],
+ "plateX0": 235,
+ "plateRow0": 394,
+ "plateW": 1165,
+ "platePpu": 44,
+ "deep": [
+  0.07,
+  0.072,
+  0.137
+ ]
+}

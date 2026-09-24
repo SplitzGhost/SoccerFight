@@ -66,9 +66,9 @@ namespace SoccerFight
             return false;
         }
 
-        // Die Welt folgt den Design-Vorlagen: jede Stage färbt sie nur leicht um (Farbton kaum, Tönung zur Hälfte),
-        // sonst würden Himmel und Gras grell (gelber Himmel, pinkes Gras).
-        const float HueAmount = 0.1f, SatAmount = 0.6f, LightAmount = 0.6f, TintAmount = 0.5f;
+        // Jede Stage hat ihre eigene Grafik aus ihrem Design-Bogen und damit schon ihre Farben: der Farbfilter
+        // bleibt neutral (die Werte in StageTheme wirken nicht mehr auf die Welt).
+        const float HueAmount = 0f, SatAmount = 0f, LightAmount = 0f, TintAmount = 0f;
 
         /// <summary>Colour matrix for a theme: tint · contrast · brightness · saturation · hue.</summary>
         public static Matrix4x4 Matrix(StageTheme th)

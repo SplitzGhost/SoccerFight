@@ -5,9 +5,9 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// Die Spielwelt-Grafik aus den Design-Vorlagen: ausgeschnittene Bilder unter Resources/NewDesign
-    /// (erzeugt von tools/newdesign/build.js, vormultipliziertes Alpha) plus design.json mit Pivot,
-    /// Maßstab und — bei Plattformen — der begehbaren Graskante. Einmal beim Start geladen.
+    /// Gemeinsames für die Design-Grafik: das Sprite-Material, ein weißer Block für Farbflächen und der
+    /// Pflanzen-Atlas (Gras, Farn, Büsche mit Wind) aus Resources/NewDesign (tools/newdesign/build.js).
+    /// Die Stage-Welten selbst liefert <see cref="StageKit"/>. Einmal beim Start geladen.
     /// </summary>
     public static class DesignArt
     {

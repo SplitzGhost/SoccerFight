@@ -43,8 +43,8 @@ namespace SoccerFight
         // monster skin
         public Color BlobTop, BlobBottom, Glow, Eye, WispTop, WispBottom, WispGlow;
         public MonsterFeature Feature;
-        /// <summary>Platform styles the stage's generated layouts are built from.</summary>
-        public Level.Style[] PlatformStyles;
+        /// <summary>The stage's design sheet (Resources/Stages/&lt;Kit&gt;: scenery, ground, platforms, props).</summary>
+        public string Kit;
         public RosterEntry[] Roster;
         public BossDef Boss;
     }
@@ -63,7 +63,7 @@ namespace SoccerFight
                 MechanicName = "KEINE", MechanicText = "Der Einstieg: lerne Schuss, Power-Schuss und die Plattformen kennen.",
                 Mechanic = StageMechanic.None, Weather = Weather.Fireflies, AmbientColor = H("#C8FF8A"), Accent = H("#5CF0FF"),
                 BlobTop = H("#6A45A8"), BlobBottom = H("#2A1650"), Glow = H("#FF4FD8"), Eye = H("#FFE98A"),
-                WispTop = H("#3E5AC8"), WispBottom = H("#1A1F5C"), WispGlow = H("#7AA8FF"), Feature = MonsterFeature.Horns, PlatformStyles = new[] { Level.Style.Terrace, Level.Style.Capital, Level.Style.Rock },
+                WispTop = H("#3E5AC8"), WispBottom = H("#1A1F5C"), WispGlow = H("#7AA8FF"), Feature = MonsterFeature.Horns, Kit = "mondlicht",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 10f, 1, "DÜSTERLING"),
@@ -83,7 +83,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Wind, Hue = -156f, Saturation = 0.95f, Brightness = 1.02f, Contrast = 1.04f, Tint = new Color(1.16f, 0.86f, 0.62f),
                 Weather = Weather.Leaves, AmbientColor = H("#FF9A4A"), Accent = H("#FFB347"),
                 BlobTop = H("#8A5230"), BlobBottom = H("#3A1E14"), Glow = H("#FFB347"), Eye = H("#FFF1A8"),
-                WispTop = H("#D9A441"), WispBottom = H("#7A4A1A"), WispGlow = H("#FFE08A"), Feature = MonsterFeature.Thorns, PlatformStyles = new[] { Level.Style.Mushroom, Level.Style.Plank, Level.Style.Rock },
+                WispTop = H("#D9A441"), WispBottom = H("#7A4A1A"), WispGlow = H("#FFE08A"), Feature = MonsterFeature.Thorns, Kit = "bernstein",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 8f, 1, "DORNLING"),
@@ -104,7 +104,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Lightning, Hue = 18f, Saturation = 0.5f, Brightness = 0.9f, Contrast = 1.08f, Tint = new Color(0.84f, 0.95f, 1.12f),
                 Weather = Weather.Rain, AmbientColor = H("#B8D8FF"), Accent = H("#7FD4FF"),
                 BlobTop = H("#4B5E7A"), BlobBottom = H("#1C2433"), Glow = H("#7FD4FF"), Eye = H("#E8F6FF"),
-                WispTop = H("#FFD27A"), WispBottom = H("#8A5E24"), WispGlow = H("#FFE7A3"), Feature = MonsterFeature.Lamps, PlatformStyles = new[] { Level.Style.Plank, Level.Style.Capital, Level.Style.Block },
+                WispTop = H("#FFD27A"), WispBottom = H("#8A5E24"), WispGlow = H("#FFE7A3"), Feature = MonsterFeature.Lamps, Kit = "regen",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Lantern, 6f, 1, "LATERNENGEIST"),
@@ -125,7 +125,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Darkness, Hue = 88f, Saturation = 1.15f, Brightness = 1.12f, Contrast = 1.04f, Tint = new Color(0.95f, 0.88f, 1.18f), Vignette = 0.03f,
                 Weather = Weather.Spores, AmbientColor = H("#7CFFE0"), Accent = H("#B070FF"),
                 BlobTop = H("#3A2A6A"), BlobBottom = H("#140C2E"), Glow = H("#6BF2FF"), Eye = H("#C8FFF6"),
-                WispTop = H("#2A1E4A"), WispBottom = H("#0C0818"), WispGlow = H("#B070FF"), Feature = MonsterFeature.Crystals, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Mushroom, Level.Style.Rock },
+                WispTop = H("#2A1E4A"), WispBottom = H("#0C0818"), WispGlow = H("#B070FF"), Feature = MonsterFeature.Crystals, Kit = "grotte",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Shade, 6f, 1, "SCHEMEN"),
@@ -146,7 +146,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Geysers, Hue = -165f, Saturation = 1.1f, Brightness = 0.82f, Contrast = 1.14f, Tint = new Color(1.22f, 0.8f, 0.5f),
                 Weather = Weather.Embers, AmbientColor = H("#FF8A3A"), Accent = H("#FF6A2A"),
                 BlobTop = H("#3E2A24"), BlobBottom = H("#140C0A"), Glow = H("#FF6A2A"), Eye = H("#FFE36A"),
-                WispTop = H("#FF8A3A"), WispBottom = H("#7A1E0A"), WispGlow = H("#FFB070"), Feature = MonsterFeature.Flames, PlatformStyles = new[] { Level.Style.Block, Level.Style.Rock, Level.Style.Capital },
+                WispTop = H("#FF8A3A"), WispBottom = H("#7A1E0A"), WispGlow = H("#FFB070"), Feature = MonsterFeature.Flames, Kit = "glut",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Bomber, 7f, 1, "GLUTBOMBE"),
@@ -167,7 +167,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Ice, Hue = 12f, Saturation = 0.36f, Brightness = 1.2f, Contrast = 0.95f, Tint = new Color(0.92f, 0.98f, 1.08f),
                 Weather = Weather.Snow, AmbientColor = H("#F2FAFF"), Accent = H("#9BE8FF"),
                 BlobTop = H("#CDE8F5"), BlobBottom = H("#6C8FB0"), Glow = H("#9BE8FF"), Eye = H("#1C3A5A"),
-                WispTop = H("#E6FAFF"), WispBottom = H("#7FB4D6"), WispGlow = H("#BFF3FF"), Feature = MonsterFeature.Ice, PlatformStyles = new[] { Level.Style.Crystal, Level.Style.Terrace, Level.Style.Rock },
+                WispTop = H("#E6FAFF"), WispBottom = H("#7FB4D6"), WispGlow = H("#BFF3FF"), Feature = MonsterFeature.Ice, Kit = "frost",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 6f, 1, "FROSTLING"),
@@ -188,7 +188,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.LowGravity, Hue = 48f, Saturation = 1.3f, Brightness = 1f, Contrast = 1.05f, Tint = new Color(0.94f, 0.94f, 1.14f),
                 Weather = Weather.Stars, AmbientColor = H("#FFF3C4"), Accent = H("#FF7AE0"),
                 BlobTop = H("#2A2255"), BlobBottom = H("#0A081E"), Glow = H("#FF7AE0"), Eye = H("#FFF6B0"),
-                WispTop = H("#FFF3C4"), WispBottom = H("#8A6ACF"), WispGlow = H("#FFE89A"), Feature = MonsterFeature.Stars, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Rock },
+                WispTop = H("#FFF3C4"), WispBottom = H("#8A6ACF"), WispGlow = H("#FFE89A"), Feature = MonsterFeature.Stars, Kit = "stern",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Shade, 5f, 1, "LEERENKEIM"),
@@ -209,7 +209,7 @@ namespace SoccerFight
                 Mechanic = StageMechanic.Eclipse, Hue = 160f, Saturation = 0.95f, Brightness = 0.72f, Contrast = 1.2f, Tint = new Color(1.1f, 0.85f, 0.9f), Vignette = 0.12f,
                 Weather = Weather.Ash, AmbientColor = H("#C9B8BC"), Accent = H("#FF2A4A"),
                 BlobTop = H("#2A121C"), BlobBottom = H("#07030A"), Glow = H("#FF2A4A"), Eye = H("#FF8A9A"),
-                WispTop = H("#3A0E22"), WispBottom = H("#0A0206"), WispGlow = H("#FF4A6A"), Feature = MonsterFeature.Void, PlatformStyles = new[] { Level.Style.Block, Level.Style.Crystal, Level.Style.Terrace, Level.Style.Plank },
+                WispTop = H("#3A0E22"), WispBottom = H("#0A0206"), WispGlow = H("#FF4A6A"), Feature = MonsterFeature.Void, Kit = "eklipse",
                 Roster = new[]
                 {
                     new RosterEntry(EnemyType.Hopper, 4f, 1, "LEERENBRUT"),

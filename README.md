@@ -1,7 +1,7 @@
 # SportFighter
 
 2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die sechs Spielfiguren sind aus den Figurenbögen des Designs ausgeschnitten (`tools/newdesign/characters.js` → `Assets/Resources/Characters`, siehe unten) und werden prozedural animiert. Die Spielwelt (Kulisse, Boden, Plattformen, Ruinen, Bäume, Pflanzen) ist aus den Design-Vorlagen ausgeschnitten (`tools/newdesign/build.js` → `Assets/Resources/NewDesign`) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
+Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die sechs Spielfiguren sind aus den Figurenbögen des Designs ausgeschnitten (`tools/newdesign/characters.js` → `Assets/Resources/Characters`, siehe unten) und werden prozedural animiert. Die Spielwelt jeder Stage (Kulisse, Boden, Plattformen, Deko) ist aus ihrem Stage-Bogen des Designs ausgeschnitten (`tools/newdesign/stages.js` → `Assets/Resources/Stages/<stage>`, siehe „Arena“) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
 
 ## Ein Lauf
 
@@ -26,7 +26,7 @@ Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die sechs Spielf
   den Zähler oben rechts – siehe „Fortschritt“.
 - **Kristalle:** Jede geschaffte Welle und jede geschaffte Stage zahlt Kristalle direkt ins Profil. Der Betrag wächst
   innerhalb eines Laufs mit der Stage und wird in höheren Leveln mit ×1,5 / ×2,1 / ×2,9 / ×4 verstärkt.
-- **8 Stage-Themen** mit eigener Farbstimmung, Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
+- **8 Stage-Themen** mit eigener Welt (Kulisse, Boden, Plattformen, Deko), Wetter, Monster-Aussehen, Gegnern, Miniboss, Boss und Spezialregel:
   Mondlicht-Ruinen, Bernsteinhain (Windböen), Regenwacht (Blitzeinschläge), Glimmergrotte (Dunkelheit),
   Glutschmiede (Lavageysire), Frostgipfel (Glatteis), Sternengarten (geringe Schwerkraft), Eklipse (Verstärkungs-Pulse).
   Danach beginnt der Zyklus von vorn („II“, „III“ …) mit weiter steigender Kurve.
@@ -231,33 +231,42 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 
 ## Arena
 
-- **Plattformen:** Stage 1 hat immer das klassische Layout – links und rechts je eine Ruinen-Terrasse, dazwischen zwei
-  Säulenkapitelle (Höhe ~2,2, ein Sprung vom Rasen) und drei schwebende Felsen (Höhe ~4,1). Ab Stage 2 würfelt jede Stage
-  ihr eigenes Layout (`Level.Generate`): mal wenige, mal viele Ebenen, mal kleine, mal breite, mal stillstehende, mal
-  seitlich gleitende oder als Aufzug fahrende – in den Stilen des Themas (Terrasse, Kapitell, Moosfels, Kristallplatte,
-  Runenblock, Holzsteg an Ketten, Riesenpilz). Alle sind von unten durchspringbar; wer auf einer bewegten steht, fährt
-  mit. Blobs springen dem Spieler gezielt hinterher (erkennbar am langen Ducken davor) und hüpfen von der Kante, wenn der
-  Spieler unten ist. Ball, Schatten, Gras und Rainbow Flick funktionieren auf jeder Ebene.
-- **Die Welt – Mondlicht-Ruinen:** genau nach den Design-Vorlagen. Von hinten nach vorn: Nachthimmel mit funkelnden
-  Sternen, die gemalte Kulisse (Vollmond hinter Wolken, Turmruinen, Aquädukte, viele Wasserfälle, Baumkronen), ein
-  dunkler Gürtel aus Bäumen, Ruinen und Wasserfällen im Mondlicht, davor eine eigene, langsamer mitlaufende Ruinenreihe
-  (Torbögen mit Laterne, Laternengalgen, Mauerreste, Säule, Kristall) – bewusst abgedunkelt und hinter einer dunklen
-  Buschreihe, damit sie als Kulisse und nicht als Spielobjekt wirkt –, große grüne Rahmenbäume an beiden Arenaenden, die
-  hellgrüne Grasdecke mit nur vereinzelten Grasbüscheln über der moosigen Quadermauer, die nach unten ins Dunkle ausläuft,
-  und dunkles Laub nur ganz außen im Vordergrund. Das Spielfeld selbst bleibt ruhig, damit Spieler und Gegner lesbar sind. Jede Ebene läuft unterschiedlich schnell mit der Kamera. Bewegt: Gras und Büsche im Wind (und um
-  Spieler und Ball), flackernde Laternen, pulsierende Kristalle mit fallenden Lichtfunken, atmender Mondschein,
-  ziehender Nebel, warme Glühwürmchen. Die Plattformen sind schwebende Grasinseln aus Quadersteinen mit Ranken und
-  hängendem Kristall (eine trägt das blaue Fußball-Banner) bzw. Grasplatten auf Säulen; die Grafik wird passend zur
-  Plattformbreite skaliert. Alle Stages nutzen diese Welt, jede färbt sie über ihre Farbstimmung um.
-- **Tiefe:** Himmel, gemalte Kulisse, Baumgürtel, Nebelbänder, Ruinen, Rasen und Vordergrund-Laub bewegen sich je nach
-  Entfernung unterschiedlich stark mit der Kamera, horizontal wie vertikal (Faktoren in `WorldEnvironment.AddLayer`).
+- **Plattformen:** Jede Stage ordnet ihre eigenen Plattform-Bilder an (`Level.Generate`), Stage 1 immer gleich, ab
+  Stage 2 gewürfelt aus dem Lauf-Seed: mal wenige, mal viele Ebenen, mal kleine, mal große Stücke, mal stillstehende, mal
+  seitlich gleitende oder als Aufzug fahrende. Stehende Stücke (Sockel auf Säulen, Riesenpilze, Baumstümpfe, Gestelle,
+  Eis- und Runensäulen) reichen bis auf den Rasen und werden gleichmäßig so skaliert, dass ihre Oberkante einen Sprung
+  hoch liegt; schwebende Inseln, Schollen, Platten und Träger bilden die höheren Ebenen. Hängende Bretter (Seile,
+  Bernsteinhain), Balken (Ketten, Regenwacht) und Ambosse (Ketten, Glutschmiede) hängen an Seilen bzw. Ketten, die über
+  den Bildrand reichen; Schaukelgestell und Ambossgestell haben zwei begehbare Ebenen. Unter manchen schwebenden Stücken
+  hängt eine Laterne, ein Banner oder ein Stern. Bilder werden nie verzerrt, nur gleichmäßig skaliert. Alle Plattformen
+  sind von unten durchspringbar; wer auf einer bewegten steht, fährt mit. Blobs springen dem Spieler gezielt hinterher
+  (erkennbar am langen Ducken davor) und hüpfen von der Kante, wenn der Spieler unten ist. Ball, Schatten, Gras und
+  Rainbow Flick funktionieren auf jeder Ebene.
+- **Die Welten:** Jede Stage hat ihre eigene Welt aus ihrem Stage-Bogen (`Inspiration/StagesNewDesigns`: oben eine
+  Szene, darunter 12 Nahaufnahmen). `tools/newdesign/stages.js` (Einstellungen in `stages.def.js`) schneidet daraus:
+  die **Kulisse** (die Szene ohne Plattformen, Figur und Rahmenobjekte; die Lücken füllt ein inhaltsbasiertes
+  Auffüllverfahren in `inpaint.js` aus passenden Stücken der Szene, unter der Horizontlinie läuft sie in Dunst aus),
+  den **Boden** (nahtlos kachelbar, nach unten weitergemalt und abgedunkelt) und alle **Einzelteile** der Nahaufnahmen,
+  freigestellt vom dunklen Hintergrund (`cutout.js`; Leuchthöfe werden entfernt, das Spiel malt den Schein selbst).
+  Daraus erzeugt: schwebende Plattformköpfe ohne Säule mit gebrochener Unterkante, hängende Bretter, Balken und Ambosse,
+  kachelbares Seil und Kette. Alles wird verdoppelt (Auflösung für 1080p). Im Spiel (`WorldEnvironment`) von hinten
+  nach vorn: Himmel, Kulisse mit eigenen Lichtern (Mond, Laternen, Fenster, Lava, Polarlicht, Eklipse-Ring, Sterne),
+  Nebelbänder, eine Reihe Deko der Stage weiter hinten im Dunst (Torbögen, Kamine, Kristalle, Öfen, Monolithe,
+  Sternwarten-Türme, Tribünen …), Tropfsteine bzw. hängende Glutkübel oben, schwebende Brocken im Sternengarten und in
+  der Eklipse, der Boden, einzelne Deko-Stücke an der Hinterkante des Rasens und an den Arenaenden hinter den Toren der
+  Bodenabschluss mit Fels plus ein großes Rahmenstück (Baum, Monolith, Flutlichtmast …). Bewegt: flackernde Lichter,
+  pulsierende Kristalle mit Lichtfunken, schaukelnde Laternen, wippende Brocken, ziehender Nebel, Glühwürmchen
+  (Mondlicht, Bernstein, Grotte), Gras im Wind (Mondlicht) und das Wetter der Stage. Beim Stage-Wechsel wird die ganze
+  Welt hinter dem Belohnungsbildschirm ausgetauscht, die Bilder der alten Stage werden wieder freigegeben.
+- **Tiefe:** Himmel, Kulisse, Nebel, Deko-Reihe, Tropfsteine, Rasen und Vordergrund bewegen sich je nach Entfernung
+  unterschiedlich stark mit der Kamera, horizontal wie vertikal (Faktoren in `WorldEnvironment.AddLayer`).
 
 ## Code-Überblick (`SoccerFight/Assets/Scripts`)
 
 | Ordner | Inhalt |
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
-| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, Laden der ausgeschnittenen Spielfiguren (`PlayerArt`), prozedurale Grafiken für Ball, die 17 Monster-Körper (`MonsterArt`), die Welt-Grafik aus den Design-Vorlagen (`DesignArt`), Kulissen-Teile für den Titelbildschirm (`EnvironmentArt`, `DepthArt`, `PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen), Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
+| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, Laden der ausgeschnittenen Spielfiguren (`PlayerArt`), prozedurale Grafiken für Ball, die 17 Monster-Körper (`MonsterArt`), die Welt jeder Stage aus ihrem Design-Bogen (`StageKit`), Pflanzen-Atlas und Sprite-Material (`DesignArt`), Kulissen-Teile für den Titelbildschirm (`EnvironmentArt`, `DepthArt`, `PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen), Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), die Spielwelt aus Parallax-Ebenen (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
@@ -268,7 +277,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
 | `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Spieler-Kader (`CharacterPage`), erster Start (`OnboardingPages`), Fähigkeiten-Menü (`SkillPage`), Shop (`ShopPage`), deren Karten, Kacheln und Preisschilder (`MetaWidgets`), Münzzähler mit einfliegenden Münzen (`CoinCounter`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
-| `World/ThemeGrade` | Farbstimmung pro Stage: eine globale Farbmatrix wirkt nur auf Umgebungsmaterialien (Shader-Eigenschaft `_EnvGraded`), dazu Wetterpartikel |
+| `World/ThemeGrade` | Wetterpartikel und Dunkelheit pro Stage; die Farbmatrix für Umgebungsmaterialien (`_EnvGraded`) bleibt neutral, seit jede Stage ihre eigene Grafik hat |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
 
@@ -277,7 +286,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Schwierigkeit:** alle Formeln in `Difficulty.cs` (Leben, Schaden, Tempo, Budget, Elite-Chance, Minibosse, Boss-Werte), Grundwerte der Gegner in `EnemyDefs.cs`, Heilung nach Welle/Boss in `RunDirector`
 - **Developer-Modus:** Schalter in `DevMode.cs`, Panel in `UI/DevPanel.cs`, Aktionen (`Dev*`-Methoden) in `RunDirector`
 - **Upgrades:** Werte, Beschreibung und Stapelgrenze in `UpgradeDb` (`Upgrades.cs`), Seltenheits-Gewichte in `UpgradeRoller.Weights`
-- **Stages:** Name, Farbstimmung, Wetter, Gegner, Plattform-Stile, Boss (samt Körper `Look`) und Regel in `StageThemes.cs`
+- **Stages:** Name, Design-Bogen (`Kit`), Wetter, Gegner, Boss (samt Körper `Look`) und Regel in `StageThemes.cs`
 - **Upgrade-Takt:** `RunState.RoundsPerUpgrade` (heute 2)
 - **Monster-Körper:** je eine Funktion pro Körper in `MonsterArt.cs` (Form, Teile, Augen, Ketten, Animationsart)
 - **Fähigkeits-Plätze:** Anzahl in `RunState.MaxSkills` (heute 4); welche Fähigkeit auf welcher Taste liegt, ergibt sich aus der Reihenfolge in `RunState.Skills` (`Player.PressSkill`, `Hud.LayoutSlots`)
@@ -298,8 +307,8 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Neue Shop-Artikel / Währungen / Upgrades:** `ShopKind` + Eintrag in `Shop.Build`; Währung = Eintrag in `Currencies`; kaufbare Stufen = `PassiveDef` mit `MaxLevel` in `MetaPassives.Leveled` (Stufe liegt in `Profile.Level`)
 - **Hauptmenü:** Aufbau und Knöpfe in `MainMenu.Build*` (`BuildColumns`, `BuildTopBars`, `BuildPlay`); Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Szene in `World/MenuVista.cs` (Aufbau, Mondposition, Flutlicht, Portal, Augen), ihre neuen Grafiken in `Art/MenuScenery.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
-- **Plattformen:** klassisches Layout in `Level.Classic`, Generator (Dichte, Größen, Höhen, Bewegung) in `Level.Generate`, Aussehen in `PlatformViews.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
-- **Welt-Grafik:** Ausschnitte, Maßstab und das Auffüllen der Kulisse in `tools/newdesign/build.js`; Platzierung von Ruinen, Bäumen, Laternen, Pflanzen und die Parallax-Faktoren in `World/WorldEnvironment.cs`; welche Plattform-Grafik bei welcher Breite in `World/PlatformViews.cs`
+- **Plattformen:** Generator (Dichte, Größen, Höhen, Bewegung, welche Stücke stehen oder schweben) in `Level.Generate`, Aussehen, Seile und Laternen in `PlatformViews.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
+- **Welt-Grafik:** was aus jedem Stage-Bogen wofür ausgeschnitten wird (Plattform/Deko, Lücken der Kulisse, Bodenstreifen, Leuchtfarben) in `tools/newdesign/stages.def.js`, danach `node stages.js [stage]` (`--fast` lässt die Kulissen stehen); Maßstab in `stages.js`; Freistellen in `cutout.js`, Auffüllen in `inpaint.js`; Platzierung der Deko, Lichter in der Kulisse und Parallax-Faktoren in `World/WorldEnvironment.cs`; Pflanzen-Atlas in `tools/newdesign/build.js`
 - **Glow/Bloom:** `PostFx.cs` und die Material-Intensitäten in `Art.cs`
 - **Wind:** Stärke von Neigung und Böen in `WorldEnvironment.Update`, Wellenform im Shader `SF_Foliage`
 - **Pflanzendichte:** die Schleifen in `WorldEnvironment.BuildNear/BuildGround/BuildRuins`
@@ -316,7 +325,7 @@ Nach jeder Antwort von Claude Code startet ein Stop-Hook (`.claude/settings.loca
 Von Hand geht es mit `powershell -File tools\publish.ps1` (mit `-Force` wird auch ohne Änderung neu gebaut).
 Visuelle Prüfung: `tools\capture.ps1 -Scenario run` (Stage-Karte, Welle, Karten, Fähigkeitswahl, Boss, alle 8 Themen,
 Zusammenfassung), `-Scenario bestiary` (alle Monster-Körper), `-Scenario layouts` (die Arenen aller Stages samt
-Mitfahr-Test), `-Scenario blackhole` (Singularität am Zielpunkt), `-Scenario menu` (Titelbildschirm, Ballschuss, Seitenwechsel), `-Scenario newskills` (Grätsche, Abstoß, Mauer, Tunnel, Lockvogel, Schlusspfiff) und `-Scenario sim` (ein Bot spielt einen echten Lauf
+Mitfahr-Test), `-Scenario stages` (die Welt jeder Stage aus mehreren Blickwinkeln, Layout im Log), `-Scenario blackhole` (Singularität am Zielpunkt), `-Scenario menu` (Titelbildschirm, Ballschuss, Seitenwechsel), `-Scenario newskills` (Grätsche, Abstoß, Mauer, Tunnel, Lockvogel, Schlusspfiff) und `-Scenario sim` (ein Bot spielt einen echten Lauf
 und protokolliert jede Phase im Unity-Log).
 Protokoll: `.build/publish.log`, Unity-Log des letzten Builds: `.build/unity-build.log`.
 Für die Pushes muss die GitHub-CLI eingeloggt sein (`gh auth login`).

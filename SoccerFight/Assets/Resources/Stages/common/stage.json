@@ -1,0 +1,25 @@
+{
+ "id": "common",
+ "sprites": [
+  {
+   "name": "rope",
+   "role": "rope",
+   "tags": [],
+   "w": 24,
+   "h": 96,
+   "ppu": 106,
+   "px": 12,
+   "py": 0
+  },
+  {
+   "name": "chain",
+   "role": "rope",
+   "tags": [],
+   "w": 32,
+   "h": 140,
+   "ppu": 106,
+   "px": 16,
+   "py": 0
+  }
+ ]
+}

@@ -6,7 +6,8 @@ namespace SoccerFight
     /// Everything a stage looks like beyond the colour grade: its platform layout (with art) and its
     /// monsters' bodies. Prepared ahead of time (in the background, or while a reward screen has the
     /// game frozen) and swapped in while the next stage's ability choice covers the arena.
-    /// Stage 1 is always the classic ruin layout; later stages roll theirs from the run's seed.
+    /// Stage 1 always gets the same layout; later stages roll theirs from the run's seed. The whole scenery
+    /// (backdrop, ground, props) is swapped along with the platforms.
     /// </summary>
     public static class StageArt
     {
@@ -36,8 +37,8 @@ namespace SoccerFight
             preparedStage = stage;
             preparedSeed = seed;
             var theme = StageThemes.For(stage);
-            layout = stage <= 1 ? Level.Classic() : Level.Generate(theme.PlatformStyles, seed * 31 + stage * 7919);
-            // die Plattformen im neuen Design brauchen keine vorab gezeichnete Grafik
+            // jede Stage ordnet ihre eigenen Plattform-Bilder an; Stage 1 immer gleich (fester Seed)
+            layout = Level.Generate(StageKit.For(theme), seed * 31 + stage * 7919);
             looks = System.Array.ConvertAll(layout, p => new PlatformLook { P = p });
             MonsterArt.Prepare(theme);
             ArtQueue.Kick();
@@ -53,7 +54,9 @@ namespace SoccerFight
             appliedSeed = preparedSeed;
             preparedStage = preparedSeed = -1;
             Level.Set(layout);
-            Game.I.Environment.Platforms.Show(looks);
+            var theme = StageThemes.For(stage);
+            Game.I.Environment.ApplyStage(theme);
+            Game.I.Environment.Platforms.Show(looks, StageKit.For(theme));
             MonsterArt.Trim(StageThemes.For(stage), StageThemes.For(Mathf.Max(1, stage - 1)));
             return true;
         }

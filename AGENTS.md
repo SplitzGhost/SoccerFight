@@ -20,11 +20,13 @@ Online-Duo per Raumcode. Details stehen im `README.md` – **das README ist die 
 Spieländerungen mitgepflegt werden.**
 
 - Unity **6000.6.0f1**, URP 2D, nur das neue Input System. Unity-Projekt liegt in `SoccerFight/`.
-- **Fast alles ist Code:** Figuren, Animation, Effekte und UI werden zur Laufzeit prozedural erzeugt. **Ausnahme: die
-  Spielwelt** (Kulisse, Boden, Plattformen, Deko) besteht aus Bildern, die aus den Design-Vorlagen des Nutzers
-  (`Inspiration/nnewDesign`) ausgeschnitten sind: `tools/newdesign/build.js` (Node, einmal `npm install` im Ordner)
-  erzeugt `Assets/Resources/NewDesign/*.png` + `design.json`, geladen von `Art/DesignArt.cs`. Neue oder bessere
-  Vorlagen → Ausschnitte in `build.js` anpassen und neu laufen lassen, nicht die PNGs von Hand ändern.
+- **Fast alles ist Code:** Animation, Effekte und UI werden zur Laufzeit prozedural erzeugt. **Ausnahme: die Spielwelt**
+  jeder Stage besteht aus Bildern, die aus ihrem Stage-Bogen (`Inspiration/StagesNewDesigns/0N-*.png`: oben Szene,
+  unten 12 Nahaufnahmen) ausgeschnitten sind: `tools/newdesign/stages.js` (Node, einmal `npm install` im Ordner; was wofür
+  dient pro Stage in `stages.def.js`) erzeugt `Assets/Resources/Stages/<id>/*.png` + `stage.json`, geladen von
+  `Art/StageKit.cs`. Die Kulisse wird inhaltsbasiert aufgefüllt (`inpaint.js`, ~20 s pro Stage; `--fast` behält sie),
+  Einzelteile freigestellt (`cutout.js`). Neue/bessere Bögen → `stages.def.js` anpassen und neu laufen lassen, nie die
+  PNGs von Hand ändern. `tools/newdesign/build.js` liefert nur noch den Pflanzen-Atlas (`Resources/NewDesign`, Gras in Stage 1).
 - **Auch die Spielfiguren sind Bilder:** `tools/newdesign/characters.js` schneidet sie aus den Figurenbögen
   (`Inspiration/CharackterNewDesign`, Seitenansicht) in Glieder und schreibt `Resources/Characters/<id>.png/.json`
   (Atlas + Drehpunkte + gemessenes Skelett → `PlayerBody`). Umrisse/Gelenke stehen in `characters.def.js`. Die
@@ -102,9 +104,11 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - `ProjectSettings` productName bleibt absichtlich `SoccerFight` (sonst geht der WebGL-Spielstand verloren).
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
-- Alle Stages teilen dieselbe Welt (`World/WorldEnvironment.cs`, Plattformen `World/PlatformViews.cs`); die Stimmung
-  pro Stage kommt nur über die Farbmatrix von `ThemeGrade`. Die Texturen sind vormultipliziert (premultiplied alpha),
-  ihre `.meta` schreibt `build.js` (kein Alpha-Auffüllen). Screenshots der Welt: Szenario `stage1`.
+- Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus
+  den Plattform-Bildern der Stage in `Level.Generate`, deterministisch aus dem Seed → Duo-tauglich). Der Farbfilter
+  `ThemeGrade` bleibt neutral. Alle Texturen außer der Kulisse sind vormultipliziert (premultiplied alpha), ihre `.meta`
+  schreibt das Skript. Die Bilder einer Stage werden beim Wechsel freigegeben (`StageKit.Unload`). Screenshots aller
+  Welten: Szenario `stages`.
 - Online-Duo: Code in `Assets/Scripts/Net/` (`NetLink`, `Coop`, `RemotePlayer`, Partials `*.Net.cs`),
   host-autoritativ über Unity Relay (wss). Änderungen an Player/Monster/Ball/RunDirector auf Duo-Sync prüfen.
 

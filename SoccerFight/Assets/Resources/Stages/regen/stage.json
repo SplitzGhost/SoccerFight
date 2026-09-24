@@ -1,0 +1,224 @@
+{
+ "id": "regen",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2620,
+   "h": 1008,
+   "ppu": 88.17495029821073,
+   "px": 1310,
+   "py": 220.43737574552682
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2580,
+   "h": 296,
+   "ppu": 106,
+   "px": 0,
+   "py": 284
+  },
+  {
+   "name": "ledge",
+   "role": "stand",
+   "tags": [],
+   "w": 456,
+   "h": 340,
+   "ppu": 106,
+   "px": 249,
+   "py": 320,
+   "walk0": -1.811,
+   "walk1": 1.811,
+   "bottom": -3
+  },
+  {
+   "name": "scaffold",
+   "role": "stand",
+   "tags": [],
+   "w": 464,
+   "h": 344,
+   "ppu": 106,
+   "px": 228,
+   "py": 300,
+   "walk0": -1.736,
+   "walk1": 1.736,
+   "bottom": -2.811
+  },
+  {
+   "name": "gallows",
+   "role": "stand",
+   "tags": [],
+   "w": 444,
+   "h": 340,
+   "ppu": 106,
+   "px": 212,
+   "py": 326,
+   "walk0": -1.689,
+   "walk1": 1.689,
+   "bottom": -3.057
+  },
+  {
+   "name": "chimney",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 412,
+   "h": 392,
+   "ppu": 106,
+   "px": 206,
+   "py": 2
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 504,
+   "h": 336,
+   "ppu": 106,
+   "px": 225,
+   "py": 248,
+   "walk0": -2.028,
+   "walk1": 2.028,
+   "bottom": -2.321
+  },
+  {
+   "name": "lamp",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 356,
+   "h": 484,
+   "ppu": 106,
+   "px": 178,
+   "py": 2,
+   "lights": [
+    {
+     "x": 0.141,
+     "y": 2.889,
+     "r": 0.683,
+     "cr": 1,
+     "cg": 0.706,
+     "cb": 0.314
+    }
+   ]
+  },
+  {
+   "name": "fence",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 504,
+   "h": 408,
+   "ppu": 106,
+   "px": 252,
+   "py": 2
+  },
+  {
+   "name": "gargoyle",
+   "role": "prop",
+   "tags": [
+    "frame"
+   ],
+   "w": 508,
+   "h": 460,
+   "ppu": 106,
+   "px": 254,
+   "py": 2
+  },
+  {
+   "name": "spire",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "back"
+   ],
+   "w": 484,
+   "h": 468,
+   "ppu": 106,
+   "px": 242,
+   "py": 2
+  },
+  {
+   "name": "window",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 436,
+   "h": 460,
+   "ppu": 106,
+   "px": 218,
+   "py": 2,
+   "lights": [
+    {
+     "x": -0.128,
+     "y": 1.972,
+     "r": 0.981,
+     "cr": 1,
+     "cg": 0.745,
+     "cb": 0.353
+    }
+   ]
+  },
+  {
+   "name": "drain",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 496,
+   "h": 392,
+   "ppu": 106,
+   "px": 248,
+   "py": 2
+  },
+  {
+   "name": "beam",
+   "role": "float",
+   "tags": [],
+   "w": 388,
+   "h": 60,
+   "ppu": 106,
+   "px": 194,
+   "py": 46,
+   "walk0": -1.689,
+   "walk1": 1.689,
+   "bottom": -0.415,
+   "anchors": [
+    -1.009,
+    1.009
+   ],
+   "rope": "chain"
+  }
+ ],
+ "sky": [
+  0.129,
+  0.248,
+  0.459
+ ],
+ "valley": [
+  0.096,
+  0.151,
+  0.26
+ ],
+ "haze": [
+  0.156,
+  0.263,
+  0.467
+ ],
+ "plateX0": 130,
+ "plateRow0": 393,
+ "plateW": 1310,
+ "platePpu": 44,
+ "deep": [
+  0.033,
+  0.047,
+  0.082
+ ]
+}

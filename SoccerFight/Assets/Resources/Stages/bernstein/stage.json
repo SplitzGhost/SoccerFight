@@ -1,0 +1,233 @@
+{
+ "id": "bernstein",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2592,
+   "h": 1008,
+   "ppu": 88,
+   "px": 1296,
+   "py": 220
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2510,
+   "h": 300,
+   "ppu": 106,
+   "px": 0,
+   "py": 280
+  },
+  {
+   "name": "mushroom",
+   "role": "stand",
+   "tags": [],
+   "w": 420,
+   "h": 380,
+   "ppu": 106,
+   "px": 212,
+   "py": 334,
+   "walk0": -1.708,
+   "walk1": 1.708,
+   "bottom": -3.132
+  },
+  {
+   "name": "swing",
+   "role": "stand",
+   "tags": [],
+   "w": 484,
+   "h": 408,
+   "ppu": 106,
+   "px": 256,
+   "py": 384,
+   "walk0": -1.481,
+   "walk1": 1.481,
+   "bottom": -3.604,
+   "levels": [
+    {
+     "y": -1.868,
+     "x0": -1.5,
+     "x1": 1.217
+    }
+   ]
+  },
+  {
+   "name": "stump",
+   "role": "stand",
+   "tags": [],
+   "w": 496,
+   "h": 320,
+   "ppu": 106,
+   "px": 247,
+   "py": 82,
+   "walk0": -1.792,
+   "walk1": 1.792,
+   "bottom": -0.755,
+   "lights": [
+    {
+     "x": 0.678,
+     "y": 0.763,
+     "r": 1.242,
+     "cr": 1,
+     "cg": 0.627,
+     "cb": 0.157
+    }
+   ]
+  },
+  {
+   "name": "branch",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 456,
+   "h": 352,
+   "ppu": 106,
+   "px": 228,
+   "py": 2
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 476,
+   "h": 340,
+   "ppu": 106,
+   "px": 223,
+   "py": 232,
+   "walk0": -1.962,
+   "walk1": 1.962,
+   "bottom": -2.17
+  },
+  {
+   "name": "tree",
+   "role": "prop",
+   "tags": [
+    "frame",
+    "mid"
+   ],
+   "w": 440,
+   "h": 464,
+   "ppu": 106,
+   "px": 220,
+   "py": 2
+  },
+  {
+   "name": "amber",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 404,
+   "h": 340,
+   "ppu": 106,
+   "px": 202,
+   "py": 2,
+   "lights": [
+    {
+     "x": 0.029,
+     "y": 1.688,
+     "r": 1.625,
+     "cr": 1,
+     "cg": 0.667,
+     "cb": 0.196
+    }
+   ]
+  },
+  {
+   "name": "chestnut",
+   "role": "prop",
+   "tags": [
+    "back"
+   ],
+   "w": 308,
+   "h": 324,
+   "ppu": 106,
+   "px": 154,
+   "py": 2
+  },
+  {
+   "name": "sapling",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "back"
+   ],
+   "w": 440,
+   "h": 364,
+   "ppu": 106,
+   "px": 220,
+   "py": 2
+  },
+  {
+   "name": "rootarch",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 488,
+   "h": 280,
+   "ppu": 106,
+   "px": 244,
+   "py": 2
+  },
+  {
+   "name": "leaves",
+   "role": "prop",
+   "tags": [
+    "back"
+   ],
+   "w": 476,
+   "h": 248,
+   "ppu": 106,
+   "px": 238,
+   "py": 2
+  },
+  {
+   "name": "plank",
+   "role": "float",
+   "tags": [],
+   "w": 332,
+   "h": 224,
+   "ppu": 106,
+   "px": 165,
+   "py": 186,
+   "walk0": -1.453,
+   "walk1": 1.453,
+   "bottom": -1.736,
+   "anchors": [
+    -1.481,
+    -1.142,
+    1.094,
+    1.462
+   ],
+   "rope": "rope"
+  }
+ ],
+ "sky": [
+  0.651,
+  0.231,
+  0.188
+ ],
+ "valley": [
+  0.377,
+  0.204,
+  0.152
+ ],
+ "haze": [
+  0.707,
+  0.395,
+  0.286
+ ],
+ "plateX0": 240,
+ "plateRow0": 394,
+ "plateW": 1296,
+ "platePpu": 44,
+ "deep": [
+  0.075,
+  0.044,
+  0.037
+ ]
+}

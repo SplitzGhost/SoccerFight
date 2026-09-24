@@ -1,0 +1,258 @@
+{
+ "id": "frost",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2312,
+   "h": 1012,
+   "ppu": 88,
+   "px": 1156,
+   "py": 220
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2420,
+   "h": 296,
+   "ppu": 106,
+   "px": 0,
+   "py": 278
+  },
+  {
+   "name": "ice_pillar",
+   "role": "stand",
+   "tags": [],
+   "w": 388,
+   "h": 332,
+   "ppu": 106,
+   "px": 194,
+   "py": 318,
+   "walk0": -1.698,
+   "walk1": 1.698,
+   "bottom": -2.981,
+   "lights": [
+    {
+     "x": 0.089,
+     "y": -1.118,
+     "r": 1.799,
+     "cr": 0.549,
+     "cg": 0.863,
+     "cb": 1
+    }
+   ]
+  },
+  {
+   "name": "rock_ped",
+   "role": "stand",
+   "tags": [],
+   "w": 404,
+   "h": 340,
+   "ppu": 106,
+   "px": 205,
+   "py": 316,
+   "walk0": -1.764,
+   "walk1": 1.764,
+   "bottom": -2.962
+  },
+  {
+   "name": "rune_pillar",
+   "role": "stand",
+   "tags": [],
+   "w": 408,
+   "h": 320,
+   "ppu": 106,
+   "px": 204,
+   "py": 306,
+   "walk0": -1.764,
+   "walk1": 1.764,
+   "bottom": -2.868
+  },
+  {
+   "name": "ice_thin",
+   "role": "stand",
+   "tags": [],
+   "w": 376,
+   "h": 324,
+   "ppu": 106,
+   "px": 190,
+   "py": 310,
+   "walk0": -1.594,
+   "walk1": 1.594,
+   "bottom": -2.906,
+   "lights": [
+    {
+     "x": 0.06,
+     "y": -0.925,
+     "r": 1.808,
+     "cr": 0.549,
+     "cg": 0.863,
+     "cb": 1
+    }
+   ]
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 440,
+   "h": 348,
+   "ppu": 106,
+   "px": 206,
+   "py": 240,
+   "walk0": -1.802,
+   "walk1": 1.802,
+   "bottom": -2.245
+  },
+  {
+   "name": "monolith",
+   "role": "prop",
+   "tags": [
+    "frame",
+    "mid"
+   ],
+   "w": 408,
+   "h": 452,
+   "ppu": 106,
+   "px": 204,
+   "py": 2
+  },
+  {
+   "name": "branch",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 396,
+   "h": 288,
+   "ppu": 106,
+   "px": 198,
+   "py": 2
+  },
+  {
+   "name": "ice_crystal",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 424,
+   "h": 392,
+   "ppu": 106,
+   "px": 212,
+   "py": 2,
+   "lights": [
+    {
+     "x": -0.006,
+     "y": 1.287,
+     "r": 1.832,
+     "cr": 0.549,
+     "cg": 0.863,
+     "cb": 1
+    }
+   ]
+  },
+  {
+   "name": "snow",
+   "role": "prop",
+   "tags": [
+    "back"
+   ],
+   "w": 460,
+   "h": 200,
+   "ppu": 106,
+   "px": 230,
+   "py": 2
+  },
+  {
+   "name": "ice_boulder",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "back"
+   ],
+   "w": 476,
+   "h": 328,
+   "ppu": 106,
+   "px": 238,
+   "py": 2
+  },
+  {
+   "name": "rune_stone",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "back"
+   ],
+   "w": 432,
+   "h": 376,
+   "ppu": 106,
+   "px": 216,
+   "py": 2
+  },
+  {
+   "name": "floe_a",
+   "role": "float",
+   "tags": [],
+   "w": 388,
+   "h": 132,
+   "ppu": 106,
+   "px": 194,
+   "py": 116,
+   "walk0": -1.698,
+   "walk1": 1.698,
+   "bottom": -1.075
+  },
+  {
+   "name": "floe_b",
+   "role": "float",
+   "tags": [],
+   "w": 372,
+   "h": 124,
+   "ppu": 106,
+   "px": 188,
+   "py": 114,
+   "walk0": -1.594,
+   "walk1": 1.594,
+   "bottom": -1.057
+  },
+  {
+   "name": "floe_rock",
+   "role": "float",
+   "tags": [],
+   "w": 404,
+   "h": 164,
+   "ppu": 106,
+   "px": 205,
+   "py": 142,
+   "walk0": -1.764,
+   "walk1": 1.764,
+   "bottom": -1.321
+  }
+ ],
+ "sky": [
+  0.071,
+  0.255,
+  0.518
+ ],
+ "valley": [
+  0.146,
+  0.233,
+  0.394
+ ],
+ "haze": [
+  0.274,
+  0.459,
+  0.749
+ ],
+ "plateX0": 205,
+ "plateRow0": 396,
+ "plateW": 1155,
+ "platePpu": 44,
+ "deep": [
+  0.036,
+  0.069,
+  0.132
+ ]
+}

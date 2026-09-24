@@ -4,9 +4,9 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// Walkable geometry: the pitch at y = 0 plus one-way platforms. Stage 1 always uses the classic
-    /// ruin layout; every later stage generates its own — sometimes sparse, sometimes crowded, small or
-    /// wide, still or gliding back and forth / up and down — in the styles its theme prefers. Everything
+    /// Walkable geometry: the pitch at y = 0 plus one-way platforms. Every stage generates its layout from
+    /// its own platform pictures — sometimes sparse, sometimes crowded, small or large, still or gliding back
+    /// and forth / up and down (stage 1 always the same). Everything
     /// that stands, lands or bounces (player, blobs, ball, shadows, grass) asks here instead of assuming
     /// a flat floor, and riders of moving platforms are carried by <see cref="Platform.Delta"/>.
     /// Platforms are jumped through from below and dropped through with the down key.
@@ -23,6 +23,12 @@ namespace SoccerFight
             public readonly Style Kind;
             public readonly int Seed;
             public Motion Move;
+            /// <summary>Which picture of the stage kit draws it (index into its platform list) and at what size.</summary>
+            public int Piece = -1;
+            public float Scale = 1f;
+            public bool Flip;
+            /// <summary>A ledge inside another platform's picture (the plank in a swing frame): drawn by its owner.</summary>
+            public Platform Owner;
             public float Amp, Period = 6f, Phase;
             /// <summary>How far the platform moved during the last step (riders get carried by this).</summary>
             public Vector2 Delta;
@@ -41,6 +47,7 @@ namespace SoccerFight
 
             internal void Step(float time)
             {
+                if (Owner != null) { Delta = Owner.Delta; X0 = BaseX0 + Owner.Offset.x; X1 = BaseX1 + Owner.Offset.x; Y = BaseY + Owner.Offset.y; return; }
                 float off = Move == Motion.None ? 0f : Amp * Mathf.Sin(time * MathUtil.Tau / Period + Phase);
                 float nx0 = BaseX0 + (Move == Motion.Horizontal ? off : 0f);
                 float ny = BaseY + (Move == Motion.Vertical ? off : 0f);
@@ -136,40 +143,76 @@ namespace SoccerFight
         const float Edge = 14.8f;          // platforms stay inside the arena walls
         const float MaxStep = 2.15f;       // highest rise between two levels a plain jump always makes
 
-        static bool Floating(Style s) => s == Style.Rock || s == Style.Crystal || s == Style.Block || s == Style.Plank;
-
         /// <summary>
-        /// A layout for one stage: a profile (sparse / medium / crowded, small / mixed / wide, still /
-        /// some moving / many moving) is rolled first, then low levels are spread over the pitch, higher
-        /// ones placed beside them within one jump, and floating pieces get their motion.
+        /// A layout for one stage, built from the stage's own platform pictures: a profile (sparse / medium /
+        /// crowded, small / mixed / large pieces, still / some moving / many moving) is rolled first, then low
+        /// levels are spread over the pitch — standing pieces (pedestals, frames, stumps) scaled so their top is
+        /// one jump high, or low floating ones —, higher ones placed beside them within one jump, and floating
+        /// pieces get their motion. Pictures are only ever scaled evenly, so a platform's size follows its art.
         /// </summary>
-        public static Platform[] Generate(Style[] styles, int seed)
+        public static Platform[] Generate(StageKit kit, int seed)
         {
             var r = new System.Random(seed);
             float R() => (float)r.NextDouble();
             float Range(float a, float b) => a + (b - a) * R();
 
-            if (styles == null || styles.Length == 0) styles = new[] { Style.Terrace, Style.Capital, Style.Rock };
-            var floating = new List<Style>();
-            foreach (var s in styles) if (Floating(s)) floating.Add(s);
-            if (floating.Count == 0) floating.Add(Style.Rock);
+            var pieces = kit.Platforms;
+            var stands = new List<int>();
+            var floats = new List<int>();
+            for (int i = 0; i < pieces.Count; i++) (pieces[i].Role == StageKit.Role.Stand ? stands : floats).Add(i);
+            if (pieces.Count == 0) return Classic();
 
             int density = r.Next(3);       // 0 sparse, 1 medium, 2 crowded
-            int size = r.Next(3);          // 0 small, 1 mixed, 2 wide
+            int size = r.Next(3);          // 0 small, 1 mixed, 2 large
             int motion = r.Next(3);        // 0 still, 1 some, 2 many
-            float Width()
+            float FloatScale()
             {
                 switch (size)
                 {
-                    case 0: return Range(1.7f, 2.6f);
-                    case 2: return Range(3.4f, 5.4f);
-                    default: return R() < 0.5f ? Range(1.8f, 2.8f) : Range(3.2f, 4.6f);
+                    case 0: return Range(0.78f, 0.95f);
+                    case 2: return Range(1.05f, 1.25f);
+                    default: return Range(0.82f, 1.2f);
                 }
             }
 
-            var low = new List<Platform>();
             var all = new List<Platform>();
             var supportY = new Dictionary<Platform, float>();
+            // horizontal room a platform's picture needs (walk span plus overhang)
+            float Half(StageKit.Piece pc, float s) => Mathf.Max(pc.WalkWidth, pc.Width * 0.85f) * 0.5f * s;
+            var halfOf = new Dictionary<Platform, float>();
+
+            Platform Make(int pi, float s, float cx, float y)
+            {
+                var pc = pieces[pi];
+                float w = pc.WalkWidth * s;
+                var p = new Platform(cx - w * 0.5f, cx + w * 0.5f, y, pc.Role == StageKit.Role.Stand ? Style.Capital : Style.Rock, r.Next(1, 9999))
+                    { Piece = pi, Scale = s, Flip = !pc.Hangs && r.Next(2) == 0 };
+                halfOf[p] = Half(pc, s);
+                return p;
+            }
+            void AddLedges(Platform p)
+            {
+                var pc = pieces[p.Piece];
+                foreach (var l in pc.Ledges)
+                {
+                    float a = l.X0 * p.Scale, b = l.X1 * p.Scale;
+                    if (p.Flip) { float t = -a; a = -b; b = t; }
+                    var q = new Platform(p.Center + a, p.Center + b, p.BaseY + l.Y * p.Scale, p.Kind, p.Seed + 1) { Owner = p, Piece = p.Piece, Scale = p.Scale, Flip = p.Flip };
+                    halfOf[q] = (b - a) * 0.5f;
+                    all.Add(q); supportY[q] = 0f;
+                }
+            }
+            bool Clear(float cx, float half, float y, float gap, float band = 1.5f)
+            {
+                foreach (var o in all)
+                {
+                    if (Mathf.Abs(o.BaseY - y) > band) continue;
+                    float oh = halfOf.TryGetValue(o, out var h) ? h : o.Width * 0.5f;
+                    float sw = o.Move == Motion.Horizontal ? o.Amp : 0f;
+                    if (cx + half + gap > o.Center - oh - sw && cx - half - gap < o.Center + oh + sw) return false;
+                }
+                return true;
+            }
 
             // low levels: spread across the pitch, one per slot (a crowded stage sometimes leaves a hole)
             int lowCount = density == 0 ? 2 : density == 1 ? 3 : 4;
@@ -178,39 +221,76 @@ namespace SoccerFight
             for (int i = 0; i < lowCount; i++)
             {
                 if (i == skip) continue;
-                float w = Mathf.Min(Width(), slot - 1.9f);
-                float room = slot - w - 1.9f;
-                float cx = -Edge + slot * (i + 0.5f) + (R() - 0.5f) * room;
-                float y = Range(1.9f, 2.35f);
-                var st = styles[r.Next(styles.Length)];
-                var p = new Platform(cx - w * 0.5f, cx + w * 0.5f, y, st, r.Next(1, 9999));
-                low.Add(p); all.Add(p); supportY[p] = 0f;
+                for (int attempt = 0; attempt < 16; attempt++)
+                {
+                    bool stand = stands.Count > 0 && (floats.Count == 0 || R() < 0.72f);
+                    int pi = stand ? stands[r.Next(stands.Count)] : floats[r.Next(floats.Count)];
+                    var pc = pieces[pi];
+                    float s, y;
+                    if (stand)
+                    {
+                        if (pc.Ledges.Length > 0)
+                        {
+                            // a frame: the inner ledge is the low level, the top one jump above it
+                            float ledgeH = pc.Height + pc.Ledges[0].Y;
+                            s = Range(1.85f, 2.3f) / ledgeH;
+                            y = pc.Height * s;
+                            if (s < 0.5f || s > 1.3f || y < 3.6f || y > 4.8f) continue;
+                        }
+                        else
+                        {
+                            s = Mathf.Clamp(Range(1.85f, 2.35f) / pc.Height, 0.6f, 1.3f);
+                            y = pc.Height * s;
+                            if (y < 1.7f || y > 2.45f) continue;
+                        }
+                    }
+                    else
+                    {
+                        s = FloatScale();
+                        y = Range(1.95f, 2.35f);
+                        if (y - pc.BottomH * s < (attempt < 10 ? 0.85f : 0.3f)) continue;   // hangs too low to run under (prefer shallow pieces)
+                    }
+                    float half = Half(pc, s);
+                    if (half * 2f > slot - 1.7f) continue;
+                    float room = slot - half * 2f - 1.7f;
+                    float cx = -Edge + slot * (i + 0.5f) + (R() - 0.5f) * room;
+                    if (!Clear(cx, half, y, 1.2f)) continue;
+                    var p = Make(pi, s, cx, y);
+                    all.Add(p); supportY[p] = 0f;
+                    if (pc.Ledges.Length > 0) AddLedges(p);
+                    break;
+                }
             }
+            var low = new List<Platform>();
+            foreach (var p in all) if (p.BaseY < 3f) low.Add(p);
 
             // higher levels: beside a lower one, never more than one jump up and one step across
-            Platform PlaceAbove(List<Platform> anchors, float minY, float maxY)
+            Platform PlaceAbove(List<Platform> anchors, float minY, float maxY, bool allowStand)
             {
-                for (int attempt = 0; attempt < 24; attempt++)
+                if (anchors.Count == 0) return null;
+                for (int attempt = 0; attempt < 30; attempt++)
                 {
                     var a = anchors[r.Next(anchors.Count)];
-                    float w = Mathf.Clamp(Width() * 0.9f, 1.7f, 4.8f);
-                    float side = R() < 0.5f ? -1f : 1f;
-                    float cx = a.Center + side * (a.Width * 0.5f + w * 0.5f + Range(-0.9f, 1.1f));
-                    cx = Mathf.Clamp(cx, -Edge + w * 0.5f, Edge - w * 0.5f);
-                    // keep within a step across of the anchor (clamping at the wall may have pulled it)
-                    float gap = Mathf.Abs(cx - a.Center) - (a.Width + w) * 0.5f;
-                    if (gap > 1.3f) continue;
-                    float y = a.Y + Range(1.8f, MaxStep);
+                    bool stand = allowStand && stands.Count > 0 && (floats.Count == 0 || R() < 0.3f);
+                    if (!stand && floats.Count == 0) return null;
+                    int pi = stand ? stands[r.Next(stands.Count)] : floats[r.Next(floats.Count)];
+                    var pc = pieces[pi];
+                    if (stand && pc.Ledges.Length > 0) continue;
+                    float y = a.BaseY + Range(1.8f, MaxStep);
                     if (y < minY || y > maxY) continue;
-                    bool clash = false;
-                    foreach (var o in all)
-                    {
-                        if (Mathf.Abs(o.Y - y) > 1.5f) continue;
-                        if (cx + w * 0.5f + 1.3f > o.Reach0 && cx - w * 0.5f - 1.3f < o.Reach1) { clash = true; break; }
-                    }
-                    if (clash) continue;
-                    var p = new Platform(cx - w * 0.5f, cx + w * 0.5f, y, floating[r.Next(floating.Count)], r.Next(1, 9999));
-                    supportY[p] = a.Y;
+                    float s = stand ? y / pc.Height : FloatScale();
+                    if (stand && (s < 0.6f || s > 1.35f)) continue;
+                    float half = Half(pc, s), ah = halfOf.TryGetValue(a, out var hh) ? hh : a.Width * 0.5f;
+                    float side = R() < 0.5f ? -1f : 1f;
+                    float cx = a.Center + side * (ah + half + Range(-0.9f, 1.1f));
+                    cx = Mathf.Clamp(cx, -Edge + half, Edge - half);
+                    float gap = Mathf.Abs(cx - a.Center) - (a.Width + pc.WalkWidth * s) * 0.5f;
+                    if (gap > 1.3f) continue;
+                    if (!Clear(cx, half, y, 1.3f)) continue;
+                    // a standing piece reaches down to the pitch: nothing may stand in its way
+                    if (stand && !Clear(cx, half, y * 0.5f, 0.4f, y * 0.5f + 0.2f)) continue;
+                    var p = Make(pi, s, cx, y);
+                    supportY[p] = a.BaseY;
                     all.Add(p);
                     return p;
                 }
@@ -218,14 +298,15 @@ namespace SoccerFight
             }
 
             var high = new List<Platform>();
+            foreach (var p in all) if (p.BaseY >= 3f) high.Add(p);   // frame tops
             int highCount = density == 0 ? 1 + r.Next(2) : density == 1 ? 2 + r.Next(2) : 3 + r.Next(2);
             for (int i = 0; i < highCount && low.Count > 0; i++)
             {
-                var p = PlaceAbove(low, 3.6f, 4.6f);
+                var p = PlaceAbove(low, 3.6f, 4.6f, true);
                 if (p != null) high.Add(p);
             }
             if (high.Count > 0 && (density == 2 ? R() < 0.6f : density == 1 && R() < 0.25f))
-                PlaceAbove(high, 5.5f, 6.5f);
+                PlaceAbove(high, 5.5f, 6.5f, false);
 
             // motion: only floating pieces move; every moving stage has at least one mover
             float chance = motion == 0 ? 0f : motion == 1 ? 0.35f : 0.75f;
@@ -234,15 +315,16 @@ namespace SoccerFight
             for (int i = order.Count - 1; i > 0; i--) { int j = r.Next(i + 1); (order[i], order[j]) = (order[j], order[i]); }
             foreach (var p in order)
             {
-                if (!Floating(p.Kind)) continue;
+                if (p.Owner != null || pieces[p.Piece].Role != StageKit.Role.Float) continue;
                 if (!(R() < chance || (motion > 0 && !any))) continue;
-                bool vertical = p.Kind == Style.Plank ? R() < 0.6f : R() < 0.35f;
+                bool vertical = pieces[p.Piece].Hangs ? R() < 0.6f : R() < 0.35f;
                 if (!vertical && TrySwing(p, all, Range(0.9f, 2.3f), Range(5f, 9f), R() * MathUtil.Tau)) { any = true; continue; }
                 var lift = Lift(p, supportY[p], all, Range(0.5f, 1.2f), Range(5f, 8f), R() * MathUtil.Tau);
                 if (lift != null)
                 {
                     all[all.IndexOf(p)] = lift;
                     supportY[lift] = supportY[p];
+                    halfOf[lift] = halfOf[p];
                     any = true;
                 }
                 else if (vertical && TrySwing(p, all, Range(0.9f, 2f), Range(5f, 9f), R() * MathUtil.Tau)) any = true;
@@ -284,7 +366,7 @@ namespace SoccerFight
             }
             amp = (high - low) * 0.5f;
             if (amp < 0.3f) return null;
-            return new Platform(p.BaseX0, p.BaseX1, low + amp, p.Kind, p.Seed) { Move = Motion.Vertical, Amp = amp, Period = period, Phase = phase };
+            return new Platform(p.BaseX0, p.BaseX1, low + amp, p.Kind, p.Seed) { Move = Motion.Vertical, Amp = amp, Period = period, Phase = phase, Piece = p.Piece, Scale = p.Scale, Flip = p.Flip };
         }
     }
 }

@@ -1,0 +1,216 @@
+{
+ "id": "eklipse",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2420,
+   "h": 1016,
+   "ppu": 88,
+   "px": 1210,
+   "py": 220
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2580,
+   "h": 284,
+   "ppu": 106,
+   "px": 0,
+   "py": 272
+  },
+  {
+   "name": "slab_broken",
+   "role": "float",
+   "tags": [],
+   "w": 460,
+   "h": 272,
+   "ppu": 106,
+   "px": 256,
+   "py": 244,
+   "walk0": -1.774,
+   "walk1": 1.774,
+   "bottom": -2.283
+  },
+  {
+   "name": "slab_dark",
+   "role": "float",
+   "tags": [],
+   "w": 444,
+   "h": 260,
+   "ppu": 106,
+   "px": 222,
+   "py": 248,
+   "walk0": -1.953,
+   "walk1": 1.953,
+   "bottom": -2.321,
+   "lights": [
+    {
+     "x": -0.217,
+     "y": -0.288,
+     "r": 0.162,
+     "cr": 1,
+     "cg": 0.157,
+     "cb": 0.235
+    }
+   ]
+  },
+  {
+   "name": "truss",
+   "role": "float",
+   "tags": [],
+   "w": 464,
+   "h": 260,
+   "ppu": 106,
+   "px": 230,
+   "py": 246,
+   "walk0": -2.047,
+   "walk1": 2.047,
+   "bottom": -2.302
+  },
+  {
+   "name": "ibeam",
+   "role": "float",
+   "tags": [],
+   "w": 436,
+   "h": 236,
+   "ppu": 106,
+   "px": 209,
+   "py": 224,
+   "walk0": -1.858,
+   "walk1": 1.858,
+   "bottom": -2.094
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 452,
+   "h": 304,
+   "ppu": 106,
+   "px": 211,
+   "py": 216,
+   "walk0": -1.858,
+   "walk1": 1.858,
+   "bottom": -2.019
+  },
+  {
+   "name": "floodlight",
+   "role": "prop",
+   "tags": [
+    "frame",
+    "mid"
+   ],
+   "w": 392,
+   "h": 456,
+   "ppu": 106,
+   "px": 196,
+   "py": 2,
+   "lights": [
+    {
+     "x": 0.989,
+     "y": 2.695,
+     "r": 0.639,
+     "cr": 1,
+     "cg": 0.353,
+     "cb": 0.392
+    }
+   ]
+  },
+  {
+   "name": "banner",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "hang"
+   ],
+   "w": 264,
+   "h": 476,
+   "ppu": 106,
+   "px": 132,
+   "py": 474
+  },
+  {
+   "name": "obelisk",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 416,
+   "h": 484,
+   "ppu": 106,
+   "px": 208,
+   "py": 2,
+   "lights": [
+    {
+     "x": 0.135,
+     "y": 2.834,
+     "r": 0.297,
+     "cr": 1,
+     "cg": 0.157,
+     "cb": 0.235
+    }
+   ]
+  },
+  {
+   "name": "stands",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 436,
+   "h": 348,
+   "ppu": 106,
+   "px": 218,
+   "py": 2
+  },
+  {
+   "name": "scoreboard",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 476,
+   "h": 436,
+   "ppu": 106,
+   "px": 238,
+   "py": 2
+  },
+  {
+   "name": "rock",
+   "role": "prop",
+   "tags": [
+    "sky"
+   ],
+   "w": 312,
+   "h": 388,
+   "ppu": 106,
+   "px": 156,
+   "py": 2
+  }
+ ],
+ "sky": [
+  0.361,
+  0.098,
+  0.149
+ ],
+ "valley": [
+  0.182,
+  0.088,
+  0.125
+ ],
+ "haze": [
+  0.317,
+  0.144,
+  0.209
+ ],
+ "plateX0": 230,
+ "plateRow0": 398,
+ "plateW": 1210,
+ "platePpu": 44,
+ "deep": [
+  0.041,
+  0.034,
+  0.047
+ ]
+}

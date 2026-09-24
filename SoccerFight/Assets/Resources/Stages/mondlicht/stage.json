@@ -1,0 +1,243 @@
+{
+ "id": "mondlicht",
+ "sprites": [
+  {
+   "name": "plate",
+   "role": "plate",
+   "w": 2392,
+   "h": 1016,
+   "ppu": 88,
+   "px": 1196,
+   "py": 220
+  },
+  {
+   "name": "ground",
+   "role": "ground",
+   "w": 2280,
+   "h": 288,
+   "ppu": 106,
+   "px": 0,
+   "py": 274
+  },
+  {
+   "name": "isle_crystal",
+   "role": "float",
+   "tags": [],
+   "w": 416,
+   "h": 336,
+   "ppu": 106,
+   "px": 208,
+   "py": 268,
+   "walk0": -1.802,
+   "walk1": 1.802,
+   "bottom": -2.509,
+   "lights": [
+    {
+     "x": -0.042,
+     "y": -1.64,
+     "r": 0.56,
+     "cr": 0.353,
+     "cg": 0.863,
+     "cb": 1
+    }
+   ]
+  },
+  {
+   "name": "ped_tall",
+   "role": "stand",
+   "tags": [],
+   "w": 400,
+   "h": 404,
+   "ppu": 106,
+   "px": 207,
+   "py": 312,
+   "walk0": -1.623,
+   "walk1": 1.623,
+   "bottom": -2.925
+  },
+  {
+   "name": "ped_mid",
+   "role": "stand",
+   "tags": [],
+   "w": 348,
+   "h": 392,
+   "ppu": 106,
+   "px": 176,
+   "py": 316,
+   "walk0": -1.491,
+   "walk1": 1.491,
+   "bottom": -2.962
+  },
+  {
+   "name": "ped_short",
+   "role": "stand",
+   "tags": [],
+   "w": 328,
+   "h": 344,
+   "ppu": 106,
+   "px": 169,
+   "py": 266,
+   "walk0": -1.368,
+   "walk1": 1.368,
+   "bottom": -2.491
+  },
+  {
+   "name": "end",
+   "role": "end",
+   "tags": [],
+   "w": 452,
+   "h": 340,
+   "ppu": 106,
+   "px": 221,
+   "py": 230,
+   "walk0": -1.849,
+   "walk1": 1.849,
+   "bottom": -2.151
+  },
+  {
+   "name": "tree",
+   "role": "prop",
+   "tags": [
+    "frame",
+    "mid"
+   ],
+   "w": 452,
+   "h": 476,
+   "ppu": 106,
+   "px": 226,
+   "py": 2
+  },
+  {
+   "name": "lantern",
+   "role": "prop",
+   "tags": [
+    "hang"
+   ],
+   "w": 188,
+   "h": 488,
+   "ppu": 106,
+   "px": 94,
+   "py": 486,
+   "lights": [
+    {
+     "x": 0.006,
+     "y": -2.574,
+     "r": 0.885,
+     "cr": 1,
+     "cg": 0.667,
+     "cb": 0.235
+    }
+   ]
+  },
+  {
+   "name": "banner",
+   "role": "prop",
+   "tags": [
+    "hang"
+   ],
+   "w": 300,
+   "h": 448,
+   "ppu": 106,
+   "px": 150,
+   "py": 446
+  },
+  {
+   "name": "arch",
+   "role": "prop",
+   "tags": [
+    "mid"
+   ],
+   "w": 480,
+   "h": 420,
+   "ppu": 106,
+   "px": 240,
+   "py": 2
+  },
+  {
+   "name": "crystal",
+   "role": "prop",
+   "tags": [
+    "mid",
+    "back"
+   ],
+   "w": 436,
+   "h": 372,
+   "ppu": 106,
+   "px": 218,
+   "py": 2,
+   "lights": [
+    {
+     "x": 0.039,
+     "y": 1.903,
+     "r": 1.71,
+     "cr": 0.353,
+     "cg": 0.863,
+     "cb": 1
+    }
+   ]
+  },
+  {
+   "name": "bush",
+   "role": "prop",
+   "tags": [
+    "back",
+    "mid"
+   ],
+   "w": 476,
+   "h": 304,
+   "ppu": 106,
+   "px": 238,
+   "py": 2
+  },
+  {
+   "name": "isle_cap_a",
+   "role": "float",
+   "tags": [],
+   "w": 384,
+   "h": 264,
+   "ppu": 106,
+   "px": 191,
+   "py": 170,
+   "walk0": -1.623,
+   "walk1": 1.623,
+   "bottom": -1.585
+  },
+  {
+   "name": "isle_cap_b",
+   "role": "float",
+   "tags": [],
+   "w": 348,
+   "h": 204,
+   "ppu": 106,
+   "px": 176,
+   "py": 126,
+   "walk0": -1.491,
+   "walk1": 1.491,
+   "bottom": -1.17
+  }
+ ],
+ "sky": [
+  0.035,
+  0.194,
+  0.463
+ ],
+ "valley": [
+  0.099,
+  0.171,
+  0.262
+ ],
+ "haze": [
+  0.163,
+  0.272,
+  0.459
+ ],
+ "plateX0": 340,
+ "plateRow0": 398,
+ "plateW": 1196,
+ "platePpu": 44,
+ "deep": [
+  0.036,
+  0.053,
+  0.094
+ ]
+}
