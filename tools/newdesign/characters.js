@@ -8,7 +8,8 @@
 // Nachbarglied reichen, damit beim Beugen keine Lücke aufgeht. Was in der Seitenansicht verdeckt ist
 // (Rumpf und Hose hinter dem Arm, Socke im Schuh), wird aus den Nachbarpixeln aufgefüllt.
 // Die Glieder werden so gedreht, dass der Knochen senkrecht nach unten zeigt (so erwartet es PlayerRig).
-// Texturen: vormultipliziertes Alpha, wie bei den Design-Bildern (build.js).
+// Texturen: normales (nicht vormultipliziertes) Alpha, der Shader multipliziert im linearen Raum; dazu pro Figur
+// eine einkanalige Umriss-Maske (<id>_rim.png) für das Mondlicht an der echten Außenkante.
 'use strict';
 const sharp = require('sharp');
 const fs = require('fs');
@@ -91,12 +92,17 @@ function bboxOf(polys, pad) {
  * Ein Bereich des Bogens als eigenes Bild: Umriss poly; was unter hide liegt (davor liegende Teile), gilt als
  * unbekannt und wird aufgefüllt, ebenso Stellen im Umriss, die in der Vorlage fehlen, aber unter hide liegen.
  * zones: Unterbereiche, deren Lücken nur aus ihren eigenen Pixeln gefüllt werden (Hose vs. Haut).
+ * disc: zusätzliche Kreisscheibe {c, r}, die mit zum Bereich gehört und aufgefüllt wird (runde Hüfte des Hosenbeins).
  */
-function region(img, poly, hide = [], zones = [], fillFrom = null) {
-    const box = bboxOf([poly], 3);
+function region(img, poly, hide = [], zones = [], fillFrom = null, disc = null) {
+    const box = disc ? bboxOf([poly, [[disc.c[0] - disc.r, disc.c[1] - disc.r], [disc.c[0] + disc.r, disc.c[1] + disc.r]]], 3) : bboxOf([poly], 3);
     const [bx, by, w, h] = box;
     const inside = cover(box, polyTest(poly));
     const hidden = hide.length ? cover(box, anyPoly(hide)) : new Float32Array(w * h);
+    if (disc) {
+        const dc = cover(box, (x, y) => Math.hypot(x - disc.c[0], y - disc.c[1]) < disc.r);
+        for (let i = 0; i < w * h; i++) { hidden[i] = Math.max(hidden[i], dc[i] * (1 - inside[i])); inside[i] = Math.max(inside[i], dc[i]); }
+    }
     const rgb = new Float32Array(w * h * 3), a = new Float32Array(w * h), known = new Uint8Array(w * h);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
         const i = y * w + x, sx = bx + x, sy = by + y;
@@ -116,7 +122,7 @@ function region(img, poly, hide = [], zones = [], fillFrom = null) {
     });
     if (fillFrom) for (let i = 0; i < w * h; i++) if (known[i] && !fillFrom(bx + i % w, by + ((i / w) | 0), rgb, i)) known[i] = 0;
     inpaint(rgb, known, a, zone, w, h);
-    return { box, w, h, rgb, a };
+    return { box, w, h, rgb, a, a0: a };
 }
 
 /** Füllt unbekannte Pixel glatt aus den bekannten (Diffusion, grob → fein), getrennt nach Zonen. */
@@ -180,31 +186,53 @@ function inpaint(rgb, known, a, zone, w, h) {
     }
 }
 
-/** Beschneidet einen Bereich mit einer Deckungsfunktion (Bogen-Koordinaten). */
-function clip(reg, test) {
-    const cov = cover(reg.box, test);
-    const a = new Float32Array(reg.a.length);
-    for (let i = 0; i < a.length; i++) a[i] = reg.a[i] * cov[i];
+/** Weiche Schnittkante: so viele Pixel breit läuft ein Schnitt aus (harte Kanten sieht man als Naht). */
+const FEATHER = 3;
+
+/** Beschneidet einen Bereich mit einer Abstandsfunktion (Bogen-Koordinaten, < 0 innen); die Kante läuft weich aus. */
+function clip(reg, sdf, feather = FEATHER) {
+    const [bx, by, w, h] = reg.box, a = new Float32Array(reg.a.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (reg.a[i] <= 0) continue;
+        const d = sdf(bx + x + 0.5, by + y + 0.5);
+        a[i] = reg.a[i] * Math.min(1, Math.max(0, 0.5 - d / feather));
+    }
     return { ...reg, a };
 }
 
 /**
- * Glied zwischen Gelenk A (oben) und B (unten): Streifen zwischen den Querschnitten durch A und B, an beiden Enden
- * um eine Kreisscheibe verlängert. rA/rB = null: an diesem Ende nicht beschneiden.
+ * Glied zwischen Gelenk A (oben) und B (unten) als Abstandsfunktion: Streifen zwischen den Querschnitten durch A und B,
+ * an beiden Enden um eine Kreisscheibe verlängert (rA/rB = null: dort nicht beschneiden). tube: zusätzlich eine
+ * Kapsel dieses Radius um den Knochen (rundes Hosenbein statt eckigem Kasten).
  */
-function segTest(A, B, rA, rB, half = 1e9) {
+function segSdf(A, B, rA, rB, tube = 0) {
     const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
     return (x, y) => {
         const t = (x - A[0]) * ux + (y - A[1]) * uy;
-        if (Math.abs((x - A[0]) * uy - (y - A[1]) * ux) > half) return false;
-        const okA = rA == null || t >= 0 || Math.hypot(x - A[0], y - A[1]) < rA;
-        const okB = rB == null || t <= L || Math.hypot(x - B[0], y - B[1]) < rB;
-        return okA && okB;
+        let d = -1e9;
+        if (rA != null) d = Math.max(d, Math.min(-t, Math.hypot(x - A[0], y - A[1]) - rA));
+        if (rB != null) d = Math.max(d, Math.min(t - L, Math.hypot(x - B[0], y - B[1]) - rB));
+        if (tube) {
+            const k = Math.max(0, Math.min(L, t));
+            d = Math.max(d, Math.hypot(x - A[0] - ux * k, y - A[1] - uy * k) - tube);
+        }
+        return d;
     };
 }
 
-/** Dreht/verschiebt ein Teil so, dass pivot (Bogen-Koordinaten) der Drehpunkt ist und dir nach unten zeigt. */
-function orient(reg, pivot, dir) {
+/** Ellipse als Abstandsfunktion (angenähert, reicht für eine weiche Kante). */
+const ellipseSdf = (c, rx, ry) => (x, y) => (Math.hypot((x - c[0]) / rx, (y - c[1]) / ry) - 1) * Math.min(rx, ry);
+
+/** Rand um jedes Teil: so weit tastet der Shader nach der Umriss-Maske (Mondlicht-Kante, SF_Character _RimWidth). */
+const MARGIN = 22;
+
+/**
+ * Dreht/verschiebt ein Teil so, dass pivot (Bogen-Koordinaten) der Drehpunkt ist und dir nach unten zeigt. Neben der
+ * Farbe entsteht die Umriss-Maske: die Silhouette der ganzen Figur im Bogen (plus aufgefüllte, sonst verdeckte
+ * Flächen). Der Shader setzt das Mondlicht nur dort, wo diese Maske endet – an Schnittkanten zwischen Teilen nicht.
+ */
+function orient(img, reg, pivot, dir) {
     // Winkel, um den gedreht wird: dir → (0, 1) (Bild-y zeigt nach unten)
     const ang = dir ? Math.atan2(dir[0], dir[1]) : 0;   // dir = (sinθ, cosθ) relativ zu unten
     const c = Math.cos(ang), s = Math.sin(ang);
@@ -219,9 +247,19 @@ function orient(reg, pivot, dir) {
             u0 = Math.min(u0, u); v0 = Math.min(v0, v); u1 = Math.max(u1, u); v1 = Math.max(v1, v);
         }
     }
-    const pad = 2;
+    const pad = MARGIN;
     const U0 = Math.floor(u0) - pad, V0 = Math.floor(v0) - pad, W = Math.ceil(u1) + pad - U0, H = Math.ceil(v1) + pad - V0;
     const buf = new Float32Array(W * H * 4);   // vormultipliziert
+    const mask = new Float32Array(W * H);
+    const a0 = reg.a0 || reg.a;
+    const maskAt = (sx, sy) => {
+        const x = Math.floor(sx), y = Math.floor(sy);
+        let m = 0;
+        if (x >= 0 && y >= 0 && x < img.W && y < img.H) m = img.a[y * img.W + x];
+        const rx = x - bx, ry = y - by;
+        if (rx >= 0 && ry >= 0 && rx < w && ry < h) m = Math.max(m, a0[ry * w + rx]);
+        return m;
+    };
     const sample = (sx, sy) => {
         // bilinear im vormultiplizierten Raum
         const fx = sx - bx - 0.5, fy = sy - by - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
@@ -238,19 +276,114 @@ function orient(reg, pivot, dir) {
         const [sx, sy] = inv(U0 + x + 0.5, V0 + y + 0.5);
         const v = sample(sx, sy);
         buf.set(v, (y * W + x) * 4);
+        // Maske 2×2 gemittelt (weich genug für den Shader, ohne Treppen)
+        mask[y * W + x] = (maskAt(sx - 0.25, sy - 0.25) + maskAt(sx + 0.25, sy - 0.25) + maskAt(sx - 0.25, sy + 0.25) + maskAt(sx + 0.25, sy + 0.25)) / 4;
     }
+    straighten(buf, W, H);
     // Drehpunkt im Teilbild (Pixel von links/oben)
-    return { W, H, buf, px: -U0, py: -V0 };
+    return { W, H, buf, mask, px: -U0, py: -V0 };
+}
+
+/**
+ * Vormultipliziert → normales Alpha, und durchsichtige Pixel bekommen die Farbe des nächsten sichtbaren (8 px weit).
+ * Die Texturen liegen im sRGB-Raum, Unity filtert und mischt aber linear: vormultipliziert gespeichert würden
+ * halbdurchsichtige Kanten zu dunkel – wo zwei Teile weich übereinanderliegen (Ellbogen, Knie) als feine dunkle
+ * Linie. Mit normalem Alpha multipliziert erst der Shader, im richtigen Raum.
+ */
+function straighten(buf, W, H) {
+    const has = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+        const a = buf[i * 4 + 3];
+        if (a > 0.002) { for (let k = 0; k < 3; k++) buf[i * 4 + k] = Math.min(1, buf[i * 4 + k] / a); has[i] = 1; }
+    }
+    for (let pass = 0; pass < 8; pass++) {
+        const add = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            const i = y * W + x;
+            if (has[i]) continue;
+            let n = 0, r = 0, g = 0, b = 0;
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const xx = x + dx, yy = y + dy;
+                if (xx < 0 || yy < 0 || xx >= W || yy >= H || !has[yy * W + xx]) continue;
+                const j = yy * W + xx;
+                n++; r += buf[j * 4]; g += buf[j * 4 + 1]; b += buf[j * 4 + 2];
+            }
+            if (n) add.push([i, r / n, g / n, b / n]);
+        }
+        if (!add.length) break;
+        for (const [i, r, g, b] of add) { buf[i * 4] = r; buf[i * 4 + 1] = g; buf[i * 4 + 2] = b; has[i] = 1; }
+    }
 }
 
 const lum = (r, g, b) => 0.3 * r + 0.55 * g + 0.15 * b;
+
+/** Die Farben, die in einem Bereich deutlich vorkommen (ab share Anteil), häufigste zuerst. */
+function colorsOf(reg, share = 0.02) {
+    const bins = new Map();
+    let n = 0;
+    for (let i = 0; i < reg.a.length; i++) if (reg.a[i] > 0.9) {
+        const key = ((reg.rgb[i * 3] * 7.99) | 0) * 64 + ((reg.rgb[i * 3 + 1] * 7.99) | 0) * 8 + ((reg.rgb[i * 3 + 2] * 7.99) | 0);
+        const b = bins.get(key) || [0, 0, 0, 0];
+        b[0]++; b[1] += reg.rgb[i * 3]; b[2] += reg.rgb[i * 3 + 1]; b[3] += reg.rgb[i * 3 + 2];
+        bins.set(key, b);
+        n++;
+    }
+    return [...bins.values()].filter(b => b[0] >= n * share).sort((a, b) => b[0] - a[0]).map(b => [b[1] / b[0], b[2] / b[0], b[3] / b[0]]);
+}
+
+const colorDist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+/** Abstand eines Punkts zum Rand eines Polygons. */
+function polyEdgeDist(poly, x, y) {
+    let d = 1e9;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [ax, ay] = poly[j], [bx, by] = poly[i], ex = bx - ax, ey = by - ay;
+        const t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
+        d = Math.min(d, Math.hypot(x - ax - ex * t, y - ay - ey * t));
+    }
+    return d;
+}
+
+/**
+ * Schabt am Rand eines Bereichs (bis 9 px tief, unterhalb von belowY) ab, was eher nach Stoff (cloth: Hose, Trikot)
+ * als nach dem Teil selbst (own: Haut, Ärmel) aussieht: Reste, die beim Ausschneiden neben Faust und Unterarm hängen
+ * blieben. Mischpixel an der Farbgrenze werden anteilig durchsichtig, danach wird die neue Kante leicht geglättet.
+ */
+function shave(reg, poly, own, cloth, belowY, aboveY = 1e9) {
+    const [bx, by, w, h] = reg.box, a = Float32Array.from(reg.a);
+    const minDist = (i, cs) => Math.min(...cs.map(c => colorDist([reg.rgb[i * 3], reg.rgb[i * 3 + 1], reg.rgb[i * 3 + 2]], c)));
+    const keep = new Float32Array(w * h).fill(1);
+    for (let y = 0; y < h; y++) {
+        if (by + y < belowY || by + y >= aboveY) continue;
+        for (let x = 0; x < w; x++) {
+            const i = y * w + x;
+            if (a[i] <= 0 || polyEdgeDist(poly, bx + x + 0.5, by + y + 0.5) > 9) continue;
+            const dO = minDist(i, own), dC = minDist(i, cloth), t = dO / (dO + dC + 1e-6);
+            keep[i] = 1 - Math.min(1, Math.max(0, (t - 0.4) / 0.2));
+        }
+    }
+    // Kante glätten: 3×3-Mittel der Deckung, nur wo abgeschabt wurde
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        let s = 0, n = 0, touched = false;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const xx = x + dx, yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+            const k = keep[yy * w + xx];
+            s += k; n++;
+            if (k < 1) touched = true;
+        }
+        if (touched) a[i] *= Math.min(keep[i], s / n) * 0.5 + keep[i] * 0.5;
+    }
+    return { ...reg, a, a0: a };
+}
 
 /** Färbt helle, ungesättigte Stoffpixel in Haut um (Schattierung bleibt); die Hautfarbe stammt unterhalb von below (Faust). */
 function skinned(reg, below) {
     const [, by, w, h] = reg.box, rgb = Float32Array.from(reg.rgb);
     const cloth = i => {
         const r = rgb[i * 3], g = rgb[i * 3 + 1], b = rgb[i * 3 + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-        return mx > 0.45 && (mx - mn) / mx < 0.2;
+        return mx > 0.25 && (mx - mn) / mx < 0.22;   // auch die schattigen Ärmelkanten
     };
     let n = 0, sr = 0, sg = 0, sb = 0, cl = 0, cn = 0;
     for (let i = 0; i < w * h; i++) {
@@ -277,33 +410,69 @@ async function buildFigure(id) {
     J.ankle = [J.ankle[0], F.sole - ANKLE * ppu];
     const parts = {};
 
-    const armHide = [F.arm];
-    // Rumpf, Hose, Hals, Kopf
-    parts.Torso = orient(region(img, F.torso, armHide), J.hip, null);
-    parts.Pelvis = orient(region(img, F.pelvis, [F.arm, F.torso]), J.hip, null);
-    parts.Neck = orient(region(img, F.neck, [F.torso, ...(F.neckHide || [])]), J.neck, null);
-    parts.Head = orient(region(img, F.head, F.headHide || []), J.head, null);
-    if (F.tuft) parts.HairTuft = orient(region(img, F.tuft.poly), F.tuft.root, null);
-
-    // Bein: ein Bereich (Hosenbein, Oberschenkel, Unterschenkel), der Schuh eigens
-    const leg = region(img, F.leg, [F.arm, F.boot], F.legZones || []);
+    const o = (reg, pivot, dir) => orient(img, reg, pivot, dir);
     const d = (A, B) => [B[0] - A[0], B[1] - A[1]];
-    parts.Thigh = orient(clip(leg, segTest(J.hip, J.knee, 999, F.r.kneeCap, F.r.thighHalf)), J.hip, d(J.hip, J.knee));
-    parts.Shin = orient(clip(leg, segTest(J.knee, J.ankle, F.r.knee * 1.05, F.r.ankle)), J.knee, d(J.knee, J.ankle));
-    parts.Boot = orient(region(img, F.boot), J.ankle, null);
+    const th = F.r.thighHalf;
+    // Rumpf, Hose, Hals, Kopf. Die Hose endet unten rund, knapp über dem Saum: das Hosenbein darunter gehört zum
+    // Oberschenkel und schwingt mit dem Bein (sonst hinge beim Hochziehen des Knies ein starrer Kasten darunter).
+    parts.Torso = o(region(img, F.torso, [F.arm]), J.hip, null);
+    parts.Pelvis = o(clip(region(img, F.pelvis, [F.arm, F.torso]), ellipseSdf([J.hip[0] + 3, J.hip[1] - 6], th * 1.45, th * 0.98), 5), J.hip, null);
+    parts.Neck = o(region(img, F.neck, [F.torso, ...(F.neckHide || [])]), J.neck, null);
+    parts.Head = o(region(img, F.head, F.headHide || []), J.head, null);
+    if (F.tuft) parts.HairTuft = o(region(img, F.tuft.poly), F.tuft.root, null);
+
+    // Bein: ein Bereich (Hosenbein, Oberschenkel, Unterschenkel), der Schuh eigens. Was oben vom Trikot ins Hosenbein
+    // reicht und was die Faust verdeckt, wird mit Hosenstoff aufgefüllt; unter dem Saum bis zum Knie mit Haut (eigene
+    // Zone, sonst gewänne die Socke als Hauptfarbe). Die Vorderkante unter dem Saum rückt ein paar Pixel ein: dort
+    // grenzt in der Seitenansicht das hintere Bein an, das sonst als Streifen mitkäme.
+    // Zonen: alles über dem Saum ist Hose (auch der Hüftkreis unter dem Trikot), dann die eigenen der Figur
+    // (Titans Knieschoner), dann Haut bis zum Knie
+    const hem = F.legZones ? Math.max(...F.legZones[0].map(p => p[1])) : J.hip[1] + 45;
+    const zones = [[[0, 0], [2000, 0], [2000, hem], [0, hem]], ...(F.legZones || []).slice(1)];
+    zones.push([[0, hem], [2000, hem], [2000, J.knee[1] + 22], [0, J.knee[1] + 22]]);
+    const inset = F.legInset == null ? 4 : F.legInset;
+    const legPoly = F.leg.map(([x, y]) => y > hem + 2 && x > J.knee[0] ? [x - inset, y] : [x, y]);
+    // Das Hosenbein ist an der Hüfte eine Kreisscheibe um das Hüftgelenk (unter dem Trikot mit Hosenstoff aufgefüllt):
+    // so bleibt sein Umriss beim Anheben des Beins gleich, statt dass eine gerade Stoffkante wie eine Klappe
+    // herausragt. Nach unten weitet es sich bis zum Saum auf die volle Hosenbreite.
+    const rTop = th * 1.15, rHem = th * 1.3, hemT = Math.max(10, hem - J.hip[1]);
+    const leg = region(img, legPoly, [F.arm, F.boot, F.torso], zones, null, { c: J.hip, r: rTop });
+    const kneeEnd = segSdf(J.hip, J.knee, null, F.r.kneeCap);
+    const thighSdf = (x, y) => {
+        const ux = J.knee[0] - J.hip[0], uy = J.knee[1] - J.hip[1], L = Math.hypot(ux, uy);
+        const t = ((x - J.hip[0]) * ux + (y - J.hip[1]) * uy) / L, k = Math.max(0, Math.min(L, t));
+        const r = rTop + (rHem - rTop) * Math.max(0, Math.min(1, t / hemT));
+        const tube = Math.hypot(x - J.hip[0] - ux / L * k, y - J.hip[1] - uy / L * k) - r;
+        // thighCut: endet der Oberschenkel schon am Saum (Knieschoner gehört ganz zum Unterschenkel)
+        return Math.max(tube, kneeEnd(x, y), F.r.thighCut ? t - F.r.thighCut : -1e9);
+    };
+    parts.Thigh = o(clip(leg, thighSdf), J.hip, d(J.hip, J.knee));
+    parts.Shin = o(clip(leg, segSdf(J.knee, J.ankle, F.r.knee * 1.05, F.r.ankle)), J.knee, d(J.knee, J.ankle));
+    parts.Boot = o(region(img, F.boot), J.ankle, null);
 
     // Arm: Oberarm (mit Ärmel), Unterarm, Hand
-    const arm = region(img, F.arm, [], F.armZones || []);
-    parts.UpperArm = orient(clip(arm, segTest(J.shoulder, J.elbow, 999, F.r.elbowCap || F.r.elbow)), J.shoulder, d(J.shoulder, J.elbow));
-    parts.Forearm = orient(clip(arm, segTest(J.elbow, J.wrist, F.r.elbow * 1.05, F.r.wrist)), J.elbow, d(J.elbow, J.wrist));
-    parts.Hand = orient(clip(arm, segTest(J.wrist, [J.wrist[0] + d(J.elbow, J.wrist)[0], J.wrist[1] + d(J.elbow, J.wrist)[1]], F.r.wrist * 1.05, null)), J.wrist, d(J.elbow, J.wrist));
-
+    const armParts = (reg, far) => {
+        const hand = [J.wrist[0] + d(J.elbow, J.wrist)[0], J.wrist[1] + d(J.elbow, J.wrist)[1]];
+        parts['UpperArm' + far] = o(clip(reg, segSdf(J.shoulder, J.elbow, null, F.r.elbowCap || F.r.elbow)), J.shoulder, d(J.shoulder, J.elbow));
+        parts['Forearm' + far] = o(clip(reg, segSdf(J.elbow, J.wrist, F.r.elbow * 1.05, F.r.wrist)), J.elbow, d(J.elbow, J.wrist));
+        if (!far) parts.Hand = o(clip(reg, segSdf(J.wrist, hand, F.r.wrist * 1.05, null)), J.wrist, d(J.elbow, J.wrist));
+    };
+    // Vorderkante des Ärmels ein paar Pixel einrücken (dahinter liegt die Brust); unterhalb des Ellbogens alles am
+    // Rand abschaben, was nach Hose oder Trikot aussieht – die Faust liegt in der Seitenansicht auf der Hose.
+    const armPoly = F.arm.map(([x, y]) => y > J.shoulder[1] && y < J.elbow[1] && x > J.shoulder[0] ? [x - 3, y] : [x, y]);
+    const rawArm = region(img, armPoly, [], F.armZones || []);
+    // eigene Farben je Abschnitt (Oberarm, Unterarm, Faust): Haut, Ärmel – was sonst am Rand hängt, ist Stoff
+    const clothAll = [...colorsOf(region(img, F.pelvis, [F.arm, F.torso]), 0.004), ...colorsOf(region(img, F.torso, [F.arm]), 0.004)];
+    // nur das Innere (ab 10 px vom Rand): dort liegen keine Fremdpixel
+    const band = (y0, y1) => clip(rawArm, (x, y) => Math.max(y0 - y, y - y1, 10 - polyEdgeDist(armPoly, x, y)));
+    const shaveBand = (reg, y0, y1) => {
+        const own = colorsOf(band(y0 + 6, y1), 0.03);
+        return shave(reg, armPoly, own, clothAll.filter(c => own.every(o => colorDist(c, o) > 0.25)), y0, y1);
+    };
+    const arm = shaveBand(shaveBand(shaveBand(rawArm, J.shoulder[1] + 18, J.elbow[1] - 4), J.elbow[1] - 4, J.wrist[1] + 6), J.wrist[1] + 6, 1e9);
+    armParts(arm, '');
     // hinterer Arm ohne Ärmel (Kompressionsärmel nur am vorderen Arm): helle Stoffpixel bekommen die Hautfarbe der Faust
-    if (F.farSkin) {
-        const bare = skinned(arm, J.wrist);
-        parts.UpperArmFar = orient(clip(bare, segTest(J.shoulder, J.elbow, 999, F.r.elbowCap || F.r.elbow)), J.shoulder, d(J.shoulder, J.elbow));
-        parts.ForearmFar = orient(clip(bare, segTest(J.elbow, J.wrist, F.r.elbow * 1.05, F.r.wrist)), J.elbow, d(J.elbow, J.wrist));
-    }
+    if (F.farSkin) armParts(skinned(arm, J.wrist), 'Far');
 
     // Maße in Spieleinheiten (Bild-y zeigt nach unten → Spiel-y umdrehen)
     const u = (A, B) => [(B[0] - A[0]) / ppu, -(B[1] - A[1]) / ppu];
@@ -336,13 +505,14 @@ async function writeAtlas(fig) {
     }
     const H = y + row + gap;
     const AW = Math.ceil(W / 4) * 4, AH = Math.ceil(H / 4) * 4;
-    const out = Buffer.alloc(AW * AH * 4);
+    const out = Buffer.alloc(AW * AH * 4), rim = Buffer.alloc(AW * AH);
     const sprites = [];
     for (const n of names) {
         const p = fig.parts[n], [ox, oy] = place[n];
         for (let yy = 0; yy < p.H; yy++) for (let xx = 0; xx < p.W; xx++) {
             const i = (yy * p.W + xx) * 4, o = ((oy + yy) * AW + ox + xx) * 4;
             for (let k = 0; k < 4; k++) out[o + k] = Math.max(0, Math.min(255, Math.round(p.buf[i + k] * 255)));
+            rim[(oy + yy) * AW + ox + xx] = Math.max(0, Math.min(255, Math.round(p.mask[yy * p.W + xx] * 255)));
         }
         // Unity: Rechteck und Drehpunkt von unten links
         sprites.push({ name: n, x: ox, y: AH - oy - p.H, w: p.W, h: p.H, px: p.px, py: p.H - p.py });
@@ -351,6 +521,10 @@ async function writeAtlas(fig) {
     const file = path.join(OUT, fig.id + '.png');
     await sharp(out, { raw: { width: AW, height: AH, channels: 4 } }).png({ compressionLevel: 9 }).toFile(file);
     writeMeta(file);
+    // Umriss-Maske im selben Layout (einkanalig): der Shader liest sie als _RimMask
+    const rimFile = path.join(OUT, fig.id + '_rim.png');
+    await sharp(rim, { raw: { width: AW, height: AH, channels: 1 } }).png({ compressionLevel: 9 }).toFile(rimFile);
+    writeMeta(rimFile, true);
     const json = { id: fig.id, ppu: +fig.ppu.toFixed(3), body: round(fig.body), sprites };
     fs.writeFileSync(path.join(OUT, fig.id + '.json'), JSON.stringify(json, null, 1) + '\n');
     plainMeta(path.join(OUT, fig.id + '.json'), false);
@@ -366,8 +540,8 @@ function round(o) {
     return r;
 }
 
-/** Unity-Importeinstellungen wie bei den Design-Bildern: vormultipliziert, Mipmaps, Clamp, verlustfrei. */
-function writeMeta(file) {
+/** Unity-Importeinstellungen: normales Alpha, Mipmaps, Clamp, verlustfrei. mask: einkanalig, linear. */
+function writeMeta(file, mask = false) {
     const meta = file + '.meta';
     let guid = require('crypto').randomBytes(16).toString('hex');
     if (fs.existsSync(meta)) { const m = /guid: ([0-9a-f]{32})/.exec(fs.readFileSync(meta, 'utf8')); if (m) guid = m[1]; }
@@ -394,7 +568,7 @@ TextureImporter:
   mipmaps:
     mipMapMode: 0
     enableMipMap: 1
-    sRGBTexture: 1
+    sRGBTexture: ${mask ? 0 : 1}
     linearTexture: 0
     fadeOut: 0
     borderMipMap: 0
@@ -419,9 +593,10 @@ TextureImporter:
   compressionQuality: 100
   spriteMode: 0
   alphaUsage: 1
-  alphaIsTransparency: 0
-  textureType: 0
+  alphaIsTransparency: ${mask ? 0 : 1}
+  textureType: ${mask ? 10 : 0}
   textureShape: 1
+  singleChannelComponent: 1
   maxTextureSizeSet: 0
   compressionQualitySet: 0
   textureFormatSet: 0

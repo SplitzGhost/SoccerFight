@@ -1,8 +1,12 @@
-// Character sprite shader. Same premultiplied-alpha contract as SoccerFight/Sprite, plus scene
-// lighting so the rigged player sits in the moonlit world instead of looking pasted on:
+// Character sprite shader for the cut-out player parts. The texture has straight alpha (it is premultiplied here,
+// after the sRGB decode: premultiplied in the file, soft edges would come out too dark in linear space and every
+// joint where two parts overlap softly would show a thin dark line). Output is premultiplied like SoccerFight/Sprite.
+// Scene lighting makes the rigged player sit in the moonlit world instead of looking pasted on:
 //  - moon rim: edges that face a world-space direction are lit by cool light. The edge test samples the
 //    alpha a little way towards the light in the sprite's own UV space (mapped through screen-space
-//    derivatives), so it stays correct for every bone rotation and for the facing flip.
+//    derivatives), so it stays correct for every bone rotation and for the facing flip. The taps read the part's
+//    rim mask (secondary sprite texture _RimMask: the whole figure's silhouette on the design sheet), so the cut
+//    edges where two body parts meet stay dark and only the real outline catches the light.
 //  - bounce: a faint teal fill on edges that face the grass
 //  - ambient: cool tint and contact darkening close to the pitch (world y = 0)
 // _Solid = 1 fills the sprite with the renderer color (hit flashes).
@@ -11,6 +15,7 @@ Shader "SoccerFight/Character"
     Properties
     {
         _MainTex ("Sprite Texture", 2D) = "white" {}
+        _RimMask ("Rim Mask (silhouette)", 2D) = "white" {}
         _Solid ("Solid Fill", Range(0, 1)) = 0
         _RimColor ("Rim Color", Color) = (0.74, 0.95, 1, 1)
         _RimDir ("Rim Direction (world)", Vector) = (0.62, 0.78, 0, 0)
@@ -61,6 +66,9 @@ Shader "SoccerFight/Character"
 
             #include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/2DCommon.hlsl"
 
+            TEXTURE2D(_RimMask);
+            SAMPLER(sampler_RimMask);
+
             CBUFFER_START(UnityPerMaterial)
                 half4 _Color;
                 float _Solid;
@@ -103,19 +111,20 @@ Shader "SoccerFight/Character"
             half4 frag(Varyings i) : SV_Target
             {
                 half4 tex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+                tex.rgb *= tex.a;
                 half a = tex.a;
 
                 // edges facing the moon: three taps for a soft falloff. The band is wide enough to reach
                 // past the dark contour into the coloured surface.
                 float2 rimOff = WorldToUvOffset(i.uv, i.worldXY, normalize(_RimDir.xy) * _RimWidth);
-                half r1 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + rimOff * 0.34).a;
-                half r2 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + rimOff * 0.67).a;
-                half r3 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + rimOff).a;
+                half r1 = SAMPLE_TEXTURE2D(_RimMask, sampler_RimMask, i.uv + rimOff * 0.34).r;
+                half r2 = SAMPLE_TEXTURE2D(_RimMask, sampler_RimMask, i.uv + rimOff * 0.67).r;
+                half r3 = SAMPLE_TEXTURE2D(_RimMask, sampler_RimMask, i.uv + rimOff).r;
                 half rim = saturate(a - (r1 + r2 + r3) * (half)0.3333);
 
                 // edges facing the grass
                 float2 bounceOff = WorldToUvOffset(i.uv, i.worldXY, float2(0, -_BounceWidth));
-                half bounce = saturate(a - SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv + bounceOff).a);
+                half bounce = saturate(a - SAMPLE_TEXTURE2D(_RimMask, sampler_RimMask, i.uv + bounceOff).r);
 
                 // light, not paint: the surface colour is multiplied by ambient + moon + bounce, so the
                 // dark contour stays dark where the moon hits it instead of turning into a pale outline

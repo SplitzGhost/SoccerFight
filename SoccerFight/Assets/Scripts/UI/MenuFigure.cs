@@ -61,6 +61,7 @@ namespace SoccerFight
         Image Part(string name)
         {
             var img = UiKit.Img(name, Root, null, Color.white, Vector2.zero, Vector2.one);
+            img.material = Art.UiFigureMat;   // blends the soft joint edges of overlapping parts without a seam
             return img;
         }
 

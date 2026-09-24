@@ -29,6 +29,9 @@ Spieländerungen mitgepflegt werden.**
   (`Inspiration/CharackterNewDesign`, Seitenansicht) in Glieder und schreibt `Resources/Characters/<id>.png/.json`
   (Atlas + Drehpunkte + gemessenes Skelett → `PlayerBody`). Umrisse/Gelenke stehen in `characters.def.js`. Die
   Animation bleibt prozedural (`PlayerRig`, `MenuFigure`). Knöchel liegt immer `PlayerDims.AnkleHeight` (0,13) über der Sohle.
+  Anders als die Welt-Bilder haben die Figuren-Atlanten **normales Alpha** (Shader multipliziert, sonst dunkle Nähte
+  an den Gelenken) und eine Umriss-Maske `<id>_rim.png` (Sekundärtextur `_RimMask` für das Mondlicht); Menüfigur-Teile
+  brauchen das Material `Art.UiFigureMat`.
 - Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
 - Skripte: `SoccerFight/Assets/Scripts/` (Namespace `SoccerFight`), Ordner Art, Ball, Combat, Core, Enemies, FX,
   Meta, Net, Player, Run, UI, World, Editor, DevTools.

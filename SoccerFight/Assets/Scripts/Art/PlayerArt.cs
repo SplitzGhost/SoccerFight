@@ -151,11 +151,15 @@ namespace SoccerFight
             var tex = Resources.Load<Texture2D>("Characters/" + def.Id);
             if (sheet == null || tex == null) { Debug.LogError("[SoccerFight] Figurenbild fehlt: " + def.Id); return look; }
             tex.wrapMode = TextureWrapMode.Clamp;
+            // the figure's silhouette in the same layout: the character shader lights only the real outline
+            var rim = Resources.Load<Texture2D>("Characters/" + def.Id + "_rim");
+            var secondary = rim != null ? new[] { new SecondarySpriteTexture { name = "_RimMask", texture = rim } } : null;
 
             Sprite upperFar = null, foreFar = null;
             foreach (var e in sheet.sprites)
             {
-                var s = Sprite.Create(tex, new Rect(e.x, e.y, e.w, e.h), new Vector2(e.px / e.w, e.py / e.h), sheet.ppu, 0, SpriteMeshType.FullRect);
+                var s = Sprite.Create(tex, new Rect(e.x, e.y, e.w, e.h), new Vector2(e.px / e.w, e.py / e.h), sheet.ppu, 0,
+                    SpriteMeshType.FullRect, Vector4.zero, false, secondary);
                 s.name = def.Id + " " + e.name;
                 switch (e.name)
                 {

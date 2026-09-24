@@ -178,6 +178,10 @@ Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBod
 bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
 Dre trägt den Kompressionsärmel nur am vorderen Arm. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
 anpassen und `node characters.js` laufen lassen (`SF_DEBUG=<ordner>` schreibt zusätzlich Prüfbilder).
+Die Schnitte an den Gelenken laufen weich aus, das Hosenbein ist an der Hüfte rund, und was am Rand von Unterarm und
+Faust nach Hose/Trikot aussieht, wird abgeschabt. Neben dem Atlas entsteht eine Umriss-Maske (`<id>_rim.png`): Der
+Shader `SF_Character` setzt das Mondlicht nur an die echte Außenkante, nicht an die Schnittkanten zwischen den Teilen.
+Die Atlanten haben normales (nicht vormultipliziertes) Alpha; im Menü zeichnet `SF_UIFigure` die Teile.
 Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchten unter den Schuhen.
 
 ## Steuerung

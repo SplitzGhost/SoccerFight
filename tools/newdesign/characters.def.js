@@ -4,7 +4,8 @@
 //  sole/top: Unterkante Sohle / Oberkante Haare
 //  joints:  Gelenke; der Knöchel liegt immer ANKLE Einheiten über der Sohle (x zählt)
 //  r:       Radien der runden Gliedenden: knee (Schienbein oben, liegt unter dem Oberschenkel), kneeCap (Oberschenkel
-//           unten, sichtbar), thighHalf (halbe Breite des Hosenbeins am Oberschenkel), ankle, elbow, wrist
+//           unten, sichtbar), thighHalf (halbe Breite des Hosenbeins am Oberschenkel), thighCut (optional: Oberschenkel
+//           endet so weit unter der Hüfte, z. B. am Saum über einem Knieschoner), ankle, elbow, wrist
 //  Umrisse: head, neck, torso, pelvis (Hose), leg (vorderes Bein ohne Schuh, mit Hosenbein), boot, arm (vorderer Arm
 //           mit Ärmel und Faust); legZones trennen Hose und Haut beim Auffüllen unter der Faust.
 //  tuft:    optional Pferdeschwanz/Zöpfe als eigenes Teil, das nachschwingt: Umriss, Wurzel (Drehpunkt), flex (0..1)
@@ -113,7 +114,7 @@ module.exports = {
             shoulder: [945, 232], elbow: [925, 348], wrist: [958, 420],
             neck: [965, 190], head: [975, 150],
         },
-        r: { knee: 32, kneeCap: 20, thighHalf: 50, ankle: 26, elbow: 30, wrist: 22 },
+        r: { knee: 40, kneeCap: 20, thighCut: 74, thighHalf: 50, ankle: 26, elbow: 30, wrist: 22 },
         head: [[860, 0], [1090, 0], [1090, 150], [1060, 158], [1045, 163], [1020, 166], [995, 164], [975, 155], [955, 145], [930, 140], [860, 140]],
         neck: [[905, 110], [1035, 110], [1035, 165], [1025, 210], [990, 220], [945, 215], [905, 195], [900, 150]],
         torso: [[905, 172], [940, 178], [975, 190], [1000, 200], [1015, 210], [1030, 225], [1040, 250], [1042, 300], [1042, 340], [1040, 380],
