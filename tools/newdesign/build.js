@@ -386,12 +386,12 @@ async function ground() {
     const X0 = 560, X1 = 1980, Y0 = 694, Y1 = 793, FADE = 90;
     const { data, info } = await sharp(path.join(SRC, F.scene)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     const SW = info.width;
-    const L = X1 - X0 - FADE, extra = [[750, 793, 0.78], [750, 793, 0.6]];
-    const H = (Y1 - Y0) + extra.reduce((s, e) => s + e[1] - e[0], 0);
-    const W = L;
+    // unter dem Bild geht die Mauer mit wiederholten Quaderreihen weiter (Moos dort zu Stein), und das Ganze
+    // dunkelt nach unten gleichmäßig ab bis in die Farbe der Tiefe: keine sichtbare Kante am unteren Bildrand
+    const L = X1 - X0 - FADE, EXTRA = 42 * 3, DEEP = [10, 11, 24];
+    const H = (Y1 - Y0) + EXTRA, W = L;
     const out = Buffer.alloc(W * H * 4);
     const px = (x, y) => { const i = (y * SW + x) * 3; return [data[i], data[i + 1], data[i + 2]]; };
-    const put = (x, y, c, k) => { const o = (y * W + x) * 4; out[o] = c[0] * k; out[o + 1] = c[1] * k; out[o + 2] = c[2] * k; out[o + 3] = 255; };
     const sample = (x, y) => {
         // die ersten FADE Spalten mischen sich mit dem Ende des Streifens → nahtlos kachelbar
         const a = px(X0 + x, y);
@@ -399,9 +399,30 @@ async function ground() {
         const b = px(X0 + L + x, y), t = x / FADE;
         return [a[0] * t + b[0] * (1 - t), a[1] * t + b[1] * (1 - t), a[2] * t + b[2] * (1 - t)];
     };
-    let row = 0;
-    for (let y = Y0; y < Y1; y++, row++) for (let x = 0; x < W; x++) put(x, row, sample(x, y), 1);
-    for (const [a, b, k] of extra) for (let y = a; y < b; y++, row++) for (let x = 0; x < W; x++) put(x, row, sample((x + 173) % W, y), k * (1 - 0.15 * (y - a) / (b - a)));
+    // unterhalb: alles in Steinfarbe (Moos wird zu Stein, zu helle Stellen gedeckelt)
+    const stone = c => {
+        const l = Math.min(70, 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]);
+        return [l * 0.78, l * 0.82, l * 1.35];
+    };
+    const smooth = t => t * t * (3 - 2 * t);
+    for (let row = 0; row < H; row++) {
+        const fromSrc = row < Y1 - Y0;
+        // gespiegelt an der Unterkante des Bildes, dann hin und her: keine Naht zwischen den Wiederholungen
+        const m = row - (Y1 - Y0), t = ((m % 84) + 84) % 84;
+        const sy = fromSrc ? Y0 + row : t < 42 ? Y1 - 1 - t : Y1 - 42 + (t - 42);
+        const shift = 0;
+        // Abdunkeln ab der zweiten Quaderreihe, die letzten Zeilen laufen in DEEP aus
+        const dark = 1 - 0.72 * smooth(Math.max(0, Math.min(1, (row - 50) / (H - 50))));
+        const toDeep = smooth(Math.max(0, (row - (H - 36)) / 36));
+        for (let x = 0; x < W; x++) {
+            let c = sample((x + shift) % W, sy);
+            if (!fromSrc) c = stone(c);
+            const o = (row * W + x) * 4;
+            for (let k = 0; k < 3; k++) out[o + k] = Math.round(c[k] * dark * (1 - toDeep) + DEEP[k] * toDeep);
+            out[o + 3] = 255;
+        }
+    }
+    manifest.groundDeep = DEEP.map(v => +(v / 255).toFixed(4));
     // oberste Pixelreihen weich ausblenden (die Grashalme darüber verdecken die Kante)
     for (let y = 0; y < 3; y++) for (let x = 0; x < W; x++) {
         const o = (y * W + x) * 4, a = [0.35, 0.7, 0.9][y];

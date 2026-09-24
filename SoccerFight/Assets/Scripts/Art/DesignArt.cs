@@ -33,7 +33,7 @@ namespace SoccerFight
         {
             public Entry[] sprites;
             public PlantEntry[] plants;
-            public float[] skyTop;
+            public float[] skyTop, groundDeep;
             public int[] plantsSize;
         }
 
@@ -55,6 +55,8 @@ namespace SoccerFight
         public static Material SpriteMat { get; private set; }
         public static Texture2D PlantAtlas { get; private set; }
         public static Color SkyTop { get; private set; } = new Color(0.05f, 0.1f, 0.3f);
+        /// <summary>Farbe, in die die Mauer nach unten ausläuft.</summary>
+        public static Color GroundDeep { get; private set; } = new Color(0.04f, 0.045f, 0.1f);
         /// <summary>Weißes Quadrat (1 × 1 Einheit, Pivot Mitte) für Flächen in Himmels- oder Erdfarbe.</summary>
         public static Sprite Block { get; private set; }
 
@@ -70,6 +72,7 @@ namespace SoccerFight
             if (json == null) { Debug.LogError("[SoccerFight] Resources/NewDesign/design.json fehlt (tools/newdesign/build.js)"); return; }
             var m = JsonUtility.FromJson<Manifest>(json.text);
             if (m.skyTop != null && m.skyTop.Length == 3) SkyTop = new Color(m.skyTop[0], m.skyTop[1], m.skyTop[2]);
+            if (m.groundDeep != null && m.groundDeep.Length == 3) GroundDeep = new Color(m.groundDeep[0], m.groundDeep[1], m.groundDeep[2]);
 
             foreach (var e in m.sprites)
             {

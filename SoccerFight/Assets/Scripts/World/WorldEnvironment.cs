@@ -15,9 +15,9 @@ namespace SoccerFight
     {
         struct Layer { public Transform t; public Vector2 basePos; public float px, py; }
         struct Fog { public SpriteRenderer sr; public float speed, offset, baseX; }
-        struct Firefly { public SpriteRenderer sr; public Vector2 home; public float phase, fx, fy, ax, ay, parallax; }
+        struct Firefly { public SpriteRenderer sr; public Vector2 home; public float phase, fx, fy, ax, ay; }
         struct Blink { public SpriteRenderer sr; public Color color; public float baseA, phase, speed, depth; }
-        struct Lamp { public SpriteRenderer glow, halo; public float seed; }
+        struct Lamp { public SpriteRenderer glow, halo; public float seed, strength; }
 
         readonly List<Layer> layers = new List<Layer>();
         readonly List<Fog> fogs = new List<Fog>();
@@ -29,6 +29,8 @@ namespace SoccerFight
         CameraRig cam;
         System.Random rng;
         float moteTimer;
+        Color propTint = Color.white;   // Ruinenreihe: abgedunkelt
+        float lampStrength = 1f;
 
         public Transform Root => root;
         public PlatformViews Platforms { get; private set; }
@@ -74,7 +76,7 @@ namespace SoccerFight
 
         SpriteRenderer Put(Transform parent, string sprite, Vector2 pos, float scale, int order, bool flip = false, Color? tint = null)
         {
-            var sr = Art.MakeSprite(sprite, parent, DesignArt.Get(sprite), order, DesignArt.SpriteMat, tint ?? Color.white);
+            var sr = Art.MakeSprite(sprite, parent, DesignArt.Get(sprite), order, DesignArt.SpriteMat, tint ?? propTint);
             sr.transform.localPosition = pos;
             sr.transform.localScale = new Vector3(flip ? -scale : scale, scale, 1f);
             return sr;
@@ -177,40 +179,35 @@ namespace SoccerFight
 
         void BuildRuins()
         {
-            var g = Group("Ruins");
-            const float Y = 0.08f;
+            // Rahmenbäume an beiden Arenaenden (weltfest, markieren das Spielfeldende)
+            var trees = Group("Frame Trees");
+            Put(trees, "tree_big", new Vector2(-17.7f, -0.05f), 1.6f, -300);
+            Put(trees, "tree_big", new Vector2(17.9f, -0.05f), 1.6f, -300, true);
 
-            // Rahmenbäume an beiden Arenaenden
-            Put(g, "tree_big", new Vector2(-17.7f, -0.05f), 1.6f, -345);
-            Put(g, "tree_big", new Vector2(17.9f, -0.05f), 1.6f, -345, true);
+            // Torbögen, Laternen und Mauerreste stehen ein Stück hinter dem Rasen: eigene, langsamer
+            // mitlaufende Ebene, im Mondlicht abgedunkelt und kleiner — Kulisse, nichts zum Anfassen
+            var g = AddLayer("Ruin Row", new Vector2(0f, 0.3f), 0.22f, 0.18f);
+            const float Y = 0f;
+            propTint = new Color(0.55f, 0.62f, 0.82f);
+            lampStrength = 0.6f;
+            LampPost(g, "lantern_post_a", new Vector2(-15.2f, Y), 0.75f, false, new Vector2(0.72f, 0.3f));
+            Put(g, "wall_d", new Vector2(-11.8f, Y), 0.65f, -360);
+            ArchWithLamp(g, new Vector2(-7.4f, Y), 0.7f, false);
+            Put(g, "pillar_broken", new Vector2(-4.2f, Y), 0.6f, -360);
+            Crystal(g, "crystal_mid", new Vector2(-3.1f, Y), 0.4f, -358);
+            ArchWithLamp(g, new Vector2(6.5f, Y), 0.7f, true);
+            Put(g, "block_e", new Vector2(9.4f, Y), 0.6f, -358);
+            Put(g, "wall_c", new Vector2(11.8f, Y), 0.65f, -360);
+            LampPost(g, "lantern_post_a", new Vector2(15.2f, Y), 0.75f, true, new Vector2(0.72f, 0.3f));
+            propTint = Color.white;
+            lampStrength = 1f;
 
-            // links: Laternengalgen vor dem Rahmenbaum, Mauerrest, Torbogen mit Laterne zwischen den Plattformen
-            LampPost(g, "lantern_post_a", new Vector2(-15.5f, Y), 1f, false, new Vector2(0.72f, 0.3f));
-            Crystal(g, "crystal_small", new Vector2(-14.3f, Y), 0.55f, -324);
-            Put(g, "wall_d", new Vector2(-11.6f, Y), 0.8f, -330);
-            Put(g, "block_f", new Vector2(-9.7f, Y), 0.85f, -328);
-            ArchWithLamp(g, new Vector2(-7.4f, Y), 0.9f, false);
-            Put(g, "rock_a", new Vector2(-5.5f, Y), 0.75f, -326);
-            Put(g, "pillar_broken", new Vector2(-4.1f, Y), 0.75f, -330);
-            Crystal(g, "crystal_mid", new Vector2(-2.9f, Y), 0.5f, -327);
-            Put(g, "crate", new Vector2(-1.55f, Y), 0.55f, -325);
-            Put(g, "barrel", new Vector2(-0.95f, Y), 0.55f, -324);
-            Put(g, "fence", new Vector2(1.3f, Y), 0.85f, -329);
-            Put(g, "mushroom_blue", new Vector2(2.7f, Y), 0.42f, -325);
-            // rechts: Torbogen mit Laterne, Steine, Mauerrest, Laternengalgen vor dem Rahmenbaum
-            ArchWithLamp(g, new Vector2(6.5f, Y), 0.9f, true);
-            Put(g, "block_e", new Vector2(8.6f, Y), 0.8f, -328);
-            Put(g, "rock_d", new Vector2(10.2f, Y), 0.75f, -326);
-            Put(g, "wall_c", new Vector2(12.1f, Y), 0.85f, -330);
-            Put(g, "wall_a", new Vector2(14.2f, Y), 0.75f, -331);
-            LampPost(g, "lantern_post_a", new Vector2(15.6f, Y), 1f, true, new Vector2(0.72f, 0.3f));
-
-            // Büsche und Farne zwischen den Ruinen
-            var plants = new FoliageLayer();
-            var bushes = DesignArt.Plants("bush_a", "bush_b", "bush_c", "bush_d", "fern", "grass_a");
-            for (float x = -19f; x < 19f; x += Range(1.6f, 3.2f))
-                plants.Add(Pick(bushes), new Vector2(x, Range(0.08f, 0.14f)), Range(0.55f, 0.85f), Color.white, 1f, 0.4f, R() > 0.5f);
-            plants.Build(g, "Ruin Plants", -320, DesignArt.PlantMaterial("SF Design Ruin Plants", 0.8f));
+            // dunkle Buschreihe am Fuß der Ruinen: verdeckt die Sockel, auch wenn die Kamera steigt
+            var bushes = new FoliageLayer();
+            var kinds = DesignArt.Plants("bush_a", "bush_b", "bush_c", "bush_d");
+            for (float x = -24f; x < 24f; x += Range(0.9f, 1.7f))
+                bushes.Add(Pick(kinds), new Vector2(x, Range(-0.35f, -0.1f)), Range(0.8f, 1.15f), new Color(0.26f, 0.4f, 0.48f), 1f, 0f, R() > 0.5f);
+            bushes.Build(g, "Ruin Bushes", -320, DesignArt.PlantMaterial("SF Design Ruin Bushes", 0.5f));
         }
 
         void ArchWithLamp(Transform parent, Vector2 pos, float scale, bool flip)
@@ -223,7 +220,7 @@ namespace SoccerFight
             var lampSprite = Sprite.Create(t, rect, new Vector2(0.48f, 1f), src.pixelsPerUnit, 0, SpriteMeshType.FullRect);
             float archH = arch.sprite.bounds.size.y * scale, lampScale = scale * 0.8f;
             Vector2 hook = pos + new Vector2(0f, archH * 0.66f);
-            var lamp = Art.MakeSprite("Arch Lantern", parent, lampSprite, -331);
+            var lamp = Art.MakeSprite("Arch Lantern", parent, lampSprite, -331, DesignArt.SpriteMat, Color.Lerp(propTint, Color.white, 0.5f));
             lamp.transform.localPosition = hook;
             lamp.transform.localScale = Vector3.one * lampScale;
             AddLamp(parent, hook - new Vector2(0f, t.height * 0.53f / src.pixelsPerUnit * lampScale), 1.25f);
@@ -245,7 +242,7 @@ namespace SoccerFight
             var glow = Art.MakeSprite("Lamp Glow", parent, Art.SoftGlow, -322, Art.SpriteGlowMat, LampColor.WithAlpha(0.35f));
             glow.transform.localPosition = at;
             glow.transform.localScale = Vector3.one * 0.55f * size;
-            lamps.Add(new Lamp { glow = glow, halo = halo, seed = R() * 50f });
+            lamps.Add(new Lamp { glow = glow, halo = halo, seed = R() * 50f, strength = lampStrength });
         }
 
         void Crystal(Transform parent, string sprite, Vector2 pos, float scale, int order)
@@ -265,26 +262,20 @@ namespace SoccerFight
             wall.size = new Vector2(60f, wall.sprite.bounds.size.y);
             wall.transform.localPosition = new Vector3(-30f, 0f, 0f);
             float wallBottom = -wall.sprite.pivot.y / wall.sprite.pixelsPerUnit;
-            var deep = Art.MakeSprite("Deep", ground, DesignArt.Block, -111, DesignArt.SpriteMat, new Color(0.03f, 0.035f, 0.07f));
+            var deep = Art.MakeSprite("Deep", ground, DesignArt.Block, -111, DesignArt.SpriteMat, DesignArt.GroundDeep);
             deep.transform.localPosition = new Vector3(0f, wallBottom - 4f + 0.02f, 0f);
             deep.transform.localScale = new Vector3(60f, 8f, 1f);
 
-            // Gras und Farne an der Hinterkante (hinter den Spielern), ab und zu ein Pilz oder Klee
+            // nur vereinzelte, kurze Grasbüschel an der Hinterkante: das Spielfeld bleibt ruhig und lesbar
             var back = new FoliageLayer();
-            var grass = DesignArt.Plants("grass_b", "grass_c", "grass_d", "grass_e", "grass_f");
-            var extra = DesignArt.Plants("fern", "clover", "grass_a", "mushroom_green");
-            for (float x = -26f; x < 26f; x += Range(0.35f, 0.8f))
+            var grass = DesignArt.Plants("grass_b", "grass_d", "grass_e", "grass_f");
+            var extra = DesignArt.Plants("fern", "grass_a");
+            for (float x = -26f; x < 26f; x += Range(0.9f, 2.2f))
             {
-                bool big = R() < 0.14f;
-                back.Add(big ? Pick(extra) : Pick(grass), new Vector2(x, Range(0.04f, 0.09f)), big ? Range(0.4f, 0.6f) : Range(0.32f, 0.55f), Color.white, 1f, 1f, R() > 0.5f);
+                bool big = R() < 0.12f;
+                back.Add(big ? Pick(extra) : Pick(grass), new Vector2(x, Range(0.05f, 0.09f)), big ? Range(0.32f, 0.42f) : Range(0.24f, 0.36f), Color.white, 1f, 1f, R() > 0.5f);
             }
             back.Build(ground, "Back Grass", -95, DesignArt.PlantMaterial("SF Design Pitch Grass", 1f));
-
-            // ein paar kleine Halme vorn an der Kante
-            var lip = new FoliageLayer();
-            for (float x = -26f; x < 26f; x += Range(0.8f, 2.2f))
-                lip.Add(Pick(grass), new Vector2(x, Range(-0.1f, -0.06f)), Range(0.22f, 0.32f), Color.white, 1f, 0.7f, R() > 0.5f);
-            lip.Build(ground, "Lip Grass", 150, DesignArt.PlantMaterial("SF Design Lip Grass", 1f));
 
             LeftPortal = BuildGoal(ground, -GoalX, 1f);
             RightPortal = BuildGoal(ground, GoalX, -1f);
@@ -323,11 +314,11 @@ namespace SoccerFight
             var fg = AddLayer("Foreground", Vector2.zero, -0.35f, -0.2f);
             var leaves = new FoliageLayer();
             var kinds = DesignArt.Plants("bush_a", "bush_b", "bush_c", "fern");
-            float[] xs = { -26f, -19.5f, -13f, 13f, 19.5f, 26f };
+            float[] xs = { -25f, 25f };   // nur ganz außen, damit nichts vor dem Spielgeschehen hängt
             foreach (float x in xs)
-                for (int k = 0; k < 2; k++)
+                for (int k = 0; k < 1; k++)
                     leaves.Add(Pick(kinds), new Vector2(x + Range(-1.2f, 1.2f), Range(-2.9f, -2.6f)), Range(1.8f, 2.4f),
-                        new Color(0.1f, 0.2f, 0.24f), 1f, 0f, R() > 0.5f, Range(-8f, 8f));
+                        new Color(0.06f, 0.12f, 0.15f), 1f, 0f, R() > 0.5f, Range(-8f, 8f));
             leaves.Build(fg, "Foreground Leaves", 600, DesignArt.PlantMaterial("SF Design Foreground", 0.35f));
         }
 
@@ -335,19 +326,18 @@ namespace SoccerFight
 
         void BuildFireflies()
         {
-            for (int i = 0; i < 38; i++)
+            // nur hinter dem Spielgeschehen, keine großen unscharfen direkt vor der Kamera
+            for (int i = 0; i < 26; i++)
             {
-                bool front = i < 5;
-                var sr = Art.MakeSprite("Firefly", root, Art.SoftGlow, front ? 610 : -300, Art.SpriteGlowMat, FireflyColor.WithAlpha(0f));
-                sr.transform.localScale = Vector3.one * (front ? Range(0.3f, 0.5f) : Range(0.1f, 0.2f));
+                var sr = Art.MakeSprite("Firefly", root, Art.SoftGlow, -300, Art.SpriteGlowMat, FireflyColor.WithAlpha(0f));
+                sr.transform.localScale = Vector3.one * Range(0.1f, 0.2f);
                 fireflies.Add(new Firefly
                 {
                     sr = sr,
-                    home = new Vector2(Range(-20f, 20f), front ? Range(-1.2f, 2.5f) : Range(0.4f, 5.5f)),
+                    home = new Vector2(Range(-20f, 20f), Range(0.4f, 5.5f)),
                     phase = R() * 50f,
                     fx = Range(0.12f, 0.3f), fy = Range(0.15f, 0.35f),
                     ax = Range(0.6f, 1.8f), ay = Range(0.3f, 0.9f),
-                    parallax = front ? -0.25f : 0f
                 });
             }
         }
@@ -425,8 +415,8 @@ namespace SoccerFight
             {
                 var l = lamps[i];
                 float flicker = 0.8f + 0.2f * Mathf.PerlinNoise(time * 3.3f, l.seed) + 0.05f * Mathf.Sin(time * 19f + l.seed);
-                l.glow.color = LampColor.WithAlpha(0.35f * flicker);
-                l.halo.color = LampColor.WithAlpha(0.2f * flicker);
+                l.glow.color = LampColor.WithAlpha(0.35f * flicker * l.strength);
+                l.halo.color = LampColor.WithAlpha(0.2f * flicker * l.strength);
             }
 
             Platforms.Update(dt, time, Wind);
@@ -437,10 +427,9 @@ namespace SoccerFight
                 float t = time + f.phase;
                 Vector2 pos = f.home + new Vector2(Mathf.Sin(t * f.fx * MathUtil.Tau) * f.ax + Mathf.Sin(t * 0.37f) * 0.3f,
                     Mathf.Sin(t * f.fy * MathUtil.Tau + 1.3f) * f.ay);
-                pos.x += c.x * f.parallax;
                 float blink = Mathf.Clamp01(0.35f + 0.65f * Mathf.Sin(t * 1.1f + f.phase * 3f)) * (0.6f + 0.4f * Mathf.PerlinNoise(t * 2f, f.phase));
                 f.sr.transform.localPosition = pos;
-                f.sr.color = FireflyColor.WithAlpha(blink * (f.parallax < 0f ? 0.3f : 0.75f));
+                f.sr.color = FireflyColor.WithAlpha(blink * 0.75f);
             }
 
             // Staub und Pollen im Mondlicht
@@ -448,11 +437,11 @@ namespace SoccerFight
             moteTimer -= dt;
             while (moteTimer <= 0f && fx != null)
             {
-                moteTimer += 0.16f;
+                moteTimer += 0.3f;
                 Rect view = cam.ViewRect;
                 Vector2 p = new Vector2(view.xMin + Random.value * view.width, view.yMin + 1.5f + Random.value * (view.height - 1.5f));
                 Color mc = new Color(0.8f, 0.92f, 1f, 0.45f);
-                fx.Spawn(Random.value > 0.8f ? FxLayer.Front : FxLayer.Back, true, Art.CellDot, p,
+                fx.Spawn(FxLayer.Back, true, Art.CellDot, p,
                     new Vector2(Wind * 0.25f + (Random.value - 0.5f) * 0.12f, 0.05f + Random.value * 0.1f),
                     Random.Range(5f, 9f), Random.Range(0.02f, 0.04f), Random.Range(0.02f, 0.035f), mc, mc, 1.8f, 0f, -0.01f, 0f, 0f, false, true);
             }

@@ -228,10 +228,11 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   Spieler unten ist. Ball, Schatten, Gras und Rainbow Flick funktionieren auf jeder Ebene.
 - **Die Welt – Mondlicht-Ruinen:** genau nach den Design-Vorlagen. Von hinten nach vorn: Nachthimmel mit funkelnden
   Sternen, die gemalte Kulisse (Vollmond hinter Wolken, Turmruinen, Aquädukte, viele Wasserfälle, Baumkronen), ein
-  dunkler Gürtel aus Bäumen, Ruinen und Wasserfällen im Mondlicht, davor beleuchtete Ruinen direkt hinter dem Rasen
-  (Torbögen mit Laterne, Laternengalgen, Mauerreste, Säulen, Zaun, Kiste und Fass, Kristalle, Pilz), große grüne
-  Rahmenbäume an beiden Arenaenden, die hellgrüne Grasdecke über der moosigen Quadermauer mit Ranken und dunkles Laub im
-  Vordergrund. Jede Ebene läuft unterschiedlich schnell mit der Kamera. Bewegt: Gras, Büsche und Ranken im Wind (und um
+  dunkler Gürtel aus Bäumen, Ruinen und Wasserfällen im Mondlicht, davor eine eigene, langsamer mitlaufende Ruinenreihe
+  (Torbögen mit Laterne, Laternengalgen, Mauerreste, Säule, Kristall) – bewusst abgedunkelt und hinter einer dunklen
+  Buschreihe, damit sie als Kulisse und nicht als Spielobjekt wirkt –, große grüne Rahmenbäume an beiden Arenaenden, die
+  hellgrüne Grasdecke mit nur vereinzelten Grasbüscheln über der moosigen Quadermauer, die nach unten ins Dunkle ausläuft,
+  und dunkles Laub nur ganz außen im Vordergrund. Das Spielfeld selbst bleibt ruhig, damit Spieler und Gegner lesbar sind. Jede Ebene läuft unterschiedlich schnell mit der Kamera. Bewegt: Gras und Büsche im Wind (und um
   Spieler und Ball), flackernde Laternen, pulsierende Kristalle mit fallenden Lichtfunken, atmender Mondschein,
   ziehender Nebel, warme Glühwürmchen. Die Plattformen sind schwebende Grasinseln aus Quadersteinen mit Ranken und
   hängendem Kristall (eine trägt das blaue Fußball-Banner) bzw. Grasplatten auf Säulen; die Grafik wird passend zur

@@ -31,7 +31,6 @@ namespace SoccerFight
         readonly List<Blink> blinks = new List<Blink>();
         readonly List<Speck> specks = new List<Speck>();
         Transform group;
-        Material grassMat;
         System.Random rng = new System.Random(77);
         float speckTimer;
 
@@ -44,7 +43,6 @@ namespace SoccerFight
             DesignArt.Load();
             group = new GameObject("Platforms").transform;
             group.SetParent(parent, false);
-            grassMat = DesignArt.PlantMaterial("SF Design Platform Grass", 1f);
         }
 
         /// <summary>Replace the shown platforms.</summary>
@@ -110,12 +108,6 @@ namespace SoccerFight
                 }
             }
 
-            // ein paar Halme auf der Kante, die sich im Wind und um den Spieler biegen
-            var grass = new FoliageLayer();
-            var kinds = DesignArt.Plants("grass_b", "grass_d", "grass_e", "grass_f");
-            for (float x = p.BaseX0 + 0.15f; x < p.BaseX1 - 0.15f; x += Range(0.35f, 0.8f))
-                grass.Add(Pick(kinds), new Vector2(x, y + Range(0.02f, 0.06f)), Range(0.26f, 0.4f), Color.white, 1f, 1f, R() > 0.5f);
-            if (grass.Count > 0) grass.Build(v.Root, "Grass", -79, grassMat);
             Place(v);
         }
 
