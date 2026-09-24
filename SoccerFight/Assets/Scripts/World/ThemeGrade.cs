@@ -66,10 +66,14 @@ namespace SoccerFight
             return false;
         }
 
+        // Die Welt folgt den Design-Vorlagen: jede Stage färbt sie nur leicht um (Farbton kaum, Tönung zur Hälfte),
+        // sonst würden Himmel und Gras grell (gelber Himmel, pinkes Gras).
+        const float HueAmount = 0.1f, SatAmount = 0.6f, LightAmount = 0.6f, TintAmount = 0.5f;
+
         /// <summary>Colour matrix for a theme: tint · contrast · brightness · saturation · hue.</summary>
         public static Matrix4x4 Matrix(StageTheme th)
         {
-            float a = th.Hue * Mathf.Deg2Rad, cos = Mathf.Cos(a), sin = Mathf.Sin(a);
+            float a = th.Hue * HueAmount * Mathf.Deg2Rad, cos = Mathf.Cos(a), sin = Mathf.Sin(a);
             float k = (1f - cos) / 3f, q = Mathf.Sqrt(1f / 3f) * sin;
             var hue = Matrix4x4.identity;
             hue.m00 = cos + k; hue.m01 = k - q; hue.m02 = k + q;
@@ -77,20 +81,20 @@ namespace SoccerFight
             hue.m20 = k - q; hue.m21 = k + q; hue.m22 = cos + k;
 
             const float lr = 0.2126f, lg = 0.7152f, lb = 0.0722f;
-            float s = th.Saturation;
+            float s = Mathf.Lerp(1f, th.Saturation, SatAmount);
             var sat = Matrix4x4.identity;
             sat.m00 = (1f - s) * lr + s; sat.m01 = (1f - s) * lg;     sat.m02 = (1f - s) * lb;
             sat.m10 = (1f - s) * lr;     sat.m11 = (1f - s) * lg + s; sat.m12 = (1f - s) * lb;
             sat.m20 = (1f - s) * lr;     sat.m21 = (1f - s) * lg;     sat.m22 = (1f - s) * lb + s;
 
             // contrast pivots on a dark mid-tone (the scene lives in the shadows)
-            float c = th.Contrast, b = th.Brightness;
+            float c = Mathf.Lerp(1f, th.Contrast, LightAmount), b = Mathf.Lerp(1f, th.Brightness, LightAmount);
             const float pivot = 0.12f;
             var m = sat * hue;
             var result = Matrix4x4.identity;
             for (int r = 0; r < 3; r++)
             {
-                float tint = th.Tint[r];
+                float tint = Mathf.Lerp(1f, th.Tint[r], TintAmount);
                 for (int col = 0; col < 3; col++) result[r, col] = m[r, col] * b * c * tint;
                 result[r, 3] = (1f - c) * pivot * tint;
             }

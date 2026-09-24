@@ -1,0 +1,7 @@
+{
+  "name": "sf-newdesign",
+  "private": true,
+  "description": "Schneidet die Spielgrafik aus den Design-Vorlagen in Inspiration/nnewDesign aus",
+  "scripts": { "build": "node build.js" },
+  "dependencies": { "sharp": "^0.35.4" }
+}

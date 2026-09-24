@@ -37,7 +37,8 @@ namespace SoccerFight
             preparedSeed = seed;
             var theme = StageThemes.For(stage);
             layout = stage <= 1 ? Level.Classic() : Level.Generate(theme.PlatformStyles, seed * 31 + stage * 7919);
-            looks = PlatformArt.Prepare(layout, "S" + stage, stage == 1);
+            // die Plattformen im neuen Design brauchen keine vorab gezeichnete Grafik
+            looks = System.Array.ConvertAll(layout, p => new PlatformLook { P = p });
             MonsterArt.Prepare(theme);
             ArtQueue.Kick();
         }
@@ -53,7 +54,6 @@ namespace SoccerFight
             preparedStage = preparedSeed = -1;
             Level.Set(layout);
             Game.I.Environment.Platforms.Show(looks);
-            Game.I.Environment.SetStagePresentation(stage);
             MonsterArt.Trim(StageThemes.For(stage), StageThemes.For(Mathf.Max(1, stage - 1)));
             return true;
         }

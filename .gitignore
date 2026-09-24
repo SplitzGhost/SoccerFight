@@ -33,3 +33,6 @@ Inspiration/
 
 # Markierung: eine andere KI arbeitet gerade im Hauptordner (publish.ps1 pausiert)
 .codex-busy
+
+# Werkzeug für die Design-Vorlagen
+tools/newdesign/node_modules/

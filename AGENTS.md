@@ -20,8 +20,12 @@ Online-Duo per Raumcode. Details stehen im `README.md` – **das README ist die 
 Spieländerungen mitgepflegt werden.**
 
 - Unity **6000.6.0f1**, URP 2D, nur das neue Input System. Unity-Projekt liegt in `SoccerFight/`.
-- **Alles ist Code:** Grafik, Animation, Effekte und UI werden zur Laufzeit prozedural erzeugt, es gibt keine
-  importierten Sprites. Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
+- **Fast alles ist Code:** Figuren, Animation, Effekte und UI werden zur Laufzeit prozedural erzeugt. **Ausnahme: die
+  Spielwelt** (Kulisse, Boden, Plattformen, Deko) besteht aus Bildern, die aus den Design-Vorlagen des Nutzers
+  (`Inspiration/nnewDesign`) ausgeschnitten sind: `tools/newdesign/build.js` (Node, einmal `npm install` im Ordner)
+  erzeugt `Assets/Resources/NewDesign/*.png` + `design.json`, geladen von `Art/DesignArt.cs`. Neue oder bessere
+  Vorlagen → Ausschnitte in `build.js` anpassen und neu laufen lassen, nicht die PNGs von Hand ändern.
+- Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
 - Skripte: `SoccerFight/Assets/Scripts/` (Namespace `SoccerFight`), Ordner Art, Ball, Combat, Core, Enemies, FX,
   Meta, Net, Player, Run, UI, World, Editor, DevTools.
 - Live im Browser: https://splitzghost.github.io/SoccerFight/ (WebGL, Branch `gh-pages`).
@@ -89,10 +93,11 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Weiße Blitze/additive Glows überstrahlen mit Bloom schnell – gedämpft halten.
 - Spielstand: ein JSON in PlayerPrefs `sf_profile`. Tests/Captures nutzen `Profile.UseTransient()`.
 - `ProjectSettings` productName bleibt absichtlich `SoccerFight` (sonst geht der WebGL-Spielstand verloren).
-- `Inspiration/` ist gitignored (urheberrechtlich geschützte Referenzbilder) – ansehen ja, nie committen.
-- Stage 1 hat eine eigene Kulisse (`Art/Stage1Art.cs`, `World/WorldEnvironment.Stage1.cs`) und eigene Plattformen
-  (`PlatformArt.BuildRuinSlab`); `WorldEnvironment.SetStagePresentation` schaltet zwischen ihr und der klassischen Welt
-  um. Änderungen an der klassischen Kulisse sieht man deshalb erst ab Stage 2. Screenshots: Szenario `stage1`.
+- `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
+  Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
+- Alle Stages teilen dieselbe Welt (`World/WorldEnvironment.cs`, Plattformen `World/PlatformViews.cs`); die Stimmung
+  pro Stage kommt nur über die Farbmatrix von `ThemeGrade`. Die Texturen sind vormultipliziert (premultiplied alpha),
+  ihre `.meta` schreibt `build.js` (kein Alpha-Auffüllen). Screenshots der Welt: Szenario `stage1`.
 - Online-Duo: Code in `Assets/Scripts/Net/` (`NetLink`, `Coop`, `RemotePlayer`, Partials `*.Net.cs`),
   host-autoritativ über Unity Relay (wss). Änderungen an Player/Monster/Ball/RunDirector auf Duo-Sync prüfen.
 

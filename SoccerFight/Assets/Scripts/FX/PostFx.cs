@@ -19,7 +19,7 @@ namespace SoccerFight
         float lowHealth;   // 0..1 steady state
 
         const float BaseBloom = 1.05f;
-        const float BaseVignette = 0.3f;
+        const float BaseVignette = 0.2f;   // die Welt-Vorlagen haben kaum Vignette
 
         public void Init(Transform parent)
         {

@@ -71,7 +71,6 @@ namespace SoccerFight
             jobs.Start();
             DepthArt.Begin();
             FoliageArt.Begin();
-            Stage1Art.Begin();
         }
 
         /// <summary>Wait for the workers and upload textures (main thread).</summary>
@@ -80,7 +79,6 @@ namespace SoccerFight
             jobs.Complete();
             DepthArt.End();
             FoliageArt.End();
-            Stage1Art.End();
             Sky = jSky.Sprite; Stars = jStars.Sprite; Moon = jMoon.Sprite; Far = jFar.Sprite; Mid = jMid.Sprite;
             Ruins = jRuins.Sprite; Bushes = jBushes.Sprite; PitchTile = jPitch.Sprite; EarthTile = jEarth.Sprite;
             FogBand = jFog.Sprite; Goal = jGoal.Sprite; Lantern = jLantern.Sprite; Chain = jChain.Sprite;
