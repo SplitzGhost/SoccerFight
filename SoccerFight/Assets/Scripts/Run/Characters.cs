@@ -58,6 +58,10 @@ namespace SoccerFight
         public float HipHeight = 0.86f;
         /// <summary>Feet → top of the head, standing (name tags, portraits).</summary>
         public float HeadTop = 2.05f;
+        /// <summary>Wrist → knuckles of the fist (where a hand holding the ball puts its wrist).</summary>
+        public float HandLen = 0.2f;
+        /// <summary>Ankle → tip of the shoe (a dribbled ball bounces clear of it).</summary>
+        public float Toe = 0.3f;
 
         /// <summary>Standing hip height: the knees stay a touch bent, as in the design.</summary>
         public float StandHip => Mathf.Min(HipHeight - 0.012f, PlayerDims.AnkleHeight + ThighLen + ShinLen - 0.03f);

@@ -24,7 +24,10 @@
   ],
   "hipHeight": 0.8915,
   "headTop": 2.1,
-  "tuftFlex": 0
+  "tuftFlex": 0,
+  "hand": 0.2433,
+  "toe": 0.3374,
+  "heel": 0.1428
  },
  "sprites": [
   {

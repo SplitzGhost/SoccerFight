@@ -263,7 +263,8 @@ namespace SoccerFight
         }
 
         /// <param name="wristDeg">bends the hand against the forearm (positive: fingers towards the front)</param>
-        void PoseArm(Arm arm, Vector2 shoulder, float shoulderDeg, float elbowDeg, float wristDeg = 0f)
+        /// <param name="grip">a ball the hand holds: with gripW the fist turns to point at its centre, so the knuckles rest on it</param>
+        void PoseArm(Arm arm, Vector2 shoulder, float shoulderDeg, float elbowDeg, float wristDeg = 0f, Vector2 grip = default, float gripW = 0f)
         {
             Vector2 dirU = MathUtil.Rotate(Vector2.down, shoulderDeg);
             Vector2 elbow = shoulder + dirU * body.UpperArmLen;
@@ -271,7 +272,9 @@ namespace SoccerFight
             Vector2 wrist = elbow + dirF * body.ForearmLen;
             Place(arm.upper, shoulder, MathUtil.DownAngle(dirU));
             Place(arm.fore, elbow, MathUtil.DownAngle(dirF));
-            Place(arm.hand, wrist, MathUtil.DownAngle(dirF) + wristDeg);
+            float handRot = MathUtil.DownAngle(dirF) + wristDeg;
+            if (gripW > 0.001f && (grip - wrist).sqrMagnitude > 1e-4f) handRot = Mathf.LerpAngle(handRot, MathUtil.DownAngle(grip - wrist), gripW);
+            Place(arm.hand, wrist, handRot);
         }
 
         /// <summary>Two-bone arm IK: the shoulder and elbow angles (PoseArm's terms) that put the wrist on target, elbow down and back.</summary>
@@ -472,8 +475,9 @@ namespace SoccerFight
             // basketball: the ball bounces between the hand and the floor (or is held at the chest in the air)
             nearIKw = farIKw = 0f;
             nearWrist = farWrist = 0f;
+            nearGripW = farGripW = 0f;
             if (Sport == Sport.Basketball)
-                HoopsCarry(dt, hipY, air, cycleLen, sk, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref ballLocal);
+                HoopsCarry(dt, ref hipY, air, cycleLen, sk, ref nearFoot, ref farFoot, ref leanTarget, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref ballLocal);
 
             // =============================================================== action layers
             float t = player.ActionTime;
@@ -633,8 +637,8 @@ namespace SoccerFight
                 nearAbs = Mathf.LerpAngle(nearAbs, a, nearIKw);
                 nearElbow = Mathf.LerpAngle(nearElbow, e, nearIKw);
             }
-            PoseArm(farArm, farSh, farAbs, farElbow, farWrist);
-            PoseArm(nearArm, nearSh, nearAbs, nearElbow, nearWrist);
+            PoseArm(farArm, farSh, farAbs, farElbow, farWrist, farGrip, farGripW);
+            PoseArm(nearArm, nearSh, nearAbs, nearElbow, nearWrist, nearGrip, nearGripW);
 
             // --- outputs (world space)
             Vector2 rootW = player.Pos;

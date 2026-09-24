@@ -13,7 +13,21 @@ namespace SoccerFight
         // arm IK targets (root-local, facing right) and their weights; hand bends against the forearm
         Vector2 nearIK, farIK;
         float nearIKw, farIKw, nearWrist, farWrist;
+        // a ball held in a hand: the fist points at its centre (weight 0: the wrist angle above counts)
+        Vector2 nearGrip, farGrip;
+        float nearGripW, farGripW;
         float dribU;
+
+        /// <summary>
+        /// Where the wrist goes so the fist rests on the ball from the given side: the fist is as long as the
+        /// character's (measured on the sheet), its knuckles tuck just under the ball's edge (the ball is drawn on top).
+        /// </summary>
+        Vector2 Palm(Vector2 ball, Vector2 side) => ball + side.normalized * (Art.BallRadius + body.HandLen * 0.72f);
+
+        /// <summary>Puts the near hand on the ball from a side (IK + fist aimed at the ball's centre).</summary>
+        void GripNear(Vector2 ball, Vector2 side, float w = 1f) { nearIK = Palm(ball, side); nearIKw = w; nearGrip = ball; nearGripW = w; }
+
+        void GripFar(Vector2 ball, Vector2 side, float w = 1f) { farIK = Palm(ball, side); farIKw = w; farGrip = ball; farGripW = w; }
 
         /// <summary>The throw leaves the hand: a small pop through the body.</summary>
         public void OnThrowRelease() { squashXVel += 1f; squashYVel -= 0.9f; }
@@ -25,39 +39,50 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ carrying the ball
 
-        void HoopsCarry(float dt, float hipY, float air, float cycleLen, float sk,
+        void HoopsCarry(float dt, ref float hipY, float air, float cycleLen, float sk, ref Vector2 nearFoot, ref Vector2 farFoot, ref float leanTarget,
             ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow, ref Vector2 ballLocal)
         {
             float R = Art.BallRadius;
+            float ground = 1f - air;
             // one bounce per stride while running, a relaxed beat standing still
             float stridesPerSec = Mathf.Abs(player.Vel.x) / Mathf.Max(0.5f, cycleLen);
             float bps = Mathf.Lerp(1.7f, Mathf.Clamp(stridesPerSec, 1.7f, 3.3f), moveBlend);
             dribU = Mathf.Repeat(dribU + bps * dt, 1f);
 
-            // the ball: from the palm to the floor and back, fastest at the bounce
-            float wristTop = hipY + 0.14f - 0.06f * runBlend;
-            float topY = wristTop - 0.07f - R;
-            float bx = 0.36f + 0.16f * runBlend + 0.05f * moveBlend + 0.1f * sk;
-            float by = R + (topY - R) * Mathf.Abs(Mathf.Cos(Mathf.PI * dribU));
+            // the dribbling stance: knees bent, chest over the ball, the front foot drawn back so the ball
+            // bounces clear in front of the shoe instead of on it
+            float stand = (1f - moveBlend) * ground;
+            nearFoot.x -= 0.12f * stand;
+            farFoot.x -= 0.08f * stand;
+            hipY -= 0.05f * ground;
+            leanTarget -= 8f * ground;
+
+            // the ball: from the hand to the floor and back, fastest at the bounce. It lands just ahead of the
+            // front shoe's toe (measured per character), further out on the run.
+            float bx = body.Toe + 0.14f + 0.12f * runBlend + 0.05f * moveBlend + 0.1f * sk;
+            float apex = hipY - 0.1f - 0.05f * runBlend;
+            float by = R + (apex - R) * Mathf.Abs(Mathf.Cos(Mathf.PI * dribU));
             Vector2 dribble = new Vector2(bx, by);
-            // the hand rides the ball down a little way, then waits for it to come back up
-            float handY = Mathf.Max(by + R + 0.07f, wristTop - 0.16f);
-            Vector2 wrist = new Vector2(bx - 0.035f, handY);
+            // the hand pushes the ball down part of the way, then waits for it on top
+            Vector2 top = Palm(new Vector2(bx, apex), new Vector2(-0.12f, 1f));
+            Vector2 riding = Palm(dribble, new Vector2(-0.12f, 1f));
+            Vector2 wrist = riding.y > top.y - 0.15f ? riding : new Vector2(riding.x, top.y - 0.15f);
+            float onBall = 1f - MathUtil.Smooth01((wrist.y - riding.y) / 0.08f);
 
             // in the air the ball is gathered in both hands in front of the chest
             Vector2 chest = new Vector2(0.24f, hipY + body.Shoulder.y * 0.7f);
             ballLocal = Vector2.Lerp(dribble, chest, air);
-            nearIK = Vector2.Lerp(wrist, chest + new Vector2(0.01f, -(R + 0.07f)), air);
+            nearIK = Vector2.Lerp(wrist, Palm(chest, new Vector2(0.1f, -1f)), air);
             nearIKw = 1f;
-            nearWrist = Mathf.Lerp(28f, -30f, air);
-            farIK = chest + new Vector2(-(R + 0.06f), 0.05f);
-            farIKw = air;
-            farWrist = 40f * air;
+            // the fist points at the ball while it touches it, and stays turned down while it waits
+            nearGrip = Vector2.Lerp(Vector2.Lerp(wrist + Vector2.down, dribble, onBall), chest, air);
+            nearGripW = 1f;
+            GripFar(chest, new Vector2(-1f, 0.25f), air);
 
-            // the free arm guards the ball: raised forward, forearm up
-            float guard = (1f - air) * 0.75f;
-            farShoulder = Mathf.Lerp(farShoulder, 32f + 12f * runBlend, guard);
-            farElbow = Mathf.Lerp(farElbow, 75f, guard);
+            // the free arm guards the ball: out in front at waist height, elbow bent
+            float guard = ground * 0.75f;
+            farShoulder = Mathf.Lerp(farShoulder, 22f + 12f * runBlend, guard);
+            farElbow = Mathf.Lerp(farElbow, 55f, guard);
         }
 
         // ------------------------------------------------------------------ moves
@@ -70,6 +95,8 @@ namespace SoccerFight
             const float A = PlayerDims.AnkleHeight;
             float R = Art.BallRadius;
             Vector2 sh = ShoulderAt(hipY);
+            // a move decides for itself which hand holds the ball
+            nearGripW = farGripW = 0f;
             switch (player.CurrentAction)
             {
                 // ---- the throw: set beside the head, push out along the aim, gooseneck follow-through
@@ -79,19 +106,15 @@ namespace SoccerFight
                     Vector2 aim = player.KickAimLocal.sqrMagnitude > 0.01f ? player.KickAimLocal.normalized : Vector2.right;
                     float w = MathUtil.Smooth01(t / 0.04f) * (1f - MathUtil.Smooth01((t - tF) / (tE - tF)));
                     Vector2 set = sh + new Vector2(0.13f, 0.2f);
-                    Vector2 rel = sh + aim * Reach * 0.9f + aim * (R + 0.06f);
+                    Vector2 rel = sh + aim * Reach * 0.9f + aim * (R + body.HandLen * 0.72f);
                     if (!player.ActionReleased)
                     {
                         Vector2 b = t < tS ? Vector2.Lerp(player.KickBallLocal, set, MathUtil.EaseOutCubic(t / tS))
                                            : Vector2.Lerp(set, rel, MathUtil.EaseInQuad((t - tS) / (tR - tS)));
                         ballLocal = b;
                         BallIsScripted = true;
-                        nearIK = b - aim * (R + 0.07f);
-                        nearIKw = 1f;
-                        nearWrist = -55f;
-                        farIK = b + new Vector2(-0.02f, R + 0.04f);
-                        farIKw = 1f - MathUtil.Smooth01((t - tS * 0.6f) / 0.05f);
-                        farWrist = 60f;
+                        GripNear(b, -aim);
+                        GripFar(b, new Vector2(-0.15f, 1f), 1f - MathUtil.Smooth01((t - tS * 0.6f) / 0.05f));
                     }
                     else
                     {
@@ -137,12 +160,8 @@ namespace SoccerFight
                                            : Vector2.Lerp(chestB, setB, k);
                         ballLocal = b;
                         BallIsScripted = true;
-                        nearIK = b + new Vector2(-0.03f, -(R + 0.07f));
-                        nearIKw = 1f;
-                        nearWrist = -70f;
-                        farIK = b + new Vector2(-(R + 0.05f), 0.02f);
-                        farIKw = 1f;
-                        farWrist = 70f;
+                        GripNear(b, new Vector2(-0.15f, -1f));
+                        GripFar(b, new Vector2(-1f, 0.1f));
                         headTarget = Mathf.Lerp(headTarget, 14f, w);
                     }
                     else
@@ -185,12 +204,14 @@ namespace SoccerFight
                     // each hand reaches for the ball on its side; the other waits beside the thigh
                     float nearOn = half == 0 ? 1f - MathUtil.Smooth01(u / 0.45f) : MathUtil.Smooth01((u - 0.55f) / 0.45f);
                     float farOn = 1f - nearOn;
-                    nearIK = Vector2.Lerp(new Vector2(0.18f, hipY - 0.08f), b + new Vector2(-0.02f, R + 0.07f), nearOn);
+                    nearIK = Vector2.Lerp(new Vector2(0.18f, hipY - 0.08f), Palm(b, new Vector2(-0.1f, 1f)), nearOn);
                     nearIKw = w;
                     nearWrist = 25f;
-                    farIK = Vector2.Lerp(new Vector2(-0.12f, hipY - 0.06f), b + new Vector2(-0.04f, R + 0.07f), farOn);
+                    nearGrip = b; nearGripW = w * nearOn;
+                    farIK = Vector2.Lerp(new Vector2(-0.12f, hipY - 0.06f), Palm(b, new Vector2(-0.2f, 1f)), farOn);
                     farIKw = w;
                     farWrist = 25f;
+                    farGrip = b; farGripW = w * farOn;
                     break;
                 }
 
@@ -211,8 +232,8 @@ namespace SoccerFight
                         farFoot = Vector2.Lerp(farFoot, new Vector2(-0.18f, A), k);
                         ballLocal = Vector2.Lerp(player.KickBallLocal, chestB, MathUtil.EaseOutCubic(k));
                         BallIsScripted = true;
-                        nearIK = ballLocal + new Vector2(0.01f, -(R + 0.07f)); nearIKw = 1f; nearWrist = -30f;
-                        farIK = ballLocal + new Vector2(-(R + 0.06f), 0.04f); farIKw = 1f; farWrist = 40f;
+                        GripNear(ballLocal, new Vector2(0.1f, -1f));
+                        GripFar(ballLocal, new Vector2(-1f, 0.2f));
                     }
                     else if (t < tS)
                     {
@@ -225,10 +246,8 @@ namespace SoccerFight
                         BallIsScripted = true;
                         // both hands on the ball: under it on the way up, behind it for the hammer
                         Vector2 dir = (b - sh).sqrMagnitude > 0.001f ? (b - sh).normalized : Vector2.up;
-                        nearIK = b - dir * (R + 0.07f) + new Vector2(0.02f, 0f); nearIKw = 1f;
-                        farIK = b - dir * (R + 0.06f) + new Vector2(-0.05f, 0.03f); farIKw = 1f;
-                        nearWrist = Mathf.Lerp(-60f, 40f, MathUtil.Smooth01((k - 0.8f) / 0.15f));
-                        farWrist = nearWrist;
+                        GripNear(b, -dir + new Vector2(0.15f, 0f));
+                        GripFar(b, -dir + new Vector2(-0.35f, 0.1f));
                         // the legs: near knee drives up, far leg trails; the body arches, then snaps forward
                         float cock = MathUtil.Smooth01((k - 0.5f) / 0.3f), whip = MathUtil.Smooth01((k - 0.82f) / 0.18f);
                         nearFoot = new Vector2(0.24f, hipY - 0.4f);
@@ -265,9 +284,8 @@ namespace SoccerFight
                         Vector2 b = Vector2.Lerp(Vector2.Lerp(player.KickBallLocal, low, MathUtil.Smooth01(k * 2f)), top, MathUtil.EaseInQuad(Mathf.Clamp01(k * 1.4f - 0.4f)));
                         ballLocal = b;
                         BallIsScripted = true;
-                        nearIK = b + new Vector2(0.01f, -(R + 0.07f)); farIK = b + new Vector2(-0.07f, -(R + 0.05f));
-                        nearIKw = farIKw = 1f;
-                        nearWrist = farWrist = -40f;
+                        GripNear(b, new Vector2(0.05f, -1f));
+                        GripFar(b, new Vector2(-0.4f, -1f));
                     }
                     else
                     {
@@ -312,9 +330,10 @@ namespace SoccerFight
                         Vector2 b = new Vector2(0.72f, R + (topY - R) * Mathf.Abs(Mathf.Cos(Mathf.PI * u)));
                         ballLocal = Vector2.Lerp(b, ballLocal, back);
                         BallIsScripted = true;
-                        nearIK = new Vector2(b.x - 0.04f, Mathf.Max(b.y + R + 0.07f, topY + R - 0.05f));
+                        Vector2 palm = Palm(b, new Vector2(-0.12f, 1f));
+                        nearIK = new Vector2(palm.x, Mathf.Max(palm.y, Palm(new Vector2(b.x, topY), Vector2.up).y - 0.12f));
                         nearIKw = 1f - back;
-                        nearWrist = 35f;
+                        nearGrip = b; nearGripW = 1f - back;
                     }
                     break;
                 }

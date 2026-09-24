@@ -176,7 +176,9 @@ den Gliedern runde, überlappende Gelenkenden, füllt verdeckte Stellen (Rumpf h
 und legt pro Figur einen Atlas + JSON nach `Resources/Characters`. Das JSON enthält auch das Skelett (Knochenlängen,
 Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBody` der Figur schreibt – das Rig
 bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
-Dre trägt den Kompressionsärmel nur am vorderen Arm. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
+Dre trägt den Kompressionsärmel nur am vorderen Arm. Mitgemessen werden auch Faustlänge und Schuhspitze: Beim Dribbeln und bei
+den Basketball-Moves liegt die Faust damit auf dem Ball (sie zeigt zum Ballmittelpunkt, `PlayerRig.Palm/GripNear`), und der
+Ball springt vor dem Schuh auf statt darauf. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
 anpassen und `node characters.js` laufen lassen (`SF_DEBUG=<ordner>` schreibt zusätzlich Prüfbilder).
 Die Schnitte an den Gelenken laufen weich aus, das Hosenbein ist an der Hüfte rund, und was am Rand von Unterarm und
 Faust nach Hose/Trikot aussieht, wird abgeschabt. Neben dem Atlas entsteht eine Umriss-Maske (`<id>_rim.png`): Der

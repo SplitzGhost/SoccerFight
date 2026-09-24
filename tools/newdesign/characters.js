@@ -315,6 +315,13 @@ function straighten(buf, W, H) {
     }
 }
 
+/** Wie weit ein Teil vom Drehpunkt aus in eine Richtung reicht (deckende Pixel), in Bogen-Pixeln. */
+function extent(p, dir) {
+    let m = 0;
+    for (let y = 0; y < p.H; y++) for (let x = 0; x < p.W; x++) if (p.buf[(y * p.W + x) * 4 + 3] > 0.5) m = Math.max(m, dir(x + 0.5 - p.px, y + 0.5 - p.py));
+    return m;
+}
+
 const lum = (r, g, b) => 0.3 * r + 0.55 * g + 0.15 * b;
 
 /** Die Farben, die in einem Bereich deutlich vorkommen (ab share Anteil), häufigste zuerst. */
@@ -484,6 +491,9 @@ async function buildFigure(id) {
         tuft: F.tuft ? u(J.head, F.tuft.root) : [0, 0],
         hipHeight: (F.sole - J.hip[1]) / ppu, headTop: (F.sole - F.top) / ppu,
         tuftFlex: F.tuft ? F.tuft.flex : 0,
+        // Faust: Handgelenk → Knöchel entlang des Unterarms; Schuh: Knöchel → Spitze und Ferse (fürs Dribbeln)
+        hand: extent(parts.Hand, (x, y) => y) / ppu,
+        toe: extent(parts.Boot, (x, y) => x) / ppu, heel: extent(parts.Boot, (x, y) => -x) / ppu,
     };
     return { id, ppu, parts, body };
 }
