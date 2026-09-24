@@ -25,6 +25,10 @@ Spieländerungen mitgepflegt werden.**
   (`Inspiration/nnewDesign`) ausgeschnitten sind: `tools/newdesign/build.js` (Node, einmal `npm install` im Ordner)
   erzeugt `Assets/Resources/NewDesign/*.png` + `design.json`, geladen von `Art/DesignArt.cs`. Neue oder bessere
   Vorlagen → Ausschnitte in `build.js` anpassen und neu laufen lassen, nicht die PNGs von Hand ändern.
+- **Auch die Spielfiguren sind Bilder:** `tools/newdesign/characters.js` schneidet sie aus den Figurenbögen
+  (`Inspiration/CharackterNewDesign`, Seitenansicht) in Glieder und schreibt `Resources/Characters/<id>.png/.json`
+  (Atlas + Drehpunkte + gemessenes Skelett → `PlayerBody`). Umrisse/Gelenke stehen in `characters.def.js`. Die
+  Animation bleibt prozedural (`PlayerRig`, `MenuFigure`). Knöchel liegt immer `PlayerDims.AnkleHeight` (0,13) über der Sohle.
 - Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
 - Skripte: `SoccerFight/Assets/Scripts/` (Namespace `SoccerFight`), Ordner Art, Ball, Combat, Core, Enemies, FX,
   Meta, Net, Player, Run, UI, World, Editor, DevTools.

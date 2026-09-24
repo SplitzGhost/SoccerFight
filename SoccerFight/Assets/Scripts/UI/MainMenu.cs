@@ -106,7 +106,7 @@ namespace SoccerFight
         CanvasGroup tagGroup;
         const float FeetY = -392f, FigureScale = 292f, LogoUnit = 25f;
         /// <summary>The name tag floats a little above the head of whoever stands there (the basketball players are taller).</summary>
-        static float TagY => FeetY + 612f + (Characters.Current.Body.HeadTop - PlayerBody.Soccer.HeadTop) * FigureScale;
+        static float TagY => FeetY + Characters.Current.Body.HeadTop * FigureScale + 75f;
 
         // cursor
         Image curRing, curDot, curGlow;

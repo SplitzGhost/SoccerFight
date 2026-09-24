@@ -1,7 +1,7 @@
 # SportFighter
 
 2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Figuren, Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die Spielwelt (Kulisse, Boden, Plattformen, Ruinen, Bäume, Pflanzen) ist aus den Design-Vorlagen ausgeschnitten (`tools/newdesign/build.js` → `Assets/Resources/NewDesign`) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
+Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die sechs Spielfiguren sind aus den Figurenbögen des Designs ausgeschnitten (`tools/newdesign/characters.js` → `Assets/Resources/Characters`, siehe unten) und werden prozedural animiert. Die Spielwelt (Kulisse, Boden, Plattformen, Ruinen, Bäume, Pflanzen) ist aus den Design-Vorlagen ausgeschnitten (`tools/newdesign/build.js` → `Assets/Resources/NewDesign`) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
 
 ## Ein Lauf
 
@@ -54,9 +54,8 @@ SportFighter hat mehrere Sportarten mit denselben drei Klassen (Angreifer/Stürm
 Tennis stehen schon als „kommt bald“ im Spielermenü. Welt, Monster und Ablauf eines Laufs sind für alle gleich, jede
 Sportart bringt aber ihre eigenen Moves, Boss-Fähigkeiten und Upgrade-Karten mit (`Run/Characters.cs`, `Sport`).
 
-**Basketball** (`Player/Player.Hoops.cs`, Posen in `Player/PlayerRig.Hoops.cs`, Körper in `Art/HoopsArt.cs`): größere,
-schlaksigere Spieler mit eigenen Knochenlängen (`PlayerBody`) in Tanktop mit Nummer, langen Shorts, Crew-Socken und
-High-Tops. Beim Laufen und Stehen wird der Ball automatisch gedribbelt (ein Aufsetzer pro Schritt, reine Optik), in
+**Basketball** (`Player/Player.Hoops.cs`, Posen in `Player/PlayerRig.Hoops.cs`): größere Spieler mit eigenen
+Knochenlängen (`PlayerBody`) in Tanktop mit Nummer, Shorts, Crew-Socken und High-Tops. Beim Laufen und Stehen wird der Ball automatisch gedribbelt (ein Aufsetzer pro Schritt, reine Optik), in
 der Luft halten ihn beide Hände vor der Brust.
 
 | | Spieler | Rechtsklick |
@@ -170,9 +169,16 @@ Loadout, Guthaben und Stufen für spätere Upgrades; gespeichert wird nach Käuf
 Wechsel ins Menü. **Ton** (`Audio/Sfx.cs`): Die Geräusche werden wie die Grafik beim Start synthetisiert,
 Lautstärke unter Optionen → Ton.
 
-Technisch ist eine Figur ein **Kit** aus dreizehn Farben plus Haarlänge und Stirnband. `PlayerArt` zeichnet damit
-denselben Körper in neun Fassungen; welche ein Menü zum ersten Mal braucht, entsteht über einige Frames verteilt
-(`PlayerArt.Request/Pump`, ein Viertel des Körpers pro Frame), damit nichts ruckelt.
+**Figuren-Grafik:** Jede Figur ist ein Bogen aus dem Design (`Inspiration/CharackterNewDesign`, nicht im Repo). Das
+Node-Skript `tools/newdesign/characters.js` schneidet aus der Seitenansicht Kopf, Hals, Rumpf, Hose, Oberschenkel,
+Unterschenkel, Schuh, Oberarm, Unterarm und Hand aus (Umrisse und Gelenkpunkte stehen in `characters.def.js`), gibt
+den Gliedern runde, überlappende Gelenkenden, füllt verdeckte Stellen (Rumpf hinter dem Arm) mit dem Grundstoff auf
+und legt pro Figur einen Atlas + JSON nach `Resources/Characters`. Das JSON enthält auch das Skelett (Knochenlängen,
+Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBody` der Figur schreibt – das Rig
+bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
+Dre trägt den Kompressionsärmel nur am vorderen Arm. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
+anpassen und `node characters.js` laufen lassen (`SF_DEBUG=<ordner>` schreibt zusätzlich Prüfbilder).
+Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchten unter den Schuhen.
 
 ## Steuerung
 
@@ -245,7 +251,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 | Ordner | Inhalt |
 |---|---|
 | `Core/` | `Game` (Einstiegspunkt + Update-Reihenfolge), Input, Federn/Easing/IK (`MathUtil`), Hit-Stop & Slow-Mo (`TimeFx`) |
-| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, prozedurale Grafiken für Spieler, Ball, die 17 Monster-Körper (`MonsterArt`), die Welt-Grafik aus den Design-Vorlagen (`DesignArt`), Kulissen-Teile für den Titelbildschirm (`EnvironmentArt`, `DepthArt`, `PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen), Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
+| `Art/` | SDF-Rasterizer (`SdfCanvas`, `Sdf`), Farbpalette, Laden der ausgeschnittenen Spielfiguren (`PlayerArt`), prozedurale Grafiken für Ball, die 17 Monster-Körper (`MonsterArt`), die Welt-Grafik aus den Design-Vorlagen (`DesignArt`), Kulissen-Teile für den Titelbildschirm (`EnvironmentArt`, `DepthArt`, `PlatformArt`), Titelbildschirm (`MenuArt`: Logo-Materialien, Vignette, Ziel-Klammern, Treffer-Formen), Pflanzen (`FoliageArt`); `ArtJobs` erzeugt den Hintergrund parallel auf Worker-Threads (im Browser nacheinander, siehe `Par`), `ArtQueue` die Grafik neuer Stages zur Laufzeit |
 | `World/` | Begehbare Geometrie, Plattform-Layouts und -Bewegung (`Level`), Plattform-Darstellung (`PlatformViews`), die Spielwelt aus Parallax-Ebenen (`WorldEnvironment`), Vegetations-Meshes mit GPU-Wind (`FoliageLayer` + Shader `SF_Foliage`), lebendige Details wie Wolken, Fledermäuse, Wasserfälle, Blätter, Laternen, Geisterlichter (`Ambient`), die Szene des Titelbildschirms (`MenuVista`) |
 | `Player/` | Bewegung & Fähigkeiten inkl. Hochhalten und Luft-Rückstoß (`Player`), prozedurale Animation mit IK, Bremsen und Drehung (`PlayerRig`), Nachbilder |
 | `Ball/` | Dribbeln, Schuss, Regenbogen-Bogen, Rückkehr |
@@ -277,7 +283,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Luft-Rückstoß:** `AirKickBoost` / `BoostControlTime` in `Player.cs`
 - **Skills:** `Power*`, `StepOver*`/`DashTime`/`DashSpeed`, `Bicycle*`/`Blast*` in `Player.cs` (Timing, Cooldowns, Schaden, Explosionsradius)
 - **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
-- **Spieler-Look:** Formen in `PlayerArt.cs` (Farben kommen aus dem Kit des gewählten Charakters), Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
+- **Spieler-Look:** Umrisse und Gelenke in `tools/newdesign/characters.def.js`, danach `node characters.js`; Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
 - **Charaktere:** Namen, Klassen, Perks, Preise und alle Farben in `Run/Characters.cs` (neue Figur = neuer Eintrag, hinten anhängen); das Kartenlayout in `UI/MetaWidgets.cs` (`CharacterCard`, `ShopCharacterCard`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
 - **Klassen-Talente:** alle Zahlen in `ClassTuning` (`Meta/ClassDefs.cs`); eine neue Klasse = Enum-Wert + `ClassDef` mit Talent (`PassiveDef`)

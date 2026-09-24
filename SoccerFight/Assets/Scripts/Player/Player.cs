@@ -948,7 +948,7 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ keep-ups
 
-        static float ContactHeight(Touch t) => t == Touch.Head ? 2.06f : t == Touch.Knee ? 1.1f : 0.55f;
+        float ContactHeight(Touch t) => t == Touch.Head ? Rig.Body.HeadTop + 0.235f : t == Touch.Knee ? 1.1f : 0.55f;
         static float ContactX(Touch t) => t == Touch.Head ? 0.13f : t == Touch.Knee ? 0.34f : 0.36f;
 
         static float ApexFor(Touch next) => next == Touch.Head ? Random.Range(3.05f, 3.35f)
@@ -1565,7 +1565,7 @@ namespace SoccerFight
         }
 
         /// <summary>Where the forehead meets the ball (local, facing-relative, relative to the feet).</summary>
-        static Vector2 HeaderContactLocal => new Vector2(0.24f, PlayerDims.StandHip + 0.84f);
+        Vector2 HeaderContactLocal => new Vector2(0.24f, Rig.Body.Forehead);
 
         void UpdateHeader(float dt)
         {

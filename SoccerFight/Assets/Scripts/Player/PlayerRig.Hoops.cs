@@ -21,7 +21,7 @@ namespace SoccerFight
         float Reach => body.UpperArmLen + body.ForearmLen;
 
         /// <summary>Near shoulder, root-local, standing upright (the moves aim the hand from here).</summary>
-        Vector2 ShoulderAt(float hipY) => new Vector2(0.015f, hipY + body.ShoulderY - 0.01f);
+        Vector2 ShoulderAt(float hipY) => new Vector2(body.Shoulder.x, hipY + body.Shoulder.y);
 
         // ------------------------------------------------------------------ carrying the ball
 
@@ -45,7 +45,7 @@ namespace SoccerFight
             Vector2 wrist = new Vector2(bx - 0.035f, handY);
 
             // in the air the ball is gathered in both hands in front of the chest
-            Vector2 chest = new Vector2(0.24f, hipY + body.ShoulderY * 0.7f);
+            Vector2 chest = new Vector2(0.24f, hipY + body.Shoulder.y * 0.7f);
             ballLocal = Vector2.Lerp(dribble, chest, air);
             nearIK = Vector2.Lerp(wrist, chest + new Vector2(0.01f, -(R + 0.07f)), air);
             nearIKw = 1f;
@@ -116,7 +116,7 @@ namespace SoccerFight
                     float tH = Player.ThreeHop, tR = Player.ThreeRelease, tE = Player.ThreeDuration;
                     Vector2 aim = player.KickAimLocal.sqrMagnitude > 0.01f ? player.KickAimLocal.normalized : new Vector2(0.55f, 0.85f);
                     float w = MathUtil.Smooth01(t / 0.05f) * (1f - MathUtil.Smooth01((t - (tE - 0.12f)) / 0.12f));
-                    Vector2 chestB = new Vector2(0.2f, hipY + body.ShoulderY * 0.72f);
+                    Vector2 chestB = new Vector2(0.2f, hipY + body.Shoulder.y * 0.72f);
                     Vector2 setB = sh + new Vector2(0.06f, 0.36f);
                     if (t < tH)
                     {
@@ -198,10 +198,10 @@ namespace SoccerFight
                 case Player.Action.Dunk:
                 {
                     float tG = Player.DunkGather, T = player.DunkFlight, tS = tG + T, tE = tS + Player.DunkRecover;
-                    Vector2 chestB = new Vector2(0.22f, hipY + body.ShoulderY * 0.7f);
+                    Vector2 chestB = new Vector2(0.22f, hipY + body.Shoulder.y * 0.7f);
                     Vector2 overhead = sh + new Vector2(0.1f, 0.52f);
                     Vector2 cocked = sh + new Vector2(-0.14f, 0.46f);
-                    Vector2 slam = new Vector2(0.44f, hipY + body.ShoulderY * 0.25f);
+                    Vector2 slam = new Vector2(0.44f, hipY + body.Shoulder.y * 0.25f);
                     if (t < tG)
                     {
                         float k = MathUtil.Smooth01(t / tG);

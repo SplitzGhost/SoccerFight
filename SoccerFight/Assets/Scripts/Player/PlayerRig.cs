@@ -601,24 +601,24 @@ namespace SoccerFight
             float torsoRot = lean + torsoTwist;
             Place(torso, hip, torsoRot);
             Place(pelvis, hip, torsoRot * 0.35f);
-            Vector2 shoulder = hip + MathUtil.Rotate(new Vector2(0.0f, body.ShoulderY), torsoRot);
-            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), torsoRot);
+            Vector2 neckBase = hip + MathUtil.Rotate(body.Neck, torsoRot);
             Place(neck, neckBase, torsoRot * 0.6f + headTilt * 0.3f);
             float headRot = torsoRot + headTilt;
-            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0.0f, 0.065f), torsoRot * 0.6f);
+            Vector2 headPos = neckBase + MathUtil.Rotate(body.Head, torsoRot * 0.6f);
             Place(head, headPos, headRot);
 
-            // hair tuft: spring-driven secondary motion
-            float tuftTarget = Mathf.Clamp(-vel.x * facing * 1.6f - vel.y * 1.8f, -28f, 28f) + Mathf.Sin(time * 3f) * 2f;
+            // ponytail / braids: spring-driven secondary motion, trailing the run and lifting on the way down
+            float flex = body.TuftFlex;
+            float tuftTarget = Mathf.Clamp(-vel.x * facing * 1.6f - vel.y * 1.8f, -28f, 28f) * flex + Mathf.Sin(time * 3f) * 2f * flex;
             MathUtil.Spring(ref tuftAngle, ref tuftVel, tuftTarget, 2.2f, 0.3f, dt);
-            Vector2 tuftPos = headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot);
-            Place(tuft, tuftPos, headRot + tuftAngle);
+            Vector2 tuftPos = headPos + MathUtil.Rotate(body.Tuft, headRot);
+            Place(tuft, tuftPos, headRot + tuftAngle * flex);
 
             PoseLeg(farLeg, hip + new Vector2(-0.025f, 0f), farFoot, farPoint, farFlat);
             PoseLeg(nearLeg, hip + new Vector2(0.02f, 0f), nearFoot, nearPoint, nearFlat);
 
-            Vector2 nearSh = shoulder + MathUtil.Rotate(new Vector2(0.015f, -0.01f), torsoRot);
-            Vector2 farSh = shoulder + MathUtil.Rotate(new Vector2(-0.035f, 0.01f), torsoRot);
+            Vector2 nearSh = hip + MathUtil.Rotate(body.Shoulder, torsoRot);
+            Vector2 farSh = hip + MathUtil.Rotate(body.Shoulder + new Vector2(-0.05f, 0.02f), torsoRot);
             // hands that hold or dribble the basketball reach for it (IK blended over the swing)
             float farAbs = farShoulder + torsoRot, nearAbs = nearShoulder + torsoRot;
             if (farIKw > 0.001f)

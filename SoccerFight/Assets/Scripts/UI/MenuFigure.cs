@@ -90,6 +90,7 @@ namespace SoccerFight
         {
             img.sprite = sprite;
             img.color = tint;
+            img.enabled = sprite != null;   // an Image without a sprite would draw a white box (short hair has no swinging part)
             if (sprite == null) return;
             var rt = img.rectTransform;
             rt.pivot = new Vector2(sprite.pivot.x / sprite.rect.width, sprite.pivot.y / sprite.rect.height);
@@ -210,8 +211,8 @@ namespace SoccerFight
             float wristTop = hip.y + (show ? 0.02f : 0.1f);
             float topY = wristTop - 0.07f - R;
             Vector2 dribble = new Vector2(0.4f, R + (topY - R) * bounce);
-            Vector2 chest = new Vector2(0.22f, hip.y + body.ShoulderY * 0.72f);
-            Vector2 pass = new Vector2(0.5f, hip.y + body.ShoulderY * 0.78f);
+            Vector2 chest = new Vector2(0.22f, hip.y + body.Shoulder.y * 0.72f);
+            Vector2 pass = new Vector2(0.5f, hip.y + body.Shoulder.y * 0.78f);
             Vector2 b = dribble;
             if (kick >= 0f)
             {
@@ -239,8 +240,8 @@ namespace SoccerFight
             PlaceBall(b, kick);
         }
 
-        Vector2 NearShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(new Vector2(0.015f, body.ShoulderY - 0.01f), lean);
-        Vector2 FarShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(new Vector2(-0.035f, body.ShoulderY + 0.01f), lean);
+        Vector2 NearShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(body.Shoulder, lean);
+        Vector2 FarShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(body.Shoulder + new Vector2(-0.05f, 0.02f), lean);
 
         /// <summary>Legs, pelvis, torso, neck, head and hair for a hip, a lean and two ankle targets.</summary>
         void PoseBody(Vector2 hip, float lean, Vector2 nearAnkleTarget, Vector2 farAnkleTarget, float nearBootRot, Vector2 lookAt, float contact, float t, float armOut)
@@ -249,16 +250,16 @@ namespace SoccerFight
             Vector2 nearKnee = MathUtil.SolveTwoBone(nearHip, nearAnkleTarget, body.ThighLen, body.ShinLen, 1f, out Vector2 nAnkle);
             Vector2 farKnee = MathUtil.SolveTwoBone(farHip, farAnkleTarget, body.ThighLen, body.ShinLen, 1f, out Vector2 fAnkle);
 
-            Vector2 neckBase = hip + MathUtil.Rotate(new Vector2(0.03f, body.NeckY), lean);
+            Vector2 neckBase = hip + MathUtil.Rotate(body.Neck, lean);
             float headRot = lean * 0.6f + Mathf.Clamp(lookAt.y, -1f, 1f) * 5f - contact * 6f;
-            Vector2 headPos = neckBase + MathUtil.Rotate(new Vector2(0f, 0.065f), lean * 0.6f);
+            Vector2 headPos = neckBase + MathUtil.Rotate(body.Head, lean * 0.6f);
 
             Leg(farShin, farThigh, farBoot, farGlow, farHip, farKnee, fAnkle, 0f);
             Place(neck, neckBase, lean * 0.6f);
             Place(pelvis, hip, lean * 0.35f);
             Leg(nearShin, nearThigh, nearBoot, nearGlow, nearHip, nearKnee, nAnkle, nearBootRot);
             Place(torso, hip, lean);
-            Place(tuft, headPos + MathUtil.Rotate(new Vector2(0.03f, 0.35f), headRot), headRot + 6f + Mathf.Sin(t * 5f) * 3f * armOut);
+            Place(tuft, headPos + MathUtil.Rotate(body.Tuft, headRot), headRot + (6f * Mathf.Sin(t * 1.7f) + Mathf.Sin(t * 5f) * 3f * armOut) * body.TuftFlex);
             Place(head, headPos, headRot);
         }
 

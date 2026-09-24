@@ -36,27 +36,37 @@ namespace SoccerFight
     public enum HairStyle { Tuft, Fade, Buzz, Braids }
 
     /// <summary>
-    /// Bone lengths of a body (world units). The soccer players share one build; the basketball
-    /// players are taller and lankier, each with their own. Rig, art and menu figures all read it.
+    /// The skeleton of a body (world units), measured on the character sheet by tools/newdesign/characters.js and
+    /// filled in by PlayerArt when the game starts. Every character has its own; the defaults are only a stand-in.
+    /// Rig, art and menu figures all read it. Vectors are in the torso's frame, y up.
     /// </summary>
     public sealed class PlayerBody
     {
         public float ThighLen = PlayerDims.ThighLen, ShinLen = PlayerDims.ShinLen;
         public float UpperArmLen = PlayerDims.UpperArmLen, ForearmLen = PlayerDims.ForearmLen;
-        /// <summary>Hip joint → shoulder joint along the torso.</summary>
-        public float ShoulderY = 0.465f;
-        /// <summary>Width of the chest and shoulders (1 = the soccer build).</summary>
-        public float Build = 1f;
-
-        public float StandHip => PlayerDims.AnkleHeight + ThighLen + ShinLen - 0.045f;
-        public float NeckY => ShoulderY + 0.06f;
+        /// <summary>Hip joint → shoulder joint of the front arm.</summary>
+        public Vector2 Shoulder = new Vector2(-0.08f, 0.49f);
+        /// <summary>Hip joint → base of the neck.</summary>
+        public Vector2 Neck = new Vector2(0f, 0.57f);
+        /// <summary>Base of the neck → head pivot (top of the neck).</summary>
+        public Vector2 Head = new Vector2(0f, 0.12f);
+        /// <summary>Head pivot → root of the ponytail or braids (the hair part that swings).</summary>
+        public Vector2 Tuft;
+        /// <summary>How far the hair part swings (0: short hair, no swinging part).</summary>
+        public float TuftFlex;
+        /// <summary>Hip joint above the soles in the sheet's upright pose.</summary>
+        public float HipHeight = 0.86f;
         /// <summary>Feet → top of the head, standing (name tags, portraits).</summary>
-        public float HeadTop => StandHip + NeckY + 0.065f + 0.38f;
+        public float HeadTop = 2.05f;
 
+        /// <summary>Standing hip height: the knees stay a touch bent, as in the design.</summary>
+        public float StandHip => Mathf.Min(HipHeight - 0.012f, PlayerDims.AnkleHeight + ThighLen + ShinLen - 0.03f);
+
+        /// <summary>Height of the forehead standing (where a header meets the ball).</summary>
+        public float Forehead => StandHip + Neck.y + Head.y + 0.22f;
+
+        /// <summary>The first soccer player's body: the reference the menus measure the others against.</summary>
         public static readonly PlayerBody Soccer = new PlayerBody();
-
-        public static PlayerBody Hoops(float thigh, float shin, float upper, float fore, float shoulder, float build)
-            => new PlayerBody { ThighLen = thigh, ShinLen = shin, UpperArmLen = upper, ForearmLen = fore, ShoulderY = shoulder, Build = build };
     }
 
     public sealed class CharacterDef
@@ -67,8 +77,8 @@ namespace SoccerFight
         public CharacterClass Class;
         public Sport Sport = Sport.Soccer;
         public CharacterKit Kit;
-        /// <summary>Bone lengths (the soccer build unless the character brings its own).</summary>
-        public PlayerBody Body = PlayerBody.Soccer;
+        /// <summary>Skeleton, measured on the character sheet (PlayerArt fills it in).</summary>
+        public PlayerBody Body = new PlayerBody();
         public Color Accent;
         /// <summary>Can be the free first pick (every character of the base roster can).</summary>
         public bool Starter;
@@ -124,7 +134,7 @@ namespace SoccerFight
             // ---- soccer
             new CharacterDef
             {
-                Id = "rio", Name = "RIO", Class = CharacterClass.Striker, Starter = true, CoinPrice = 500,
+                Id = "rio", Name = "RIO", Class = CharacterClass.Striker, Starter = true, CoinPrice = 500, Body = PlayerBody.Soccer,
                 Flavour = "Lebt vom Abschluss: sucht die Lücke und zieht ab.",
                 Accent = Hex("#FF5A4A"), Attack = 5, Defence = 2, Tech = 3,
                 Kit = Kit("#D6443A", "#862439", "#F07A5C", "#ECE7DB", "#98ACB5", "#D9A07C", "#9E6A5C", "#F2C6A4",
@@ -161,7 +171,6 @@ namespace SoccerFight
                 Accent = Hex("#FF6A3D"), Attack = 5, Defence = 2, Tech = 3,
                 Kit = Hoops(Kit("#C9352C", "#7A1B24", "#EE6B4E", "#F3EEE4", "#A9A39A", "#8A5A3C", "#5C3826", "#B98460",
                           "#141118", "#46404F", "#1B1A20", "#403E4A", "#FF5A3A", 0.5f, true), "#17151B", HairStyle.Fade, 3, sleeve: true),
-                Body = PlayerBody.Hoops(0.46f, 0.47f, 0.31f, 0.29f, 0.5f, 1f),
                 Perk = Perk("dre", "SPLASH", "Dreier: +20 % Schaden, lädt 15 % schneller.",
                     (s, n) => { s.ThreeDamageMul += 0.2f; s.ThreeCooldownMul *= 0.85f; }),
             },
@@ -172,7 +181,6 @@ namespace SoccerFight
                 Accent = Hex("#E7B43A"), Attack = 3, Defence = 5, Tech = 2,
                 Kit = Hoops(Kit("#233A70", "#111D3E", "#4263A6", "#F2EBDD", "#A69F92", "#6A4430", "#41291C", "#98684A",
                           "#100C0C", "#3A302C", "#16181F", "#3A4150", "#E9B640", 0.3f, false), "#E9B640", HairStyle.Buzz, 34, kneePads: true),
-                Body = PlayerBody.Hoops(0.49f, 0.49f, 0.32f, 0.3f, 0.53f, 1.2f),
                 Perk = Perk("titan", "RIM PROTECTOR", "+25 maximales Leben, Dunk-Druckwellen 20 % größer.",
                     (s, n) => { s.MaxHpBonus += 25f; s.DunkWaveMul += 0.2f; }),
             },
@@ -183,7 +191,6 @@ namespace SoccerFight
                 Accent = Hex("#2FD6C8"), Attack = 2, Defence = 3, Tech = 5,
                 Kit = Hoops(Kit("#17A39B", "#0A5B5A", "#4FD3C5", "#F6EEF4", "#B7A4B4", "#D9A57E", "#A77558", "#F4CCA6",
                           "#2A1A1E", "#6E4A56", "#D8398F", "#FF86C4", "#2FD6C8", 1.6f, false), "#E0409A", HairStyle.Braids, 11),
-                Body = PlayerBody.Hoops(0.45f, 0.45f, 0.3f, 0.28f, 0.49f, 0.94f),
                 Perk = Perk("nova", "HANDLES", "Crossover-Boost hält 1 s länger, +8 % Tempo.",
                     (s, n) => { s.CrossTimeBonus += 1f; s.MoveSpeedMul += 0.08f; }),
             },
