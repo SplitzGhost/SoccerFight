@@ -96,8 +96,8 @@ namespace SoccerFight
                 specks.Add(new Speck { root = v.Root, local = at, color = l.Color });
             }
 
-            // sometimes a lantern, banner or star hangs under a floating piece
-            if (pc.Role == StageKit.Role.Float && !pc.Hangs && pc.Lights.Length == 0 && R() < 0.45f)
+            // sometimes a lantern, banner or star hangs under a higher floating piece (never down into the pitch)
+            if (pc.Role == StageKit.Role.Float && !pc.Hangs && pc.Lights.Length == 0 && p.BaseY > 3.2f && R() < 0.5f)
             {
                 var hangs = kit.PropsTagged("hang");
                 if (hangs.Count > 0)

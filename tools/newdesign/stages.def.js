@@ -6,7 +6,8 @@
 // scene.walk     Zeile, auf der die Figur in der Szene steht (Oberkante Boden)
 // scene.crop     [x0, x1] Ausschnitt der Kulisse (Rahmenobjekte am Rand fallen so gleich weg)
 // scene.holes    Rechtecke, die aus der Kulisse entfernt und aufgefüllt werden (Plattformen, Figur, Titel …)
-// scene.keep     Rechtecke, die stehen bleiben, aber nicht zum Auffüllen kopiert werden dürfen
+// scene.keep     Rechtecke, die stehen bleiben, aber nicht zum Auffüllen kopiert werden dürfen (Mond, Eklipse …)
+// stars          Nachthimmel: der weitergemalte Himmel über der Szene bekommt Sterne
 // ground.x       [x0, x1] Streifen des Bodens, aus dem die kachelbare Mauer entsteht
 // ground.pad     wie viele Zeilen über der Standlinie die Bodengrafik beginnt (Moos-, Schnee-, Laubkante)
 // ground.holes   [x0, x1] Stellen, an denen etwas auf dem Boden steht (wird aufgefüllt)
@@ -26,10 +27,10 @@ const S = (file, def) => ({ file, cut: { ...CUT, ...(def.cut || {}) }, ...def, c
 
 module.exports = [
     S('01-Mondlicht-Ruinen.png', {
-        id: 'mondlicht',
+        id: 'mondlicht', stars: true,
         scene: {
             walk: 412, crop: [340, 1536],
-            holes: [[330, 6, 452, 56], [282, 146, 480, 232], [296, 228, 462, 304], [543, 186, 744, 324], [586, 300, 712, 412],
+            keep: [[930, 0, 1100, 150]], holes: [[330, 6, 452, 56], [282, 146, 480, 232], [296, 228, 462, 304], [543, 186, 744, 324], [586, 300, 712, 412],
                 [826, 248, 1009, 368], [878, 330, 967, 412], [1151, 194, 1350, 302], [1203, 280, 1297, 412]],
         },
         ground: { x: [110, 1340], pad: 7, holes: [[222, 308], [590, 712], [880, 968], [1205, 1298], [735, 805]] },
@@ -81,7 +82,7 @@ module.exports = [
         id: 'regen',
         scene: {
             walk: 407, crop: [130, 1440],
-            holes: [[126, 6, 338, 56], [124, 292, 230, 407], [280, 148, 500, 198], [300, 190, 406, 260], [300, 250, 366, 407],
+            keep: [[920, 0, 1010, 90]], holes: [[126, 6, 338, 56], [124, 292, 230, 407], [280, 148, 500, 198], [300, 190, 406, 260], [300, 250, 366, 407],
                 [562, 170, 604, 407], [718, 170, 756, 407], [562, 178, 756, 268], [562, 302, 756, 324],
                 [830, 153, 1022, 188], [842, 153, 882, 407], [972, 153, 1012, 407], [858, 176, 1002, 240],
                 [1170, 176, 1280, 407], [1283, 272, 1440, 407], [1376, 176, 1440, 412], [258, 302, 334, 407]],
@@ -133,7 +134,7 @@ module.exports = [
         id: 'glut', cut: { pocketTol: 6, pocket: 160, grow: 4 },
         scene: {
             walk: 412, crop: [240, 1405],
-            holes: [[236, 6, 372, 56], [272, 192, 480, 242], [284, 228, 336, 412], [418, 228, 472, 412], [328, 232, 428, 292],
+            keep: [[1040, 60, 1350, 412]], holes: [[236, 6, 372, 56], [272, 192, 480, 242], [284, 228, 336, 412], [418, 228, 472, 412], [328, 232, 428, 292],
                 [494, 66, 728, 114], [498, 66, 538, 412], [678, 66, 728, 412], [536, 104, 664, 222], [532, 206, 688, 292],
                 [810, 268, 1010, 412], [1036, 326, 1112, 412], [1115, 220, 1335, 278], [1118, 220, 1162, 412], [1288, 220, 1335, 412],
                 [226, 302, 302, 412]],
@@ -157,7 +158,7 @@ module.exports = [
         ],
     }),
     S('06-Frostgipfel.png', {
-        id: 'frost', cut: { glow: true, grow: 18 },
+        id: 'frost', stars: true, cut: { glow: true, grow: 18 },
         scene: {
             walk: 410, crop: [205, 1360],
             holes: [[201, 6, 332, 56], [272, 178, 482, 412], [538, 220, 748, 412], [842, 252, 1018, 412], [1136, 230, 1328, 412], [224, 302, 304, 412], [1296, 258, 1360, 412]],
@@ -183,10 +184,10 @@ module.exports = [
         ],
     }),
     S('07-Sternengarten.png', {
-        id: 'stern',
+        id: 'stern', stars: true,
         scene: {
             walk: 408, crop: [235, 1400],
-            holes: [[231, 6, 398, 56], [280, 160, 455, 278], [532, 170, 720, 352], [808, 242, 982, 368], [1058, 232, 1316, 284], [686, 352, 834, 408], [1340, 330, 1400, 408], [231, 296, 272, 410]],
+            keep: [[1080, 20, 1340, 230]], holes: [[231, 6, 398, 56], [280, 160, 455, 278], [532, 170, 720, 352], [808, 242, 982, 368], [1058, 232, 1316, 284], [686, 352, 834, 408], [1340, 330, 1400, 408], [231, 296, 272, 410]],
         },
         ground: { x: [0, 1450], pad: 3, holes: [[190, 262], [686, 834], [0, 240], [1340, 1450]] },
         cells: {
@@ -208,7 +209,7 @@ module.exports = [
         id: 'eklipse',
         scene: {
             walk: 412, crop: [230, 1440],
-            holes: [[226, 6, 252, 56], [222, 166, 464, 278], [528, 222, 738, 320], [806, 240, 1028, 344], [1066, 228, 1330, 306], [224, 302, 302, 412]],
+            keep: [[860, 0, 1080, 190], [270, 0, 390, 160]], holes: [[226, 6, 252, 56], [222, 166, 464, 278], [528, 222, 738, 320], [806, 240, 1028, 344], [1066, 228, 1330, 306], [224, 302, 302, 412]],
         },
         ground: { x: [0, 1380], pad: 6, holes: [[224, 302], [0, 230]] },
         cells: {

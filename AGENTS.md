@@ -25,7 +25,9 @@ Spieländerungen mitgepflegt werden.**
   unten 12 Nahaufnahmen) ausgeschnitten sind: `tools/newdesign/stages.js` (Node, einmal `npm install` im Ordner; was wofür
   dient pro Stage in `stages.def.js`) erzeugt `Assets/Resources/Stages/<id>/*.png` + `stage.json`, geladen von
   `Art/StageKit.cs`. Die Kulisse wird inhaltsbasiert aufgefüllt (`inpaint.js`, ~20 s pro Stage; `--fast` behält sie),
-  Einzelteile freigestellt (`cutout.js`). Neue/bessere Bögen → `stages.def.js` anpassen und neu laufen lassen, nie die
+  Einzelteile freigestellt (`cutout.js`), alles per KI hochskaliert (`aiup.js`, Real-ESRGAN in `tools/newdesign/esrgan`,
+  nicht im Repo: `realesrgan-ncnn-vulkan-20220424-windows.zip` von github.com/xinntao/Real-ESRGAN/releases dort entpacken;
+  der Vulkan-Treiber wird per `VK_ICD_FILENAMES` gefunden; Ergebnisse unter `.cache/ai`). Braucht die Grafikkarte (Claude: ohne Sandbox starten). Neue/bessere Bögen → `stages.def.js` anpassen und neu laufen lassen, nie die
   PNGs von Hand ändern. `tools/newdesign/build.js` liefert nur noch den Pflanzen-Atlas (`Resources/NewDesign`, Gras in Stage 1).
 - **Auch die Spielfiguren sind Bilder:** `tools/newdesign/characters.js` schneidet sie aus den Figurenbögen
   (`Inspiration/CharackterNewDesign`, Seitenansicht) in Glieder und schreibt `Resources/Characters/<id>.png/.json`

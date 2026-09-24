@@ -244,22 +244,23 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   Rainbow Flick funktionieren auf jeder Ebene.
 - **Die Welten:** Jede Stage hat ihre eigene Welt aus ihrem Stage-Bogen (`Inspiration/StagesNewDesigns`: oben eine
   Szene, darunter 12 Nahaufnahmen). `tools/newdesign/stages.js` (Einstellungen in `stages.def.js`) schneidet daraus:
-  die **Kulisse** (die Szene ohne Plattformen, Figur und Rahmenobjekte; die Lücken füllt ein inhaltsbasiertes
-  Auffüllverfahren in `inpaint.js` aus passenden Stücken der Szene, unter der Horizontlinie läuft sie in Dunst aus),
+  die **Kulisse** (die Szene ohne Plattformen, Figur und Rahmenobjekte, im selben Maßstab wie in der Vorlage; die Lücken
+  füllt ein inhaltsbasiertes Auffüllverfahren in `inpaint.js` aus passenden Stücken der Szene – Mond, Eklipse & Co.
+  werden nie kopiert –, darüber geht der Himmel weiter, seitlich gespiegelt, darunter eine Nebelbank),
   den **Boden** (nahtlos kachelbar, nach unten weitergemalt und abgedunkelt) und alle **Einzelteile** der Nahaufnahmen,
   freigestellt vom dunklen Hintergrund (`cutout.js`; Leuchthöfe werden entfernt, das Spiel malt den Schein selbst).
   Daraus erzeugt: schwebende Plattformköpfe ohne Säule mit gebrochener Unterkante, hängende Bretter, Balken und Ambosse,
-  kachelbares Seil und Kette. Alles wird verdoppelt (Auflösung für 1080p). Im Spiel (`WorldEnvironment`) von hinten
+  kachelbares Seil und Kette. Alles wird per KI (Real-ESRGAN, `aiup.js`) auf die dreifache Auflösung gebracht, die
+  Kulisse bis 4096 px Breite; im Browser werden die Bilder komprimiert (Crunch). Im Spiel (`WorldEnvironment`) von hinten
   nach vorn: Himmel, Kulisse mit eigenen Lichtern (Mond, Laternen, Fenster, Lava, Polarlicht, Eklipse-Ring, Sterne),
-  Nebelbänder, eine Reihe Deko der Stage weiter hinten im Dunst (Torbögen, Kamine, Kristalle, Öfen, Monolithe,
-  Sternwarten-Türme, Tribünen …), Tropfsteine bzw. hängende Glutkübel oben, schwebende Brocken im Sternengarten und in
-  der Eklipse, der Boden, einzelne Deko-Stücke an der Hinterkante des Rasens und an den Arenaenden hinter den Toren der
+  Nebelbänder, wenige schwebende Brocken im Sternengarten und in der Eklipse, der Boden, einzelne Deko-Stücke an der Hinterkante des Rasens und an den Arenaenden hinter den Toren der
   Bodenabschluss mit Fels plus ein großes Rahmenstück (Baum, Monolith, Flutlichtmast …). Bewegt: flackernde Lichter,
   pulsierende Kristalle mit Lichtfunken, schaukelnde Laternen, wippende Brocken, ziehender Nebel, Glühwürmchen
   (Mondlicht, Bernstein, Grotte), Gras im Wind (Mondlicht) und das Wetter der Stage. Beim Stage-Wechsel wird die ganze
   Welt hinter dem Belohnungsbildschirm ausgetauscht, die Bilder der alten Stage werden wieder freigegeben.
-- **Tiefe:** Himmel, Kulisse, Nebel, Deko-Reihe, Tropfsteine, Rasen und Vordergrund bewegen sich je nach Entfernung
-  unterschiedlich stark mit der Kamera, horizontal wie vertikal (Faktoren in `WorldEnvironment.AddLayer`).
+- **Tiefe:** Himmel, Kulisse, Nebel, Rasen und Vordergrund bewegen sich je nach Entfernung unterschiedlich stark mit der
+  Kamera (Faktoren in `WorldEnvironment.AddLayer`). Die Kulisse folgt seitlich fast ganz, in der Höhe nur zu einem Drittel:
+  beim Springen sinkt sie leicht ab, statt vom Rasen abzuheben.
 
 ## Code-Überblick (`SoccerFight/Assets/Scripts`)
 

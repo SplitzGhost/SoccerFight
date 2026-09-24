@@ -33,11 +33,12 @@ async function finish(img, scale, sharpen, opts = {}) {
 async function save(file, f, opts = {}) {
     const ch = opts.channels || 4;
     await sharp(f.buf, { raw: { width: f.w, height: f.h, channels: ch } }).png({ compressionLevel: 9 }).toFile(file);
-    writeMeta(file, opts.compression ?? 1, opts.wrap ?? 1, opts.mips ?? 1);
+    writeMeta(file, opts.compression ?? 1, opts.wrap ?? 1, opts.mips ?? 1, opts.crunch ? 1 : 0);
 }
 
-/** Unity-Importeinstellungen: vormultipliziert (kein Alpha-Auffüllen), Mipmaps, Clamp, bis 4096 px. */
-function writeMeta(file, compression, wrap = 1, mips = 1) {
+/** Unity-Importeinstellungen: vormultipliziert (kein Alpha-Auffüllen), Mipmaps, Clamp, bis 4096 px;
+ *  crunch: Crunch-Kompression (kleiner Download im Browser, gleicher Grafikspeicher). */
+function writeMeta(file, compression, wrap = 1, mips = 1, crunch = 0) {
     const meta = file + '.meta';
     let guid = crypto.randomBytes(16).toString('hex');
     if (fs.existsSync(meta)) { const m = /guid: ([0-9a-f]{32})/.exec(fs.readFileSync(meta, 'utf8')); if (m) guid = m[1]; }
@@ -47,8 +48,8 @@ function writeMeta(file, compression, wrap = 1, mips = 1) {
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: ${compression}
-    compressionQuality: 100
-    crunchedCompression: 0
+    compressionQuality: ${crunch ? 75 : 100}
+    crunchedCompression: ${crunch}
     allowsAlphaSplitting: 0
     overridden: 0
     ignorePlatformSupport: 0
@@ -86,7 +87,7 @@ TextureImporter:
     wrapW: ${wrap}
   nPOTScale: 0
   lightmap: 0
-  compressionQuality: 100
+  compressionQuality: ${crunch ? 75 : 100}
   spriteMode: 0
   alphaUsage: 1
   alphaIsTransparency: 0

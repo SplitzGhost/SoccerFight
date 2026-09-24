@@ -214,20 +214,24 @@ function cut(img, cell, opts = {}) {
     }
 
     // --- components: drop specks, keep everything big enough
-    const lab = new Int32Array(N).fill(-1), comps = [], stack = new Int32Array(N);
+    const lab = new Int32Array(N).fill(-1), comps = [], spans = [], stack = new Int32Array(N);
     for (let s = 0; s < N; s++) {
         if (A[s] < 0.2 || lab[s] >= 0) continue;
-        let sp = 0; stack[sp++] = s; lab[s] = comps.length; let area = 0;
+        let sp = 0; stack[sp++] = s; lab[s] = comps.length; let area = 0, cy0 = h, cy1 = 0;
         while (sp) {
             const p = stack[--sp]; area++;
             const x = p % w, y = (p / w) | 0;
+            if (y < cy0) cy0 = y; if (y > cy1) cy1 = y;
             for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
                 const X = x + dx, Y = y + dy; if (X < 0 || Y < 0 || X >= w || Y >= h) continue;
                 const q = Y * w + X; if (A[q] >= 0.2 && lab[q] < 0) { lab[q] = comps.length; stack[sp++] = q; }
             }
         }
-        comps.push(area);
+        comps.push(area); spans.push(cy1 - cy0 + 1);
     }
+    // thin flat strokes apart from the object: the painted floor shadow of the close-up, not part of it
+    const biggest = Math.max(0, ...comps);
+    for (let i = 0; i < comps.length; i++) if (spans[i] <= 8 && comps[i] < biggest * 0.25) comps[i] = 0;
     const keep = opts.keep || 60;
     for (let p = 0; p < N; p++) {
         if (A[p] <= 0) continue;

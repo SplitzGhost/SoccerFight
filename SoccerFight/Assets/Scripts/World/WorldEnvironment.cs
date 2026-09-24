@@ -115,8 +115,7 @@ namespace SoccerFight
             moteColor = Color.Lerp(kit.Haze, Color.white, 0.65f).WithAlpha(0.4f);
             BuildSky();
             BuildBackdrop();
-            BuildMidground();
-            BuildCeiling();
+            BuildDrift();
             BuildGround();
             BuildPitchEdge();
             BuildFrame();
@@ -134,11 +133,14 @@ namespace SoccerFight
             fill.transform.localScale = new Vector3(140f, 50f, 1f);
         }
 
-        const float PlateY = 1.05f;   // where the plate's painted horizon sits (its bottom edge)
+        // the plate is drawn at the scale of the design sheet; its painted ground line sits just above the pitch
+        const float PlateY = 0.3f;
 
         void BuildBackdrop()
         {
-            var plate = AddLayer("Backdrop", new Vector2(0f, PlateY), 0.88f, 0.8f);
+            // far away sideways, but only a third of the camera's rise: when jumping, the scenery sinks a little
+            // instead of lifting off the pitch
+            var plate = AddLayer("Backdrop", new Vector2(0f, PlateY), 0.88f, 0.35f);
             if (kit.Plate != null) Put(plate, kit.Plate, Vector2.zero, 1f, -950);
             // under the picture: the valley colour, so a high camera never sees the sky below it
             float below = kit.Plate != null ? kit.Plate.BottomH : 2.5f;
@@ -146,84 +148,26 @@ namespace SoccerFight
             valley.transform.localPosition = new Vector3(0f, -below - 4f + 0.05f, 0f);
             valley.transform.localScale = new Vector3(60f, 8f, 1f);
 
-            AddFog("Fog Backdrop", -930, new Vector2(0f, PlateY + 0.6f), 0.8f, 0.74f, 1.8f, 0.14f, 0.07f, Color.Lerp(kit.Haze, Color.white, 0.25f));
-        }
-
-        // ------------------------------------------------------------------ Mittelgrund: dunstige Kante mit Deko
-
-        Color MidTint => Color.Lerp(Color.white, kit.Haze * 1.6f, 0.42f) * 0.78f;
-
-        void BuildMidground()
-        {
-            // die Deko steht weiter hinten im Dunst: ihre Füße verschwinden im Nebel über dem Tal der Kulisse
-            var mid = AddLayer("Midground", new Vector2(0f, 0.55f), 0.34f, 0.3f);
-            Color tint = MidTint;
-            tint.a = 1f;
-            var props = kit.PropsTagged("mid");
-            if (props.Count > 0)
-            {
-                StageKit.Piece last = null;
-                for (float x = -27f; x < 27f; x += Range(2.8f, 4.8f))
-                {
-                    var p = Pick(props);
-                    if (p == last && props.Count > 1) p = Pick(props);
-                    last = p;
-                    float s = Range(0.6f, 0.78f) * PropScale(p);
-                    var sr = Put(mid, p, new Vector2(x + Range(-0.4f, 0.4f), Range(-0.25f, 0.1f)), s, -710, R() > 0.5f, tint);
-                    AddPieceLights(mid, p, sr.transform.localPosition, s, sr.transform.localScale.x < 0f, -709, 0.55f);
-                }
-            }
-            // dichter Dunst am Fuß der Reihe, darunter die Farbe des Tals
-            Color haze = Color.Lerp(kit.Haze, kit.Valley, 0.35f);
-            var floor = Art.MakeSprite("Mid Floor", mid, DesignArt.Block, -708, DesignArt.SpriteMat, haze);
-            floor.transform.localPosition = new Vector3(0f, -0.35f - 4f, 0f);
-            floor.transform.localScale = new Vector3(90f, 8f, 1f);
-            AddFog("Fog Mid Feet", -707, new Vector2(0f, 0.2f), 0.34f, 0.3f, 1.5f, 0.85f, -0.06f, haze);
-            AddFog("Fog Mid", -700, new Vector2(0f, 1.1f), 0.34f, 0.3f, 1.6f, 0.14f, -0.1f, Color.Lerp(kit.Haze, Color.white, 0.3f));
+            AddFog("Fog Backdrop", -930, new Vector2(0f, PlateY + 0.3f), 0.88f, 0.35f, 1.4f, 0.1f, 0.07f, Color.Lerp(kit.Haze, Color.white, 0.25f));
         }
 
         /// <summary>Very large pictures (towers, furnaces) are drawn smaller so the rows stay balanced.</summary>
         static float PropScale(StageKit.Piece p) => Mathf.Clamp(2.4f / Mathf.Max(0.5f, p.TopH), 0.6f, 1.15f);
 
-        // ------------------------------------------------------------------ Tropfsteine, Eimer, schwebende Brocken
+        // ------------------------------------------------------------------ schwebende Brocken (Sternengarten, Eklipse)
 
-        void BuildCeiling()
+        void BuildDrift()
         {
-            var ceil = kit.PropsTagged("ceil");
-            if (ceil.Count > 0)
-            {
-                var g = AddLayer("Ceiling", new Vector2(0f, 9.6f), 0.45f, 0.42f);
-                Color tint = Color.Lerp(Color.white, MidTint, 0.5f); tint.a = 1f;
-                for (float x = -24f; x < 24f; x += Range(4f, 8f))
-                {
-                    var p = Pick(ceil);
-                    float s = Range(0.6f, 0.95f);
-                    var sr = Put(g, p, new Vector2(x, Range(-0.4f, 0.4f)), s, -690, R() > 0.5f, tint);
-                    // a chain or rope carries on above the picture
-                    var chain = StageKit.Common.Get("chain");
-                    if (p.Name == "bucket" && chain != null)
-                    {
-                        var c = Art.MakeSprite("Chain", g, chain.Sprite, -691, DesignArt.SpriteMat, tint);
-                        c.drawMode = SpriteDrawMode.Tiled;
-                        c.size = new Vector2(chain.Width, 8f / s);
-                        c.transform.localPosition = sr.transform.localPosition - new Vector3(0f, 0.05f, 0f);
-                        c.transform.localScale = new Vector3(s, s, 1f);
-                    }
-                    AddPieceLights(g, p, sr.transform.localPosition, s, false, -689, 0.8f);
-                    bobs.Add(new Bob { t = sr.transform, home = sr.transform.localPosition, phase = R() * 10f, amp = p.Name == "bucket" ? 0.05f : 0f });
-                }
-            }
+            // nur wo die Vorlage selbst schwebende Brocken zeigt; wenige, klein und im Dunst des Himmels
             var sky = kit.PropsTagged("sky");
-            if (sky.Count > 0)
+            if (sky.Count == 0) return;
+            var g = AddLayer("Drifting Rocks", new Vector2(0f, 4.2f), 0.8f, 0.5f);
+            Color tint = Color.Lerp(Color.white, kit.Haze * 1.4f, 0.55f) * 0.78f; tint.a = 1f;
+            for (float x = -16f; x < 16f; x += Range(6f, 10f))
             {
-                var g = AddLayer("Drifting Rocks", new Vector2(0f, 3.4f), 0.62f, 0.55f);
-                Color tint = Color.Lerp(Color.white, kit.Haze * 1.4f, 0.55f) * 0.75f; tint.a = 1f;
-                for (float x = -22f; x < 22f; x += Range(3.5f, 6.5f))
-                {
-                    var p = Pick(sky);
-                    var sr = Put(g, p, new Vector2(x, Range(1.2f, 4.6f)), Range(0.3f, 0.55f), -800, R() > 0.5f, tint);
-                    bobs.Add(new Bob { t = sr.transform, home = sr.transform.localPosition, phase = R() * 10f, amp = Range(0.08f, 0.18f) });
-                }
+                var p = Pick(sky);
+                var sr = Put(g, p, new Vector2(x, Range(1.5f, 4.5f)), Range(0.22f, 0.36f), -900, R() > 0.5f, tint);
+                bobs.Add(new Bob { t = sr.transform, home = sr.transform.localPosition, phase = R() * 10f, amp = Range(0.08f, 0.16f) });
             }
         }
 
@@ -350,17 +294,11 @@ namespace SoccerFight
                 foreach (var l in list)
                 {
                     Vector2 at = kit.PlateLocal(l.x, l.y);
-                    if (l.lamp) AddLamp(plate, at, l.size, l.c, 0.8f * l.alpha);
-                    else AddBlink(plate, at, l.size, l.c, l.alpha, -948, l.speed, 0.6f);
+                    // sizes were set for a smaller plate: the picture is now shown at the design sheet's own scale
+                    float size = l.size * 1.2f;
+                    if (l.lamp) AddLamp(plate, at, size, l.c, 0.8f * l.alpha);
+                    else AddBlink(plate, at, size, l.c, l.alpha, -948, l.speed, 0.6f);
                 }
-            // twinkling stars above the picture where the night sky carries on
-            if (kit.Id == "mondlicht" || kit.Id == "frost" || kit.Id == "stern")
-                for (int i = 0; i < 40; i++)
-                {
-                    var p = new Vector2(Range(-14f, 14f), Range(7.4f, 14f));
-                    AddBlink(plate, p, Range(0.035f, 0.075f) * (R() < 0.15f ? 1.8f : 1f), new Color(0.85f, 0.92f, 1f), 0.8f, -949, Range(0.6f, 2.2f), 0.6f);
-                }
-
             // glow worms and fireflies where the stage has them
             int flies = kit.Id == "mondlicht" ? 26 : kit.Id == "grotte" ? 22 : kit.Id == "bernstein" ? 12 : 0;
             fireflyColor = kit.Id == "grotte" ? new Color(0.45f, 1f, 0.9f) : kit.Id == "bernstein" ? new Color(1f, 0.75f, 0.35f) : new Color(1f, 0.86f, 0.42f);

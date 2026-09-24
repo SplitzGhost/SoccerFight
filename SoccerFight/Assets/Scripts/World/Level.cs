@@ -221,7 +221,7 @@ namespace SoccerFight
             for (int i = 0; i < lowCount; i++)
             {
                 if (i == skip) continue;
-                for (int attempt = 0; attempt < 16; attempt++)
+                for (int attempt = 0; attempt < 40; attempt++)
                 {
                     bool stand = stands.Count > 0 && (floats.Count == 0 || R() < 0.72f);
                     int pi = stand ? stands[r.Next(stands.Count)] : floats[r.Next(floats.Count)];
@@ -246,9 +246,11 @@ namespace SoccerFight
                     }
                     else
                     {
-                        s = FloatScale();
+                        // low floating pieces are drawn smaller when their underside (crystals, rebar, ropes)
+                        // would otherwise reach down into the pitch
                         y = Range(1.95f, 2.35f);
-                        if (y - pc.BottomH * s < (attempt < 10 ? 0.85f : 0.3f)) continue;   // hangs too low to run under (prefer shallow pieces)
+                        s = Mathf.Min(FloatScale(), (y - 0.6f) / Mathf.Max(0.1f, pc.BottomH));
+                        if (s < 0.7f) continue;
                     }
                     float half = Half(pc, s);
                     if (half * 2f > slot - 1.7f) continue;

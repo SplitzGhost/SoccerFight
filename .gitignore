@@ -37,3 +37,4 @@ Inspiration/
 # Werkzeug für die Design-Vorlagen
 tools/newdesign/node_modules/
 tools/newdesign/.cache/
+tools/newdesign/esrgan/

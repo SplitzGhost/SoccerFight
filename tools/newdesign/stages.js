@@ -6,14 +6,15 @@
 //   node stages.js --fast       Kulissen nicht neu auffüllen (vorhandene plate.png bleibt)
 //
 // Pro Stage:
-// - Kulisse (plate): die Szene ohne Vordergrund. Plattformen, Figur, Rahmenobjekte werden entfernt und
-//   inhaltsbasiert aufgefüllt (inpaint.js); unter der Bodenlinie wird die Kulisse weitergemalt, damit bei
-//   hoher Kamera keine Kante sichtbar wird.
+// - Kulisse (plate): die Szene ohne Vordergrund, im selben Maßstab wie in der Vorlage. Plattformen, Figur,
+//   Rahmenobjekte werden entfernt und inhaltsbasiert aufgefüllt (inpaint.js); oben, seitlich und unten wird
+//   sie weitergemalt, damit beim Springen und Laufen nie ein Rand ins Bild kommt.
 // - Boden (ground): der Mauer-/Erdstreifen unter der Figur, Lücken gefüllt, nach unten weitergemalt und
 //   abgedunkelt, mit einer Naht nach „Image Quilting“ nahtlos kachelbar.
 // - Einzelteile aus den Nahaufnahmen: freigestellt (cutout.js), vermessen (Lauffläche, Lichtpunkte) und
-//   verdoppelt. Dazu abgeleitete Teile: Plattformköpfe ohne Säule (schwebend) und hängende Bretter/Balken
+//   per KI hochskaliert (aiup.js, Real-ESRGAN). Dazu abgeleitete Teile: Plattformköpfe ohne Säule (schwebend) und hängende Bretter/Balken
 //   mit kachelbarem Seil bzw. Kette.
+// Alles wird per KI auf die dreifache Auflösung gebracht (aiup.js), die Kulisse so weit es 4096 px erlauben.
 // Alle Texturen außer der Kulisse sind vormultipliziert (premultiplied alpha), wie die Shader es erwarten.
 'use strict';
 const sharp = require('sharp');
@@ -22,16 +23,18 @@ const path = require('path');
 const { load, grid, cut } = require('./cutout');
 const { inpaint } = require('./inpaint');
 const { up4, finish, save, plainMeta } = require('./texio');
+const { upscaleRGBA, upscaleRGB } = require('./aiup');
 const DEFS = require('./stages.def');
 
 const SRC = path.join(__dirname, '../../Inspiration/StagesNewDesigns');
 const OUT = path.join(__dirname, '../../SoccerFight/Assets/Resources/Stages');
 const CACHE = path.join(__dirname, '.cache');   // Farben der Kulissen für --fast
 const PPU = 53;          // Nahaufnahmen und Boden: Pixel pro Spieleinheit (die Figur ist ~95 px ≈ 1,8 Einheiten groß)
-const PLATE_PPU = 44;    // Kulisse: etwas größer gezeigt, sie steht weiter hinten
-const UP = 2;            // alles wird verdoppelt: 1080p zeigt ~110 px pro Einheit
-const PLATE_BELOW = 110; // so viele Zeilen wird die Kulisse unter ihrer Unterkante weitergemalt
-const PLATE_CUT = 14;     // die untersten Zeilen der Szene gehören schon zur Bodenkante
+const UP = 3;            // Auflösung ×3 (KI): 1080p zeigt ~110 px pro Einheit, die Texturen haben ~160
+const PLATE_TOP = 190;   // so viele Zeilen wird die Kulisse über ihrer Oberkante weitergemalt (Himmel, Decke …)
+const PLATE_SIDE = 90;   // … und an jeder Seite
+const PLATE_BELOW = 100; // … und unter ihrer Unterkante
+const PLATE_CUT = 14;    // die untersten Zeilen der Szene gehören schon zur Bodenkante
 const GROUND_BELOW = 44; // so viele Zeilen der Boden unter dem Bogenrand
 
 const args = process.argv.slice(2);
@@ -45,83 +48,111 @@ const col = a => a.map(v => round3(v / 255));
 
 // ------------------------------------------------------------------ Kulisse
 
+/** Fills `fill` from pixels marked in `src`, blending a FEATHER-wide rim of `objects` into the original. */
+function fillObjects(px, w, H, objects, src, opts) {
+    const FEATHER = 10;
+    const dist = new Float32Array(w * H).fill(1e9);
+    for (let i = 0; i < w * H; i++) if (objects[i]) dist[i] = 0;
+    for (let pass = 0; pass < 2; pass++) for (let k = 0; k < w * H; k++) {
+        const i = pass ? w * H - 1 - k : k, x = i % w, y = (i / w) | 0, st = pass ? 1 : -1;
+        if (x + st >= 0 && x + st < w) dist[i] = Math.min(dist[i], dist[i + st] + 1);
+        if (y + st >= 0 && y + st < H) dist[i] = Math.min(dist[i], dist[i + st * w] + 1);
+    }
+    const fill = new Uint8Array(w * H), s = new Uint8Array(w * H);
+    for (let i = 0; i < w * H; i++) { fill[i] = dist[i] <= FEATHER ? 1 : 0; s[i] = src[i] && !fill[i] ? 1 : 0; }
+    const orig = px.slice();
+    const res = inpaint(orig, w, H, fill, s, opts);
+    for (let i = 0; i < w * H; i++) {
+        const k = dist[i] == 0 ? 1 : dist[i] <= FEATHER ? 1 - smooth(dist[i] / FEATHER) : 0;
+        for (let c = 0; c < 3; c++) px[i * 3 + c] = orig[i * 3 + c] * (1 - k) + res[i * 3 + c] * k;
+    }
+}
+
 async function plate(img, def, man, dir) {
-    const { W, rgb } = img;
-    const [cx0, cx1] = def.scene.crop, h0 = def.scene.walk - PLATE_CUT;
-    const w = cx1 - cx0, H = h0 + PLATE_BELOW;
+    const { W: SW, rgb } = img;
+    const [cx0, cx1] = def.scene.crop, h0 = def.scene.walk - PLATE_CUT, walk = def.scene.walk;
+    const sw = cx1 - cx0;
+    // canvas: the scene plus painted-on margins (sky above, more scenery at the sides and below)
+    const w = sw + 2 * PLATE_SIDE, H = PLATE_TOP + h0 + PLATE_BELOW;
+    const X0 = cx0 - PLATE_SIDE, Y0 = -PLATE_TOP;          // sheet position of the canvas' top-left corner
+    const Wt = Math.floor(Math.min(w * UP, 4096) / 4) * 4, Ht = Math.floor(Math.min(H * UP, H * Wt / w, 4096) / 4) * 4;
     const file = path.join(dir, 'plate.png');
-    let px;
-    if (fast && fs.existsSync(file)) {
+    const info = path.join(CACHE, def.id + '.plate.json');
+    if (fast && fs.existsSync(file) && fs.existsSync(info)) {
         console.log('  Kulisse: vorhandene behalten');
     } else {
-        px = new Float32Array(w * H * 3);
-        for (let y = 0; y < h0; y++) for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) px[(y * w + x) * 3 + c] = rgb[(y * W + cx0 + x) * 3 + c];
-        const hole = new Uint8Array(w * H);
-        for (const [x0, y0, x1, y1] of def.scene.holes)
-            for (let y = Math.max(0, y0); y < Math.min(h0, y1); y++) for (let x = Math.max(0, x0 - cx0); x < Math.min(w, x1 - cx0); x++) hole[y * w + x] = 1;
-        const src = new Uint8Array(w * H);
-        for (let i = 0; i < w * h0; i++) src[i] = hole[i] ? 0 : 1;
-        // fill a slightly larger area and blend its rim into the original: no hard rectangle edges
-        const FEATHER = 10;
-        const dist = new Float32Array(w * h0).fill(1e9);
-        for (let y = 0; y < h0; y++) for (let x = 0; x < w; x++) if (hole[y * w + x]) dist[y * w + x] = 0;
-        for (let pass = 0; pass < 2; pass++) for (let y = 0; y < h0; y++) for (let x = 0; x < w; x++) {
-            const i = pass ? (h0 - 1 - y) * w + (w - 1 - x) : y * w + x, xx = i % w, yy = (i / w) | 0, st = pass ? 1 : -1;
-            if (xx + st >= 0 && xx + st < w) dist[i] = Math.min(dist[i], dist[i + st] + 1);
-            if (yy + st >= 0 && yy + st < h0) dist[i] = Math.min(dist[i], dist[i + st * w] + 1);
-        }
-        const grown = new Uint8Array(w * h0);
-        for (let i = 0; i < w * h0; i++) { grown[i] = dist[i] <= FEATHER ? 1 : 0; src[i] = grown[i] ? 0 : 1; }
-        // parts that stay in the picture but must not be copied into the holes (a striking foreground tree)
-        for (const [x0, y0, x1, y1] of def.scene.keep || [])
-            for (let y = Math.max(0, y0); y < Math.min(h0, y1); y++) for (let x = Math.max(0, x0 - cx0); x < Math.min(w, x1 - cx0); x++) src[y * w + x] = 0;
-        const orig = px.slice(0, w * h0 * 3);
-        const top = inpaint(orig, w, h0, grown, src, {});
-        for (let i = 0; i < w * h0; i++) {
-            const k = dist[i] == 0 ? 1 : dist[i] <= FEATHER ? 1 - smooth(dist[i] / FEATHER) : 0;
-            for (let c = 0; c < 3; c++) px[i * 3 + c] = orig[i * 3 + c] * (1 - k) + top[i * 3 + c] * k;
-        }
-        // below: the rows above mirrored and blurred more and more (mist over the valley)
-        for (let y = h0; y < H; y++) {
-            const d = y - h0, sy = Math.max(0, h0 - 1 - Math.min(d, 60)), r = 2 + Math.round(d * 0.25);
-            let acc = [0, 0, 0], n = 0;
-            const row = x => (sy * w + Math.min(w - 1, Math.max(0, x))) * 3;
-            for (let x = -r; x <= r; x++) { const o = row(x); acc[0] += px[o]; acc[1] += px[o + 1]; acc[2] += px[o + 2]; n++; }
-            for (let x = 0; x < w; x++) {
-                for (let c = 0; c < 3; c++) px[(y * w + x) * 3 + c] = acc[c] / n;
-                const a = row(x - r), b = row(x + r + 1);
-                for (let c = 0; c < 3; c++) acc[c] += px[b + c] - px[a + c];
+        // 1. the scene without its foreground objects (never copy the unique pieces: moon, eclipse, tree …)
+        const scene = new Float32Array(sw * h0 * 3);
+        for (let y = 0; y < h0; y++) for (let x = 0; x < sw; x++) for (let c = 0; c < 3; c++) scene[(y * sw + x) * 3 + c] = rgb[(y * SW + cx0 + x) * 3 + c];
+        const mark = rects => { const m = new Uint8Array(sw * h0); for (const [x0, y0, x1, y1] of rects || []) for (let y = Math.max(0, y0); y < Math.min(h0, y1); y++) for (let x = Math.max(0, x0 - cx0); x < Math.min(sw, x1 - cx0); x++) m[y * sw + x] = 1; return m; };
+        const objects = mark(def.scene.holes), keep = mark(def.scene.keep);
+        const src = new Uint8Array(sw * h0);
+        for (let i = 0; i < sw * h0; i++) src[i] = objects[i] || keep[i] ? 0 : 1;
+        fillObjects(scene, sw, h0, objects, src, { yWeight: 4 });
+
+        // colours: sky (top rows, median ignores stars), haze (the lower middle band)
+        const med = (y0, y1, c) => { const a = []; for (let y = y0; y < y1; y++) for (let x = 0; x < sw; x++) a.push(scene[(y * sw + x) * 3 + c]); a.sort((p, q) => p - q); return a[a.length >> 1]; };
+        const sky = [0, 1, 2].map(c => med(0, 4, c));
+        const haze = [0, 0, 0]; let n = 0;
+        for (let y = Math.round(h0 * 0.55); y < Math.round(h0 * 0.9); y++) for (let x = 0; x < sw; x += 2) { for (let c = 0; c < 3; c++) haze[c] += scene[(y * sw + x) * 3 + c]; n++; }
+        for (let c = 0; c < 3; c++) haze[c] /= n;
+
+        // 3. assemble: sky above (the top row's colours, blurred wide, running into the sky colour), the scene,
+        //    the continuation below; the sides mirror the edge columns
+        const px = new Float32Array(w * H * 3);
+        const topRow = new Float32Array(sw * 3), botRow = new Float32Array(sw * 3);
+        { const R = 60; for (let x = 0; x < sw; x++) for (let c = 0; c < 3; c++) { let s = 0, k = 0; for (let d = -R; d <= R; d++) { const xx = Math.min(sw - 1, Math.max(0, x + d)); for (let y = h0 - 30; y < h0; y++) { s += scene[(y * sw + xx) * 3 + c]; k++; } } botRow[x * 3 + c] = s / k; } }
+        { const R = 140; for (let x = 0; x < sw; x++) for (let c = 0; c < 3; c++) { let s = 0, k = 0; for (let d = -R; d <= R; d += 2) { const xx = Math.min(sw - 1, Math.max(0, x + d)); for (let y = 0; y < 10; y++) { s += scene[(y * sw + xx) * 3 + c]; k++; } } topRow[x * 3 + c] = s / k; } }
+        const rnd = (() => { let s = def.id.length * 977 + 13; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+        for (let y = 0; y < H; y++) for (let xx = 0; xx < w; xx++) {
+            let x = xx - PLATE_SIDE;
+            if (x < 0) x = -x - 1; else if (x >= sw) x = 2 * sw - x - 1;   // mirrored sides
+            x = Math.max(0, Math.min(sw - 1, x));
+            const o = (y * w + xx) * 3;
+            for (let c = 0; c < 3; c++) {
+                let v;
+                if (y < PLATE_TOP) { const t = smooth((PLATE_TOP - y) / 80); v = topRow[x * 3 + c] * (1 - t) + sky[c] * t; }
+                else if (y < PLATE_TOP + h0) {
+                    v = scene[((y - PLATE_TOP) * sw + x) * 3 + c];
+                    // the scene's top edge runs softly into the painted-on sky
+                    const t = (y - PLATE_TOP) / 36;
+                    if (t < 1) v = topRow[x * 3 + c] * (1 - smooth(t)) + v * smooth(t);
+                    // … and its bottom edge into the mist below
+                    const u = (y - PLATE_TOP - h0 + 24) / 24;
+                    if (u > 0) { const m = botRow[x * 3 + c] * 0.7 + haze[c] * 0.3; v = v * (1 - smooth(u) * 0.6) + m * smooth(u) * 0.6; }
+                }
+                else {
+                    // a bank of mist below the painted horizon (seen only when the camera is high)
+                    const d = smooth((y - PLATE_TOP - h0) / 40);
+                    const m = botRow[x * 3 + c] * 0.7 + haze[c] * 0.3;
+                    v = m * (1 - d) * 0.6 + m * 0.4 + (haze[c] * 0.85 - m * 0.4) * d * 0.5;
+                }
+                px[o + c] = v;
             }
         }
-        // the continuation darkens into the valley colour
-        const valley = [0, 0, 0]; let n = 0;
-        for (let y = h0 - 60; y < h0; y++) for (let x = 0; x < w; x++) { for (let c = 0; c < 3; c++) valley[c] += px[(y * w + x) * 3 + c]; n++; }
-        for (let c = 0; c < 3; c++) valley[c] = valley[c] / n * 0.55;
-        for (let y = h0; y < H; y++) {
-            const k = smooth((y - h0) / PLATE_BELOW) * 0.85;
-            for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { const o = (y * w + x) * 3 + c; px[o] = px[o] * (1 - k) + valley[c] * k; }
+        // night skies carry on with a few stars
+        if (def.stars) for (let i = 0; i < w * PLATE_TOP / 900; i++) {
+            const sx = Math.floor(rnd() * w), sy = Math.floor(rnd() * PLATE_TOP * 0.95), b = 0.35 + rnd() * 0.65, r = rnd() < 0.12 ? 1.6 : 0.9;
+            for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+                const X = sx + dx, Y = sy + dy; if (X < 0 || Y < 0 || X >= w || Y >= H) continue;
+                const a = Math.max(0, 1 - Math.hypot(dx, dy) / r) * b;
+                for (let c = 0; c < 3; c++) { const o = (Y * w + X) * 3 + c; px[o] = px[o] * (1 - a) + [225, 235, 255][c] * a; }
+            }
         }
-        // top: sky colour from the top rows (median ignores stars), the top rows fade into it
-        const sky = [0, 1, 2].map(c => { const a = []; for (let y = 0; y < 4; y++) for (let x = 0; x < w; x++) a.push(px[(y * w + x) * 3 + c]); a.sort((p, q) => p - q); return a[a.length >> 1]; });
-        const FADE = 24;
-        for (let y = 0; y < FADE; y++) { const k = 1 - smooth(y / FADE); for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { const o = (y * w + x) * 3 + c; px[o] = px[o] * (1 - k) + sky[c] * k; } }
-        const haze = [0, 0, 0]; n = 0;
-        for (let y = Math.round(h0 * 0.55); y < Math.round(h0 * 0.9); y++) for (let x = 0; x < w; x += 2) { for (let c = 0; c < 3; c++) haze[c] += px[(y * w + x) * 3 + c]; n++; }
-        man.sky = col(sky); man.valley = col(valley); man.haze = col(haze.map(v => v / n));
+        const valley = haze.map(v => v * 0.35);
         const buf = Buffer.alloc(w * H * 3);
         for (let i = 0; i < w * H * 3; i++) buf[i] = Math.max(0, Math.min(255, Math.round(px[i])));
-        const Wt = up4(w * UP), Ht = up4(H * UP);
-        const big = await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).resize(Wt, Ht, { kernel: 'lanczos3', fit: 'fill' })
-            .sharpen({ sigma: 0.6, m1: 0.4, m2: 0.8 }).raw().toBuffer();
-        await save(file, { buf: big, w: Wt, h: Ht }, { channels: 3 });
         fs.mkdirSync(CACHE, { recursive: true });
-        fs.writeFileSync(path.join(CACHE, def.id + '.plate.json'), JSON.stringify({ sky: man.sky, valley: man.valley, haze: man.haze }));
+        await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).png().toFile(path.join(CACHE, def.id + '.plate.src.png'));
+        const big = await upscaleRGB({ buf, w, h: H }, Wt, Ht);
+        await save(file, { buf: big, w: Wt, h: Ht }, { channels: 3, crunch: true });
+        fs.writeFileSync(info, JSON.stringify({ sky: col(sky), valley: col(valley), haze: col(haze) }));
     }
-    if (!man.sky) Object.assign(man, JSON.parse(fs.readFileSync(path.join(CACHE, def.id + '.plate.json'), 'utf8')));
-    const Wt = up4(w * UP), Ht = up4(H * UP);
+    Object.assign(man, JSON.parse(fs.readFileSync(info, 'utf8')));
+    const k = Ht / H;
     // where the plate sits in the sheet (the game puts its lights on the painted lamps, moon …)
-    man.plateX0 = cx0; man.plateRow0 = h0; man.plateW = w; man.platePpu = PLATE_PPU;
-    man.sprites.push({ name: 'plate', role: 'plate', w: Wt, h: Ht, ppu: PLATE_PPU * UP * (Ht / (H * UP)), px: Wt / 2, py: PLATE_BELOW * UP * (Ht / (H * UP)) });
+    man.plateX0 = X0; man.plateRow0 = walk; man.plateW = w; man.platePpu = PPU;
+    man.sprites.push({ name: 'plate', role: 'plate', w: Wt, h: Ht, ppu: PPU * k, px: Wt / 2, py: (H - (walk - Y0)) * k });
 }
 
 // ------------------------------------------------------------------ Boden
@@ -193,12 +224,13 @@ async function ground(img, g, def, man, dir) {
         buf[o] = Math.round(buf[o] * (y >= pad - 1 ? Math.max(a, 0.85) : a));
     }
     man.deep = col(deep);
-    const f = await finish({ buf, w: T, h: H }, UP, true, { pad: 0 });
+    const [u] = await upscaleRGBA([{ buf, w: T, h: H }], UP, 'x');
+    const f = await finish(u, 1, false, { pad: 0 });
     // finish pads to a multiple of 4 and centres horizontally: crop back to the exact tile width
     const Tw = T * UP, Th = f.h;
     const out = Buffer.alloc(Tw * Th * 4);
     for (let y = 0; y < Th; y++) f.buf.copy(out, y * Tw * 4, (y * f.w + f.ox) * 4, (y * f.w + f.ox + Tw) * 4);
-    await save(path.join(dir, 'ground.png'), { buf: out, w: Tw, h: Th });
+    await save(path.join(dir, 'ground.png'), { buf: out, w: Tw, h: Th }, { crunch: true });
     man.sprites.push({ name: 'ground', role: 'ground', w: Tw, h: Th, ppu: PPU * UP, px: 0, py: Th - (f.oy + pad * UP) });
 }
 
@@ -259,10 +291,10 @@ function lightSpot(c, light) {
     return { x: sx / sw, y: sy / sw, r: Math.max(6, Math.sqrt(cnt / Math.PI) * 1.6) };
 }
 
-/** Saves a cut piece; kind decides the pivot. */
-async function piece(dir, man, name, role, c, o = {}) {
-    const f = await finish(c, UP, true, { top: role == 'hangprop' });
-    await save(path.join(dir, name + '.png'), f);
+/** Saves a cut piece (c: source cut, u: the same ×UP); kind decides the pivot. */
+async function piece(dir, man, name, role, c, u, o = {}) {
+    const f = await finish(u, 1, false, { top: role == 'hangprop' });
+    await save(path.join(dir, name + '.png'), f, { crunch: true });
     const e = { name, role, tags: o.tags || [], w: f.w, h: f.h, ppu: PPU * UP };
     // pivot: bottom centre (props), top centre (hanging props), walk line (platforms)
     const toU = (x, y) => [round3((f.ox + x * UP - e.px) / e.ppu), round3((f.h - (f.oy + y * UP) - e.py) / e.ppu)];
@@ -409,21 +441,28 @@ async function stage(def, common) {
     console.log('  Boden …');
     await ground(img, g, def, man, dir);
 
-    const cuts = {};
+    // all pieces first (cells and derived), then one AI run for the whole stage
+    const cuts = {}, list = [];
     for (const [k, [name, role, o]] of Object.entries(def.cells)) {
         const c = cut(img, g.cells[k - 1], { ...def.cut, ...(o.cut || {}) });
         cuts[k] = c;
         const hangProp = role == 'prop' && ((o.tags || []).includes('hang') || (o.tags || []).includes('ceil'));
-        await piece(dir, man, name, hangProp ? 'hangprop' : role, c, o);
-        if (hangProp) man.sprites[man.sprites.length - 1].role = 'prop';
+        list.push({ name, role: hangProp ? 'hangprop' : role, c, o, hangProp });
     }
     for (const d of def.derived || []) {
         const src = cuts[d.from];
-        if (d.kind == 'cap') await piece(dir, man, d.name, 'float', capOf(src), {});
+        if (d.kind == 'cap') list.push({ name: d.name, role: 'float', c: capOf(src), o: {} });
         else if (d.kind == 'hang') {
             const h = hangOf(src, def.cells[d.from][2].levels ? 'band' : 'top');
-            await piece(dir, man, d.name, 'float', h.img, { anchors: h.anchors, rope: d.rope, walkFrac: 0.7 });
+            list.push({ name: d.name, role: 'float', c: h.img, o: { anchors: h.anchors, rope: d.rope, walkFrac: 0.7 } });
         }
+    }
+    console.log('  Einzelteile (KI) …');
+    const ups = await upscaleRGBA(list.map(l => l.c), UP);
+    for (let i = 0; i < list.length; i++) {
+        const l = list[i];
+        await piece(dir, man, l.name, l.role, l.c, ups[i], l.o);
+        if (l.hangProp) man.sprites[man.sprites.length - 1].role = 'prop';
     }
     const json = path.join(dir, 'stage.json');
     fs.writeFileSync(json, JSON.stringify(man, null, 1));
@@ -468,8 +507,12 @@ async function stage(def, common) {
             // the frame's posts are the outer groups: the rope hangs just inside them
             const gr = name == 'rope' && cand.length > 2 ? cand[1] : cand[0];
             const r = ropeOf(c, (gr[0] + gr[1]) / 2, y0, y1, (gr[1] - gr[0]) / 2 + 3);
-            const f = await finish(r, UP, true, { pad: 0 });
-            await save(path.join(dir, name + '.png'), f);
+            let [u] = await upscaleRGBA([r], UP, 'y');
+            // exact multiple of 4 in height, or the tiled rope would get gaps
+            const h4 = up4(u.h);
+            if (h4 != u.h) u = { buf: await sharp(u.buf, { raw: { width: u.w, height: u.h, channels: 4 } }).resize(u.w, h4, { fit: 'fill' }).raw().toBuffer(), w: u.w, h: h4 };
+            const f = await finish(u, 1, false, { pad: 0 });
+            await save(path.join(dir, name + '.png'), f, { crunch: true });
             man.sprites.push({ name, role: 'rope', tags: [], w: f.w, h: f.h, ppu: PPU * UP, px: f.w / 2, py: 0 });
             console.log('  ' + name, gr, y0, y1, r.w, r.h);
         }
