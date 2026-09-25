@@ -104,7 +104,8 @@ try {
         # 5) Auf gh-pages veröffentlichen, immer als einzelner Commit, damit das Repo klein bleibt.
         #    Die Dateien des vorigen Builds bleiben eine Runde erhalten: Ein Browser, der noch die alte
         #    index.html im Cache hat (Pages: 10 Minuten), lädt so weiter einen vollständigen alten Stand
-        #    statt einer Mischung aus alt und neu.
+        #    statt einer Mischung aus alt und neu. Dateien über 95 MB nimmt GitHub nicht an: die bleiben weg
+        #    (so ein Stand war dann auch nie online).
         $url = git remote get-url origin
         $keep = Join-Path $work 'prev-build'
         Remove-Item $keep -Recurse -Force -ErrorAction SilentlyContinue
@@ -113,7 +114,7 @@ try {
             $html = Get-Content $prevIndex -Raw
             New-Item -ItemType Directory -Force $keep | Out-Null
             Get-ChildItem (Join-Path $site 'Build') -File -ErrorAction SilentlyContinue |
-                Where-Object { $html.Contains($_.Name) } | Copy-Item -Destination $keep
+                Where-Object { $html.Contains($_.Name) -and $_.Length -lt 95MB } | Copy-Item -Destination $keep
         }
         Remove-Item $site -Recurse -Force -ErrorAction SilentlyContinue
         robocopy $out $site /E /NFL /NDL /NJH /NJS /NP | Out-Null
