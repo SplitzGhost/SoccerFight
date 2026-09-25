@@ -39,6 +39,20 @@ namespace SoccerFight
                 Move(0f);
                 yield return Seconds(0.5f);
             }
+
+            // die Menüfigur: ein Basketballer auf dem Titelbild, mehrere Bilder über einen Dribbel-Takt
+            Profile.UseTransient();
+            Characters.Reload();
+            G.ToMenu();
+            GameInput.AimScreen = G.Menu.ScreenOf(new Vector2(0f, -470f));
+            yield return Seconds(2.8f);
+            yield return Kick("starterSport1");
+            yield return Seconds(2.2f);
+            yield return Kick("starter_titan");
+            yield return Seconds(1f);
+            yield return Kick("starterGo");
+            yield return Seconds(2.5f);
+            for (int i = 0; i < 8; i++) { yield return Shot("d_menu_" + i); yield return Frames(4); }
         }
 
         IEnumerator Hoops()

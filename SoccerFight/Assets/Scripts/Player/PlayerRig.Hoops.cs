@@ -42,7 +42,6 @@ namespace SoccerFight
         void HoopsCarry(float dt, ref float hipY, float air, float cycleLen, float sk, ref Vector2 nearFoot, ref Vector2 farFoot, ref float leanTarget,
             ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow, ref Vector2 ballLocal)
         {
-            float R = Art.BallRadius;
             float ground = 1f - air;
             // one bounce per stride while running, a relaxed beat standing still
             float stridesPerSec = Mathf.Abs(player.Vel.x) / Mathf.Max(0.5f, cycleLen);
@@ -52,52 +51,41 @@ namespace SoccerFight
             // the dribbling stance: knees bent, chest over the ball, the front foot drawn back so the ball
             // bounces clear in front of the shoe instead of on it
             float stand = (1f - moveBlend) * ground;
-            nearFoot.x -= 0.12f * stand;
-            farFoot.x -= 0.08f * stand;
-            hipY -= 0.05f * ground;
-            leanTarget -= 8f * ground;
+            nearFoot.x -= 0.16f * stand;
+            farFoot.x -= 0.1f * stand;
+            hipY -= 0.07f * ground;
+            leanTarget -= 12f * ground;
 
-            // the ball: from the hand to the floor and back, fastest at the bounce. It lands just ahead of the
-            // front shoe's toe (measured per character), further out on the run.
-            float bx = body.Toe + 0.14f + 0.12f * runBlend + 0.05f * moveBlend + 0.1f * sk;
-            float apex = hipY - 0.1f - 0.05f * runBlend;
-            // Fall und Rücksprung sind getrennt: am Boden kehrt sich die Geschwindigkeit sofort um.
-            // Die alte Kosinuskurve bremste den Ball ausgerechnet beim Aufprall bis auf null ab.
-            float bounceT = dribU * 2f;
-            float by = bounceT < 1f ? apex - (apex - R) * bounceT * bounceT
-                : R + (apex - R) * (1f - (2f - bounceT) * (2f - bounceT));
-            Vector2 dribble = new Vector2(bx, by);
-            dribbleOpen = air < 0.55f && player.CurrentAction == Player.Action.None && player.Ball.IsHeldFree;
-            // Nach dem kurzen Druck federt das Handgelenk zurück und nimmt den aufsteigenden Ball weich an.
-            float press = MathUtil.Bump(Mathf.Clamp01(dribU / 0.2f));
-            dribbleHandAngle = Mathf.Lerp(5f, -17f, press);
+            // Der ganze Arm dribbelt (DribbleMotion): Die Ballhöhe richtet sich nach Schulter und Armlänge, damit
+            // der Ellbogen sichtbar arbeitet und der Arm nie ganz durchgestreckt zittert. Die Schulter wird aus der
+            // gefederten Neigung geschätzt (nicht aus dem Zielwert, der beim Beschleunigen springt).
+            float L = body.UpperArmLen + body.ForearmLen;
+            Vector2 sh = new Vector2(0f, hipY) + MathUtil.Rotate(body.Shoulder, lean);
+            float bx = Mathf.Max(sh.x + 0.56f * L, body.Toe - 0.04f) + 0.12f * runBlend * moveBlend + 0.1f * sk;
             float palmReach = openHand != null ? openHand.rect.width / openHand.pixelsPerUnit * 0.38f : 0.15f;
-            Vector2 contact = MathUtil.Rotate(new Vector2(palmReach, -0.035f), dribbleHandAngle);
-            // Die Hand folgt nur dem oberen Teil des Sprungs; der Ball fällt danach frei zum Boden.
-            Vector2 top = Palm(new Vector2(bx, apex), new Vector2(-0.12f, 1f));
-            Vector2 riding = Palm(dribble, new Vector2(-0.12f, 1f));
-            if (dribbleOpen)
-            {
-                top = new Vector2(bx, apex + R) - contact;
-                riding = dribble + Vector2.up * R - contact;
-            }
-            float onBall = Mathf.Max(1f - MathUtil.Smooth01(dribU / 0.19f), MathUtil.Smooth01((dribU - 0.81f) / 0.19f));
-            Vector2 wrist = Vector2.Lerp(top + new Vector2(-0.025f, -0.15f), riding, onBall);
+            var d = DribbleMotion.Eval(dribU, sh, body.UpperArmLen, body.ForearmLen, bx, palmReach, runBlend * moveBlend, 0f);
+            Vector2 dribble = d.Ball;
+            Vector2 wrist = d.Wrist;
+            dribbleOpen = air < 0.55f && player.CurrentAction == Player.Action.None && player.Ball.IsHeldFree;
+            dribbleHandAngle = d.HandAngle;
+            // der Oberkörper geht beim Drücken ein wenig mit
+            hipY -= 0.012f * d.Push * ground;
+            leanTarget -= 2.5f * d.Push * ground;
 
             // in the air the ball is gathered in both hands in front of the chest
             Vector2 chest = new Vector2(0.24f, hipY + body.Shoulder.y * 0.7f);
             ballLocal = Vector2.Lerp(dribble, chest, air);
             nearIK = Vector2.Lerp(wrist, Palm(chest, new Vector2(0.1f, -1f)), air);
             nearIKw = player.Ball.IsHeldFree ? 1f : 0f;
-            // the fist points at the ball while it touches it, and stays turned down while it waits
-            nearGrip = Vector2.Lerp(Vector2.Lerp(wrist + Vector2.down, dribble, onBall), chest, air);
+            // ohne offene Hand zeigt die Faust auf den Ball
+            nearGrip = Vector2.Lerp(dribble, chest, air);
             nearGripW = nearIKw;
             GripFar(chest, new Vector2(-1f, 0.25f), air * nearIKw);
 
-            // the free arm guards the ball: out in front at waist height, elbow bent
+            // the free arm guards the ball: out in front at waist height, elbow bent, a touch of counter-motion
             float guard = ground * 0.75f;
-            farShoulder = Mathf.Lerp(farShoulder, 22f + 12f * runBlend, guard);
-            farElbow = Mathf.Lerp(farElbow, 55f, guard);
+            farShoulder = Mathf.Lerp(farShoulder, 26f + 12f * runBlend + 4f * d.Push, guard);
+            farElbow = Mathf.Lerp(farElbow, 62f - 6f * d.Push, guard);
         }
 
         // ------------------------------------------------------------------ moves

@@ -287,6 +287,7 @@ namespace SoccerFight
         /// <summary>Two-bone arm IK: the shoulder and elbow angles (PoseArm's terms) that put the wrist on target, elbow down and back.</summary>
         void ArmIK(Vector2 shoulder, Vector2 wristTarget, out float shoulderDeg, out float elbowDeg)
         {
+            wristTarget = MathUtil.SoftReach(shoulder, wristTarget, body.UpperArmLen + body.ForearmLen);
             Vector2 elbow = MathUtil.SolveTwoBone(shoulder, wristTarget, body.UpperArmLen, body.ForearmLen, -1f, out Vector2 wrist);
             Vector2 dirU = elbow - shoulder, dirF = wrist - elbow;
             shoulderDeg = Vector2.SignedAngle(Vector2.down, dirU);

@@ -55,7 +55,7 @@ Tennis stehen schon als „kommt bald“ im Spielermenü. Welt, Monster und Abla
 Sportart bringt aber ihre eigenen Moves, Boss-Fähigkeiten und Upgrade-Karten mit (`Run/Characters.cs`, `Sport`).
 
 **Basketball** (`Player/Player.Hoops.cs`, Posen in `Player/PlayerRig.Hoops.cs`): größere Spieler mit eigenen
-Knochenlängen (`PlayerBody`) in Tanktop mit Nummer, Shorts, Crew-Socken und High-Tops. Beim Laufen und Stehen wird der Ball automatisch gedribbelt (reine Optik): Er fällt bis zum Boden, springt direkt zurück und wird oben kurz von der offenen Hand gedrückt und wieder angenommen. In
+Knochenlängen (`PlayerBody`) in Tanktop mit Nummer, Shorts, Crew-Socken und High-Tops. Beim Laufen und Stehen wird der Ball automatisch gedribbelt (reine Optik): Die offene Hand drückt ihn mit dem ganzen Arm nach unten (Ellbogen streckt sich, Handgelenk klappt ab), nimmt ihn auf dem Weg nach oben weich an und federt ihn bis zum Umkehrpunkt – im Spiel und auf dem Titelbild gleich (`Player/DribbleMotion.cs`). In
 der Luft halten ihn beide Hände vor der Brust. Beim Fußball führen die Spieler den Ball beim Laufen abwechselnd mit beiden Füßen und stoßen ihn nach jedem Kontakt kurz nach vorn.
 
 | | Spieler | Rechtsklick |

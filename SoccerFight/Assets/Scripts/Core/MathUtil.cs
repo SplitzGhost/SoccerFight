@@ -117,6 +117,18 @@ namespace SoccerFight
         }
 
         /// <summary>
+        /// Zieht ein Arm-Ziel weich vor die volle Streckung: Bis 88 % der Armlänge bleibt es, darüber nähert es sich
+        /// sanft 98 %. Ein Ziel an oder hinter der Grenze ließ den Ellbogen zwischen gebeugt und gestreckt zittern.
+        /// </summary>
+        public static Vector2 SoftReach(Vector2 root, Vector2 target, float reach)
+        {
+            Vector2 d = target - root;
+            float dist = d.magnitude, knee = reach * 0.88f, room = reach * 0.1f;
+            if (dist <= knee) return target;
+            return root + d / dist * (knee + room * (float)System.Math.Tanh((dist - knee) / room));
+        }
+
+        /// <summary>
         /// Analytic two-bone IK. Returns the middle joint (knee/elbow). bendSign picks which side the
         /// joint bends to (+1 = counter-clockwise from root→target).
         /// </summary>
