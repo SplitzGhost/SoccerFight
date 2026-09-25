@@ -463,12 +463,14 @@ namespace SoccerFight
                 torsoTwist += 5f * k;
             }
 
-            // --- default ball hold: rolled ahead of the feet with little dribble touches
-            float touchT = Mathf.Repeat(phase + 0.02f, 1f);
-            float touch = touchT < 0.28f ? MathUtil.EaseOutQuad(touchT / 0.28f) : 1f - MathUtil.Smooth01((touchT - 0.28f) / 0.72f);
+            // Beim Laufen trifft abwechselnd jeder Fuß den Ball, wenn er vorn aufsetzt.
+            // Der Ball rollt nach dem Kontakt kurz voraus; der nächste Schritt holt ihn wieder ein.
+            float touchT = Mathf.Repeat(phase * 2f, 1f);
+            float touch = touchT < 0.2f ? MathUtil.EaseOutQuad(touchT / 0.2f) : 1f - MathUtil.Smooth01((touchT - 0.2f) / 0.8f);
             touchKick = Mathf.Max(0f, touchKick - dt * 5f);
-            // keep the ball ahead of the leading foot's reach (stride/2 ≈ 0.48 at full speed)
-            Vector2 ballLocal = new Vector2(0.5f + 0.27f * runBlend + 0.13f * runBlend * moveBlend * touch + touchKick * 0.08f, Art.BallRadius);
+            float ballAtToe = stride * 0.5f + body.Toe + Art.BallRadius * 0.9f;
+            Vector2 ballLocal = new Vector2(Mathf.Lerp(0.5f, ballAtToe, moveBlend)
+                + 0.14f * runBlend * moveBlend * touch + touchKick * 0.08f, Art.BallRadius);
             if (air > 0.001f)
             {
                 Vector2 airBall = nearFoot + new Vector2(0.17f, -0.03f);
@@ -477,6 +479,19 @@ namespace SoccerFight
             }
             ballLocal = Vector2.Lerp(ballLocal, ballLocalIdle, fob * (1f - moveBlend));
             ballLocal.x = Mathf.Lerp(ballLocal.x, 0.72f, sk);   // the ball keeps rolling on while the player brakes
+            if (Sport == Sport.Soccer && grounded && player.CurrentAction == Player.Action.None && player.Ball.IsHeldFree)
+            {
+                float contact = moveBlend * runBlend;
+                float nearTouch = Mathf.Pow(Mathf.Max(0f, Mathf.Cos(MathUtil.Tau * phase)), 12f) * contact;
+                float farTouch = Mathf.Pow(Mathf.Max(0f, -Mathf.Cos(MathUtil.Tau * phase)), 12f) * contact;
+                float ankleAtBall = ballLocal.x - body.Toe - Art.BallRadius * 0.9f;
+                nearFoot.x = Mathf.Lerp(nearFoot.x, ankleAtBall, nearTouch * 0.35f);
+                farFoot.x = Mathf.Lerp(farFoot.x, ankleAtBall, farTouch * 0.35f);
+                nearFlat = Mathf.Lerp(nearFlat, 0.55f, nearTouch * 0.6f);
+                farFlat = Mathf.Lerp(farFlat, 0.55f, farTouch * 0.6f);
+                nearPoint = Mathf.Max(nearPoint, nearTouch * 0.25f);
+                farPoint = Mathf.Max(farPoint, farTouch * 0.25f);
+            }
             BallIsScripted = false;
 
             // basketball: the ball bounces between the hand and the floor (or is held at the chest in the air)

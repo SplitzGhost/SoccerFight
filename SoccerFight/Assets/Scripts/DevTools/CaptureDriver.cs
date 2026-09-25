@@ -97,6 +97,7 @@ namespace SoccerFight
             else if (scenario == "meta") yield return MetaTour();
             else if (scenario == "duo") yield return Duo();
             else if (scenario == "hoops") yield return Hoops();
+            else if (scenario == "dribble") yield return Dribble();
             else if (scenario == "stage1") yield return StageOneLook();
             else if (scenario == "stages") yield return StageLooks();
             else yield return All();

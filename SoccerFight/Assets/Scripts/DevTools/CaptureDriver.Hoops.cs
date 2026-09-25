@@ -10,6 +10,37 @@ namespace SoccerFight
     /// </summary>
     public sealed partial class CaptureDriver
     {
+        /// <summary>Dribbelrhythmus aller sechs Figuren im Stand, Anlaufen und Laufen.</summary>
+        IEnumerator Dribble()
+        {
+            foreach (string id in new[] { "rio", "bruno", "mira", "dre", "titan", "nova" })
+            {
+                Characters.Preview(Characters.IndexOf(Characters.Get(id)));
+                G.Director.DebugJump(1, 1, 0, false);
+                P.ApplyStats(true);
+                P.Pos = new Vector2(-4f, 0f);
+                P.Vel = Vector2.zero;
+                P.Rig.ResetPose();
+                G.Ball.ResetTo(P.Pos + new Vector2(0.6f, Art.BallRadius));
+                Aim(new Vector2(5f, 1.6f));
+                Move(0f);
+                yield return Seconds(0.7f);
+                BeginSheet(6, 1);
+                for (int i = 0; i < 6; i++) { yield return SheetCell(new Vector2(0.25f, 1f), 1.4f); yield return Frames(5); }
+                EndSheet("d_" + id + "_idle");
+                Move(1f);
+                BeginSheet(6, 1);
+                for (int i = 0; i < 6; i++) { yield return SheetCell(new Vector2(0.25f, 1f), 1.4f); yield return Frames(3); }
+                EndSheet("d_" + id + "_start");
+                yield return Seconds(0.45f);
+                BeginSheet(6, 2);
+                for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0.25f, 1f), 1.4f); yield return Frames(2); }
+                EndSheet("d_" + id + "_run");
+                Move(0f);
+                yield return Seconds(0.5f);
+            }
+        }
+
         IEnumerator Hoops()
         {
             string[] ids = { "dre", "titan", "nova" };
