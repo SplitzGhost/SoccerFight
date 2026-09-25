@@ -44,7 +44,7 @@ namespace SoccerFight
         public static readonly List<Vector3> GroundGlows = new List<Vector3>();
 
         static ArtJobs jobs;
-        static ArtJobs.Job jLogo, jHero, jHeroHoop, jHeroShade, jHeroHi, jMoon, jPeaks, jRidge, jWaste, jGround, jSmoke;
+        static ArtJobs.Job jLogo, jHero, jHeroHoop, jHeroShade, jHeroHi;
 
         static readonly Color Clear = new Color(0f, 0f, 0f, 0f);
         static readonly Color Cyan = new Color(0.45f, 0.95f, 1f);
@@ -90,13 +90,6 @@ namespace SoccerFight
             jHeroShade = Ui("MenuHeroShade", () => Art.BallShadeCanvas(640f));
             jHeroHi = Ui("MenuHeroHi", () => Art.BallHighlightCanvas(640f));
 
-            // world pieces: premultiplied like every other backdrop sprite, drawn in their own units
-            jMoon = jobs.Add("MenuMoon", () => EnvironmentArt.MoonCanvas(MoonPpu), Vector2.zero);
-            jPeaks = jobs.Add("MenuPeaks", BuildPeaks, Vector2.zero);
-            jRidge = jobs.Add("MenuRidge", BuildRidge, Vector2.zero);
-            jWaste = jobs.Add("MenuWaste", BuildWaste, Vector2.zero);
-            jGround = jobs.Add("MenuGround", BuildGround, Vector2.zero);
-            jSmoke = jobs.Add("MenuSmoke", BuildSmoke, Vector2.zero);
             jobs.Start();
         }
 
@@ -115,8 +108,7 @@ namespace SoccerFight
             Debug.Log("[SoccerFight] menu art: " + jobs.Slowest(8));
             Logo = UiSprite(jLogo);
             HeroBall = UiSprite(jHero); HeroHoop = UiSprite(jHeroHoop); HeroShade = UiSprite(jHeroShade); HeroHighlight = UiSprite(jHeroHi);
-            Moon = jMoon.Sprite; Peaks = jPeaks.Sprite; Ridge = jRidge.Sprite; Waste = jWaste.Sprite; Ground = jGround.Sprite;
-            Smoke = jSmoke.Sprite;
+            Moon = Peaks = Ridge = Waste = Ground = Smoke = null;
             jobs = null;
         }
 

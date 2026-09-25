@@ -6,13 +6,9 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Title screen, laid out like a lobby. A bar across the top holds the logo, one tab per big
-    /// page (SPIELEN, SPIELER, FÄHIGKEITEN, SHOP, EVENTS, RANGLISTE, OPTIONEN), the coins and gems
-    /// and a few icons; every page opens under that bar. The home page is the scene itself — a
-    /// wrecked mountain valley under the moon (MenuVista, filmed by the game camera with the game's
-    /// own look) — with the chosen player large in the middle, juggling (shoot them to change
-    /// player), the season record and the quests on the left, and the game mode with the big
-    /// SPIELEN button in the bottom-right corner.
+    /// Titelbildschirm wie eine Lobby: Oben stehen Logo, Seitenreiter und Währungen. Dahinter
+    /// schweben UFOs über einem zerstörten Stadion. Die gewählte Spielfigur steht groß in der
+    /// Mitte; links erscheinen Saisonrekord und Quests, rechts Spielmodus und SPIELEN-Knopf.
     ///
     /// Buttons are not pressed with the pointer: the mouse is the game's crosshair and a click kicks
     /// a ball from the player's point of view into the screen — it starts big at the bottom edge,
@@ -68,7 +64,7 @@ namespace SoccerFight
         Camera cam;
         RectTransform root, content, main, stack, pagesRoot, fxRoot, cursorRoot;
         CanvasGroup contentGroup, mainGroup;
-        MenuVista vista;
+        RawImage backdrop;
         Image veil;
         MenuFigure figure;
         CharacterPage characters;
@@ -174,9 +170,11 @@ namespace SoccerFight
             go.AddComponent<GraphicRaycaster>();
             root = (RectTransform)go.transform;
 
-            // the scene the menu stands in is part of the world; the camera switches to it while the menu is up
-            vista = new MenuVista();
-            vista.Build(parent);
+            // Das Stadion liegt hinter allen Menüseiten; die animierte Figur bleibt separat davor.
+            backdrop = UiKit.Node("Stadion", root, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
+            backdrop.texture = Resources.Load<Texture2D>("Menu/StadionUfo");
+            backdrop.raycastTarget = false;
+            backdrop.color = Color.white;
             // night falls over the switch between arena and scene
             veil = UiKit.Img("Veil", root, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(veil.rectTransform);
@@ -773,16 +771,14 @@ namespace SoccerFight
         }
 
         /// <summary>
-        /// While the menu is up the camera films the menu's own scene instead of the arena: only the
-        /// scene's layer and the UI layer (for a canvas the camera draws itself) are rendered.
+        /// Solange das Menü offen ist, zeichnet die Kamera nur die Menüoberfläche statt der Arena.
         /// </summary>
         void SetWorldHidden(bool hide)
         {
             if (Game.I == null) return;
             var c = Game.I.Cam.Cam;
-            if (hide && !culled) { savedMask = c.cullingMask; c.cullingMask = MenuVista.Mask | (1 << UiLayer); culled = true; }
+            if (hide && !culled) { savedMask = c.cullingMask; c.cullingMask = 1 << UiLayer; culled = true; }
             else if (!hide && culled) { c.cullingMask = savedMask; culled = false; }
-            vista.SetVisible(culled);
         }
 
         // ------------------------------------------------------------------ update
@@ -800,6 +796,7 @@ namespace SoccerFight
             RefreshCharacter(false);
             UpdatePages(udt);
             UpdateLayout(udt);
+            UpdateBackdrop();
             UpdateTargets(udt);
             UpdateCenter(udt);
             UpdateLogo(udt);
@@ -1061,18 +1058,14 @@ namespace SoccerFight
             veil.color = veil.color.WithAlpha(veilA);
             veil.enabled = veilA > 0.002f;
 
-            // the scene pushes in when the menu opens, on sub pages and as the ball flies at the camera
-            float zoom = 1f + 0.06f * (1f - MathUtil.EaseOutCubic(Mathf.Clamp01(openT))) + 0.04f * Mathf.Clamp01(sub);
-            if (state == State.Starting) zoom += 0.12f * MathUtil.EaseInCubic(Mathf.Clamp01(stateT / 0.8f));
-            if (Game.I != null && culled)
-            {
-                var rig = Game.I.Cam;
-                float wind = Game.I.Environment != null ? Game.I.Environment.Wind : 0f;
-                vista.Update(udt, rig.Cam, rig.Center, AimNorm(), zoom, new Vector2(0f, 0.5f * Mathf.Clamp01(sub)), wind);
-                // the ground the player stands on stays right under the boots
-                Vector2 feet = CanvasToWorld(StackToCanvas(new Vector2(-10f, FeetY)));
-                vista.PlaceGround(feet);
-            }
+        }
+
+        void UpdateBackdrop()
+        {
+            if (backdrop.texture == null) return;
+            float aspect = (float)backdrop.texture.width / backdrop.texture.height;
+            float height = Mathf.Max(root.rect.height, root.rect.width / aspect);
+            backdrop.rectTransform.sizeDelta = new Vector2(height * aspect, height);
         }
 
         /// <summary>Logo on the left, the icons and wallet on the right, the tabs centred in between (smaller if they must).</summary>
@@ -1088,15 +1081,6 @@ namespace SoccerFight
             // centred on the screen when there is room, otherwise in the gap
             float cx = Mathf.Clamp(0f, left + tabsWidth * k * 0.5f, right - tabsWidth * k * 0.5f);
             tabsRoot.anchoredPosition = new Vector2(cx, 0f);
-        }
-
-        /// <summary>World position (on the game camera) of a point in canvas space.</summary>
-        Vector2 CanvasToWorld(Vector2 canvasLocal)
-        {
-            var c = Game.I.Cam.Cam;
-            Vector2 screen = ScreenOf(canvasLocal);
-            Vector3 w = c.ScreenToWorldPoint(new Vector3(screen.x, screen.y, -c.transform.position.z));
-            return new Vector2(w.x, w.y);
         }
 
         void UpdateTargets(float udt)
