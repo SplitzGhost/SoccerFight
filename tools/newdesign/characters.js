@@ -79,7 +79,20 @@ function cover(box, test) {
 }
 
 const polyTest = poly => (x, y) => inPoly(poly, x, y);
-const anyPoly = polys => (x, y) => polys.some(p => inPoly(p, x, y));
+// Verdeckte Teile einschließlich ihrer antialiasierten Stoffkante entfernen.
+// Sonst bleibt um den weggeblendeten Arm ein heller Umriss im Trikot stehen.
+const anyPoly = polys => (x, y) => polys.some(p => inPoly(p, x, y) || edgeDistance(p, x, y) < 5);
+
+function edgeDistance(poly, x, y) {
+    let best = Infinity;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const [ax, ay] = poly[j], [bx, by] = poly[i];
+        const dx = bx - ax, dy = by - ay;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy)));
+        best = Math.min(best, Math.hypot(x - ax - t * dx, y - ay - t * dy));
+    }
+    return best;
+}
 
 function bboxOf(polys, pad) {
     let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
@@ -213,6 +226,11 @@ function segSdf(A, B, rA, rB, tube = 0) {
         let d = -1e9;
         if (rA != null) d = Math.max(d, Math.min(-t, Math.hypot(x - A[0], y - A[1]) - rA));
         if (rB != null) d = Math.max(d, Math.min(t - L, Math.hypot(x - B[0], y - B[1]) - rB));
+        // Überbreite Querschnitte weich zum Gelenkkreis führen. Die reine Vereinigung
+        // von Halbebene und Kreis ließ sonst seitliche Dreiecke am Ellbogen/Knie stehen.
+        const side = Math.abs((x - A[0]) * uy - (y - A[1]) * ux);
+        if (rA != null) d = Math.max(d, side - rA - Math.max(0, t));
+        if (rB != null) d = Math.max(d, side - rB - Math.max(0, L - t));
         if (tube) {
             const k = Math.max(0, Math.min(L, t));
             d = Math.max(d, Math.hypot(x - A[0] - ux * k, y - A[1] - uy * k) - tube);
@@ -324,67 +342,6 @@ function extent(p, dir) {
 
 const lum = (r, g, b) => 0.3 * r + 0.55 * g + 0.15 * b;
 
-/** Die Farben, die in einem Bereich deutlich vorkommen (ab share Anteil), häufigste zuerst. */
-function colorsOf(reg, share = 0.02) {
-    const bins = new Map();
-    let n = 0;
-    for (let i = 0; i < reg.a.length; i++) if (reg.a[i] > 0.9) {
-        const key = ((reg.rgb[i * 3] * 7.99) | 0) * 64 + ((reg.rgb[i * 3 + 1] * 7.99) | 0) * 8 + ((reg.rgb[i * 3 + 2] * 7.99) | 0);
-        const b = bins.get(key) || [0, 0, 0, 0];
-        b[0]++; b[1] += reg.rgb[i * 3]; b[2] += reg.rgb[i * 3 + 1]; b[3] += reg.rgb[i * 3 + 2];
-        bins.set(key, b);
-        n++;
-    }
-    return [...bins.values()].filter(b => b[0] >= n * share).sort((a, b) => b[0] - a[0]).map(b => [b[1] / b[0], b[2] / b[0], b[3] / b[0]]);
-}
-
-const colorDist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-
-/** Abstand eines Punkts zum Rand eines Polygons. */
-function polyEdgeDist(poly, x, y) {
-    let d = 1e9;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-        const [ax, ay] = poly[j], [bx, by] = poly[i], ex = bx - ax, ey = by - ay;
-        const t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
-        d = Math.min(d, Math.hypot(x - ax - ex * t, y - ay - ey * t));
-    }
-    return d;
-}
-
-/**
- * Schabt am Rand eines Bereichs (bis 9 px tief, unterhalb von belowY) ab, was eher nach Stoff (cloth: Hose, Trikot)
- * als nach dem Teil selbst (own: Haut, Ärmel) aussieht: Reste, die beim Ausschneiden neben Faust und Unterarm hängen
- * blieben. Mischpixel an der Farbgrenze werden anteilig durchsichtig, danach wird die neue Kante leicht geglättet.
- */
-function shave(reg, poly, own, cloth, belowY, aboveY = 1e9) {
-    const [bx, by, w, h] = reg.box, a = Float32Array.from(reg.a);
-    const minDist = (i, cs) => Math.min(...cs.map(c => colorDist([reg.rgb[i * 3], reg.rgb[i * 3 + 1], reg.rgb[i * 3 + 2]], c)));
-    const keep = new Float32Array(w * h).fill(1);
-    for (let y = 0; y < h; y++) {
-        if (by + y < belowY || by + y >= aboveY) continue;
-        for (let x = 0; x < w; x++) {
-            const i = y * w + x;
-            if (a[i] <= 0 || polyEdgeDist(poly, bx + x + 0.5, by + y + 0.5) > 9) continue;
-            const dO = minDist(i, own), dC = minDist(i, cloth), t = dO / (dO + dC + 1e-6);
-            keep[i] = 1 - Math.min(1, Math.max(0, (t - 0.4) / 0.2));
-        }
-    }
-    // Kante glätten: 3×3-Mittel der Deckung, nur wo abgeschabt wurde
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        const i = y * w + x;
-        let s = 0, n = 0, touched = false;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            const xx = x + dx, yy = y + dy;
-            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-            const k = keep[yy * w + xx];
-            s += k; n++;
-            if (k < 1) touched = true;
-        }
-        if (touched) a[i] *= Math.min(keep[i], s / n) * 0.5 + keep[i] * 0.5;
-    }
-    return { ...reg, a, a0: a };
-}
-
 /** Färbt helle, ungesättigte Stoffpixel in Haut um (Schattierung bleibt); die Hautfarbe stammt unterhalb von below (Faust). */
 function skinned(reg, below) {
     const [, by, w, h] = reg.box, rgb = Float32Array.from(reg.rgb);
@@ -461,7 +418,7 @@ async function buildFigure(id) {
     const hem = F.legZones ? Math.max(...F.legZones[0].map(p => p[1])) : J.hip[1] + 45;
     const zones = [[[0, 0], [2000, 0], [2000, hem], [0, hem]], ...(F.legZones || []).slice(1)];
     zones.push([[0, hem], [2000, hem], [2000, J.knee[1] + 22], [0, J.knee[1] + 22]]);
-    const inset = F.legInset == null ? 4 : F.legInset;
+    const inset = F.legInset == null ? 0 : F.legInset;
     const legPoly = F.leg.map(([x, y]) => y > hem + 2 && x > J.knee[0] ? [x - inset, y] : [x, y]);
     // Das Hosenbein ist an der Hüfte eine Kreisscheibe um das Hüftgelenk (unter dem Trikot mit Hosenstoff aufgefüllt):
     // so bleibt sein Umriss beim Anheben des Beins gleich, statt dass eine gerade Stoffkante wie eine Klappe
@@ -488,19 +445,9 @@ async function buildFigure(id) {
         parts['Forearm' + far] = o(clip(reg, segSdf(J.elbow, J.wrist, F.r.elbow * 1.05, F.r.wrist)), J.elbow, d(J.elbow, J.wrist));
         if (!far) parts.Hand = o(clip(reg, segSdf(J.wrist, hand, F.r.wrist * 1.05, null)), J.wrist, d(J.elbow, J.wrist));
     };
-    // Vorderkante des Ärmels ein paar Pixel einrücken (dahinter liegt die Brust); unterhalb des Ellbogens alles am
-    // Rand abschaben, was nach Hose oder Trikot aussieht – die Faust liegt in der Seitenansicht auf der Hose.
-    const armPoly = F.arm.map(([x, y]) => y > J.shoulder[1] && y < J.elbow[1] && x > J.shoulder[0] ? [x - 3, y] : [x, y]);
-    const rawArm = region(img, armPoly, [], F.armZones || []);
-    // eigene Farben je Abschnitt (Oberarm, Unterarm, Faust): Haut, Ärmel – was sonst am Rand hängt, ist Stoff
-    const clothAll = [...colorsOf(region(img, F.pelvis, [F.arm, F.torso]), 0.004), ...colorsOf(region(img, F.torso, [F.arm]), 0.004)];
-    // nur das Innere (ab 10 px vom Rand): dort liegen keine Fremdpixel
-    const band = (y0, y1) => clip(rawArm, (x, y) => Math.max(y0 - y, y - y1, 10 - polyEdgeDist(armPoly, x, y)));
-    const shaveBand = (reg, y0, y1) => {
-        const own = colorsOf(band(y0 + 6, y1), 0.03);
-        return shave(reg, armPoly, own, clothAll.filter(c => own.every(o => colorDist(c, o) > 0.25)), y0, y1);
-    };
-    const arm = shaveBand(shaveBand(shaveBand(rawArm, J.shoulder[1] + 18, J.elbow[1] - 4), J.elbow[1] - 4, J.wrist[1] + 6), J.wrist[1] + 6, 1e9);
+    // Die vermessene Kontur trennt Haut/Ärmel sauber von Trikot und Hose.
+    // Farbweises Abschaben erzeugte gezackte Löcher an den Gelenken.
+    const arm = region(img, F.arm, [], F.armZones || []);
     armParts(arm, '');
     // hinterer Arm ohne Ärmel (Kompressionsärmel nur am vorderen Arm): helle Stoffpixel bekommen die Hautfarbe der Faust
     if (F.farSkin) armParts(skinned(arm, J.wrist), 'Far');

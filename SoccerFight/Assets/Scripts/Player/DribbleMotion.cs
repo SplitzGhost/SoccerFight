@@ -24,12 +24,12 @@ namespace SoccerFight
         }
 
         // Zeitpunkte im Takt (0 = Ball oben in der Hand)
-        const float Release = 0.2f, Low = 0.3f, Catch = 0.74f;
+        const float Release = 0.24f, Low = 0.38f, Catch = 0.80f;
 
         // Handgelenk-Winkel über den Takt: angenommen leicht nach oben abgeknickt, beim Drücken abgeklappt,
         // nach dem Loslassen schnappt es nach, dann hebt sich die Hand locker wieder
         static readonly float[] AngU = { 0f, Release, Low, 0.55f, Catch };
-        static readonly float[] AngV = { 8f, -10f, -16f, 4f, 14f };
+        static readonly float[] AngV = { 2f, -5f, -12f, -4f, 5f };
 
         /// <param name="u">Takt 0..1</param>
         /// <param name="shoulder">vorderes Schultergelenk</param>
@@ -46,8 +46,8 @@ namespace SoccerFight
             u = Mathf.Repeat(u, 1f);
 
             // Ballhöhen an den Schlüsselstellen, aus dem Abstand Schulter → Handgelenk abgeleitet
-            float yTop = BallY(0f, Mathf.Lerp(0.6f, 0.7f, low));
-            float yRel = BallY(Release, Mathf.Lerp(0.9f, 0.92f, low));
+            float yTop = BallY(0f, Mathf.Lerp(0.65f, 0.7f, low));
+            float yRel = BallY(Release, Mathf.Lerp(0.87f, 0.89f, low));
             float yCatch = BallY(Catch, Mathf.Lerp(0.74f, 0.8f, low));
             yRel = Mathf.Min(yRel, yTop - 0.06f);
             yCatch = Mathf.Min(yCatch, yTop - 0.05f);
@@ -85,7 +85,7 @@ namespace SoccerFight
             Vector2 wRel = OnBall(Release), vwRel = (OnBall(Release) - OnBall(Release - e)) / e;
             Vector2 wCatch = OnBall(Catch), vwCatch = (OnBall(Catch + e) - OnBall(Catch)) / e;
             // am tiefsten Punkt ist der Arm fast gestreckt (SoftReach fängt den Rest weich ab)
-            float dLow = 0.96f * L;
+            float dLow = 0.88f * L;
             Vector2 wLow = new Vector2(bx + Offset(Angle(Low)).x, 0f);
             wLow.y = Mathf.Min(WristY(wLow.x, dLow), wRel.y - 0.03f);
             if (u < Low)

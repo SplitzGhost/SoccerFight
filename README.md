@@ -172,13 +172,14 @@ und legt pro Figur einen Atlas + JSON nach `Resources/Characters`. Das JSON enth
 Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBody` der Figur schreibt – das Rig
 bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
 Dre trägt den Kompressionsärmel nur am vorderen Arm. Beim Dribbeln führen DRE, TITAN und NOVA den Ball mit einer offenen
-Hand: Sie drückt kurz nach unten, federt im Handgelenk zurück und nimmt den aufsteigenden Ball wieder an. Die zusätzlichen
+Hand: Oberarm und Ellbogen führen den Druck nach unten und nehmen den aufsteigenden Ball wieder an; das Handgelenk folgt nur leicht. Im Menü stehen sie aufrecht und dribbeln ruhig mit 1,25 Schlägen pro Sekunde. Die zusätzlichen
 Hände stammen aus `tools/newdesign/sources/dribble-hands.png` und werden von `characters.js` in die Figurenatlanten aufgenommen.
 Für die übrigen Basketball-Moves wird weiterhin die gemessene Faustlänge verwendet (`PlayerRig.Palm/GripNear`). Der
 Ball springt vor der gemessenen Schuhspitze auf statt darauf. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
 anpassen und `node characters.js` laufen lassen (`SF_DEBUG=<ordner>` schreibt zusätzlich Prüfbilder).
-Die Schnitte an den Gelenken laufen weich aus, das Hosenbein ist an der Hüfte rund, und was am Rand von Unterarm und
-Faust nach Hose/Trikot aussieht, wird abgeschabt. Neben dem Atlas entsteht eine Umriss-Maske (`<id>_rim.png`): Der
+Die Schnitte an den Gelenken laufen weich aus, das Hosenbein ist an der Hüfte rund. Die Konturen von Armen, Beinen und
+Schuhen folgen jeweils nur dem vorderen Körperteil der Vorlage; das hintere Bein und der zweite Schuh werden nicht mitkopiert.
+Neben dem Atlas entsteht eine Umriss-Maske (`<id>_rim.png`): Der
 Shader `SF_Character` setzt das Mondlicht nur an die echte Außenkante, nicht an die Schnittkanten zwischen den Teilen.
 Die Atlanten haben normales (nicht vormultipliziertes) Alpha; im Menü zeichnet `SF_UIFigure` die Teile.
 Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchten unter den Schuhen.

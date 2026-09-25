@@ -27,7 +27,7 @@ namespace SoccerFight
         CharacterDef def;
         PlayerBody body = PlayerBody.Soccer;
         bool hoops, hiRes, openShown;
-        float dribU, dribLow;
+        float dribU;
         float scale, spin, phase;
         float kickT = -1f;
 
@@ -153,26 +153,26 @@ namespace SoccerFight
             float windup = kick >= 0f ? MathUtil.Smooth01(kick / 0.2f) * (1f - MathUtil.Smooth01((kick - 0.2f) / 0.08f)) : 0f;
             float strike = kick >= 0f ? MathUtil.Smooth01((kick - 0.2f) / 0.1f) * (1f - MathUtil.Smooth01((kick - 0.7f) / 0.4f)) : 0f;
 
-            Vector2 hip = new Vector2(0f, body.StandHip - 0.015f - 0.012f * (breathe * 0.5f + 0.5f) - 0.03f * contact - 0.05f * windup);
-            float lean = -3f + 1.2f * breathe - 4f * contact + 10f * windup - 14f * strike;
+            Vector2 hip = new Vector2(0f, body.StandHip - 0.004f * (breathe * 0.5f + 0.5f) - 0.012f * contact - 0.05f * windup);
+            float lean = -0.5f + 0.5f * breathe - 2f * contact + 10f * windup - 14f * strike;
 
             // legs
-            Vector2 nearRest = new Vector2(0.14f, A);
+            Vector2 nearRest = new Vector2(0.04f, A);
             Vector2 nearUp = new Vector2(0.27f, 0.27f);
             Vector2 nearAnkleTarget = Vector2.Lerp(nearRest, nearUp, contact);
             nearAnkleTarget = Vector2.Lerp(nearAnkleTarget, new Vector2(-0.3f, 0.34f), windup);
             nearAnkleTarget = Vector2.Lerp(nearAnkleTarget, new Vector2(0.48f, 0.62f), strike);
-            Vector2 farAnkleTarget = new Vector2(-0.2f + 0.04f * windup, A);
+            Vector2 farAnkleTarget = new Vector2(-0.14f + 0.04f * windup, A);
             float nearBootRot = contact * 18f + strike * 30f - windup * 20f;
             PoseBody(hip, lean, nearAnkleTarget, farAnkleTarget, nearBootRot, lookAt, contact, t, mode == Mode.Juggle ? 1f : 0f);
 
             // arms out for balance while juggling, swinging with the kick
             float armOut = juggling ? 1f : 0f;
-            float sway = Mathf.Sin(t * 2f * Mathf.PI / period) * 6f;
-            float farShDeg = Mathf.Lerp(26f, 58f, armOut) + sway - windup * 40f + strike * 70f;
-            float nearShDeg = Mathf.Lerp(-30f, -50f, armOut) - sway + windup * 50f - strike * 60f;
-            Arm(farHand, farFore, farUpper, FarShoulder(hip, lean), farShDeg, 30f);
-            Arm(nearHand, nearFore, nearUpper, NearShoulder(hip, lean), nearShDeg, 36f);
+            float sway = Mathf.Sin(t * 2f * Mathf.PI / period) * 2f;
+            float farShDeg = Mathf.Lerp(4f, 14f, armOut) + sway - windup * 40f + strike * 70f;
+            float nearShDeg = Mathf.Lerp(-8f, -15f, armOut) - sway + windup * 50f - strike * 60f;
+            Arm(farHand, farFore, farUpper, FarShoulder(hip, lean), farShDeg, 22f);
+            Arm(nearHand, nearFore, nearUpper, NearShoulder(hip, lean), nearShDeg, 24f);
 
             // ---- the ball
             Vector2 b;
@@ -204,29 +204,29 @@ namespace SoccerFight
             float strike = kick >= 0f ? MathUtil.Smooth01((kick - 0.2f) / 0.08f) * (1f - MathUtil.Smooth01((kick - 0.7f) / 0.4f)) : 0f;
             bool show = mode == Mode.Juggle && kick < 0f;
 
-            // the dribble: a bounce per beat, faster and lower in the show-off (Tiefe weich überblendet)
-            float bps = show ? 2.3f : 1.6f;
+            // Ein gleichmäßiger, entspannter Takt auf Titelbild und Spielerkarten.
+            float bps = 1.25f;
             dribU = Mathf.Repeat(dribU + bps * dt, 1f);
-            dribLow = Mathf.MoveTowards(dribLow, show ? 1f : 0f, dt * 2f);
-            float lowK = MathUtil.Smooth01(dribLow);
+            float lowK = 0f;
             float breathe = Mathf.Sin(t * 2.1f);
-            // the dribbling stance: knees bent, chest over the ball, front foot drawn back
-            float knees = Mathf.Lerp(0.06f, 0.09f, lowK);
-            float lean0 = Mathf.Lerp(-13f, -18f, lowK) + 1.2f * breathe;
-            Vector2 hip0 = new Vector2(0f, body.StandHip - 0.02f - knees - 0.012f * (breathe * 0.5f + 0.5f));
+            // Ruhiger Stand: Füße unter der Hüfte, nur eine kleine Atembewegung.
+            // Ball und Arm werden aus derselben endgültigen Schulterposition berechnet.
+            float lean0 = -1f + 0.35f * breathe;
+            Vector2 hip0 = new Vector2(0f, body.StandHip - 0.004f * (breathe * 0.5f + 0.5f));
+            Vector2 hip = hip0 + new Vector2(0f, -0.07f * windup + 0.03f * strike);
+            float lean = lean0 + 6f * windup - 12f * strike;
 
             // der ganze Arm dribbelt, wie im Spiel (DribbleMotion)
             float L = body.UpperArmLen + body.ForearmLen;
-            Vector2 sh0 = NearShoulder(hip0, lean0);
-            float bx = Mathf.Max(sh0.x + 0.56f * L, body.Toe - 0.04f);
+            Vector2 sh0 = NearShoulder(hip, lean);
             float palmReach = look.OpenHand != null ? look.OpenHand.rect.width / look.OpenHand.pixelsPerUnit * 0.38f : 0.15f;
+            // Die Hand bleibt vor dem Ellbogen erreichbar. Ein zu weit vorgeschobener Ball
+            // ließ die Gelenklösung fast nur das Handgelenk statt des ganzen Arms bewegen.
+            float bx = sh0.x + 0.52f * L + palmReach;
             var d = DribbleMotion.Eval(dribU, sh0, body.UpperArmLen, body.ForearmLen, bx, palmReach, 0f, lowK);
 
-            Vector2 hip = hip0 + new Vector2(0f, -0.012f * d.Push - 0.07f * windup + 0.03f * strike);
-            float lean = lean0 - 2.5f * d.Push + 6f * windup - 12f * strike;
-
-            Vector2 nearAnkle = new Vector2(-0.06f + 0.18f * strike, A);
-            Vector2 farAnkle = new Vector2(-0.26f, A);
+            Vector2 nearAnkle = new Vector2(0.015f + 0.18f * strike, A);
+            Vector2 farAnkle = new Vector2(-0.15f, A);
             PoseBody(hip, lean, nearAnkle, farAnkle, 0f, lookAt, 0f, t, 0f);
 
             Vector2 nearSh = NearShoulder(hip, lean), farSh = FarShoulder(hip, lean);
@@ -246,7 +246,7 @@ namespace SoccerFight
                 // die offene Hand drückt den Ball mit dem ganzen Arm; der freie Arm schirmt ab
                 ArmTo(nearHand, nearFore, nearUpper, nearSh, d.Wrist, 0f, b, look.OpenHand != null ? 0f : 1f);
                 if (look.OpenHand != null) nearHand.rectTransform.localRotation = Quaternion.Euler(0f, 0f, d.HandAngle);
-                Arm(farHand, farFore, farUpper, farSh, 28f + breathe * 3f + 4f * d.Push, 62f - 6f * d.Push);
+                Arm(farHand, farFore, farUpper, farSh, -8f + breathe, 18f);
             }
             else
             {

@@ -10,6 +10,27 @@ namespace SoccerFight
     /// </summary>
     public sealed partial class CaptureDriver
     {
+        /// <summary>Alle Menüfiguren über einen vollständigen Dribbeltakt, ohne den Spielstand anzufassen.</summary>
+        IEnumerator MenuBodies()
+        {
+            foreach (string id in new[] { "rio", "bruno", "mira", "dre", "titan", "nova" })
+            {
+                var seed = new ProfileData { Character = id };
+                seed.Characters.Add(id);
+                seed.Flags.Add(Profile.FlagStarter);
+                Profile.UseTransient(seed);
+                Characters.Reload();
+                G.ToMenu();
+                GameInput.AimScreen = G.Menu.ScreenOf(new Vector2(-600f, 0f));
+                yield return Seconds(1.6f);
+                for (int i = 0; i < 12; i++)
+                {
+                    yield return Shot("body_" + id + "_" + i.ToString("00"));
+                    yield return Frames(3);
+                }
+            }
+        }
+
         /// <summary>Dribbelrhythmus aller sechs Figuren im Stand, Anlaufen und Laufen.</summary>
         IEnumerator Dribble()
         {

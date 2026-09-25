@@ -98,6 +98,7 @@ namespace SoccerFight
             else if (scenario == "duo") yield return Duo();
             else if (scenario == "hoops") yield return Hoops();
             else if (scenario == "dribble") yield return Dribble();
+            else if (scenario == "menubodies") yield return MenuBodies();
             else if (scenario == "stage1") yield return StageOneLook();
             else if (scenario == "stages") yield return StageLooks();
             else yield return All();
