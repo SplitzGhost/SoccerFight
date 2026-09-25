@@ -388,7 +388,16 @@ function capOf(c) {
 }
 
 /** Plank/anvil/beam out of a frame piece, plus the x of its rope/chain anchors (pixels of the result). */
-function hangOf(c, which) {
+function hangOf(c, which, def = {}) {
+    // Explizite Schnittbereiche verhindern, dass verbundene Gestellreste zum Hängeobjekt werden.
+    if (def.keep) {
+        const x0 = Math.min(...def.keep.map(r => r[0])), y0 = Math.min(...def.keep.map(r => r[1]));
+        const x1 = Math.max(...def.keep.map(r => r[2])), y1 = Math.max(...def.keep.map(r => r[3]));
+        const clean = { ...c, buf: Buffer.from(c.buf) };
+        for (let y = 0; y < c.h; y++) for (let x = 0; x < c.w; x++)
+            if (!def.keep.some(r => x >= r[0] && x < r[2] && y >= r[1] && y < r[3])) clean.buf[(y * c.w + x) * 4 + 3] = 0;
+        return { img: crop(clean, x0, y0, x1, y1), anchors: def.anchors.map(x => x - x0) };
+    }
     const s = surface(c);
     if (which == 'top') {
         // the top beam: the first band, a few rows more for its rim
@@ -459,7 +468,7 @@ async function stage(def, common) {
         const src = cuts[d.from];
         if (d.kind == 'cap') list.push({ name: d.name, role: 'float', c: capOf(src), o: {} });
         else if (d.kind == 'hang') {
-            const h = hangOf(src, def.cells[d.from][2].levels ? 'band' : 'top');
+            const h = hangOf(src, def.cells[d.from][2].levels ? 'band' : 'top', d);
             list.push({ name: d.name, role: 'float', c: h.img, o: { anchors: h.anchors, rope: d.rope, walkFrac: 0.7 } });
         }
     }

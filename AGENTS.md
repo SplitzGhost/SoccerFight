@@ -36,6 +36,9 @@ Spieländerungen mitgepflegt werden.**
   Anders als die Welt-Bilder haben die Figuren-Atlanten **normales Alpha** (Shader multipliziert, sonst dunkle Nähte
   an den Gelenken) und eine Umriss-Maske `<id>_rim.png` (Sekundärtextur `_RimMask` für das Mondlicht); Menüfigur-Teile
   brauchen das Material `Art.UiFigureMat`.
+  Offene Dribbelhände für Basketball: Zusatzbogen `tools/newdesign/sources/dribble-hands.png` (mit versioniert),
+  `characters.js` übernimmt ihn als `OpenHand` in die drei Atlanten. Die offene Hand zeigt im Atlas nach rechts
+  statt nach unten; `PlayerRig.Hoops` steuert ihren Ballkontakt und den Winkel im Handgelenk.
 - Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
 - Skripte: `SoccerFight/Assets/Scripts/` (Namespace `SoccerFight`), Ordner Art, Ball, Combat, Core, Enemies, FX,
   Meta, Net, Player, Run, UI, World, Editor, DevTools.

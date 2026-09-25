@@ -409,6 +409,30 @@ function skinned(reg, below) {
 
 // ------------------------------------------------------------------ eine Figur
 
+// Offene Dribbelhände aus dem ergänzenden Bogen: nach rechts gestreckt, Handfläche unten.
+// Der Bogen bleibt als Quelle erhalten; die Hände landen samt Umriss im normalen Figurenatlas.
+async function openHand(id, ppu) {
+    const index = ['dre', 'titan', 'nova'].indexOf(id);
+    if (index < 0) return null;
+    const sheet = sharp(path.join(__dirname, 'sources/dribble-hands.png'));
+    const meta = await sheet.metadata(), cell = Math.floor(meta.width / 3);
+    const { data, info } = await sheet.extract({ left: index * cell, top: 0, width: cell, height: meta.height })
+        .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let x0 = cell, y0 = info.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < info.height; y++) for (let x = 0; x < cell; x++) if (data[(y * cell + x) * 4 + 3] > 64) {
+        x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    }
+    const width = Math.round(ppu * [0.40, 0.44, 0.36][index]);
+    const scaled = await sharp(data, { raw: info }).extract({ left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 })
+        .resize(width).extend({ top: 4, bottom: 4, left: 4, right: 4, background: '#00000000' })
+        .raw().toBuffer({ resolveWithObject: true });
+    const W = scaled.info.width, H = scaled.info.height;
+    const buf = Float32Array.from(scaled.data, v => v / 255);
+    const mask = new Float32Array(W * H);
+    for (let i = 0; i < mask.length; i++) mask[i] = buf[i * 4 + 3];
+    return { W, H, buf, mask, px: 4 + width * 0.09, py: 4 + (H - 8) * 0.30 };
+}
+
 async function buildFigure(id) {
     const F = FIG[id];
     const img = await load(id + '.png');
@@ -480,6 +504,8 @@ async function buildFigure(id) {
     armParts(arm, '');
     // hinterer Arm ohne Ärmel (Kompressionsärmel nur am vorderen Arm): helle Stoffpixel bekommen die Hautfarbe der Faust
     if (F.farSkin) armParts(skinned(arm, J.wrist), 'Far');
+    const opened = await openHand(id, ppu);
+    if (opened) parts.OpenHand = opened;
 
     // Maße in Spieleinheiten (Bild-y zeigt nach unten → Spiel-y umdrehen)
     const u = (A, B) => [(B[0] - A[0]) / ppu, -(B[1] - A[1]) / ppu];

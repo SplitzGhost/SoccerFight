@@ -24,7 +24,7 @@ namespace SoccerFight
     {
         public Sprite Torso, Pelvis, Neck, Head, HairTuft;
         public Sprite Thigh, Shin, Boot, BootGlow;
-        public Sprite UpperArm, Forearm, Hand;
+        public Sprite UpperArm, Forearm, Hand, OpenHand;
         /// <summary>The front arm when it differs (a compression sleeve on the throwing arm); null: same as the back arm.</summary>
         public Sprite UpperArmNear, ForearmNear;
         public PlayerBody Body = PlayerBody.Soccer;
@@ -176,6 +176,7 @@ namespace SoccerFight
                     case "UpperArm": look.UpperArm = s; break;
                     case "Forearm": look.Forearm = s; break;
                     case "Hand": look.Hand = s; break;
+                    case "OpenHand": look.OpenHand = s; break;
                     case "UpperArmFar": upperFar = s; break;
                     case "ForearmFar": foreFar = s; break;
                 }

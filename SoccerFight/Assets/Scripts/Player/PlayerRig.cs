@@ -26,6 +26,10 @@ namespace SoccerFight
         Transform torso, pelvis, neck, head, tuft;
         Leg nearLeg, farLeg;
         Arm nearArm, farArm;
+        Sprite closedHand, openHand;
+        SpriteRenderer nearHandRenderer;
+        bool dribbleOpen;
+        float dribbleHandAngle;
         SpriteRenderer shadow;
         public readonly List<SpriteRenderer> Parts = new List<SpriteRenderer>();
         readonly List<Color> partColors = new List<Color>();
@@ -143,6 +147,7 @@ namespace SoccerFight
                 upper = Part("NearUpperArm", PlayerPart.UpperArmNear, 27, false).transform
             };
             // bones and sport of the chosen character (the duo partner's rig is re-dressed on its first packet)
+            nearHandRenderer = nearArm.hand.GetComponent<SpriteRenderer>();
             if (PlayerArt.Current != null) ApplyLook(PlayerArt.Current);
         }
 
@@ -156,6 +161,8 @@ namespace SoccerFight
             for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(look, partKinds[i]);
             body = look.Body ?? PlayerBody.Soccer;
             Sport = look.Sport;
+            closedHand = look.Hand;
+            openHand = look.OpenHand;
             player.Ball?.SetSport(Sport);
         }
 
@@ -476,6 +483,7 @@ namespace SoccerFight
             nearIKw = farIKw = 0f;
             nearWrist = farWrist = 0f;
             nearGripW = farGripW = 0f;
+            dribbleOpen = false;
             if (Sport == Sport.Basketball)
                 HoopsCarry(dt, ref hipY, air, cycleLen, sk, ref nearFoot, ref farFoot, ref leanTarget, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref ballLocal);
 
@@ -639,6 +647,10 @@ namespace SoccerFight
             }
             PoseArm(farArm, farSh, farAbs, farElbow, farWrist, farGrip, farGripW);
             PoseArm(nearArm, nearSh, nearAbs, nearElbow, nearWrist, nearGrip, nearGripW);
+            // Die offene Hand streicht über den Ball; ihre Finger zeigen entlang der Balloberfläche.
+            bool showOpen = dribbleOpen && openHand != null;
+            nearHandRenderer.sprite = showOpen ? openHand : closedHand;
+            if (showOpen) nearArm.hand.localRotation = Quaternion.Euler(0f, 0f, dribbleHandAngle);
 
             // --- outputs (world space)
             Vector2 rootW = player.Pos;

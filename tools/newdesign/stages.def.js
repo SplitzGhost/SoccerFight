@@ -63,7 +63,7 @@ module.exports = [
         ground: { x: [0, 1345], pad: 9, holes: [[225, 305], [270, 450], [470, 560], [700, 1000], [1040, 1200]] },
         cells: {
             1: ['mushroom', 'stand', {}],
-            2: ['swing', 'stand', { levels: 'swing' }],
+            2: ['swing', 'prop', { levels: 'swing' }],
             3: ['stump', 'stand', { light: [255, 160, 40] }],
             4: ['branch', 'prop', { tags: ['mid'] }],
             6: ['end', 'end', {}],
@@ -75,7 +75,9 @@ module.exports = [
             12: ['leaves', 'prop', { tags: ['back'] }],
         },
         derived: [
-            { name: 'plank', from: 2, kind: 'hang', role: 'float', rope: 'rope' },
+            // Koordinaten im freigestellten Schaukelbild: Brett und Knoten, ohne Gestellfüße.
+            { name: 'plank', from: 2, kind: 'hang', role: 'float', rope: 'rope',
+                keep: [[42, 104, 194, 133], [50, 90, 71, 149], [165, 90, 187, 149]], anchors: [60, 177] },
         ],
     }),
     S('03-Regenwacht.png', {
@@ -142,7 +144,7 @@ module.exports = [
         ground: { x: [0, 1420], pad: 3, holes: [[226, 302], [284, 336], [418, 472], [498, 538], [678, 728], [830, 950], [1036, 1112], [1118, 1162], [1288, 1335], [0, 240]] },
         cells: {
             1: ['table', 'stand', {}],
-            2: ['anvil_frame', 'stand', { levels: 'anvil' }],
+            2: ['anvil_frame', 'prop', { levels: 'anvil' }],
             3: ['lava_ped', 'stand', { light: [255, 110, 30], cut: { glow: true } }],
             4: ['grate', 'stand', { light: [255, 120, 30] }],
             6: ['end', 'end', {}],
@@ -154,7 +156,9 @@ module.exports = [
             12: ['vent', 'prop', { tags: ['back', 'mid'], light: [255, 120, 30], cut: { glow: true } }],
         },
         derived: [
-            { name: 'anvil_hang', from: 2, kind: 'hang', role: 'float', rope: 'chain' },
+            // Nur die beiden Ketten über dem Amboss; der linke Gestellpfosten ist kein Anker.
+            { name: 'anvil_hang', from: 2, kind: 'hang', role: 'float', rope: 'chain',
+                keep: [[46, 78, 160, 150]], anchors: [78, 130] },
         ],
     }),
     S('06-Frostgipfel.png', {

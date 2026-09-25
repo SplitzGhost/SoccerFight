@@ -176,9 +176,11 @@ den Gliedern runde, überlappende Gelenkenden, füllt verdeckte Stellen (Rumpf h
 und legt pro Figur einen Atlas + JSON nach `Resources/Characters`. Das JSON enthält auch das Skelett (Knochenlängen,
 Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBody` der Figur schreibt – das Rig
 bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
-Dre trägt den Kompressionsärmel nur am vorderen Arm. Mitgemessen werden auch Faustlänge und Schuhspitze: Beim Dribbeln und bei
-den Basketball-Moves liegt die Faust damit auf dem Ball (sie zeigt zum Ballmittelpunkt, `PlayerRig.Palm/GripNear`), und der
-Ball springt vor dem Schuh auf statt darauf. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
+Dre trägt den Kompressionsärmel nur am vorderen Arm. Beim Dribbeln führen DRE, TITAN und NOVA den Ball mit einer offenen
+Hand: Sie drückt kurz nach unten, federt im Handgelenk zurück und nimmt den aufsteigenden Ball wieder an. Die zusätzlichen
+Hände stammen aus `tools/newdesign/sources/dribble-hands.png` und werden von `characters.js` in die Figurenatlanten aufgenommen.
+Für die übrigen Basketball-Moves wird weiterhin die gemessene Faustlänge verwendet (`PlayerRig.Palm/GripNear`). Der
+Ball springt vor der gemessenen Schuhspitze auf statt darauf. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`
 anpassen und `node characters.js` laufen lassen (`SF_DEBUG=<ordner>` schreibt zusätzlich Prüfbilder).
 Die Schnitte an den Gelenken laufen weich aus, das Hosenbein ist an der Hüfte rund, und was am Rand von Unterarm und
 Faust nach Hose/Trikot aussieht, wird abgeschabt. Neben dem Atlas entsteht eine Umriss-Maske (`<id>_rim.png`): Der
@@ -237,7 +239,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   Eis- und Runensäulen) reichen bis auf den Rasen und werden gleichmäßig so skaliert, dass ihre Oberkante einen Sprung
   hoch liegt; schwebende Inseln, Schollen, Platten und Träger bilden die höheren Ebenen. Hängende Bretter (Seile,
   Bernsteinhain), Balken (Ketten, Regenwacht) und Ambosse (Ketten, Glutschmiede) hängen an Seilen bzw. Ketten, die über
-  den Bildrand reichen; Schaukelgestell und Ambossgestell haben zwei begehbare Ebenen. Unter manchen schwebenden Stücken
+  den Bildrand reichen. Bretter und Ambosse haben genau zwei Aufhängungen, ohne zusätzliche Gestelle oder Tragbalken. Unter manchen schwebenden Stücken
   hängt eine Laterne, ein Banner oder ein Stern. Bilder werden nie verzerrt, nur gleichmäßig skaliert. Alle Plattformen
   sind von unten durchspringbar; wer auf einer bewegten steht, fährt mit. Blobs springen dem Spieler gezielt hinterher
   (erkennbar am langen Ducken davor) und hüpfen von der Kante, wenn der Spieler unten ist. Ball, Schatten, Gras und
@@ -253,7 +255,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
   kachelbares Seil und Kette. Alles wird per KI (Real-ESRGAN, `aiup.js`) auf die dreifache Auflösung gebracht, die
   Kulisse bis 4096 px Breite; im Browser werden die Bilder komprimiert (Crunch). Im Spiel (`WorldEnvironment`) von hinten
   nach vorn: Himmel, Kulisse mit eigenen Lichtern (Mond, Laternen, Fenster, Lava, Polarlicht, Eklipse-Ring, Sterne),
-  Nebelbänder, wenige schwebende Brocken im Sternengarten und in der Eklipse, der Boden, einzelne Deko-Stücke an der Hinterkante des Rasens und an den Arenaenden hinter den Toren der
+  Nebelbänder, wenige schwebende Brocken im Sternengarten und in der Eklipse, der Boden ohne kleine nicht benutzbare Deko-Objekte und an den Arenaenden hinter den Toren der
   Bodenabschluss mit Fels plus ein großes Rahmenstück (Baum, Monolith, Flutlichtmast …). Bewegt: flackernde Lichter,
   pulsierende Kristalle mit Lichtfunken, schaukelnde Laternen, wippende Brocken, ziehender Nebel, Glühwürmchen
   (Mondlicht, Bernstein, Grotte), Gras im Wind (Mondlicht) und das Wetter der Stage. Beim Stage-Wechsel wird die ganze

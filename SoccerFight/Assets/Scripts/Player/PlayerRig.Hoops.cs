@@ -63,9 +63,20 @@ namespace SoccerFight
             float apex = hipY - 0.1f - 0.05f * runBlend;
             float by = R + (apex - R) * Mathf.Abs(Mathf.Cos(Mathf.PI * dribU));
             Vector2 dribble = new Vector2(bx, by);
-            // the hand pushes the ball down part of the way, then waits for it on top
+            dribbleOpen = air < 0.1f && player.CurrentAction == Player.Action.None && player.Ball.IsHeldFree;
+            // Nach dem kurzen Druck federt das Handgelenk zurück und nimmt den aufsteigenden Ball weich an.
+            float press = MathUtil.Bump(Mathf.Clamp01(dribU / 0.32f));
+            dribbleHandAngle = Mathf.Lerp(6f, -22f, press);
+            float palmReach = openHand != null ? openHand.rect.width / openHand.pixelsPerUnit * 0.38f : 0.15f;
+            Vector2 contact = MathUtil.Rotate(new Vector2(palmReach, -0.035f), dribbleHandAngle);
+            // Die Hand folgt nur dem oberen Teil des Sprungs; der Ball fällt danach frei zum Boden.
             Vector2 top = Palm(new Vector2(bx, apex), new Vector2(-0.12f, 1f));
             Vector2 riding = Palm(dribble, new Vector2(-0.12f, 1f));
+            if (dribbleOpen)
+            {
+                top = new Vector2(bx, apex + R) - contact;
+                riding = dribble + Vector2.up * R - contact;
+            }
             Vector2 wrist = riding.y > top.y - 0.15f ? riding : new Vector2(riding.x, top.y - 0.15f);
             float onBall = 1f - MathUtil.Smooth01((wrist.y - riding.y) / 0.08f);
 

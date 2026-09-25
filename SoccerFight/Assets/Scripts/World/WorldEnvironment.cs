@@ -7,7 +7,7 @@ namespace SoccerFight
     /// Die Spielwelt, pro Stage aus ihrem Design-Bogen (Inspiration/StagesNewDesigns, Grafik aus <see cref="StageKit"/>):
     /// Himmel, die gemalte Kulisse (mit Leuchten auf gemalten Laternen, Mond, Lava, Polarlicht …), davor eine
     /// dunstige Mittelgrund-Kante aus dem Bodenmaterial mit der Deko der Stage (Torbögen, Kamine, Kristalle,
-    /// Schmiedeöfen …), der kachelbare Boden, Deko an der Hinterkante des Rasens, Rahmenstücke an den
+    /// Schmiedeöfen …), der kachelbare Boden ohne kleine Deko-Objekte, Rahmenstücke an den
     /// Arenaenden, Tropfsteine oder schwebende Brocken, wo die Stage sie hat. Dazu bewegtes Detail: flackernde
     /// Lichter, pulsierende Kristalle, Nebel, Glühwürmchen, Staub im Licht. Beim Stage-Wechsel wird alles
     /// ausgetauscht (<see cref="ApplyStage"/>); Tore und Plattform-Gruppe bleiben.
@@ -117,7 +117,6 @@ namespace SoccerFight
             BuildBackdrop();
             BuildDrift();
             BuildGround();
-            BuildPitchEdge();
             BuildFrame();
             BuildExtras();
             Game.I?.Grade?.Adopt(stageRoot);
@@ -219,25 +218,6 @@ namespace SoccerFight
             var swirl = Art.MakeSprite("Swirl", portal, MonsterArt.Portal, -58, Art.SpriteGlowMat, Palette.MonsterGlow.WithAlpha(0f));
             swirl.transform.localScale = new Vector3(0.9f, 0.9f, 1f);
             return portal;
-        }
-
-        // ------------------------------------------------------------------ Deko an der Hinterkante des Rasens
-
-        void BuildPitchEdge()
-        {
-            var props = kit.PropsTagged("back");
-            if (props.Count == 0) return;
-            var g = Group("Pitch Edge");
-            Color tint = new Color(0.82f, 0.84f, 0.88f, 1f);
-            // wenige Stücke, locker verteilt: das Spielfeld bleibt ruhig und lesbar
-            for (float x = -15.5f + Range(0f, 2f); x < 15.5f; x += Range(4.2f, 6.5f))
-            {
-                if (Mathf.Abs(x) < 1.6f) continue;
-                var p = Pick(props);
-                float s = Range(0.4f, 0.52f) * PropScale(p);
-                var sr = Put(g, p, new Vector2(x, 0.03f), s, -104, R() > 0.5f, tint);
-                AddPieceLights(g, p, sr.transform.localPosition, s, sr.transform.localScale.x < 0f, -103, 0.7f);
-            }
         }
 
         // ------------------------------------------------------------------ Arenaenden
