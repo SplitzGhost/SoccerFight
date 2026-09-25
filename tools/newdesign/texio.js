@@ -7,8 +7,19 @@ const crypto = require('crypto');
 
 const up4 = v => Math.ceil(v / 4) * 4;
 
+/** The open Unity editor may hold a file for a moment while it imports: try again a few times. */
+function retry(fn) {
+    for (let i = 0; ; i++) {
+        try { return fn(); } catch (e) {
+            if (i >= 20 || !['UNKNOWN', 'EBUSY', 'EPERM'].includes(e.code)) throw e;
+            const until = Date.now() + 300; while (Date.now() < until) { }
+        }
+    }
+}
+const pow2 = v => { let p = 4; while (p < v) p *= 2; return p; };
+
 /**
- * Scales an RGBA image (straight alpha), pads it to a multiple of 4 (2 px free rim, bottom-aligned
+ * Scales an RGBA image (straight alpha), pads it to a multiple of 4 or (pot) a power of two (2 px free rim, bottom-aligned
  * unless opts.center) and premultiplies. Returns { buf, w, h, ox, oy, iw, ih } — ox/oy: where the
  * scaled image sits in the padded one.
  */
@@ -18,7 +29,7 @@ async function finish(img, scale, sharpen, opts = {}) {
     if (scale != 1) p = p.resize(w, h, { kernel: 'lanczos3' });
     if (sharpen) p = p.sharpen({ sigma: 0.7, m1: 0.6, m2: 1.2 });
     const scaled = await p.raw().toBuffer();
-    const pad = opts.pad ?? 2, W = up4(w + pad * 2), H = up4(h + pad * 2);
+    const pad = opts.pad ?? 2, W = opts.pot ? pow2(w + pad * 2) : up4(w + pad * 2), H = opts.pot ? pow2(h + pad * 2) : up4(h + pad * 2);
     const out = Buffer.alloc(W * H * 4);
     const ox = Math.floor((W - w) / 2), oy = opts.top ? pad : H - h - pad;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -33,12 +44,15 @@ async function finish(img, scale, sharpen, opts = {}) {
 async function save(file, f, opts = {}) {
     const ch = opts.channels || 4;
     await sharp(f.buf, { raw: { width: f.w, height: f.h, channels: ch } }).png({ compressionLevel: 9 }).toFile(file);
-    writeMeta(file, opts.compression ?? 1, opts.wrap ?? 1, opts.mips ?? 1, opts.crunch ? 1 : 0);
+    // Unity leaves textures with odd sizes uncompressed in the browser build: crunched pictures are scaled up to
+    // the next power of two on import (the game corrects the scale) and get an explicit DXT1/DXT5 Crunched format
+    const format = opts.crunch ? (ch == 3 ? 28 : 29) : -1;
+    writeMeta(file, opts.compression ?? 1, opts.wrap ?? 1, opts.mips ?? 1, opts.crunch ? 1 : 0, format);
 }
 
 /** Unity-Importeinstellungen: vormultipliziert (kein Alpha-Auffüllen), Mipmaps, Clamp, bis 4096 px;
  *  crunch: Crunch-Kompression (kleiner Download im Browser, gleicher Grafikspeicher). */
-function writeMeta(file, compression, wrap = 1, mips = 1, crunch = 0) {
+function writeMeta(file, compression, wrap = 1, mips = 1, crunch = 0, format = -1) {
     const meta = file + '.meta';
     let guid = crypto.randomBytes(16).toString('hex');
     if (fs.existsSync(meta)) { const m = /guid: ([0-9a-f]{32})/.exec(fs.readFileSync(meta, 'utf8')); if (m) guid = m[1]; }
@@ -46,17 +60,17 @@ function writeMeta(file, compression, wrap = 1, mips = 1, crunch = 0) {
     buildTarget: ${t}
     maxTextureSize: 4096
     resizeAlgorithm: 0
-    textureFormat: -1
+    textureFormat: ${t != 'DefaultTexturePlatform' ? format : -1}
     textureCompression: ${compression}
     compressionQuality: ${crunch ? 75 : 100}
     crunchedCompression: ${crunch}
     allowsAlphaSplitting: 0
-    overridden: 0
+    overridden: ${t != 'DefaultTexturePlatform' && format >= 0 ? 1 : 0}
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
 `;
-    fs.writeFileSync(meta, `fileFormatVersion: 2
+    retry(() => fs.writeFileSync(meta, `fileFormatVersion: 2
 guid: ${guid}
 TextureImporter:
   internalIDToNameTable: []
@@ -85,7 +99,7 @@ TextureImporter:
     wrapU: ${wrap}
     wrapV: ${wrap}
     wrapW: ${wrap}
-  nPOTScale: 0
+  nPOTScale: ${format >= 0 ? 2 : 0}
   lightmap: 0
   compressionQuality: ${crunch ? 75 : 100}
   spriteMode: 0
@@ -103,7 +117,7 @@ TextureImporter:
 ${platform('DefaultTexturePlatform')}${platform('Standalone')}${platform('WebGL')}  userData:
   assetBundleName:
   assetBundleVariant:
-`);
+`));
 }
 
 /** Ordner- und Text-Metadaten (einmal anlegen, GUID bleibt). */
@@ -116,4 +130,4 @@ function plainMeta(file, folder) {
         : `fileFormatVersion: 2\nguid: ${guid}\nTextScriptImporter:\n  externalObjects: {}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n`);
 }
 
-module.exports = { up4, finish, save, writeMeta, plainMeta };
+module.exports = { up4, pow2, finish, save, writeMeta, plainMeta };

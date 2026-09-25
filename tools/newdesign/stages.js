@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const { load, grid, cut } = require('./cutout');
 const { inpaint } = require('./inpaint');
-const { up4, finish, save, plainMeta } = require('./texio');
+const { up4, pow2, finish, save, plainMeta } = require('./texio');
 const { upscaleRGBA, upscaleRGB } = require('./aiup');
 const DEFS = require('./stages.def');
 
@@ -75,7 +75,9 @@ async function plate(img, def, man, dir) {
     // canvas: the scene plus painted-on margins (sky above, more scenery at the sides and below)
     const w = sw + 2 * PLATE_SIDE, H = PLATE_TOP + h0 + PLATE_BELOW;
     const X0 = cx0 - PLATE_SIDE, Y0 = -PLATE_TOP;          // sheet position of the canvas' top-left corner
-    const Wt = Math.floor(Math.min(w * UP, 4096) / 4) * 4, Ht = Math.floor(Math.min(H * UP, H * Wt / w, 4096) / 4) * 4;
+    // power-of-two texture (only those get compressed in the browser build): 4096 × 2048, the picture scaled to fit
+    const TW = 4096, TH = 2048, k = Math.min(UP, TW / w, TH / H);
+    const Wt = Math.round(w * k), Ht = Math.round(H * k), OX = Math.floor((TW - Wt) / 2), OY = TH - Ht;
     const file = path.join(dir, 'plate.png');
     const info = path.join(CACHE, def.id + '.plate.json');
     if (fast && fs.existsSync(file) && fs.existsSync(info)) {
@@ -145,14 +147,18 @@ async function plate(img, def, man, dir) {
         fs.mkdirSync(CACHE, { recursive: true });
         await sharp(buf, { raw: { width: w, height: H, channels: 3 } }).png().toFile(path.join(CACHE, def.id + '.plate.src.png'));
         const big = await upscaleRGB({ buf, w, h: H }, Wt, Ht);
-        await save(file, { buf: big, w: Wt, h: Ht }, { channels: 3, crunch: true });
+        const tex = Buffer.alloc(TW * TH * 3);
+        for (let y = 0; y < TH; y++) for (let x = 0; x < TW; x++) {
+            const sx = Math.min(Wt - 1, Math.max(0, x - OX)), sy = Math.max(0, y - OY);
+            big.copy(tex, (y * TW + x) * 3, (sy * Wt + sx) * 3, (sy * Wt + sx) * 3 + 3);
+        }
+        await save(file, { buf: tex, w: TW, h: TH }, { channels: 3, crunch: true });
         fs.writeFileSync(info, JSON.stringify({ sky: col(sky), valley: col(valley), haze: col(haze) }));
     }
     Object.assign(man, JSON.parse(fs.readFileSync(info, 'utf8')));
-    const k = Ht / H;
     // where the plate sits in the sheet (the game puts its lights on the painted lamps, moon …)
     man.plateX0 = X0; man.plateRow0 = walk; man.plateW = w; man.platePpu = PPU;
-    man.sprites.push({ name: 'plate', role: 'plate', w: Wt, h: Ht, ppu: PPU * k, px: Wt / 2, py: (H - (walk - Y0)) * k });
+    man.sprites.push({ name: 'plate', role: 'plate', w: TW, h: TH, ppu: PPU * k, px: OX + Wt / 2, py: (H - (walk - Y0)) * k });
 }
 
 // ------------------------------------------------------------------ Boden
@@ -293,7 +299,7 @@ function lightSpot(c, light) {
 
 /** Saves a cut piece (c: source cut, u: the same ×UP); kind decides the pivot. */
 async function piece(dir, man, name, role, c, u, o = {}) {
-    const f = await finish(u, 1, false, { top: role == 'hangprop' });
+    const f = await finish(u, 1, false, { top: role == 'hangprop', pot: true });
     await save(path.join(dir, name + '.png'), f, { crunch: true });
     const e = { name, role, tags: o.tags || [], w: f.w, h: f.h, ppu: PPU * UP };
     // pivot: bottom centre (props), top centre (hanging props), walk line (platforms)

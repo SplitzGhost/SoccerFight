@@ -66,7 +66,9 @@ namespace SoccerFight
                         var tex = Resources.Load<Texture2D>("Stages/" + Kit.Id + "/" + Name);
                         if (tex == null) { Debug.LogError("[SoccerFight] Stage-Bild fehlt: " + Kit.Id + "/" + Name); return DesignArt.Block; }
                         tex.wrapMode = TextureWrapMode.Clamp;
-                        sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(E.px / E.w, E.py / E.h), E.ppu, 0, SpriteMeshType.FullRect);
+                        // the import scales pictures to power-of-two sizes (compression in the browser): keep the world size
+                        float ppu = E.ppu * tex.width / E.w;
+                        sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(E.px / E.w, E.py / E.h), ppu, 0, SpriteMeshType.FullRect);
                         sprite.name = Kit.Id + "/" + Name;
                         Kit.loaded.Add(this);
                     }
