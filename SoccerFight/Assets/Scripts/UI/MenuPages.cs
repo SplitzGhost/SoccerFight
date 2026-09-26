@@ -258,10 +258,10 @@ namespace SoccerFight
             Vector2 cardSize = new Vector2(SettingsPanel.Size.x, 660f), cardPos = new Vector2(0f, 22f);
             Settings = new SettingsPanel();
             Settings.Build(holder, false);
-            Recolor(Settings.Root, "Glass", MenuArt.Glass, cardPos, cardSize);
+            Recolor(Settings.Root, "Glass", ButtonSkin.Slate, cardPos, cardSize);
             Recolor(Settings.Root, "Border", MenuArt.Accent.WithAlpha(0.3f), cardPos, cardSize + new Vector2(3f, 3f));
             Recolor(Settings.Root, "Shadow", new Color(0f, 0.01f, 0.03f, 0.45f), cardPos + new Vector2(0f, -12f), cardSize * 1.1f);
-            Recolor(Settings.Root, "Top Light", MenuArt.Accent.WithAlpha(0.55f), cardPos + new Vector2(0f, cardSize.y * 0.5f - 1f), new Vector2(cardSize.x * 0.7f, 2f));
+            Recolor(Settings.Root, "Top Light", MenuArt.Accent.WithAlpha(0.12f), cardPos + new Vector2(0f, cardSize.y * 0.5f - 1f), new Vector2(cardSize.x * 0.7f, 2f));
             var title = Settings.Root.Find("Title");
             if (title != null) title.gameObject.SetActive(false);   // the page already has a heading
         }

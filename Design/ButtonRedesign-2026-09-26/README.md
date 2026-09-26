@@ -1,6 +1,14 @@
 # Button-Entwürfe für SportFighter
 
-Stand: 26.09.2026. Sieben mit dem integrierten Imagegen-Werkzeug erzeugte Entwurfsbilder. Noch kein Einbau ins Spiel und keine Änderung am Gameplay.
+Ursprünglicher Entwurfsstand: 26.09.2026. Sieben mit dem integrierten Imagegen-Werkzeug erzeugte Konzeptbilder.
+
+## Umsetzung im Spiel
+
+Die freigegebene Richtung ist inzwischen eingebaut, auf Wunsch mit ruhigeren Flächen, weniger Glanz und ohne eingravierte Spiralen. Der Quest-Platzhalter ist entfernt. Nur der aktive Navigationstab bleibt hell, die übrigen Symbole sind gedämpft. Funktionen, Preise, Tastenbelegungen und die Auswahl durch Balltreffer bleiben erhalten.
+
+`UI/ButtonSkin.cs` liefert skalierbare Platten und Rahmen. Zwei neu mit Imagegen erzeugte, transparente Atlanten unter `Resources/UiButtons/` enthalten die gemalten Menü- und Sportsymbole. Die zugehörigen Layoutdateien beschreiben die tatsächlichen Symbolausschnitte; sie vermeiden angeschnittene Symbole und unnötige transparente Ränder. Beschriftungen bleiben echte Spieltexte. Gemeinsam verwendet in `ChunkButton`, `NavTab`, `UiKit`, Entwicklermenü und Belohnungskarten.
+
+Unity-Prüfung: Szenarien `menu`, `meta` und `buttons`; Aufnahmen liegen unter `.build/cap/buttons-*`. Der folgende Abschnitt dokumentiert die ursprünglichen Konzeptbögen.
 
 ## Gestaltungsrichtung
 
@@ -65,4 +73,3 @@ Title: ENTWICKLERMENÜ. Spacious dense grid of front-facing separate small utili
 ### Probeansicht
 
 Use case: ui-mockup. Create a convincing 16:9 visual mockup of the actual SportFighter main menu. Image 1 is the actual screenshot edit target, preserve its UFO stadium background, central red-shirted soccer character, ball, title MONDNACHT and overall layout. Image 2 is the newly designed button family, use its chunky faceted hand-painted slate-turquoise plaques, carved subtle swirls, thick bottom depth, big silver pictorial symbols and warm gold primary button. Image 3 is the user's original inspiration, fidelity to its physical beveled button shapes. Replace the flat existing UI controls in image 1 with this new button style while keeping the scene and figure unchanged. Top navigation: compact plaques SPIELEN, SPIELER, SHOP, EVENTS, RANGLISTE, OPTIONEN; mini pictorial icons contained above their labels but keep top bar modest and do not occlude UFO. Top right retain compact currency and icon buttons. Left QUESTS panel must become a painted slate-turquoise beveled tablet with clipboard emblem overlapping top edge, preserve its three readable quest rows and reward counters, small BALD tag. Player selector RIO STÜRMER above character becomes small physical plaque. Right mode ERSTE SCHRITTE plaque with mountain/flag emblem and inset LEVEL WECHSELN. Below it big warm ochre SPIELEN plaque with silver football/play emblem, exactly the style of image 2 but sized to fit screenshot layout. No giant logo additions, no new scene objects, no changed character, no reinvented background. Keep original background atmosphere and readable button contrast. This is a hypothetical art direction preview, not a running game screenshot.
-

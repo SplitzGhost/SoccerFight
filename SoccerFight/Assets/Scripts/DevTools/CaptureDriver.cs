@@ -91,6 +91,7 @@ namespace SoccerFight
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
+            else if (scenario == "buttons") yield return ButtonTour();
             else if (scenario == "vista") yield return VistaShots();
             else if (scenario == "newskills") yield return NewSkills();
             else if (scenario == "look") yield return UpgradeLook();
@@ -982,6 +983,52 @@ namespace SoccerFight
         /// Title screen: the landing page, every sub page (reached by kicking the ball at its button),
         /// a "coming soon" bounce, the character cards, and the kick that starts the run.
         /// </summary>
+        // Gemeinsamer Designcheck: Menüseiten, Pause, Optionen und echte Belohnungsauswahl.
+        IEnumerator ButtonTour()
+        {
+            SeedProfile();
+            G.ToMenu();
+            yield return Seconds(2.4f);
+            yield return Shot("b00_hauptmenue");
+            string[] targets = { "tab_chars", "tab_shop", "tab_events", "tab_ranking", "tab_settings", "friends", "info" };
+            for (int i = 0; i < targets.Length; i++)
+            {
+                yield return Kick(targets[i]);
+                yield return Seconds(1.3f);
+                yield return Shot("b0" + (i + 1) + "_" + targets[i]);
+                yield return Kick("tab_home");
+                yield return Seconds(0.9f);
+            }
+            G.Restart();
+            G.Director.Idle();
+            G.Hud.HideStageCard();
+            P.DodgeTime = 999f;
+            // Restliche Schuss-Partikel des Menüs müssen vor dem Pausebild verschwunden sein.
+            yield return Seconds(3.5f);
+            G.Pause.Open();
+            yield return Seconds(0.8f);
+            yield return Shot("b08_pause");
+            G.Pause.OpenSettings();
+            yield return Seconds(0.8f);
+            yield return Shot("b09_optionen_pause");
+            G.Pause.Close();
+            G.Dev.Open();
+            yield return Seconds(0.8f);
+            yield return Shot("b10_entwicklermenue");
+            G.Dev.Close();
+            G.Director.DebugOpenReward(false);
+            yield return Seconds(1.3f);
+            yield return Shot("b11_upgrades");
+            G.Rewards.DebugPick(1);
+            yield return Seconds(1f);
+            G.Director.DevOfferAbility();
+            yield return Seconds(1.4f);
+            yield return Shot("b12_faehigkeiten");
+            G.Rewards.DebugPick(0);
+            yield return Seconds(1f);
+            Debug.Log("[Capture] Buttonprüfung: Belohnungen gewählt und Lauf fortgesetzt");
+        }
+
         IEnumerator MenuTour()
         {
             var menu = G.Menu;

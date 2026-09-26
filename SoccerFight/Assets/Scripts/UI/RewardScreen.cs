@@ -156,19 +156,20 @@ namespace SoccerFight
 
         Card MakeCard(int index, int count, Vector2 size, Color color, bool epic, bool legendary)
         {
+            ButtonSkin.Build();
             float spacing = size.x + 44f;
             var c = new Card { color = color, epic = epic, legendary = legendary, delay = 0.12f + index * 0.09f };
             c.rt = UiKit.Node("Card " + (index + 1), cardRoot, new Vector2((index - (count - 1) * 0.5f) * spacing, 0f), size);
             c.group = c.rt.gameObject.AddComponent<CanvasGroup>();
             c.glow = UiKit.Img("Glow", c.rt, UiArt.Glow, color.WithAlpha(0.1f), new Vector2(0f, 10f), size * 1.5f);
             UiKit.Img("Shadow", c.rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.6f), new Vector2(0f, -24f), size * 1.3f);
-            var glass = UiKit.Img("Glass", c.rt, UiArt.Panel, new Color(0.04f, 0.066f, 0.108f, 0.995f), Vector2.zero, size, Image.Type.Sliced, true);
+            var glass = UiKit.Img("Glass", c.rt, ButtonSkin.Panel, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced, true);
             c.content = UiKit.Node("Content", c.rt, Vector2.zero, size);
-            c.border = UiKit.Img("Border", c.rt, UiArt.PanelRing, color.WithAlpha(0.45f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
+            c.border = UiKit.Img("Border", c.rt, ButtonSkin.Frame, color.WithAlpha(0.45f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
             c.content.gameObject.AddComponent<RectMask2D>();
             // coloured light pooling in the top half of the card
-            UiKit.Img("TopLight", c.content, UiArt.Glow, color.WithAlpha(legendary ? 0.26f : epic ? 0.2f : 0.14f), new Vector2(0f, size.y * 0.42f), new Vector2(size.x * 1.7f, size.y * 0.9f));
-            UiKit.Img("Band", c.content, UiArt.LineFade, color.WithAlpha(0.9f), new Vector2(0f, size.y * 0.5f - 2f), new Vector2(size.x * 0.9f, 3f));
+            UiKit.Img("TopLight", c.content, UiArt.Glow, color.WithAlpha(legendary ? 0.07f : epic ? 0.05f : 0.03f), new Vector2(0f, size.y * 0.42f), new Vector2(size.x * 1.7f, size.y * 0.9f));
+            UiKit.Img("Band", c.content, UiArt.LineFade, color.WithAlpha(0.3f), new Vector2(0f, size.y * 0.5f - 2f), new Vector2(size.x * 0.9f, 3f));
             if (epic || legendary)
             {
                 c.shine = UiKit.Img("Shine", c.content, UiArt.LineFade, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(size.y * 1.8f, legendary ? 90f : 60f));
@@ -195,12 +196,20 @@ namespace SoccerFight
 
         void Medallion(Card c, Transform parent, Vector2 pos, float size, Sprite icon, float iconScale)
         {
-            c.medGlow = UiKit.Img("MedGlow", parent, UiArt.Glow, c.color.WithAlpha(0.35f), pos, Vector2.one * size * 2.2f);
-            UiKit.Img("MedFill", parent, UiArt.Circle, Color.Lerp(new Color(0.05f, 0.08f, 0.13f), c.color, 0.3f), pos, Vector2.one * size);
-            UiKit.Img("MedInner", parent, UiArt.Glow, c.color.WithAlpha(0.35f), pos + new Vector2(0f, size * 0.12f), Vector2.one * size * 0.9f);
-            UiKit.Img("MedRing", parent, UiArt.RingThick, c.color, pos, Vector2.one * size);
-            UiKit.Img("MedRim", parent, UiArt.RingThin, Color.white.WithAlpha(0.25f), pos, Vector2.one * (size + 14f));
-            UiKit.Img("Icon", parent, icon, Color.white, pos, Vector2.one * size * iconScale);
+            c.medGlow = UiKit.Img("MedGlow", parent, UiArt.Glow, c.color.WithAlpha(0.04f), pos, Vector2.one * size * 1.6f);
+            UiKit.Img("MedFill", parent, ButtonSkin.Socket, ButtonSkin.Slate, pos, Vector2.one * size, Image.Type.Sliced);
+            UiKit.Img("MedRim", parent, ButtonSkin.Frame, c.color.WithAlpha(0.22f), pos, Vector2.one * size, Image.Type.Sliced);
+            var art = UiKit.Img("Icon", parent, ButtonSkin.Painted(icon), Color.white, pos, Vector2.one * size * 0.92f);
+            art.preserveAspect = true;
+        }
+
+        static void ChooseFooter(Transform parent, Vector2 pos, float width, int index)
+        {
+            var plate = UiKit.Img("Wählen", parent, ButtonSkin.Plate, ButtonSkin.Slate, pos, new Vector2(width, 38f), Image.Type.Sliced);
+            UiKit.Label("Label", plate.transform, "WÄHLEN", 18f, Color.white, TextAlignmentOptions.Center,
+                new Vector2(-10f, 0f), new Vector2(width - 60f, 36f), true, 1f);
+            UiKit.Label("Taste", plate.transform, "[" + (index + 1) + "]", 12f, Palette.UiMuted, TextAlignmentOptions.Center,
+                new Vector2(width * 0.5f - 28f, 0f), new Vector2(42f, 30f), true);
         }
 
         void BuildUpgradeCards()
@@ -240,8 +249,7 @@ namespace SoccerFight
                 }
                 else UiKit.Label("Level", ct, "EINMALIG", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -162f), new Vector2(300f, 16f), true, 5f);
 
-                var key = UiKit.Img("KeyBack", ct, UiArt.Pill, Color.white.WithAlpha(0.08f), new Vector2(0f, -204f), new Vector2(40f, 26f), Image.Type.Sliced);
-                UiKit.Label("Key", key.transform, (i + 1).ToString(), 14f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(40f, 26f), true, 0f);
+                ChooseFooter(ct, new Vector2(0f, -204f), 278f, i);
                 cards.Add(c);
             }
         }
@@ -272,14 +280,13 @@ namespace SoccerFight
                 // it lands in the next free slot, so that is the key it will answer to
                 string keyName = a == Ability.AirKick ? "IN DER LUFT: " + KeyBindings.DisplayName(GameAction.Shoot)
                     : "PLATZ " + (Game.I.Run.SkillCount + 1) + ":  " + KeyBindings.DisplayName((GameAction)((int)GameAction.Skill1 + Mathf.Min(RunState.MaxSkills - 1, Game.I.Run.SkillCount)));
-                var kb = UiKit.Img("KeyBack", ct, UiArt.Pill, Color.white.WithAlpha(0.08f), new Vector2(0f, -174f), new Vector2(260f, 30f), Image.Type.Sliced);
+                var kb = UiKit.Img("KeyBack", ct, ButtonSkin.Socket, Color.white.WithAlpha(0.08f), new Vector2(0f, -174f), new Vector2(260f, 30f), Image.Type.Sliced);
                 UiKit.Label("KeyName", kb.transform, keyName, 13f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(260f, 30f), true, 3f);
                 int unlocks = 0;
                 foreach (var u in UpgradeDb.All) if (u.NeedsAbility == a) unlocks++;
                 if (unlocks > 0)
                     UiKit.Label("Unlocks", ct, "SCHALTET " + unlocks + " NEUE UPGRADES FREI", 12f, Palette.Gold, TextAlignmentOptions.Center, new Vector2(0f, -212f), new Vector2(380f, 18f), true, 4f);
-                var key = UiKit.Img("Key", ct, UiArt.Pill, Color.white.WithAlpha(0.08f), new Vector2(0f, -246f), new Vector2(40f, 26f), Image.Type.Sliced);
-                UiKit.Label("KeyNum", key.transform, (i + 1).ToString(), 14f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(40f, 26f), true, 0f);
+                ChooseFooter(ct, new Vector2(0f, -246f), 360f, i);
                 cards.Add(c);
             }
         }
@@ -400,9 +407,9 @@ namespace SoccerFight
 
             float breathe = 0.5f + 0.5f * Mathf.Sin(openT * 2.6f + index);
             float rarityPulse = c.legendary ? 0.1f * breathe : c.epic ? 0.05f * breathe : 0f;
-            c.border.color = c.color.WithAlpha(0.4f + 0.5f * hover + rarityPulse * 2f + (isChosen ? 0.6f * pick : 0f));
-            c.glow.color = c.color.WithAlpha(0.08f + 0.14f * hover + rarityPulse + (isChosen ? 0.3f * pick : 0f));
-            if (c.medGlow != null) c.medGlow.color = c.color.WithAlpha(0.3f + 0.2f * hover + rarityPulse);
+            c.border.color = c.color.WithAlpha(0.24f + 0.24f * hover + rarityPulse + (isChosen ? 0.6f * pick : 0f));
+            c.glow.color = c.color.WithAlpha(0.025f + 0.04f * hover + rarityPulse * 0.3f + (isChosen ? 0.3f * pick : 0f));
+            if (c.medGlow != null) c.medGlow.color = c.color.WithAlpha(0.04f + 0.04f * hover + rarityPulse * 0.2f);
 
             // a sheen sweeps across epic and legendary cards every few seconds
             if (c.shine != null)
@@ -411,7 +418,7 @@ namespace SoccerFight
                 float s = Mathf.Repeat(openT - c.delay - 0.3f, period) / 0.9f;
                 float x = Mathf.Lerp(-420f, 420f, s);
                 c.shine.rectTransform.anchoredPosition = new Vector2(x, 0f);
-                c.shine.color = Color.Lerp(Color.white, c.color, 0.4f).WithAlpha(s < 1f ? (c.legendary ? 0.22f : 0.14f) * MathUtil.Bump(s) : 0f);
+                c.shine.color = Color.Lerp(Color.white, c.color, 0.4f).WithAlpha(s < 1f ? (c.legendary ? 0.07f : 0.045f) * MathUtil.Bump(s) : 0f);
             }
         }
     }

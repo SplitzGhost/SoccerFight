@@ -58,7 +58,6 @@ namespace SoccerFight
         }
 
         /// <summary>A quest row on the home page (placeholder until quests exist).</summary>
-        struct QuestRow { public Image Fill; public RectTransform Root; }
 
         Canvas canvas;
         Camera cam;
@@ -96,8 +95,7 @@ namespace SoccerFight
         RectTransform logoRoot, logoSpin, logoShine, leftCol, rightCol, tagRoot;
         Image logoShineImg, pedestalGlow, tagBadge, tagIcon, playHalo, recordFill, modeGlow;
         TextMeshProUGUI tagName, tagRole, recordValue;
-        readonly List<QuestRow> questRows = new List<QuestRow>();
-        ChunkButton play, tagButton, questButton, modeButton;
+        ChunkButton play, tagButton, modeButton;
         MenuTarget figureTarget, tagTarget;
         CanvasGroup tagGroup;
         const float FeetY = -392f, FigureScale = 292f, LogoUnit = 25f;
@@ -314,40 +312,6 @@ namespace SoccerFight
                 UiKit.Img("Tick", season, null, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-250f + 500f * i / StageThemes.All.Length, -66f), new Vector2(2f, 12f));
             Move(season, new Vector2(-700f, 0f), 0.1f);
 
-            // quests: a placeholder panel with the kind of tasks the weekly quests will bring
-            var q = new ChunkButton(leftCol, "Quests", new Vector2(0f, -86f), new Vector2(500f, 452f), MenuArt.Accent, null, 0f);
-            questButton = q;
-            var face = q.Face;
-            UiKit.Img("HeadIcon", face, MenuArt.IconQuest, MenuArt.Accent, new Vector2(-212f, 186f), new Vector2(34f, 34f)).preserveAspect = true;
-            MenuArt.Label("Head", face, "QUESTS", 30f, Color.white, new Vector2(-6f, 188f), new Vector2(360f, 40f), TextAlignmentOptions.Left, 8f);
-            stickers.Add(MenuUi.Tag(face, "BALD", new Vector2(196f, 188f), Gold, 15f));
-            MenuArt.Label("Sub", face, "JEDE WOCHE NEUE AUFGABEN  ·  MÜNZEN ALS BELOHNUNG", 14f, Muted, new Vector2(0f, 152f), new Vector2(456f, 22f), TextAlignmentOptions.Left, 2.5f, MenuArt.TextHeavySoft);
-            UiKit.Img("Line", face, UiArt.LineFade, MenuArt.Accent.WithAlpha(0.35f), new Vector2(0f, 134f), new Vector2(456f, 2f));
-            (Sprite icon, string title, string goal, int reward, Color accent)[] quests =
-            {
-                (MenuArt.IconStriker, "BESIEGE 150 MONSTER", "0 / 150", 150, new Color(1f, 0.55f, 0.45f)),
-                (MenuArt.IconTrophy, "ERREICHE STAGE 3", "0 / 1", 200, Gold),
-                (MenuArt.IconSkills, "SETZE 40 FÄHIGKEITEN EIN", "0 / 40", 120, new Color(0.82f, 0.55f, 1f)),
-            };
-            for (int i = 0; i < quests.Length; i++)
-            {
-                var (icon, title, goal, reward, accent) = quests[i];
-                var row = UiKit.Node("Quest" + i, face, new Vector2(0f, 76f - i * 104f), new Vector2(456f, 92f));
-                UiKit.Img("Plate", row, MenuArt.CardBody, new Color(0.02f, 0.05f, 0.08f, 0.62f), Vector2.zero, new Vector2(456f, 92f), Image.Type.Sliced);
-                UiKit.Img("Edge", row, null, accent.WithAlpha(0.8f), new Vector2(-226f, 0f), new Vector2(3f, 56f));
-                UiKit.Img("Disc", row, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-180f, 0f), new Vector2(58f, 58f));
-                UiKit.Img("Ring", row, MenuArt.RoundFrame, MetaUi.Soft(accent).WithAlpha(0.8f), new Vector2(-180f, 0f), new Vector2(60f, 60f));
-                UiKit.Img("Icon", row, icon, MetaUi.Soft(accent), new Vector2(-180f, 0f), new Vector2(30f, 30f)).preserveAspect = true;
-                MenuArt.Label("Title", row, title, 18f, Color.white, new Vector2(12f, 17f), new Vector2(300f, 26f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
-                UiKit.Img("Track", row, UiArt.Pill, new Color(0.01f, 0.03f, 0.05f, 0.9f), new Vector2(-20f, -14f), new Vector2(236f, 9f), Image.Type.Sliced);
-                var fill = UiKit.Img("Fill", row, UiArt.Pill, accent, new Vector2(-138f, -14f), new Vector2(0f, 5f), Image.Type.Sliced);
-                fill.rectTransform.pivot = new Vector2(0f, 0.5f);
-                MenuArt.Label("Goal", row, goal, 14f, Muted, new Vector2(-20f, -32f), new Vector2(236f, 20f), TextAlignmentOptions.Right, 2f, MenuArt.TextHeavySoft);
-                UiKit.Img("Coin", row, CoinArt.Ui, Color.white, new Vector2(150f, -14f), new Vector2(26f, 26f));
-                MenuArt.Label("Reward", row, "+" + reward, 20f, Gold, new Vector2(196f, -14f), new Vector2(64f, 28f), TextAlignmentOptions.Left, 1f);
-                questRows.Add(new QuestRow { Fill = fill, Root = row });
-            }
-            Move(q.Root, new Vector2(-700f, 0f), 0.2f, Button(q, "quests", null, "QUESTS KOMMEN MIT DEM NÄCHSTEN UPDATE"));
         }
 
         // ------------------------------------------------------------------ home: mode and SPIELEN in the corner
@@ -360,10 +324,8 @@ namespace SoccerFight
             var mode = new ChunkButton(rightCol, "Mode", new Vector2(0f, 72f), new Vector2(460f, 176f), MenuArt.Accent, null, 0f);
             modeButton = mode;
             var face = mode.Face;
-            modeGlow = UiKit.Img("EmblemGlow", face, UiArt.Glow, MenuArt.Accent.WithAlpha(0.25f), new Vector2(-160f, 16f), new Vector2(190f, 190f));
-            UiKit.Img("EmblemDisc", face, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.9f), new Vector2(-160f, 16f), new Vector2(100f, 100f));
-            UiKit.Img("EmblemRing", face, MenuArt.RoundFrame, MetaUi.Soft(MenuArt.Accent).WithAlpha(0.9f), new Vector2(-160f, 16f), new Vector2(104f, 104f));
-            UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(60f, 60f)).preserveAspect = true;
+            modeGlow = UiKit.Img("EmblemGlow", face, UiArt.Glow, MenuArt.Accent.WithAlpha(0.06f), new Vector2(-160f, 16f), new Vector2(190f, 190f));
+            UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(110f, 110f)).preserveAspect = true;
             MenuArt.Label("Overline", face, "SPIELMODUS", 15f, MenuArt.Accent, new Vector2(66f, 52f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
             modeName = MenuArt.Label("Name", face, "LEVEL 1", 30f, Color.white, new Vector2(66f, 20f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
             modeSub = MenuArt.Label("Sub", face, "3 STAGES  ·  EINFACH", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
@@ -375,7 +337,7 @@ namespace SoccerFight
 
             // the one warm, solid thing on the screen: lantern gold, like the power shot's ring
             playHalo = UiKit.Img("PlayHalo", rightCol, UiArt.Glow, Gold.WithAlpha(0.3f), new Vector2(0f, -100f), new Vector2(720f, 260f));
-            play = new ChunkButton(rightCol, "Play", new Vector2(0f, -100f), new Vector2(460f, 124f), Gold, "SPIELEN", 54f, MenuArt.IconPlay, 44f, true, true);
+            play = new ChunkButton(rightCol, "Play", new Vector2(0f, -100f), new Vector2(460f, 124f), Gold, "SPIELEN", 48f, MenuArt.IconPlay, 68f, true, true);
             play.IconLeft(64f);
             Move(play.Root, new Vector2(700f, 0f), 0.3f, Button(play, "play", Play));
         }
@@ -1044,8 +1006,8 @@ namespace SoccerFight
             tagGroup.alpha = (1f - away) * Mathf.Clamp01(openT * 1.5f);
             tagRoot.anchoredPosition = new Vector2(-12f, TagY + Mathf.Sin(time * 1.6f) * 5f);
             pedestalGlow.color = pedestalGlow.color.WithAlpha((0.2f + 0.04f * Mathf.Sin(time * 2f)) * centreFade);
-            playHalo.color = Gold.WithAlpha((0.18f + 0.08f * Mathf.Sin(time * 2.2f)) * (1f - away) * Mathf.Clamp01(openT * 1.4f));
-            modeGlow.color = MenuArt.Accent.WithAlpha(0.18f + 0.06f * Mathf.Sin(time * 1.7f));
+            playHalo.color = Gold.WithAlpha((0.04f + 0.015f * Mathf.Sin(time * 2.2f)) * (1f - away) * Mathf.Clamp01(openT * 1.4f));
+            modeGlow.color = MenuArt.Accent.WithAlpha(0.04f + 0.012f * Mathf.Sin(time * 1.7f));
 
             for (int i = 0; i < stickers.Count; i++)
             {
@@ -1135,13 +1097,6 @@ namespace SoccerFight
                 b.Life = Random.Range(1.2f, 2.2f);
                 b.Age = 0f; b.Grav = 0f; b.Fade = 1f; b.Align = false; b.Spin = 60f; b.Bump = true;
                 b.Rt.SetAsFirstSibling();
-            }
-            // quest bars shimmer a little so the placeholder does not look dead
-            for (int i = 0; i < questRows.Count; i++)
-            {
-                var f = questRows[i].Fill;
-                float w = 6f + 4f * (0.5f + 0.5f * Mathf.Sin(time * 1.3f + i * 1.7f));
-                f.rectTransform.sizeDelta = new Vector2(w, 5f);
             }
         }
 

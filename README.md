@@ -96,13 +96,17 @@ Kamera nur die Menüoberfläche statt der Arena.
 Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchstaben, dunkle Steinkante, Moos an den
 Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler** auf dem
 Spielfeld, der den Ball hochhält – wer ihn (oder sein Namensschild) abschießt, landet in der Spielerauswahl.
-Links stehen Saisonrekord und Quests, rechts Spielmodus und der große **SPIELEN**-Knopf. Die Leiste oben führt
+Links steht der Saisonrekord, rechts Spielmodus und der große **SPIELEN**-Knopf. Der Quest-Platzhalter ist entfernt. Die Leiste oben führt
 zu Spielern, Shop, Events, Rangliste und Optionen. Rangliste, Freunde und Events sind Platzhalter-Seiten
 („kommt bald“), Info erklärt Steuerung und Spielprinzip. **Beim allerersten Start** öffnet das Menü auf der
 Starterwahl (siehe „Fortschritt“) und lässt einen erst danach aufs Hauptmenü. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
 Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitzen beginnt der Lauf. Die Knöpfe und
-Seiten sprechen die Sprache der Karten und Anzeigen im Spiel: dunkles Glas, feine Rahmen und Leuchten in einer
-Akzentfarbe pro Knopf, weiße Symbole, gesperrte Großbuchstaben; nur SPIELEN ist massiv laternengolden.
+Seiten verwenden abgeschrägte, plastische Platten in gedämpftem Petrol mit gemalten Sportsymbolen und
+zurückhaltenden Lichtkanten. Gold hebt Hauptaktionen hervor. In der oberen Leiste ist nur der aktive Menüpunkt
+hell; die übrigen Platten und Symbole bleiben dunkel, damit der Seiteninhalt im Mittelpunkt steht.
+`UI/ButtonSkin.cs` stellt die gemeinsamen Flächen und die beiden Symbolatlanten unter
+`Resources/UiButtons/` bereit. Derselbe Stil gilt für Shop, Spielerauswahl, Optionen, Pause,
+Entwicklermenü und Belohnungskarten; Bedienung und Spielfunktionen bleiben gleich.
 
 Statt eines Mauszeigers gibt es das Fadenkreuz aus dem Spiel. **Knöpfe werden nicht angeklickt, sondern
 abgeschossen:** Ein Linksklick tritt einen Ball aus der Ich-Perspektive ins Bild – er startet groß am unteren Rand,

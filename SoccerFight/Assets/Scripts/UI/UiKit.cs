@@ -29,18 +29,18 @@ namespace SoccerFight
 
         void Update()
         {
-            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            float dt = Mathf.Min(TimeFx.UiDelta, 0.05f);
             MathUtil.Spring(ref Hover, ref hoverVel, hovered || selected ? 1f : 0f, 4.5f, 0.85f, dt);
             MathUtil.Spring(ref Press, ref pressVel, pressed ? 1f : 0f, 7f, 0.7f, dt);
             Apply?.Invoke(this);
         }
     }
 
-    /// <summary>Builders for the clean glass-style menu widgets.</summary>
+    /// <summary>Gemeinsame Erzeuger für plastische Buttons, Schalter, Regler und Menüplatten.</summary>
     public static class UiKit
     {
-        public static readonly Color ButtonBase = new Color(0.08f, 0.13f, 0.21f, 0.96f);
-        public static readonly Color ButtonHover = new Color(0.12f, 0.2f, 0.32f, 1f);
+        public static readonly Color ButtonBase = new Color(0.24f, 0.40f, 0.47f, 1f);
+        public static readonly Color ButtonHover = new Color(0.34f, 0.53f, 0.60f, 1f);
         public static readonly Color Track = new Color(0.14f, 0.2f, 0.3f, 1f);
 
         public static RectTransform Node(string name, Transform parent, Vector2 pos, Vector2 size)
@@ -86,16 +86,27 @@ namespace SoccerFight
             return t;
         }
 
-        /// <summary>Pill button with an accent bar that grows on hover and a soft press squash.</summary>
+        /// <summary>Abgeschrägte Platte mit ruhigem Hover und sichtbarer Unterkante beim Drücken.</summary>
         public static Button MakeButton(Transform parent, string text, Vector2 pos, Vector2 size, System.Action onClick, bool primary = false, float fontSize = 19f)
         {
-            Color accent = Palette.ShotCyan;
-            var glow = Img(text + " Glow", parent, UiArt.Glow, accent.WithAlpha(0f), pos, size + new Vector2(90f, 70f));
-            // the rim sits behind the button so only a 1px border shows (UI blends in linear space)
-            var rim = Img(text + " Rim", parent, UiArt.Pill, Color.white.WithAlpha(primary ? 0.3f : 0.14f), pos, size + new Vector2(2f, 2f), Image.Type.Sliced);
-            var bg = Img(text, parent, UiArt.Pill, ButtonBase, pos, size, Image.Type.Sliced, true);
-            var bar = Img("Accent", bg.transform, UiArt.Pill, accent, new Vector2(-size.x * 0.5f + 16f, 0f), new Vector2(6f, size.y * 0.42f), Image.Type.Sliced);
-            var label = Label("Label", bg.transform, text, fontSize, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, size, true, 6f);
+            ButtonSkin.Build();
+            Color accent = primary ? ButtonSkin.Gold : ButtonBase;
+            var glow = Img(text + " Glow", parent, UiArt.Glow, Color.clear, pos, size + new Vector2(50f, 40f));
+            var rim = Img(text + " Lip", parent, ButtonSkin.Plate, new Color(0.025f, 0.055f, 0.07f), pos + new Vector2(0f, -4f), size, Image.Type.Sliced);
+            var bg = Img(text, parent, ButtonSkin.Plate, accent, pos, size, Image.Type.Sliced, true);
+            var label = Label("Label", bg.transform, text, fontSize, primary ? MenuArt.Ink : Palette.UiText,
+                TextAlignmentOptions.Center, Vector2.zero, size - new Vector2(24f, 0f), true, 1f);
+            int glyph = text == "WEITER" ? 0 : text == "EINSTELLUNGEN" ? 5 : text == "NEU STARTEN" ? 10 :
+                text == "HAUPTMENÜ" || text == "ZURÜCK" ? 9 : text == "BEENDEN" ? 8 : -1;
+            if (glyph >= 0 || text == "DEVELOPER-MODUS")
+            {
+                float iconSize = Mathf.Min(44f, size.y * 0.75f);
+                Img("Icon", bg.transform, glyph >= 0 ? ButtonSkin.Menu(glyph) : ButtonSkin.Sport(15), Color.white,
+                    new Vector2(-size.x * 0.5f + 18f + iconSize * 0.5f, 0f), Vector2.one * iconSize).preserveAspect = true;
+                label.rectTransform.anchoredPosition = new Vector2(iconSize * 0.5f, 0f);
+                label.rectTransform.sizeDelta = new Vector2(size.x - iconSize - 40f, size.y);
+            }
+            label.enableAutoSizing = true; label.fontSizeMin = fontSize * 0.75f; label.fontSizeMax = fontSize;
             var button = bg.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() => onClick?.Invoke());
@@ -107,12 +118,10 @@ namespace SoccerFight
                 bg.rectTransform.localScale = new Vector3(s, s, 1f);
                 rim.rectTransform.localScale = new Vector3(s, s, 1f);
                 glow.rectTransform.localScale = new Vector3(s, s, 1f);
-                rim.color = Color.Lerp(Color.white.WithAlpha(primary ? 0.3f : 0.14f), accent.WithAlpha(0.7f), h);
-                bg.color = Color.Lerp(primary ? new Color(0.1f, 0.2f, 0.3f, 0.98f) : ButtonBase, ButtonHover, h);
-                glow.color = accent.WithAlpha(h * 0.16f + (primary ? 0.05f : 0f));
-                bar.color = accent.WithAlpha(primary ? 1f : 0.35f + 0.65f * h);
-                bar.rectTransform.sizeDelta = new Vector2(6f, size.y * (0.3f + 0.25f * h));
-                label.color = Color.Lerp(Palette.UiText, Color.Lerp(accent, Color.white, 0.55f), h);
+                bg.rectTransform.anchoredPosition = pos + new Vector2(0f, -a.Press * 3f);
+                bg.color = Color.Lerp(accent, primary ? Color.Lerp(accent, Color.white, 0.12f) : ButtonHover, h);
+                glow.color = Palette.ShotCyan.WithAlpha(h * 0.035f);
+                label.color = primary ? MenuArt.Ink : Color.Lerp(Palette.UiText, Color.white, h);
             };
             anim.Apply(anim);
             return button;
@@ -128,11 +137,12 @@ namespace SoccerFight
         /// <summary>Label on the left, animated switch on the right; the whole row is clickable.</summary>
         public static Button MakeToggle(Transform parent, string text, Vector2 pos, float width, System.Func<bool> get, System.Action<bool> set)
         {
-            var row = Img(text + " Row", parent, UiArt.Pill, Color.white.WithAlpha(0f), pos, new Vector2(width, 44f), Image.Type.Sliced, true);
+            ButtonSkin.Build();
+            var row = Img(text + " Row", parent, ButtonSkin.Plate, Color.white.WithAlpha(0f), pos, new Vector2(width, 44f), Image.Type.Sliced, true);
             var label = Label("Label", row.transform, text, 16f, Palette.UiText, TextAlignmentOptions.Left, new Vector2(-width * 0.5f + width * 0.35f + 14f, 0f), new Vector2(width * 0.7f, 30f), true, 3f);
-            var track = Img("Track", row.transform, UiArt.Pill, Track, new Vector2(width * 0.5f - 40f, 0f), new Vector2(60f, 30f), Image.Type.Sliced);
+            var track = Img("Track", row.transform, ButtonSkin.Socket, Track, new Vector2(width * 0.5f - 40f, 0f), new Vector2(60f, 30f), Image.Type.Sliced);
             var knobGlow = Img("KnobGlow", track.transform, UiArt.Glow, Palette.ShotCyan.WithAlpha(0f), Vector2.zero, new Vector2(56f, 56f));
-            var knob = Img("Knob", track.transform, UiArt.Circle, Color.white, Vector2.zero, new Vector2(22f, 22f));
+            var knob = Img("Knob", track.transform, ButtonSkin.Plate, Color.white, Vector2.zero, new Vector2(22f, 22f));
             float value = get() ? 1f : 0f, vel = 0f;
             var button = row.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
@@ -140,40 +150,42 @@ namespace SoccerFight
             var anim = row.gameObject.AddComponent<UiAnim>();
             anim.Apply = a =>
             {
-                MathUtil.Spring(ref value, ref vel, get() ? 1f : 0f, 5f, 0.75f, Mathf.Min(Time.unscaledDeltaTime, 0.05f));
+                MathUtil.Spring(ref value, ref vel, get() ? 1f : 0f, 5f, 0.75f, Mathf.Min(TimeFx.UiDelta, 0.05f));
                 float v = Mathf.Clamp01(value);
                 knob.rectTransform.anchoredPosition = new Vector2(Mathf.Lerp(-15f, 15f, value), 0f);
                 knobGlow.rectTransform.anchoredPosition = knob.rectTransform.anchoredPosition;
-                knobGlow.color = Palette.ShotCyan.WithAlpha(0.35f * v);
-                track.color = Color.Lerp(Track, Palette.ShotCyan * 0.85f, v);
+                knobGlow.color = Palette.ShotCyan.WithAlpha(0.055f * v);
+                knob.color = Color.Lerp(new Color(0.45f, 0.55f, 0.60f), new Color(0.64f, 0.90f, 0.86f), v);
+                track.color = Color.Lerp(Track, new Color(0.32f, 0.64f, 0.62f, 1f), v);
                 row.color = new Color(0.16f, 0.3f, 0.45f, 0.35f * a.Hover);
                 label.color = Color.Lerp(Palette.UiText, Color.white, a.Hover);
             };
             return button;
         }
 
-        /// <summary>Label + value on top, pill slider below.</summary>
+        /// <summary>Beschriftung und Wert über dem eingelassenen Regler.</summary>
         public static Slider MakeSlider(Transform parent, string text, Vector2 pos, float width, float min, float max,
             System.Func<float> get, System.Action<float> set, System.Func<float, string> format)
         {
+            ButtonSkin.Build();
             var root = Node(text + " Slider", parent, pos, new Vector2(width, 60f));
             Label("Label", root, text, 16f, Palette.UiText, TextAlignmentOptions.Left, new Vector2(-width * 0.5f + width * 0.35f, 12f), new Vector2(width * 0.7f, 26f), true, 3f);
             var valueText = Label("Value", root, format(get()), 16f, Palette.ShotCyan, TextAlignmentOptions.Right, new Vector2(width * 0.5f - 60f, 12f), new Vector2(120f, 26f), true, 2f);
 
             var sliderRt = Node("Slider", root, new Vector2(0f, -14f), new Vector2(width, 26f));
-            var bg = Img("Background", sliderRt, UiArt.Pill, Track, Vector2.zero, new Vector2(width, 8f), Image.Type.Sliced, true);
+            var bg = Img("Background", sliderRt, ButtonSkin.Socket, Track, Vector2.zero, new Vector2(width, 12f), Image.Type.Sliced, true);
             var fillArea = Node("Fill Area", sliderRt, Vector2.zero, Vector2.zero);
             fillArea.anchorMin = new Vector2(0f, 0.5f); fillArea.anchorMax = new Vector2(1f, 0.5f);
             fillArea.sizeDelta = new Vector2(-8f, 8f);
-            var fill = Img("Fill", fillArea, UiArt.Pill, Palette.ShotCyan, Vector2.zero, Vector2.zero, Image.Type.Sliced);
+            var fill = Img("Fill", fillArea, ButtonSkin.Plate, Palette.ShotCyan, Vector2.zero, Vector2.zero, Image.Type.Sliced);
             fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = new Vector2(0f, 1f);
             fill.rectTransform.sizeDelta = new Vector2(8f, 0f);
             var handleArea = Node("Handle Area", sliderRt, Vector2.zero, Vector2.zero);
             handleArea.anchorMin = Vector2.zero; handleArea.anchorMax = Vector2.one;
             handleArea.sizeDelta = new Vector2(-22f, 0f);
-            var handle = Img("Handle", handleArea, UiArt.Circle, Color.white, Vector2.zero, new Vector2(22f, 22f), Image.Type.Simple, true);
+            var handle = Img("Handle", handleArea, UiArt.Diamond, Color.white, Vector2.zero, new Vector2(22f, 22f), Image.Type.Simple, true);
             handle.rectTransform.anchorMin = new Vector2(0f, 0.5f); handle.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            var handleGlow = Img("Glow", handle.transform, UiArt.Glow, Palette.ShotCyan.WithAlpha(0.25f), Vector2.zero, new Vector2(60f, 60f));
+            var handleGlow = Img("Glow", handle.transform, UiArt.Glow, Palette.ShotCyan.WithAlpha(0.035f), Vector2.zero, new Vector2(60f, 60f));
             handleGlow.transform.SetAsFirstSibling();
 
             var slider = sliderRt.gameObject.AddComponent<Slider>();
@@ -191,7 +203,7 @@ namespace SoccerFight
             {
                 float s = 1f + a.Hover * 0.15f + a.Press * 0.1f;
                 handle.rectTransform.localScale = new Vector3(s, s, 1f);
-                handleGlow.color = Palette.ShotCyan.WithAlpha(0.2f + 0.25f * a.Hover);
+                handleGlow.color = Palette.ShotCyan.WithAlpha(0.035f + 0.04f * a.Hover);
             };
             return slider;
         }
@@ -206,10 +218,11 @@ namespace SoccerFight
         /// <summary>Action name on the left, a key button on the right showing the current binding.</summary>
         public static KeyRow MakeKeyRow(Transform parent, string action, Vector2 pos, float width, System.Action onClick)
         {
+            ButtonSkin.Build();
             var row = Node(action + " Row", parent, pos, new Vector2(width, 46f));
             Label("Action", row, action, 16f, Palette.UiText, TextAlignmentOptions.Left, new Vector2(-width * 0.5f + width * 0.3f, 0f), new Vector2(width * 0.6f, 30f), true, 3f);
-            var rim = Img("Rim", row, UiArt.Pill, Color.white.WithAlpha(0.14f), new Vector2(width * 0.5f - 95f, 0f), new Vector2(192f, 42f), Image.Type.Sliced);
-            var bg = Img("Key", row, UiArt.Pill, ButtonBase, new Vector2(width * 0.5f - 95f, 0f), new Vector2(190f, 40f), Image.Type.Sliced, true);
+            var rim = Img("Rim", row, ButtonSkin.Frame, Color.white.WithAlpha(0.14f), new Vector2(width * 0.5f - 95f, 0f), new Vector2(192f, 42f), Image.Type.Sliced);
+            var bg = Img("Key", row, ButtonSkin.Plate, ButtonBase, new Vector2(width * 0.5f - 95f, 0f), new Vector2(190f, 40f), Image.Type.Sliced, true);
             var key = Label("KeyLabel", bg.transform, "", 15f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(186f, 36f), true, 3f);
             var button = bg.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
@@ -224,15 +237,16 @@ namespace SoccerFight
             return new KeyRow { Key = key, Background = bg, Rim = rim, Anim = anim };
         }
 
-        /// <summary>Glass card with a soft drop shadow, a hairline border and a lit top edge.</summary>
+        /// <summary>Dunkle Menüplatte mit Facettenrahmen und gedämpfter Lichtkante.</summary>
         public static RectTransform Panel(Transform parent, string name, Vector2 size, out CanvasGroup group)
         {
+            ButtonSkin.Build();
             var rt = Node(name, parent, Vector2.zero, size);
             group = rt.gameObject.AddComponent<CanvasGroup>();
             Img("Shadow", rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.35f);
-            Img("Border", rt, UiArt.Panel, Color.white.WithAlpha(0.1f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
-            Img("Glass", rt, UiArt.Panel, new Color(0.045f, 0.075f, 0.12f, 0.995f), Vector2.zero, size, Image.Type.Sliced, true);
-            Img("Top Light", rt, UiArt.LineFade, Palette.ShotCyan.WithAlpha(0.35f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
+            Img("Border", rt, ButtonSkin.Frame, ButtonSkin.Slate.WithAlpha(0.6f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
+            Img("Glass", rt, ButtonSkin.Panel, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced, true);
+            Img("Top Light", rt, UiArt.LineFade, Palette.ShotCyan.WithAlpha(0.12f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return rt;
         }
     }

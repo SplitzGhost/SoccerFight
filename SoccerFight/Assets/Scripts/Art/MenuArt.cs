@@ -60,6 +60,7 @@ namespace SoccerFight
             pending = null;
             drawing = null;
             BuildFont();
+            ButtonSkin.ApplyMenuArt();
             BuildTimer.Mark("menu art");
         }
 

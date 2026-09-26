@@ -38,6 +38,7 @@ namespace SoccerFight
 
         public void Build(Transform parent, Camera cam, bool renderWithCamera)
         {
+            ButtonSkin.Build();
             var go = new GameObject("Dev Panel", typeof(RectTransform));
             go.transform.SetParent(parent, false);
             canvas = go.AddComponent<Canvas>();
@@ -70,8 +71,8 @@ namespace SoccerFight
             Vector2 size = new Vector2(1290f, 830f);
             panel = UiKit.Node("Panel", root, Vector2.zero, size);
             UiKit.Img("Shadow", panel, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.3f);
-            UiKit.Img("Border", panel, UiArt.Panel, Palette.Gold.WithAlpha(0.22f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
-            UiKit.Img("Glass", panel, UiArt.Panel, new Color(0.045f, 0.075f, 0.12f, 0.995f), Vector2.zero, size, Image.Type.Sliced);
+            UiKit.Img("Border", panel, ButtonSkin.Frame, ButtonSkin.Gold.WithAlpha(0.3f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
+            UiKit.Img("Glass", panel, ButtonSkin.Panel, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced);
             UiKit.Img("Top Light", panel, UiArt.LineFade, Palette.Gold.WithAlpha(0.4f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
 
             UiKit.Label("Title", panel, "DEVELOPER-MODUS", 32f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 366f), new Vector2(1000f, 46f), true, 14f);
@@ -93,8 +94,8 @@ namespace SoccerFight
         /// <summary>Compact button without the accent bar (the pill buttons' bar would crowd short labels).</summary>
         void PlainBtn(Vector2 pos, Vector2 size, string text, float fontSize, float spacing, System.Action action)
         {
-            var rim = UiKit.Img(text + " Rim", panel, UiArt.Pill, Color.white.WithAlpha(0.14f), pos, size + new Vector2(2f, 2f), Image.Type.Sliced);
-            var bg = UiKit.Img(text, panel, UiArt.Pill, UiKit.ButtonBase, pos, size, Image.Type.Sliced, true);
+            var rim = UiKit.Img(text + " Rim", panel, ButtonSkin.Frame, Color.white.WithAlpha(0.14f), pos, size + new Vector2(2f, 2f), Image.Type.Sliced);
+            var bg = UiKit.Img(text, panel, ButtonSkin.Plate, UiKit.ButtonBase, pos, size, Image.Type.Sliced, true);
             var label = UiKit.Label("Label", bg.transform, text, fontSize, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 1f), size, true, spacing);
             var b = bg.gameObject.AddComponent<Button>();
             b.transition = Selectable.Transition.None;
@@ -187,7 +188,7 @@ namespace SoccerFight
             {
                 var def = u;
                 Color rc = Rarities.Of(u.Rarity);
-                var back = UiKit.Img(u.Id, content, UiArt.Pill, UiKit.ButtonBase, new Vector2(0f, y), new Vector2(ColW - 22f, rowH), Image.Type.Sliced, true);
+                var back = UiKit.Img(u.Id, content, ButtonSkin.Plate, UiKit.ButtonBase, new Vector2(0f, y), new Vector2(ColW - 22f, rowH), Image.Type.Sliced, true);
                 back.rectTransform.anchorMin = back.rectTransform.anchorMax = new Vector2(0.5f, 1f);   // rows hang from the top of the list
                 UiKit.Img("Diamond", back.transform, UiArt.Diamond, rc, new Vector2(-ColW * 0.5f + 30f, 0f), new Vector2(11f, 11f));
                 UiKit.Label("Name", back.transform, u.Name, 13f, Palette.UiText, TextAlignmentOptions.Left, new Vector2(-10f, 0f), new Vector2(ColW - 110f, rowH), true, 1.5f);
