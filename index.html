@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>SportFighter</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #070b16; }
+      #unity-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; outline: none; background: #070b16; }
+      #loader {
+        position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: radial-gradient(ellipse at 50% 40%, #16233f 0%, #070b16 70%); color: #dbe7ff;
+        font: 500 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; transition: opacity .6s ease;
+      }
+      #loader.done { opacity: 0; pointer-events: none; }
+      #title {
+        font-size: clamp(32px, 6vw, 56px); font-weight: 800; letter-spacing: .04em;
+        background: linear-gradient(90deg, #7fd8ff, #c89bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      #bar { width: min(340px, 70vw); height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+      #fill { width: 0; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7fd8ff, #c89bff); transition: width .2s ease; }
+      #status { opacity: .75; }
+      #hint { position: absolute; bottom: 16px; left: 16px; right: 16px; text-align: center; opacity: .45; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="loader">
+      <div id="title">SportFighter</div>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="status">Lädt …</div>
+      <div id="hint">A/D laufen · Leertaste springen · Linksklick schießen (in der Luft: Rückstoß) · Rechtsklick Power-Schuss · weitere Fähigkeiten nach jedem Boss · Esc Menü · F3 Developer</div>
+    </div>
+    <script>
+      (function () {
+        var canvas = document.querySelector("#unity-canvas");
+        var loader = document.querySelector("#loader");
+        var fill = document.querySelector("#fill");
+        var statusText = document.querySelector("#status");
+        canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+        // Keys and mouse buttons belong to the game, not the browser: no reload on F5 / Ctrl+R, no find
+        // on F3, no zoom, no scrolling, and the side mouse buttons don't navigate back or forward.
+        // (F11 fullscreen and F12 dev tools stay with the browser. Ctrl+W/T/N can't be taken over by a
+        // page, except in the game's own fullscreen via the Keyboard Lock API below.)
+        // Plain letters, digits and symbols pass through: blocking their keydown would also stop the
+        // browser from producing the typed character, and the game reads text from it (room codes).
+        var browserKeys = { Tab: 1, Backspace: 1, " ": 1, ArrowUp: 1, ArrowDown: 1, ArrowLeft: 1, ArrowRight: 1,
+                            PageUp: 1, PageDown: 1, Home: 1, End: 1, "/": 1, "'": 1, ContextMenu: 1 };
+        function ownKey(e) {
+          if (e.key === "F11" || e.key === "F12") return;
+          var fkey = /^F\d+$/.test(e.key);
+          if (fkey || e.ctrlKey || e.metaKey || e.altKey || browserKeys[e.key]) e.preventDefault();
+        }
+        window.addEventListener("keydown", ownKey, true);
+        window.addEventListener("keyup", ownKey, true);
+        function ownButton(e) { if (e.button === 1 || e.button === 3 || e.button === 4) e.preventDefault(); }
+        ["mousedown", "mouseup", "auxclick"].forEach(function (t) { window.addEventListener(t, ownButton, true); });
+        window.addEventListener("wheel", function (e) { if (e.ctrlKey) e.preventDefault(); }, { capture: true, passive: false });
+        // safety net for back navigation that slips through anyway: stay on the page
+        history.pushState({ game: 1 }, "");
+        window.addEventListener("popstate", function () { history.pushState({ game: 1 }, ""); });
+        // the game's fullscreen can claim even Esc, Ctrl+W and co.
+        document.addEventListener("fullscreenchange", function () {
+          var kb = navigator.keyboard;
+          if (!kb || !kb.lock) return;
+          if (document.fullscreenElement) kb.lock().catch(function () {});
+          else kb.unlock();
+        });
+        // anything that would still leave or reload the page asks first
+        var running = false;
+        window.addEventListener("beforeunload", function (e) { if (running) { e.preventDefault(); e.returnValue = ""; } });
+
+        // The build's file names are baked in here, but build.json — fetched fresh on every visit,
+        // never from a cache — wins. So even a cached copy of this page always boots the newest build.
+        var files = {
+          loader: "Build/011acd8b7073b0da2c7a7dc5d3449cfe.loader.js",
+          data: "Build/f589f741d8d8a2894256d18da0e16be7.data.unityweb",
+          framework: "Build/0b5d94d46588c9661fca3e6c6edf3ad4.framework.js.unityweb",
+          code: "Build/78cb828a134d3e7874c1272d38f3fb18.wasm.unityweb"
+        };
+
+        function start() {
+          var script = document.createElement("script");
+          script.src = files.loader;
+          script.onerror = function () { statusText.textContent = "Fehler: Spiel konnte nicht geladen werden – bitte neu laden."; };
+          script.onload = function () {
+            createUnityInstance(canvas, {
+              arguments: [],
+              dataUrl: files.data,
+              frameworkUrl: files.framework,
+              codeUrl: files.code,
+              streamingAssetsUrl: "StreamingAssets",
+              companyName: "DefaultCompany",
+              productName: "SoccerFight",
+              productVersion: "1.0",
+            }, function (progress) {
+              fill.style.width = (100 * progress) + "%";
+              statusText.textContent = progress < 1 ? "Lädt … " + Math.round(100 * progress) + " %" : "Welt wird erzeugt …";
+            }).then(function () {
+              loader.classList.add("done");
+              canvas.focus();
+              running = true;
+            }).catch(function (message) {
+              statusText.textContent = "Fehler: " + message;
+            });
+          };
+          document.body.appendChild(script);
+        }
+
+        fetch("build.json?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) { if (j && j.loader && j.data && j.framework && j.code) files = j; }, function () {})
+          .then(start, start);
+      })();
+    </script>
+  </body>
+</html>
