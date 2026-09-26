@@ -68,63 +68,57 @@ namespace SoccerFight
             dim.rectTransform.sizeDelta = Vector2.zero;
             dim.raycastTarget = true;
 
-            Vector2 size = new Vector2(1290f, 830f);
-            panel = UiKit.Node("Panel", root, Vector2.zero, size);
-            UiKit.Img("Shadow", panel, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.3f);
-            UiKit.Img("Border", panel, ButtonSkin.Frame, ButtonSkin.Gold.WithAlpha(0.3f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
-            UiKit.Img("Glass", panel, ButtonSkin.Panel, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced);
-            UiKit.Img("Top Light", panel, UiArt.LineFade, Palette.Gold.WithAlpha(0.4f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
-
-            UiKit.Label("Title", panel, "DEVELOPER-MODUS", 32f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 366f), new Vector2(1000f, 46f), true, 14f);
-            UiKit.Label("Sub", panel, "F3 ODER ESC SCHLIESSEN  ·  ÄNDERUNGEN WIRKEN SOFORT  ·  DEV-LÄUFE ZÄHLEN NICHT FÜR DEN REKORD",
-                12f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 330f), new Vector2(1200f, 20f), true, 4f);
+            const float k = 1920f / 1672f;
+            Vector2 size = new Vector2(1344f, 755f) * k;
+            panel = UiKit.Node("Panel", root, new Vector2(0f, -19.5f), size);
+            UiKit.Img("Originalrahmen", panel, ExactButtonArt.Get("dev-panel"), Color.white, Vector2.zero, size);
 
             BuildCheats(new Vector2(-430f, 0f));
             BuildRun(new Vector2(0f, 0f));
-            BuildUpgrades(new Vector2(430f, 0f));
+            BuildUpgrades(new Vector2(527f, 0f));
 
-            status = UiKit.Label("Status", panel, "", 14f, Palette.Gold, TextAlignmentOptions.Center, new Vector2(0f, -384f), new Vector2(1200f, 22f), true, 4f);
+            status = UiKit.Label("Status", panel, "", 14f, Palette.Gold, TextAlignmentOptions.Center, new Vector2(0f, -407f), new Vector2(1200f, 22f), true, 4f);
             canvas.gameObject.SetActive(false);
         }
 
-        const float ColW = 370f;
+        const float ColW = 420f;
 
         void StepBtn(Vector2 pos, string glyph, System.Action action) => PlainBtn(pos, new Vector2(56f, 42f), glyph, 22f, 0f, action);
 
         /// <summary>Compact button without the accent bar (the pill buttons' bar would crowd short labels).</summary>
         void PlainBtn(Vector2 pos, Vector2 size, string text, float fontSize, float spacing, System.Action action)
         {
-            var rim = UiKit.Img(text + " Rim", panel, ButtonSkin.Frame, Color.white.WithAlpha(0.14f), pos, size + new Vector2(2f, 2f), Image.Type.Sliced);
-            var bg = UiKit.Img(text, panel, ButtonSkin.Plate, UiKit.ButtonBase, pos, size, Image.Type.Sliced, true);
-            var label = UiKit.Label("Label", bg.transform, text, fontSize, Palette.UiText, TextAlignmentOptions.Center, new Vector2(0f, 1f), size, true, spacing);
-            var b = bg.gameObject.AddComponent<Button>();
-            b.transition = Selectable.Transition.None;
-            b.onClick.AddListener(() => action());
-            var anim = bg.gameObject.AddComponent<UiAnim>();
-            anim.Apply = a =>
-            {
-                float s = 1f + a.Hover * 0.04f - a.Press * 0.06f;
-                bg.rectTransform.localScale = rim.rectTransform.localScale = new Vector3(s, s, 1f);
-                bg.color = Color.Lerp(UiKit.ButtonBase, UiKit.ButtonHover, a.Hover);
-                label.color = Color.Lerp(Palette.UiText, Palette.Gold, a.Hover);
-            };
+            OriginalButton(text, action);
+
         }
 
         Button Btn(Vector2 col, float y, string text, System.Action action, bool primary = false, float width = ColW)
-            => UiKit.MakeButton(panel, text, col + new Vector2(0f, y), new Vector2(width, 44f), action, primary, 14f);
+            => OriginalButton(text, action, primary);
+
+        static Vector2 OriginalPosition(Rect r) => new Vector2(r.center.x - 837f, 487.5f - r.center.y) * (1920f / 1672f);
+
+        Button OriginalButton(string text, System.Action action, bool primary = false)
+        {
+            var r = ExactButtonArt.ReferenceRect("action-" + text);
+            return UiKit.MakeButton(panel, text, OriginalPosition(r), r.size * (1920f / 1672f), action, primary);
+        }
+
+        Button OriginalToggle(string text, System.Func<bool> get, System.Action<bool> set)
+        {
+            var r = ExactButtonArt.ReferenceRect("toggle-row-" + text);
+            return UiKit.MakeToggle(panel, text, OriginalPosition(r), r.width * (1920f / 1672f), get, set, r.height * (1920f / 1672f));
+        }
 
         void BuildCheats(Vector2 c)
         {
-            UiKit.Section(panel, "SCHUMMELN", c + new Vector2(0f, 270f), ColW);
-            first = UiKit.MakeToggle(panel, "UNVERWUNDBAR", c + new Vector2(0f, 222f), ColW, () => DevMode.God, v => { DevMode.God = v; Cheat(v ? "Unverwundbar an" : "Unverwundbar aus"); });
-            UiKit.MakeToggle(panel, "KEINE ABKLINGZEITEN", c + new Vector2(0f, 176f), ColW, () => DevMode.NoCooldowns, v => { DevMode.NoCooldowns = v; Cheat(v ? "Keine Abklingzeiten an" : "Abklingzeiten normal"); });
-            UiKit.MakeToggle(panel, "EIN-TREFFER-KILLS", c + new Vector2(0f, 130f), ColW, () => DevMode.OneHit, v => { DevMode.OneHit = v; Cheat(v ? "Jeder Treffer tötet" : "Schaden normal"); });
-            UiKit.MakeToggle(panel, "INFO-ANZEIGE", c + new Vector2(0f, 84f), ColW, () => DevMode.ShowInfo, v => { DevMode.ShowInfo = v; Say(v ? "Info-Anzeige oben rechts" : "Info-Anzeige aus"); });
-            UiKit.MakeSlider(panel, "SPIELTEMPO", c + new Vector2(0f, 20f), ColW, 0.25f, 2f,
+            first = OriginalToggle("UNVERWUNDBAR", () => DevMode.God, v => { DevMode.God = v; Cheat(v ? "Unverwundbar an" : "Unverwundbar aus"); });
+            OriginalToggle("KEINE ABKLINGZEITEN", () => DevMode.NoCooldowns, v => { DevMode.NoCooldowns = v; Cheat(v ? "Keine Abklingzeiten an" : "Abklingzeiten normal"); });
+            OriginalToggle("EIN-TREFFER-KILLS", () => DevMode.OneHit, v => { DevMode.OneHit = v; Cheat(v ? "Jeder Treffer tötet" : "Schaden normal"); });
+            OriginalToggle("INFO-ANZEIGE", () => DevMode.ShowInfo, v => { DevMode.ShowInfo = v; Say(v ? "Info-Anzeige oben rechts" : "Info-Anzeige aus"); });
+            UiKit.MakeSlider(panel, "SPIELTEMPO", OriginalPosition(ExactButtonArt.ReferenceRect("slider-row-SPIELTEMPO")), 422f * (1920f / 1672f), 0.25f, 2f,
                 () => DevMode.Speed, v => { DevMode.Speed = Mathf.Round(v * 4f) / 4f; if (!Mathf.Approximately(DevMode.Speed, 1f)) DevMode.MarkRun(); },
-                v => "×" + (Mathf.Round(v * 4f) / 4f).ToString("0.00"));
+                v => "×" + (Mathf.Round(v * 4f) / 4f).ToString("0.00"), 100f * (1920f / 1672f));
 
-            UiKit.Section(panel, "SPIELER", c + new Vector2(0f, -52f), ColW);
             Btn(c, -100f, "VOLLE HEILUNG", () => { Game.I.Player.Heal(9999f, true); DevMode.MarkRun(); Say("Voll geheilt"); });
             Btn(c, -152f, "ALLE FÄHIGKEITEN FREISCHALTEN", () => { Director.DevUnlockAll(); Say("Alle Fähigkeiten frei"); });
             Btn(c, -204f, "+5 ZUFÄLLIGE UPGRADES", () => { Director.DevAddRandomUpgrades(5); RefreshRows(); Say("5 zufällige Upgrades genommen"); });
@@ -143,29 +137,26 @@ namespace SoccerFight
                 Characters.Reload();
                 Say("Profil gelöscht · das Hauptmenü startet mit der Starterwahl");
             });
-            buildInfo = UiKit.Label("BuildInfo", panel, "", 12f, Palette.UiMuted, TextAlignmentOptions.Center, c + new Vector2(0f, -350f), new Vector2(ColW, 20f), true, 3f);
+            buildInfo = UiKit.Label("BuildInfo", panel, "", 12f, Palette.UiMuted, TextAlignmentOptions.Center, c + new Vector2(0f, -395f), new Vector2(ColW, 20f), true, 3f);
         }
 
         void BuildRun(Vector2 c)
         {
-            UiKit.Section(panel, "LAUF", c + new Vector2(0f, 270f), ColW);
             // stage stepper
-            UiKit.Label("StageLabel", panel, "STAGE", 15f, Palette.UiText, TextAlignmentOptions.Left, c + new Vector2(-ColW * 0.5f + 60f, 222f), new Vector2(120f, 30f), true, 4f);
+            UiKit.Img("Stage", panel, ExactButtonArt.Get("dev-stage"), Color.white, new Vector2(46f, 198f), new Vector2(250f, 77f));
             StepBtn(c + new Vector2(30f, 222f), "−", () => SetStage(stageSel - 1));
-            stageValue = UiKit.Label("StageValue", panel, "1", 22f, Color.white, TextAlignmentOptions.Center, c + new Vector2(96f, 222f), new Vector2(60f, 34f), true, 0f);
+            stageValue = UiKit.Label("StageValue", panel, "1", 28f, Color.white, TextAlignmentOptions.Center, c + new Vector2(114f, 198f), new Vector2(60f, 34f), true, 0f);
             StepBtn(c + new Vector2(160f, 222f), "+", () => SetStage(stageSel + 1));
             Btn(c, 170f, "ZU STAGE SPRINGEN", () => { Director.DevGoToStage(stageSel); Close(); }, true);
             Btn(c, 118f, "WELLE ÜBERSPRINGEN", () => { Director.DevSkipWave(); Game.I.Hud.ShowToast("DEV  ·  WELLE ÜBERSPRUNGEN"); Close(); });
             Btn(c, 66f, "BOSS RUFEN", () => { Director.DevCallBoss(); Close(); });
             Btn(c, 14f, "ALLE GEGNER BESIEGEN", () => { Director.DevKillAll(); Say("Alle Gegner besiegt"); });
 
-            UiKit.Section(panel, "GEGNER RUFEN", c + new Vector2(0f, -52f), ColW);
             float w = (ColW - 16f) / 3f;
             PlainBtn(c + new Vector2(-w - 8f, -100f), new Vector2(w, 44f), "NORMAL", 13f, 4f, () => { Director.DevSpawn(Rank.Normal); Say("Gegner gerufen"); });
             PlainBtn(c + new Vector2(0f, -100f), new Vector2(w, 44f), "ELITE", 13f, 4f, () => { Director.DevSpawn(Rank.Elite); Say("Elite gerufen"); });
             PlainBtn(c + new Vector2(w + 8f, -100f), new Vector2(w, 44f), "MINIBOSS", 13f, 4f, () => { Director.DevSpawn(Rank.MiniBoss); Say("Miniboss gerufen"); });
 
-            UiKit.Section(panel, "KARTEN ÖFFNEN", c + new Vector2(0f, -166f), ColW);
             Btn(c, -214f, "UPGRADE-KARTEN", () => { Close(); Director.DevOfferCards(false); });
             Btn(c, -266f, "BOSS-KARTEN (SELTEN+)", () => { Close(); Director.DevOfferCards(true); });
             Btn(c, -318f, "FÄHIGKEIT WÄHLEN", () => { Close(); Director.DevOfferAbility(); });
@@ -173,25 +164,25 @@ namespace SoccerFight
 
         void BuildUpgrades(Vector2 c)
         {
-            UiKit.Section(panel, "UPGRADES  ·  KLICK = +1 STUFE", c + new Vector2(0f, 270f), ColW);
-            const float viewH = 590f;
-            var view = UiKit.Img("Upgrade List", panel, UiArt.Panel, new Color(0.02f, 0.035f, 0.06f, 0.6f), c + new Vector2(0f, 240f - viewH * 0.5f), new Vector2(ColW, viewH), Image.Type.Sliced, true);
+            const float viewH = 629f;
+            var view = UiKit.Img("Upgrade List", panel, UiArt.Panel, new Color(0.02f, 0.035f, 0.06f, 0.6f), c + new Vector2(0f, 249f - viewH * 0.5f), new Vector2(ColW, viewH), Image.Type.Sliced, true);
             view.gameObject.AddComponent<RectMask2D>();
             var content = UiKit.Node("Content", view.rectTransform, Vector2.zero, new Vector2(ColW, 0f));
             content.anchorMin = content.anchorMax = new Vector2(0.5f, 1f);
             content.pivot = new Vector2(0.5f, 1f);
             content.anchoredPosition = Vector2.zero;
 
-            const float rowH = 34f, gap = 4f;
+            const float rowH = 45f, gap = 4f;
             float y = -8f - rowH * 0.5f;
             foreach (var u in UpgradeDb.All)
             {
                 var def = u;
                 Color rc = Rarities.Of(u.Rarity);
-                var back = UiKit.Img(u.Id, content, ButtonSkin.Plate, UiKit.ButtonBase, new Vector2(0f, y), new Vector2(ColW - 22f, rowH), Image.Type.Sliced, true);
+                var back = UiKit.Img(u.Id, content, ExactButtonArt.Get("upgrade-row"), Color.white, new Vector2(0f, y), new Vector2(ColW - 22f, rowH), Image.Type.Sliced, true);
                 back.rectTransform.anchorMin = back.rectTransform.anchorMax = new Vector2(0.5f, 1f);   // rows hang from the top of the list
-                UiKit.Img("Diamond", back.transform, UiArt.Diamond, rc, new Vector2(-ColW * 0.5f + 30f, 0f), new Vector2(11f, 11f));
-                UiKit.Label("Name", back.transform, u.Name, 13f, Palette.UiText, TextAlignmentOptions.Left, new Vector2(-10f, 0f), new Vector2(ColW - 110f, rowH), true, 1.5f);
+                UiKit.Img("Symbol", back.transform, UpgradeIcons.Get(u.Icon), Color.white, new Vector2(-ColW * 0.5f + 43f, 0f), new Vector2(35f, 35f)).preserveAspect = true;
+                UiKit.Img("Diamond", back.transform, UiArt.Diamond, rc, new Vector2(ColW * .3f, 0f), new Vector2(14f, 14f));
+                MenuArt.Label("Name", back.transform, u.Name, 15f, Color.white, new Vector2(-4f, 0f), new Vector2(ColW - 150f, rowH), TextAlignmentOptions.Left, 0f);
                 var stacks = UiKit.Label("Stacks", back.transform, "", 12f, Palette.UiMuted, TextAlignmentOptions.Right, new Vector2(ColW * 0.5f - 60f, 0f), new Vector2(70f, rowH), true, 0f);
                 var row = new UpRow { def = def, back = back, stacks = stacks };
                 var button = back.gameObject.AddComponent<Button>();
@@ -202,7 +193,7 @@ namespace SoccerFight
                 {
                     float s = 1f + a.Hover * 0.015f - a.Press * 0.03f;
                     back.rectTransform.localScale = new Vector3(s, s, 1f);
-                    back.color = Color.Lerp(UiKit.ButtonBase, Color.Lerp(UiKit.ButtonHover, rc * 0.5f, 0.3f), a.Hover);
+                    back.color = Color.white;
                 };
                 upRows.Add(row);
                 y -= rowH + gap;

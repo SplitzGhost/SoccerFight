@@ -85,8 +85,7 @@ namespace SoccerFight
             {
                 Vector2 p = center + new Vector2((i - (CodeLength - 1) * 0.5f) * step, 0f);
                 UiKit.Img("BoxShade", parent, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.4f), p + new Vector2(0f, -6f), box * 1.3f);
-                boxes[i] = UiKit.Img("Box" + i, parent, MenuArt.CardBody, new Color(0.02f, 0.05f, 0.08f, 0.9f), p, box, Image.Type.Sliced);
-                UiKit.Img("Frame" + i, parent, MenuArt.Frame, Mint.WithAlpha(0.35f), p, box + new Vector2(2f, 2f), Image.Type.Sliced);
+                boxes[i] = UiKit.Img("Box" + i, parent, ExactButtonArt.Get("code-cell"), Color.white, p, box, Image.Type.Sliced);
                 letters[i] = MenuArt.Label("Letter" + i, parent, "", font, Color.white, p + new Vector2(0f, 2f), box, TextAlignmentOptions.Center, 0f);
             }
         }
@@ -98,17 +97,15 @@ namespace SoccerFight
             choose = Panel(c, "Choose");
             var root = choose.transform;
 
-            createButton = new ChunkButton(root, "Create", new Vector2(-380f, 30f), new Vector2(620f, 440f), Mint, "RAUM ERSTELLEN", 40f, MenuArt.IconFriends, 120f)
+            createButton = new ChunkButton(root, "Create", new Vector2(-380f, 30f), new Vector2(714f, 439f), Mint, "RAUM ERSTELLEN", 40f, MenuArt.IconFriends, 120f)
                 .IconTop("DU BIST HOST  ·  DEIN FREUND TRITT MIT DEINEM CODE BEI");
             Target("duoCreate", createButton, Create, () => chooseA);
 
-            var join = UiKit.Node("Join", root, new Vector2(380f, 30f), new Vector2(620f, 440f));
-            MenuUi.Plate(join, "Plate", Vector2.zero, new Vector2(620f, 440f), MenuArt.Accent, 0.35f);
-            MenuArt.Label("Title", join, "RAUM BEITRETEN", 40f, Color.white, new Vector2(0f, 150f), new Vector2(600f, 56f), TextAlignmentOptions.Center, 6f);
-            MetaUi.Text(join, "Sub", "Tippe den Code deines Freundes ein", 19f, MetaUi.Muted, new Vector2(0f, 100f), new Vector2(560f, 28f));
-            Boxes(join, joinBoxes, joinLetters, new Vector2(0f, 12f), new Vector2(72f, 92f), 12f, 52f);
+            var join = UiKit.Node("Join", root, new Vector2(380f, 30f), new Vector2(700f, 439f));
+            UiKit.Img("Plate", join, ExactButtonArt.Get("duo-join-panel"), Color.white, Vector2.zero, new Vector2(700f, 439f));
+            Boxes(join, joinBoxes, joinLetters, new Vector2(0f, 6f), new Vector2(90f, 109f), 10f, 42f);
             caret = UiKit.Img("Caret", join, null, Mint, Vector2.zero, new Vector2(34f, 4f));
-            joinButton = new ChunkButton(join, "JoinGo", new Vector2(0f, -138f), new Vector2(380f, 84f), MenuArt.Accent, "BEITRETEN", 32f, MenuArt.IconPlay, 28f, true);
+            joinButton = new ChunkButton(join, "JoinGo", new Vector2(0f, -124f), new Vector2(450f, 107f), MenuArt.Accent, "BEITRETEN", 32f, MenuArt.IconPlay, 28f, true);
             joinButton.IconLeft(40f);
             Target("duoJoin", joinButton, Join, () => chooseA);
 
@@ -120,12 +117,12 @@ namespace SoccerFight
         {
             hosting = Panel(c, "Hosting");
             var root = hosting.transform;
-            MenuUi.Plate(root, "Plate", new Vector2(0f, 40f), new Vector2(980f, 500f), Mint, 0.35f);
-            MenuArt.Label("Over", root, "DEIN RAUM-CODE", 22f, Mint, new Vector2(0f, 240f), new Vector2(900f, 30f), TextAlignmentOptions.Center, 10f, MenuArt.TextHeavySoft);
-            Boxes(root, codeBoxes, codeLetters, new Vector2(0f, 110f), new Vector2(104f, 132f), 16f, 80f);
+            UiKit.Img("Plate", root, ExactButtonArt.Get("duo-host-panel"), Color.white, new Vector2(0f, 40f), new Vector2(980f, 376f));
+            MenuArt.Label("Over", root, "DEIN RAUM-CODE", 22f, Mint, new Vector2(0f, 160f), new Vector2(900f, 30f), TextAlignmentOptions.Center, 10f, MenuArt.TextHeavySoft);
+            Boxes(root, codeBoxes, codeLetters, new Vector2(0f, 70f), new Vector2(124f, 122f), 16f, 64f);
             MetaUi.Text(root, "Sub", "Gib den Code deinem Freund. Er wählt DUO  ·  RAUM BEITRETEN und tippt ihn ein.", 20f, MetaUi.Body, new Vector2(0f, -20f), new Vector2(900f, 30f));
             hostStatus = MenuArt.Label("Status", root, "", 24f, MetaUi.Gold, new Vector2(0f, -90f), new Vector2(900f, 34f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
-            closeButton = new ChunkButton(root, "Close", new Vector2(0f, -300f), new Vector2(380f, 76f), MetaUi.Danger, "RAUM SCHLIESSEN", 26f);
+            closeButton = new ChunkButton(root, "Close", new Vector2(0f, -218f), new Vector2(400f, 89f), MetaUi.Danger, "RAUM SCHLIESSEN", 26f);
             Target("duoClose", closeButton, Leave, () => hostingA);
         }
 
@@ -133,11 +130,11 @@ namespace SoccerFight
         {
             joining = Panel(c, "Joining");
             var root = joining.transform;
-            MenuUi.Plate(root, "Plate", new Vector2(0f, 40f), new Vector2(900f, 360f), MenuArt.Accent, 0.35f);
-            MenuArt.Label("Title", root, "VERBINDE", 44f, Color.white, new Vector2(0f, 120f), new Vector2(860f, 60f), TextAlignmentOptions.Center, 12f);
-            joinStatus = MenuArt.Label("Status", root, "", 22f, MetaUi.Gold, new Vector2(0f, 40f), new Vector2(860f, 34f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
-            MetaUi.Text(root, "Sub", "Das dauert meistens nur ein paar Sekunden.", 18f, MetaUi.Muted, new Vector2(0f, -20f), new Vector2(860f, 28f));
-            cancelButton = new ChunkButton(root, "Cancel", new Vector2(0f, -220f), new Vector2(340f, 76f), MetaUi.Danger, "ABBRECHEN", 26f);
+            UiKit.Img("Plate", root, ExactButtonArt.Get("duo-connect-panel"), Color.white, new Vector2(0f, 40f), new Vector2(810f, 480f));
+            UiKit.Img("Verbindung", root, ExactButtonArt.Get("duo-spinner"), Color.white, new Vector2(0f, -8f), new Vector2(150f, 148f));
+            joinStatus = MenuArt.Label("Status", root, "", 22f, MetaUi.Gold, new Vector2(0f, 112f), new Vector2(860f, 34f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
+            MetaUi.Text(root, "Sub", "Das dauert meistens nur ein paar Sekunden.", 18f, MetaUi.Muted, new Vector2(0f, -113f), new Vector2(860f, 28f));
+            cancelButton = new ChunkButton(root, "Cancel", new Vector2(0f, -285f), new Vector2(390f, 114f), MetaUi.Danger, "ABBRECHEN", 26f);
             Target("duoCancel", cancelButton, Leave, () => joiningA);
         }
 
@@ -159,16 +156,16 @@ namespace SoccerFight
             partner.Build(root, new Vector2(330f, -150f), 190f, PlayerArt.Get(Characters.Index), Characters.Current);
             MenuArt.Label("And", root, "&", 70f, Color.white.WithAlpha(0.55f), new Vector2(0f, 60f), new Vector2(120f, 90f), TextAlignmentOptions.Center, 0f);
 
-            meName = MenuArt.Label("MeName", root, "", 34f, Color.white, new Vector2(-330f, -196f), new Vector2(500f, 44f), TextAlignmentOptions.Center, 6f);
-            meRole = MenuArt.Label("MeRole", root, "", 17f, MetaUi.Muted, new Vector2(-330f, -232f), new Vector2(500f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
-            partnerName = MenuArt.Label("PartnerName", root, "", 34f, Color.white, new Vector2(330f, -196f), new Vector2(500f, 44f), TextAlignmentOptions.Center, 6f);
-            partnerRole = MenuArt.Label("PartnerRole", root, "", 17f, MetaUi.Muted, new Vector2(330f, -232f), new Vector2(500f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
+            meName = MenuArt.Label("MeName", root, "", 34f, Color.white, new Vector2(-330f, -176f), new Vector2(500f, 44f), TextAlignmentOptions.Center, 6f);
+            meRole = MenuArt.Label("MeRole", root, "", 17f, MetaUi.Muted, new Vector2(-330f, -206f), new Vector2(500f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
+            partnerName = MenuArt.Label("PartnerName", root, "", 34f, Color.white, new Vector2(330f, -176f), new Vector2(500f, 44f), TextAlignmentOptions.Center, 6f);
+            partnerRole = MenuArt.Label("PartnerRole", root, "", 17f, MetaUi.Muted, new Vector2(330f, -206f), new Vector2(500f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
 
-            startButton = new ChunkButton(root, "Start", new Vector2(0f, -330f), new Vector2(460f, 100f), MetaUi.Gold, "DUO STARTEN", 42f, MenuArt.IconPlay, 36f, true, true);
+            startButton = new ChunkButton(root, "Start", new Vector2(0f, -325f), new Vector2(420f, 176f), MetaUi.Gold, "DUO STARTEN", 42f, MenuArt.IconPlay, 36f, true, true);
             startButton.IconLeft(52f);
             Target("duoStart", startButton, StartRun, () => lobbyA * (IsHost ? 1f : 0f));
             lobbyHint = MenuArt.Label("Hint", root, "", 22f, MetaUi.Gold, new Vector2(0f, -330f), new Vector2(900f, 34f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
-            leaveButton = new ChunkButton(root, "Leave", new Vector2(-620f, -330f), new Vector2(300f, 70f), MetaUi.Danger, "VERLASSEN", 24f);
+            leaveButton = new ChunkButton(root, "Leave", new Vector2(-620f, -330f), new Vector2(300f, 91f), MetaUi.Danger, "VERLASSEN", 24f);
             Target("duoLeave", leaveButton, Leave, () => lobbyA);
         }
 
@@ -290,8 +287,7 @@ namespace SoccerFight
             for (int i = 0; i < CodeLength; i++)
             {
                 joinLetters[i].text = i < typed.Length ? typed[i].ToString() : "";
-                bool active = i == typed.Length;
-                joinBoxes[i].color = active ? new Color(0.06f, 0.14f, 0.2f, 0.95f) : new Color(0.02f, 0.05f, 0.08f, 0.9f);
+                joinBoxes[i].color = Color.white;
             }
             if (typed.Length < CodeLength)
             {

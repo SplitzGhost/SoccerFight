@@ -70,20 +70,21 @@ namespace SoccerFight
 
         void BuildMain(RectTransform root)
         {
-            mainPanel = UiKit.Panel(root, "Main", new Vector2(460f, 700f), out mainGroup);
-            UiKit.Label("Title", mainPanel, "PAUSE", 58f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 266f), new Vector2(440f, 80f), true, 22f);
-            UiKit.Label("Sub", mainPanel, "SPIEL ANGEHALTEN", 14f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, 216f), new Vector2(440f, 24f), true, 7f);
-            Vector2 size = new Vector2(340f, 58f);
-            float y = 128f;
-            firstMain = UiKit.MakeButton(mainPanel, "WEITER", new Vector2(0f, y), size, Close, true);
-            UiKit.MakeButton(mainPanel, "EINSTELLUNGEN", new Vector2(0f, y -= 72f), size, () => ShowSettings(true));
-            UiKit.MakeButton(mainPanel, "NEU STARTEN", new Vector2(0f, y -= 72f), size, () => RestartRequested?.Invoke());
-            UiKit.MakeButton(mainPanel, "HAUPTMENÜ", new Vector2(0f, y -= 72f), size, () => MenuRequested?.Invoke());
-            UiKit.MakeButton(mainPanel, "DEVELOPER-MODUS", new Vector2(0f, y -= 72f), size, () => DevRequested?.Invoke());
+            const float k = 1920f / 1672f;
+            var size = new Vector2(461f, 745f) * k;
+            mainPanel = UiKit.Node("Main", root, Vector2.zero, size);
+            mainGroup = mainPanel.gameObject.AddComponent<CanvasGroup>();
+            UiKit.Img("Probebild-Rahmen", mainPanel, ExactButtonArt.Get("pause-panel"), Color.white, Vector2.zero, size);
+            Vector2 buttonSize = new Vector2(378f, 87f) * k;
+            float y = (470.5f - 306f) * k;
+            firstMain = UiKit.MakeButton(mainPanel, "WEITER", new Vector2(0f, y), buttonSize, Close, true);
+            UiKit.MakeButton(mainPanel, "EINSTELLUNGEN", new Vector2(0f, y -= 91f * k), buttonSize, () => ShowSettings(true));
+            UiKit.MakeButton(mainPanel, "NEU STARTEN", new Vector2(0f, y -= 94f * k), buttonSize, () => RestartRequested?.Invoke());
+            UiKit.MakeButton(mainPanel, "HAUPTMENÜ", new Vector2(0f, y -= 91f * k), buttonSize, () => MenuRequested?.Invoke());
+            UiKit.MakeButton(mainPanel, "DEVELOPER-MODUS", new Vector2(0f, y -= 90f * k), buttonSize, () => DevRequested?.Invoke());
 #if !UNITY_WEBGL || UNITY_EDITOR
-            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, y -= 72f), size, Quit);   // a browser tab can't be quit
+            UiKit.MakeButton(mainPanel, "BEENDEN", new Vector2(0f, y -= 88f * k), buttonSize, Quit);
 #endif
-            UiKit.Label("Hint", mainPanel, "ESC  ZURÜCK ZUM SPIEL  ·  F3  DEVELOPER", 12f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -302f), new Vector2(440f, 20f), true, 5f);
         }
 
         // ------------------------------------------------------------------ actions

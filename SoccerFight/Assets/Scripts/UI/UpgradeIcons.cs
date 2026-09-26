@@ -20,15 +20,11 @@ namespace SoccerFight
         {
             switch (icon)
             {
-                case UpIcon.Damage: return ButtonSkin.Sport(0);
-                case UpIcon.Speed: case UpIcon.Dash: return ButtonSkin.Sport(8);
-                case UpIcon.Heart: case UpIcon.Heal: case UpIcon.Regen: return ButtonSkin.Sport(7);
+                case UpIcon.Damage: return ExactButtonArt.Get("up-icon-Damage");
+                case UpIcon.Speed: case UpIcon.Dash: return ExactButtonArt.Get("up-icon-Speed");
+                case UpIcon.Heart: case UpIcon.Heal: case UpIcon.Regen: return ExactButtonArt.Get("up-icon-Heart");
                 case UpIcon.Shield: case UpIcon.Armor: return ButtonSkin.Sport(1);
-                case UpIcon.Fire: return ButtonSkin.Sport(9);
-                case UpIcon.Frost: return ButtonSkin.Sport(10);
-                case UpIcon.Chain: return ButtonSkin.Sport(11);
                 case UpIcon.Power: return ButtonSkin.Sport(3);
-                case UpIcon.Rainbow: return ButtonSkin.Sport(13);
                 case UpIcon.Hoop: return ButtonSkin.Menu(15);
             }
             if (cache.TryGetValue(icon, out var s)) return s;

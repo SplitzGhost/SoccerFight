@@ -163,7 +163,7 @@ namespace SoccerFight
             c.group = c.rt.gameObject.AddComponent<CanvasGroup>();
             c.glow = UiKit.Img("Glow", c.rt, UiArt.Glow, color.WithAlpha(0.1f), new Vector2(0f, 10f), size * 1.5f);
             UiKit.Img("Shadow", c.rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.6f), new Vector2(0f, -24f), size * 1.3f);
-            var glass = UiKit.Img("Glass", c.rt, ButtonSkin.Panel, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced, true);
+            var glass = UiKit.Img("Glass", c.rt, ExactButtonArt.Get("reward-frame"), Color.white, Vector2.zero, size, Image.Type.Sliced, true);
             c.content = UiKit.Node("Content", c.rt, Vector2.zero, size);
             c.border = UiKit.Img("Border", c.rt, ButtonSkin.Frame, color.WithAlpha(0.45f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
             c.content.gameObject.AddComponent<RectMask2D>();
@@ -197,19 +197,15 @@ namespace SoccerFight
         void Medallion(Card c, Transform parent, Vector2 pos, float size, Sprite icon, float iconScale)
         {
             c.medGlow = UiKit.Img("MedGlow", parent, UiArt.Glow, c.color.WithAlpha(0.04f), pos, Vector2.one * size * 1.6f);
-            UiKit.Img("MedFill", parent, ButtonSkin.Socket, ButtonSkin.Slate, pos, Vector2.one * size, Image.Type.Sliced);
-            UiKit.Img("MedRim", parent, ButtonSkin.Frame, c.color.WithAlpha(0.22f), pos, Vector2.one * size, Image.Type.Sliced);
             var art = UiKit.Img("Icon", parent, ButtonSkin.Painted(icon), Color.white, pos, Vector2.one * size * 0.92f);
             art.preserveAspect = true;
         }
 
         static void ChooseFooter(Transform parent, Vector2 pos, float width, int index)
         {
-            var plate = UiKit.Img("Wählen", parent, ButtonSkin.Plate, ButtonSkin.Slate, pos, new Vector2(width, 38f), Image.Type.Sliced);
-            UiKit.Label("Label", plate.transform, "WÄHLEN", 18f, Color.white, TextAlignmentOptions.Center,
-                new Vector2(-10f, 0f), new Vector2(width - 60f, 36f), true, 1f);
-            UiKit.Label("Taste", plate.transform, "[" + (index + 1) + "]", 12f, Palette.UiMuted, TextAlignmentOptions.Center,
-                new Vector2(width * 0.5f - 28f, 0f), new Vector2(42f, 30f), true);
+            UiKit.Img("Wählen", parent, ExactButtonArt.Get("choose-" + index), Color.white,
+                pos + new Vector2(0f, 12f), new Vector2(width, width * 82f / 295f));
+
         }
 
         void BuildUpgradeCards()
@@ -223,7 +219,7 @@ namespace SoccerFight
                 var c = MakeCard(i, offer.Count, size, rc, u.Rarity >= Rarity.Epic, u.Rarity == Rarity.Legendary);
                 var ct = c.content;
                 UiKit.Label("Rarity", ct, Rarities.Name(u.Rarity), 13f, rc, TextAlignmentOptions.Center, new Vector2(0f, 205f), new Vector2(300f, 20f), true, 9f);
-                Medallion(c, ct, new Vector2(0f, 110f), 118f, UpgradeIcons.Get(u.Icon), 0.66f);
+                Medallion(c, ct, new Vector2(0f, 110f), 164f, UpgradeIcons.Get(u.Icon), 0.66f);
                 var name = UiKit.Label("Name", ct, u.Name, 27f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 20f), new Vector2(310f, 36f), true, 3f);
                 name.enableAutoSizing = true; name.fontSizeMin = 18f; name.fontSizeMax = 27f;
                 string tag = u.IsSynergy ? "SYNERGIE" : u.NeedsAbility != Ability.None ? Abilities.Name(u.NeedsAbility) : u.Rarity == Rarity.Legendary ? "SPIELVERÄNDERND" : u.Rarity == Rarity.Epic ? "BUILD-KERN" : "";

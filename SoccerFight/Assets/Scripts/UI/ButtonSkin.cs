@@ -9,10 +9,7 @@ namespace SoccerFight
         public static readonly Color Slate = new Color(0.36f, 0.59f, 0.67f, 1f);
         public static readonly Color Gold = new Color(0.86f, 0.65f, 0.30f, 1f);
         static readonly Sprite[] menu = new Sprite[16], sport = new Sprite[16];
-        static readonly Sprite[] originalPlates = new Sprite[2];
         static bool built;
-        [System.Serializable] sealed class AtlasLayout { public AtlasRect[] icons; }
-        [System.Serializable] sealed class AtlasRect { public float x, y, width, height; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset() { built = false; }
@@ -21,55 +18,14 @@ namespace SoccerFight
         {
             if (built) return;
             built = true;
-            Load("original-plates", originalPlates, true);
-            Plate = originalPlates[0];
-            Panel = originalPlates[1];
-            Frame = Surface("ButtonFrame", false, true);
+            ExactButtonArt.Build();
+            Plate = ExactButtonArt.Plate();
+            Panel = ExactButtonArt.Get("panel-border");
+            Frame = ExactButtonArt.Get("frame-only");
             Socket = Panel;
-            Load("menu-icons", menu);
-            Load("sport-icons", sport);
-        }
-
-        static float Shape(Vector2 p, float half, float cut) => Mathf.Max(Mathf.Max(Mathf.Abs(p.x) - half,
-            Mathf.Abs(p.y) - half), (Mathf.Abs(p.x) + Mathf.Abs(p.y) - half * 2f + cut) * 0.7071f);
-
-        static Sprite Surface(string name, bool inset, bool frame)
-        {
-            var c = new SdfCanvas(new Rect(-40f, -40f, 80f, 80f), 2f);
-            c.Fill(p => Shape(p, 39f, 10f), p =>
-            {
-                float edge = -Shape(p, 39f, 10f);
-                float shade = p.y > 0f ? 0.96f : 0.46f;
-                if (Mathf.Abs(p.x) > Mathf.Abs(p.y)) shade = p.x < 0f ? 0.82f : 0.61f;
-                if (edge > 5f) shade = inset ? 0.21f : 0.77f + p.y * 0.0013f;
-                float alpha = frame && edge > 3f ? 0f : 1f;
-                return new Color(shade, shade, shade, alpha);
-            });
-            return UiArt.ToUi(c, name, new Vector4(36f, 36f, 36f, 36f));
-        }
-
-        static void Load(string name, Sprite[] icons, bool sliced = false)
-        {
-            var tex = Resources.Load<Texture2D>("UiButtons/" + name);
-            if (tex == null) { Debug.LogError("Buttonatlas fehlt: " + name); return; }
-            var data = Resources.Load<TextAsset>("UiButtons/" + name + "-layout");
-            var layout = data == null ? null : JsonUtility.FromJson<AtlasLayout>(data.text);
-            int cell = tex.width / 4;
-            for (int i = 0; i < icons.Length; i++)
-            {
-                var rect = new Rect(i % 4 * cell, (3 - i / 4) * cell, cell, cell);
-                if (layout != null && layout.icons != null && i < layout.icons.Length)
-                {
-                    var r = layout.icons[i];
-                    rect = new Rect(r.x, r.y, r.width, r.height);
-                }
-                var border = sliced ? new Vector4(Mathf.Min(220f, rect.width * 0.25f),
-                    Mathf.Min(220f, rect.height * 0.49f), Mathf.Min(220f, rect.width * 0.25f),
-                    Mathf.Min(220f, rect.height * 0.49f)) : Vector4.zero;
-                icons[i] = Sprite.Create(tex, rect,
-                    new Vector2(0.5f, 0.5f), sliced ? 450f : 100f, 0, SpriteMeshType.FullRect, border);
-                icons[i].name = name + "-" + i;
-            }
+            for (int i = 0; i < menu.Length; i++) menu[i] = ExactButtonArt.Get("menu-icon-" + i);
+            for (int i = 0; i < sport.Length; i++) sport[i] = ExactButtonArt.Get("sport-icon-" + i);
+            sport[12] = UiArt.IconWhistle;
         }
 
         public static Sprite Menu(int i) { Build(); return menu[i]; }

@@ -1,0 +1,2357 @@
+{
+  "items": [
+    {
+      "name": "dev-panel",
+      "page": 0,
+      "x": 0,
+      "y": 1293,
+      "width": 1344,
+      "height": 755,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        166,
+        110,
+        1510,
+        865
+      ]
+    },
+    {
+      "name": "duo-host-panel",
+      "page": 0,
+      "x": 0,
+      "y": 896,
+      "width": 1015,
+      "height": 389,
+      "border": 0,
+      "source": "exec-bf3c63fb-ae9c-4f1a-8865-ee4529dc350e.png",
+      "sourceRect": [
+        324,
+        311,
+        1339,
+        700
+      ]
+    },
+    {
+      "name": "pause-panel",
+      "page": 0,
+      "x": 1023,
+      "y": 540,
+      "width": 461,
+      "height": 745,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        607,
+        98,
+        1068,
+        843
+      ]
+    },
+    {
+      "name": "panel-border",
+      "page": 0,
+      "x": 1352,
+      "y": 1303,
+      "width": 461,
+      "height": 745,
+      "border": 45,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        607,
+        98,
+        1068,
+        843
+      ]
+    },
+    {
+      "name": "frame-only",
+      "page": 0,
+      "x": 1492,
+      "y": 550,
+      "width": 461,
+      "height": 745,
+      "border": 45,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        607,
+        98,
+        1068,
+        843
+      ]
+    },
+    {
+      "name": "duo-connect-panel",
+      "page": 0,
+      "x": 0,
+      "y": 492,
+      "width": 668,
+      "height": 396,
+      "border": 0,
+      "source": "exec-41b4b148-9d59-4f39-9396-19c9ae892966.png",
+      "sourceRect": [
+        502,
+        243,
+        1170,
+        639
+      ]
+    },
+    {
+      "name": "action-RAUM ERSTELLEN",
+      "page": 0,
+      "x": 676,
+      "y": 148,
+      "width": 625,
+      "height": 384,
+      "border": 0,
+      "source": "exec-4b302c3b-2012-428d-9f23-407abbc07aa1.png",
+      "sourceRect": [
+        194,
+        299,
+        819,
+        683
+      ]
+    },
+    {
+      "name": "duo-join-panel",
+      "page": 0,
+      "x": 0,
+      "y": 99,
+      "width": 614,
+      "height": 385,
+      "border": 0,
+      "source": "exec-4b302c3b-2012-428d-9f23-407abbc07aa1.png",
+      "sourceRect": [
+        866,
+        299,
+        1480,
+        684
+      ]
+    },
+    {
+      "name": "reward-frame",
+      "page": 0,
+      "x": 1492,
+      "y": 91,
+      "width": 337,
+      "height": 451,
+      "border": 30,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        297,
+        245,
+        634,
+        696
+      ]
+    },
+    {
+      "name": "action-LOS GEHT'S",
+      "page": 1,
+      "x": 0,
+      "y": 1908,
+      "width": 604,
+      "height": 140,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        519,
+        741,
+        1123,
+        881
+      ]
+    },
+    {
+      "name": "toggle-row-FARBSAUM-EFFEKT",
+      "page": 0,
+      "x": 622,
+      "y": 41,
+      "width": 796,
+      "height": 99,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        428,
+        855,
+        527
+      ]
+    },
+    {
+      "name": "main-mode",
+      "page": 1,
+      "x": 612,
+      "y": 1878,
+      "width": 455,
+      "height": 170,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1187,
+        529,
+        1642,
+        699
+      ]
+    },
+    {
+      "name": "main-mode-blank",
+      "page": 1,
+      "x": 0,
+      "y": 1730,
+      "width": 455,
+      "height": 170,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1187,
+        529,
+        1642,
+        699
+      ]
+    },
+    {
+      "name": "toggle-row-VOLLBILD",
+      "page": 1,
+      "x": 1075,
+      "y": 1951,
+      "width": 796,
+      "height": 97,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        121,
+        855,
+        218
+      ]
+    },
+    {
+      "name": "toggle-row-VSYNC",
+      "page": 1,
+      "x": 1075,
+      "y": 1847,
+      "width": 796,
+      "height": 96,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        223,
+        855,
+        319
+      ]
+    },
+    {
+      "name": "action-DUO STARTEN",
+      "page": 1,
+      "x": 463,
+      "y": 1693,
+      "width": 422,
+      "height": 177,
+      "border": 0,
+      "source": "exec-33a02139-9e37-408c-be9c-cc0a18fdf4d2.png",
+      "sourceRect": [
+        625,
+        720,
+        1047,
+        897
+      ]
+    },
+    {
+      "name": "toggle-row-FPS ANZEIGEN",
+      "page": 1,
+      "x": 893,
+      "y": 1746,
+      "width": 796,
+      "height": 93,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        326,
+        855,
+        419
+      ]
+    },
+    {
+      "name": "slider-row-LEUCHTEN (BLOOM)",
+      "page": 1,
+      "x": 893,
+      "y": 1650,
+      "width": 796,
+      "height": 88,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        628,
+        855,
+        716
+      ]
+    },
+    {
+      "name": "slider-row-LAUTSTÄRKE",
+      "page": 1,
+      "x": 0,
+      "y": 1598,
+      "width": 796,
+      "height": 87,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        719,
+        855,
+        806
+      ]
+    },
+    {
+      "name": "slider-row-BILDSCHIRMWACKELN",
+      "page": 1,
+      "x": 804,
+      "y": 1556,
+      "width": 796,
+      "height": 86,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        59,
+        538,
+        855,
+        624
+      ]
+    },
+    {
+      "name": "main-play",
+      "page": 1,
+      "x": 0,
+      "y": 1447,
+      "width": 471,
+      "height": 143,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1180,
+        705,
+        1651,
+        848
+      ]
+    },
+    {
+      "name": "action-ZUM SHOP",
+      "page": 0,
+      "x": 676,
+      "y": 729,
+      "width": 295,
+      "height": 159,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        977,
+        396,
+        1272,
+        555
+      ]
+    },
+    {
+      "name": "action-GEWÄHLT",
+      "page": 0,
+      "x": 676,
+      "y": 560,
+      "width": 290,
+      "height": 161,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        359,
+        397,
+        649,
+        558
+      ]
+    },
+    {
+      "name": "menu-icon-0",
+      "page": 1,
+      "x": 479,
+      "y": 1418,
+      "width": 247,
+      "height": 172,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        137,
+        155,
+        384,
+        327
+      ]
+    },
+    {
+      "name": "slider-row-SPIELTEMPO",
+      "page": 1,
+      "x": 0,
+      "y": 1339,
+      "width": 422,
+      "height": 100,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        439,
+        630,
+        539
+      ]
+    },
+    {
+      "name": "action-STUFE 10  ·  MAXIMUM",
+      "page": 1,
+      "x": 1697,
+      "y": 1706,
+      "width": 291,
+      "height": 133,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        363,
+        580,
+        654,
+        713
+      ]
+    },
+    {
+      "name": "action-RAUM SCHLIESSEN",
+      "page": 1,
+      "x": 1608,
+      "y": 1550,
+      "width": 413,
+      "height": 92,
+      "border": 0,
+      "source": "exec-bf3c63fb-ae9c-4f1a-8865-ee4529dc350e.png",
+      "sourceRect": [
+        632,
+        725,
+        1045,
+        817
+      ]
+    },
+    {
+      "name": "key-row-FÄHIGKEIT 4",
+      "page": 0,
+      "x": 1426,
+      "y": 17,
+      "width": 571,
+      "height": 66,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        690,
+        1475,
+        756
+      ]
+    },
+    {
+      "name": "action-BEITRETEN",
+      "page": 1,
+      "x": 734,
+      "y": 1455,
+      "width": 392,
+      "height": 93,
+      "border": 0,
+      "source": "exec-4b302c3b-2012-428d-9f23-407abbc07aa1.png",
+      "sourceRect": [
+        979,
+        553,
+        1371,
+        646
+      ]
+    },
+    {
+      "name": "action-ZU STAGE SPRINGEN",
+      "page": 1,
+      "x": 1134,
+      "y": 1459,
+      "width": 407,
+      "height": 89,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        673,
+        362,
+        1080,
+        451
+      ]
+    },
+    {
+      "name": "key-row-FÄHIGKEIT 3",
+      "page": 0,
+      "x": 0,
+      "y": 28,
+      "width": 571,
+      "height": 63,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        623,
+        1475,
+        686
+      ]
+    },
+    {
+      "name": "key-row-FÄHIGKEIT 1",
+      "page": 1,
+      "x": 1134,
+      "y": 1390,
+      "width": 571,
+      "height": 61,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        492,
+        1475,
+        553
+      ]
+    },
+    {
+      "name": "up-icon-Damage",
+      "page": 1,
+      "x": 1713,
+      "y": 1389,
+      "width": 224,
+      "height": 153,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        351,
+        304,
+        575,
+        457
+      ]
+    },
+    {
+      "name": "key-row-KLASSEN-FÄHIGKEIT",
+      "page": 1,
+      "x": 430,
+      "y": 1351,
+      "width": 571,
+      "height": 59,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        429,
+        1475,
+        488
+      ]
+    },
+    {
+      "name": "key-row-FÄHIGKEIT 2",
+      "page": 1,
+      "x": 1009,
+      "y": 1323,
+      "width": 571,
+      "height": 59,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        560,
+        1475,
+        619
+      ]
+    },
+    {
+      "name": "action-EINSTELLUNGEN",
+      "page": 1,
+      "x": 1588,
+      "y": 1293,
+      "width": 378,
+      "height": 88,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        353,
+        1026,
+        441
+      ]
+    },
+    {
+      "name": "action-HAUPTMENÜ",
+      "page": 1,
+      "x": 430,
+      "y": 1255,
+      "width": 378,
+      "height": 88,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        538,
+        1026,
+        626
+      ]
+    },
+    {
+      "name": "plate-petrol",
+      "page": 1,
+      "x": 0,
+      "y": 1243,
+      "width": 378,
+      "height": 88,
+      "border": 24,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        353,
+        1026,
+        441
+      ]
+    },
+    {
+      "name": "key-row-NACH RECHTS",
+      "page": 1,
+      "x": 816,
+      "y": 1257,
+      "width": 571,
+      "height": 58,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        182,
+        1475,
+        240
+      ]
+    },
+    {
+      "name": "action-NEU STARTEN",
+      "page": 1,
+      "x": 1395,
+      "y": 1198,
+      "width": 378,
+      "height": 87,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        447,
+        1026,
+        534
+      ]
+    },
+    {
+      "name": "action-BEENDEN",
+      "page": 1,
+      "x": 816,
+      "y": 1162,
+      "width": 378,
+      "height": 87,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        716,
+        1026,
+        803
+      ]
+    },
+    {
+      "name": "plate-coral",
+      "page": 1,
+      "x": 386,
+      "y": 1160,
+      "width": 378,
+      "height": 87,
+      "border": 24,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        716,
+        1026,
+        803
+      ]
+    },
+    {
+      "name": "key-row-SPRINGEN",
+      "page": 1,
+      "x": 1202,
+      "y": 1133,
+      "width": 571,
+      "height": 57,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        245,
+        1475,
+        302
+      ]
+    },
+    {
+      "name": "key-row-DURCHFALLEN",
+      "page": 1,
+      "x": 0,
+      "y": 1095,
+      "width": 571,
+      "height": 57,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        306,
+        1475,
+        363
+      ]
+    },
+    {
+      "name": "key-row-SCHUSS",
+      "page": 1,
+      "x": 579,
+      "y": 1095,
+      "width": 571,
+      "height": 57,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        368,
+        1475,
+        425
+      ]
+    },
+    {
+      "name": "action-WEITER",
+      "page": 1,
+      "x": 1158,
+      "y": 1039,
+      "width": 378,
+      "height": 86,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        263,
+        1026,
+        349
+      ]
+    },
+    {
+      "name": "action-DEVELOPER-MODUS",
+      "page": 1,
+      "x": 1544,
+      "y": 1039,
+      "width": 378,
+      "height": 86,
+      "border": 0,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        629,
+        1026,
+        715
+      ]
+    },
+    {
+      "name": "plate-gold",
+      "page": 1,
+      "x": 0,
+      "y": 1001,
+      "width": 378,
+      "height": 86,
+      "border": 24,
+      "source": "exec-93321712-69c7-4853-a81f-f3a3c67d82b1.png",
+      "sourceRect": [
+        648,
+        263,
+        1026,
+        349
+      ]
+    },
+    {
+      "name": "action-ZURÜCK",
+      "page": 1,
+      "x": 386,
+      "y": 996,
+      "width": 354,
+      "height": 91,
+      "border": 0,
+      "source": "exec-04f857d8-82c2-402a-b685-442460bcb341.png",
+      "sourceRect": [
+        660,
+        748,
+        1014,
+        839
+      ]
+    },
+    {
+      "name": "key-row-NACH LINKS",
+      "page": 1,
+      "x": 748,
+      "y": 975,
+      "width": 571,
+      "height": 56,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        904,
+        121,
+        1475,
+        177
+      ]
+    },
+    {
+      "name": "action-ABBRECHEN",
+      "page": 1,
+      "x": 0,
+      "y": 899,
+      "width": 322,
+      "height": 94,
+      "border": 0,
+      "source": "exec-41b4b148-9d59-4f39-9396-19c9ae892966.png",
+      "sourceRect": [
+        675,
+        659,
+        997,
+        753
+      ]
+    },
+    {
+      "name": "action-VERLASSEN",
+      "page": 1,
+      "x": 330,
+      "y": 893,
+      "width": 313,
+      "height": 95,
+      "border": 0,
+      "source": "exec-33a02139-9e37-408c-be9c-cc0a18fdf4d2.png",
+      "sourceRect": [
+        53,
+        802,
+        366,
+        897
+      ]
+    },
+    {
+      "name": "up-icon-Speed",
+      "page": 1,
+      "x": 1781,
+      "y": 1147,
+      "width": 206,
+      "height": 138,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        727,
+        318,
+        933,
+        456
+      ]
+    },
+    {
+      "name": "action-FÄHIGKEIT WÄHLEN",
+      "page": 1,
+      "x": 1327,
+      "y": 964,
+      "width": 414,
+      "height": 67,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        668,
+        760,
+        1082,
+        827
+      ]
+    },
+    {
+      "name": "action-UPGRADE 2  ·  12 ◇",
+      "page": 1,
+      "x": 0,
+      "y": 1160,
+      "width": 352,
+      "height": 75,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        227,
+        749,
+        579,
+        824
+      ]
+    },
+    {
+      "name": "action-STUFE 1  ·  WÄHLEN",
+      "page": 1,
+      "x": 651,
+      "y": 892,
+      "width": 348,
+      "height": 75,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        665,
+        749,
+        1013,
+        824
+      ]
+    },
+    {
+      "name": "action-ALLE GEGNER BESIEGEN",
+      "page": 1,
+      "x": 0,
+      "y": 822,
+      "width": 407,
+      "height": 63,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        673,
+        534,
+        1080,
+        597
+      ]
+    },
+    {
+      "name": "sport-icon-5",
+      "page": 0,
+      "x": 1837,
+      "y": 408,
+      "width": 191,
+      "height": 134,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        1276,
+        169,
+        1467,
+        303
+      ]
+    },
+    {
+      "name": "action-STANDARD WIEDERHERSTELLEN",
+      "page": 1,
+      "x": 1007,
+      "y": 884,
+      "width": 305,
+      "height": 83,
+      "border": 0,
+      "source": "exec-04f857d8-82c2-402a-b685-442460bcb341.png",
+      "sourceRect": [
+        1039,
+        748,
+        1344,
+        831
+      ]
+    },
+    {
+      "name": "choose-0",
+      "page": 1,
+      "x": 415,
+      "y": 802,
+      "width": 295,
+      "height": 82,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        318,
+        593,
+        613,
+        675
+      ]
+    },
+    {
+      "name": "choose-2",
+      "page": 1,
+      "x": 0,
+      "y": 732,
+      "width": 295,
+      "height": 82,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        1061,
+        593,
+        1356,
+        675
+      ]
+    },
+    {
+      "name": "main-title",
+      "page": 1,
+      "x": 1320,
+      "y": 895,
+      "width": 395,
+      "height": 61,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        43,
+        132,
+        438,
+        193
+      ]
+    },
+    {
+      "name": "choose-1",
+      "page": 1,
+      "x": 1723,
+      "y": 874,
+      "width": 293,
+      "height": 82,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        690,
+        593,
+        983,
+        675
+      ]
+    },
+    {
+      "name": "sport-icon-4",
+      "page": 0,
+      "x": 1837,
+      "y": 267,
+      "width": 179,
+      "height": 133,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        913,
+        169,
+        1092,
+        302
+      ]
+    },
+    {
+      "name": "main-tag",
+      "page": 1,
+      "x": 1320,
+      "y": 806,
+      "width": 293,
+      "height": 81,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        690,
+        197,
+        983,
+        278
+      ]
+    },
+    {
+      "name": "main-tag-blank",
+      "page": 1,
+      "x": 1621,
+      "y": 785,
+      "width": 293,
+      "height": 81,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        690,
+        197,
+        983,
+        278
+      ]
+    },
+    {
+      "name": "sport-icon-6",
+      "page": 0,
+      "x": 1837,
+      "y": 119,
+      "width": 165,
+      "height": 140,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        661,
+        481,
+        826,
+        621
+      ]
+    },
+    {
+      "name": "menu-icon-14",
+      "page": 1,
+      "x": 1879,
+      "y": 1910,
+      "width": 159,
+      "height": 138,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        182,
+        166,
+        341,
+        304
+      ]
+    },
+    {
+      "name": "up-icon-Heart",
+      "page": 0,
+      "x": 1309,
+      "y": 401,
+      "width": 162,
+      "height": 131,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        1127,
+        320,
+        1289,
+        451
+      ]
+    },
+    {
+      "name": "sport-icon-10",
+      "page": 0,
+      "x": 1309,
+      "y": 262,
+      "width": 162,
+      "height": 131,
+      "border": 0,
+      "source": "exec-ac920881-1b84-4135-a559-c9f72682b3d5.png",
+      "sourceRect": [
+        1127,
+        320,
+        1289,
+        451
+      ]
+    },
+    {
+      "name": "menu-icon-15",
+      "page": 0,
+      "x": 1821,
+      "y": 1910,
+      "width": 148,
+      "height": 138,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        581,
+        166,
+        729,
+        304
+      ]
+    },
+    {
+      "name": "sport-icon-13",
+      "page": 0,
+      "x": 1821,
+      "y": 1764,
+      "width": 148,
+      "height": 138,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        581,
+        166,
+        729,
+        304
+      ]
+    },
+    {
+      "name": "action-FUSSBALL",
+      "page": 1,
+      "x": 718,
+      "y": 805,
+      "width": 282,
+      "height": 71,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        253,
+        130,
+        535,
+        201
+      ]
+    },
+    {
+      "name": "action-BOXEN",
+      "page": 1,
+      "x": 1008,
+      "y": 805,
+      "width": 279,
+      "height": 71,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        849,
+        130,
+        1128,
+        201
+      ]
+    },
+    {
+      "name": "action-TENNIS",
+      "page": 1,
+      "x": 1295,
+      "y": 727,
+      "width": 278,
+      "height": 71,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        1148,
+        130,
+        1426,
+        201
+      ]
+    },
+    {
+      "name": "action-BASKETBALL",
+      "page": 1,
+      "x": 1581,
+      "y": 706,
+      "width": 274,
+      "height": 71,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        555,
+        130,
+        829,
+        201
+      ]
+    },
+    {
+      "name": "toggle-on",
+      "page": 1,
+      "x": 718,
+      "y": 737,
+      "width": 315,
+      "height": 60,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        469,
+        236,
+        784,
+        296
+      ]
+    },
+    {
+      "name": "toggle-off",
+      "page": 1,
+      "x": 303,
+      "y": 736,
+      "width": 316,
+      "height": 58,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        468,
+        136,
+        784,
+        194
+      ]
+    },
+    {
+      "name": "action-PROFIL LÖSCHEN",
+      "page": 0,
+      "x": 1821,
+      "y": 1676,
+      "width": 208,
+      "height": 80,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        422,
+        718,
+        630,
+        798
+      ]
+    },
+    {
+      "name": "action-+500 MÜNZEN",
+      "page": 0,
+      "x": 1821,
+      "y": 1588,
+      "width": 207,
+      "height": 80,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        718,
+        415,
+        798
+      ]
+    },
+    {
+      "name": "action-BUILD LEEREN",
+      "page": 0,
+      "x": 1821,
+      "y": 1501,
+      "width": 208,
+      "height": 79,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        422,
+        631,
+        630,
+        710
+      ]
+    },
+    {
+      "name": "action-+5 ZUFÄLLIGE UPGRADES",
+      "page": 0,
+      "x": 1821,
+      "y": 1414,
+      "width": 207,
+      "height": 79,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        631,
+        415,
+        710
+      ]
+    },
+    {
+      "name": "duo-spinner",
+      "page": 1,
+      "x": 1863,
+      "y": 655,
+      "width": 124,
+      "height": 122,
+      "border": 0,
+      "source": "exec-41b4b148-9d59-4f39-9396-19c9ae892966.png",
+      "sourceRect": [
+        775,
+        420,
+        899,
+        542
+      ]
+    },
+    {
+      "name": "action-UPGRADE-KARTEN",
+      "page": 0,
+      "x": 1821,
+      "y": 1333,
+      "width": 207,
+      "height": 73,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        668,
+        680,
+        875,
+        753
+      ]
+    },
+    {
+      "name": "action-ALLE FÄHIGKEITEN FREISCHALTEN",
+      "page": 1,
+      "x": 1041,
+      "y": 725,
+      "width": 208,
+      "height": 72,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        422,
+        552,
+        630,
+        624
+      ]
+    },
+    {
+      "name": "slider-track",
+      "page": 1,
+      "x": 1257,
+      "y": 669,
+      "width": 299,
+      "height": 50,
+      "border": 12,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        434,
+        556,
+        733,
+        606
+      ]
+    },
+    {
+      "name": "action-VOLLE HEILUNG",
+      "page": 1,
+      "x": 1564,
+      "y": 626,
+      "width": 207,
+      "height": 72,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        552,
+        415,
+        624
+      ]
+    },
+    {
+      "name": "action-BOSS-KARTEN (SELTEN+)",
+      "page": 1,
+      "x": 1779,
+      "y": 574,
+      "width": 202,
+      "height": 73,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        880,
+        680,
+        1082,
+        753
+      ]
+    },
+    {
+      "name": "dev-stage",
+      "page": 1,
+      "x": 1749,
+      "y": 964,
+      "width": 218,
+      "height": 67,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        768,
+        282,
+        986,
+        349
+      ]
+    },
+    {
+      "name": "toggle-row-INFO-ANZEIGE",
+      "page": 1,
+      "x": 627,
+      "y": 660,
+      "width": 208,
+      "height": 69,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        422,
+        355,
+        630,
+        424
+      ]
+    },
+    {
+      "name": "toggle-row-EIN-TREFFER-KILLS",
+      "page": 1,
+      "x": 303,
+      "y": 659,
+      "width": 207,
+      "height": 69,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        355,
+        415,
+        424
+      ]
+    },
+    {
+      "name": "sport-icon-14",
+      "page": 1,
+      "x": 843,
+      "y": 610,
+      "width": 119,
+      "height": 119,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        526,
+        224,
+        645,
+        343
+      ]
+    },
+    {
+      "name": "toggle-row-KEINE ABKLINGZEITEN",
+      "page": 1,
+      "x": 970,
+      "y": 649,
+      "width": 208,
+      "height": 68,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        422,
+        277,
+        630,
+        345
+      ]
+    },
+    {
+      "name": "toggle-row-UNVERWUNDBAR",
+      "page": 1,
+      "x": 518,
+      "y": 584,
+      "width": 207,
+      "height": 68,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        208,
+        277,
+        415,
+        345
+      ]
+    },
+    {
+      "name": "action-WÄHLEN",
+      "page": 0,
+      "x": 1309,
+      "y": 173,
+      "width": 169,
+      "height": 81,
+      "border": 0,
+      "source": "05-events-belohnungen-zustaende.png",
+      "sourceRect": [
+        899,
+        823,
+        1068,
+        904
+      ]
+    },
+    {
+      "name": "action-AUSWÄHLEN",
+      "page": 1,
+      "x": 0,
+      "y": 643,
+      "width": 169,
+      "height": 81,
+      "border": 0,
+      "source": "05-events-belohnungen-zustaende.png",
+      "sourceRect": [
+        899,
+        823,
+        1068,
+        904
+      ]
+    },
+    {
+      "name": "menu-icon-1",
+      "page": 1,
+      "x": 177,
+      "y": 608,
+      "width": 117,
+      "height": 116,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        729,
+        228,
+        846,
+        344
+      ]
+    },
+    {
+      "name": "action-WELLE ÜBERSPRINGEN",
+      "page": 1,
+      "x": 302,
+      "y": 586,
+      "width": 202,
+      "height": 65,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        673,
+        461,
+        875,
+        526
+      ]
+    },
+    {
+      "name": "action-BOSS RUFEN",
+      "page": 1,
+      "x": 0,
+      "y": 535,
+      "width": 200,
+      "height": 65,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        880,
+        461,
+        1080,
+        526
+      ]
+    },
+    {
+      "name": "upgrade-row",
+      "page": 1,
+      "x": 1697,
+      "y": 1659,
+      "width": 319,
+      "height": 39,
+      "border": 8,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        1128,
+        273,
+        1447,
+        312
+      ]
+    },
+    {
+      "name": "menu-icon-5",
+      "page": 1,
+      "x": 208,
+      "y": 469,
+      "width": 110,
+      "height": 109,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        1492,
+        232,
+        1602,
+        341
+      ]
+    },
+    {
+      "name": "nav-ranking",
+      "page": 1,
+      "x": 0,
+      "y": 437,
+      "width": 132,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        910,
+        4,
+        1042,
+        94
+      ]
+    },
+    {
+      "name": "nav-chars",
+      "page": 1,
+      "x": 326,
+      "y": 488,
+      "width": 131,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        506,
+        4,
+        637,
+        94
+      ]
+    },
+    {
+      "name": "nav-home",
+      "page": 1,
+      "x": 1186,
+      "y": 571,
+      "width": 129,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        367,
+        4,
+        496,
+        94
+      ]
+    },
+    {
+      "name": "nav-events",
+      "page": 1,
+      "x": 970,
+      "y": 551,
+      "width": 129,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        775,
+        4,
+        904,
+        94
+      ]
+    },
+    {
+      "name": "nav-settings",
+      "page": 1,
+      "x": 733,
+      "y": 512,
+      "width": 129,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1049,
+        4,
+        1178,
+        94
+      ]
+    },
+    {
+      "name": "nav-shop",
+      "page": 1,
+      "x": 465,
+      "y": 486,
+      "width": 127,
+      "height": 90,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        644,
+        4,
+        771,
+        94
+      ]
+    },
+    {
+      "name": "menu-icon-11",
+      "page": 1,
+      "x": 326,
+      "y": 387,
+      "width": 120,
+      "height": 93,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        159,
+        398,
+        279,
+        491
+      ]
+    },
+    {
+      "name": "menu-icon-3",
+      "page": 1,
+      "x": 600,
+      "y": 469,
+      "width": 104,
+      "height": 107,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        1116,
+        236,
+        1220,
+        343
+      ]
+    },
+    {
+      "name": "menu-icon-2",
+      "page": 1,
+      "x": 454,
+      "y": 382,
+      "width": 114,
+      "height": 96,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        914,
+        242,
+        1028,
+        338
+      ]
+    },
+    {
+      "name": "menu-icon-4",
+      "page": 1,
+      "x": 140,
+      "y": 354,
+      "width": 102,
+      "height": 107,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        1304,
+        233,
+        1406,
+        340
+      ]
+    },
+    {
+      "name": "sport-icon-3",
+      "page": 1,
+      "x": 1930,
+      "y": 1050,
+      "width": 99,
+      "height": 89,
+      "border": 0,
+      "source": "06-entwicklermenue.png",
+      "sourceRect": [
+        1092,
+        735,
+        1191,
+        824
+      ]
+    },
+    {
+      "name": "sport-icon-9",
+      "page": 1,
+      "x": 1922,
+      "y": 785,
+      "width": 92,
+      "height": 81,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        136,
+        579,
+        228,
+        660
+      ]
+    },
+    {
+      "name": "code-cell",
+      "page": 1,
+      "x": 1945,
+      "y": 1447,
+      "width": 78,
+      "height": 95,
+      "border": 10,
+      "source": "exec-4b302c3b-2012-428d-9f23-407abbc07aa1.png",
+      "sourceRect": [
+        919,
+        438,
+        997,
+        533
+      ]
+    },
+    {
+      "name": "action-MINIBOSS",
+      "page": 1,
+      "x": 1879,
+      "y": 1848,
+      "width": 134,
+      "height": 54,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        947,
+        611,
+        1081,
+        665
+      ]
+    },
+    {
+      "name": "action-NORMAL",
+      "page": 1,
+      "x": 1549,
+      "y": 1488,
+      "width": 133,
+      "height": 54,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        668,
+        611,
+        801,
+        665
+      ]
+    },
+    {
+      "name": "action-ELITE",
+      "page": 1,
+      "x": 0,
+      "y": 375,
+      "width": 132,
+      "height": 54,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        807,
+        611,
+        939,
+        665
+      ]
+    },
+    {
+      "name": "key-face",
+      "page": 1,
+      "x": 1202,
+      "y": 1199,
+      "width": 139,
+      "height": 50,
+      "border": 10,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        1298,
+        124,
+        1437,
+        174
+      ]
+    },
+    {
+      "name": "sport-icon-11",
+      "page": 1,
+      "x": 0,
+      "y": 286,
+      "width": 81,
+      "height": 81,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        1007,
+        750,
+        1088,
+        831
+      ]
+    },
+    {
+      "name": "dev-slider-track",
+      "page": 1,
+      "x": 734,
+      "y": 1422,
+      "width": 252,
+      "height": 25,
+      "border": 8,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        284,
+        485,
+        536,
+        510
+      ]
+    },
+    {
+      "name": "currency-coins",
+      "page": 1,
+      "x": 748,
+      "y": 1041,
+      "width": 132,
+      "height": 46,
+      "border": 12,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1203,
+        18,
+        1335,
+        64
+      ]
+    },
+    {
+      "name": "currency-gems",
+      "page": 1,
+      "x": 888,
+      "y": 1041,
+      "width": 128,
+      "height": 46,
+      "border": 12,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1350,
+        18,
+        1478,
+        64
+      ]
+    },
+    {
+      "name": "slider-fill",
+      "page": 1,
+      "x": 0,
+      "y": 1698,
+      "width": 227,
+      "height": 24,
+      "border": 5,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        445,
+        568,
+        672,
+        592
+      ]
+    },
+    {
+      "name": "action-−",
+      "page": 1,
+      "x": 518,
+      "y": 661,
+      "width": 79,
+      "height": 67,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        677,
+        282,
+        756,
+        349
+      ]
+    },
+    {
+      "name": "action-+",
+      "page": 1,
+      "x": 870,
+      "y": 535,
+      "width": 77,
+      "height": 67,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        1001,
+        282,
+        1078,
+        349
+      ]
+    },
+    {
+      "name": "sport-icon-7",
+      "page": 1,
+      "x": 1974,
+      "y": 1358,
+      "width": 62,
+      "height": 81,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        230,
+        582,
+        292,
+        663
+      ]
+    },
+    {
+      "name": "menu-icon-8",
+      "page": 1,
+      "x": 1975,
+      "y": 973,
+      "width": 63,
+      "height": 69,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        386,
+        758,
+        449,
+        827
+      ]
+    },
+    {
+      "name": "menu-icon-13",
+      "page": 1,
+      "x": 250,
+      "y": 397,
+      "width": 67,
+      "height": 64,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        677,
+        762,
+        744,
+        826
+      ]
+    },
+    {
+      "name": "menu-icon-7",
+      "page": 0,
+      "x": 1977,
+      "y": 1980,
+      "width": 63,
+      "height": 68,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        241,
+        759,
+        304,
+        827
+      ]
+    },
+    {
+      "name": "menu-icon-6",
+      "page": 1,
+      "x": 1107,
+      "y": 581,
+      "width": 71,
+      "height": 60,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        91,
+        767,
+        162,
+        827
+      ]
+    },
+    {
+      "name": "menu-icon-10",
+      "page": 0,
+      "x": 1977,
+      "y": 1902,
+      "width": 60,
+      "height": 70,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        1515,
+        529,
+        1575,
+        599
+      ]
+    },
+    {
+      "name": "menu-icon-12",
+      "page": 0,
+      "x": 1977,
+      "y": 1827,
+      "width": 62,
+      "height": 67,
+      "border": 0,
+      "source": "02-spieler-shop.png",
+      "sourceRect": [
+        477,
+        586,
+        539,
+        653
+      ]
+    },
+    {
+      "name": "slider-thumb",
+      "page": 1,
+      "x": 250,
+      "y": 328,
+      "width": 59,
+      "height": 61,
+      "border": 0,
+      "source": "03-optionen.png",
+      "sourceRect": [
+        671,
+        550,
+        730,
+        611
+      ]
+    },
+    {
+      "name": "menu-icon-9",
+      "page": 1,
+      "x": 1974,
+      "y": 1297,
+      "width": 66,
+      "height": 53,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        533,
+        766,
+        599,
+        819
+      ]
+    },
+    {
+      "name": "sport-icon-12",
+      "page": 1,
+      "x": 627,
+      "y": 741,
+      "width": 66,
+      "height": 53,
+      "border": 0,
+      "source": "01-hauptmenue.png",
+      "sourceRect": [
+        533,
+        766,
+        599,
+        819
+      ]
+    },
+    {
+      "name": "sport-icon-2",
+      "page": 1,
+      "x": 140,
+      "y": 471,
+      "width": 54,
+      "height": 56,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        1114,
+        257,
+        1168,
+        313
+      ]
+    },
+    {
+      "name": "quit",
+      "page": 0,
+      "x": 1977,
+      "y": 1767,
+      "width": 55,
+      "height": 52,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1604,
+        17,
+        1659,
+        69
+      ]
+    },
+    {
+      "name": "sport-icon-1",
+      "page": 0,
+      "x": 1426,
+      "y": 109,
+      "width": 51,
+      "height": 56,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        674,
+        257,
+        725,
+        313
+      ]
+    },
+    {
+      "name": "sport-icon-15",
+      "page": 1,
+      "x": 1009,
+      "y": 1391,
+      "width": 51,
+      "height": 56,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        674,
+        257,
+        725,
+        313
+      ]
+    },
+    {
+      "name": "friends",
+      "page": 1,
+      "x": 1068,
+      "y": 1395,
+      "width": 54,
+      "height": 52,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1493,
+        17,
+        1547,
+        69
+      ]
+    },
+    {
+      "name": "info",
+      "page": 1,
+      "x": 1107,
+      "y": 521,
+      "width": 53,
+      "height": 52,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1549,
+        17,
+        1602,
+        69
+      ]
+    },
+    {
+      "name": "sport-icon-0",
+      "page": 1,
+      "x": 1989,
+      "y": 591,
+      "width": 48,
+      "height": 56,
+      "border": 0,
+      "source": "exec-8c8062b1-1571-4b53-b786-f6cde8c7af44.png",
+      "sourceRect": [
+        240,
+        257,
+        288,
+        313
+      ]
+    },
+    {
+      "name": "dev-toggle-on",
+      "page": 1,
+      "x": 1186,
+      "y": 674,
+      "width": 59,
+      "height": 43,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        223,
+        290,
+        282,
+        333
+      ]
+    },
+    {
+      "name": "dev-toggle-off",
+      "page": 1,
+      "x": 1779,
+      "y": 655,
+      "width": 59,
+      "height": 43,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        437,
+        290,
+        496,
+        333
+      ]
+    },
+    {
+      "name": "sport-icon-8",
+      "page": 1,
+      "x": 733,
+      "y": 615,
+      "width": 45,
+      "height": 37,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        1140,
+        313,
+        1185,
+        350
+      ]
+    },
+    {
+      "name": "dev-slider-thumb",
+      "page": 1,
+      "x": 786,
+      "y": 613,
+      "width": 40,
+      "height": 39,
+      "border": 0,
+      "source": "exec-e2e0b1c5-d343-4761-b2d6-a6f7d8a9c56f.png",
+      "sourceRect": [
+        396,
+        479,
+        436,
+        518
+      ]
+    },
+    {
+      "name": "plus",
+      "page": 1,
+      "x": 1349,
+      "y": 1217,
+      "width": 31,
+      "height": 32,
+      "border": 0,
+      "source": "exec-a6e223bc-4e46-43f2-950e-a71d4fe3d0b8.png",
+      "sourceRect": [
+        1295,
+        25,
+        1326,
+        57
+      ]
+    }
+  ],
+  "pages": 2
+}

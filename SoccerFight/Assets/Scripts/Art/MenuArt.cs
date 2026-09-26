@@ -512,37 +512,11 @@ namespace SoccerFight
         /// </summary>
         static void BuildFont()
         {
-            var font = Resources.Load<Font>("Fonts/Inter-SemiBold");
-            FontHeavy = font != null ? TMP_FontAsset.CreateFontAsset(font, 90, 22, GlyphRenderMode.SDFAA, 1024, 1024) : UiArt.FontBold;
-            if (FontHeavy == null || FontHeavy.material == null) return;
-            FontHeavy.name = "Inter Menu SDF";
+            FontHeavy = ExactMenuFont.Get();
+            TextHeavy = new Material(FontHeavy.material) { name = "Originalschrift Menü" };
+            TextHeavySoft = new Material(FontHeavy.material) { name = "Originalschrift Beschriftung" };
+            TextPlate = new Material(FontHeavy.material) { name = "Originalschrift Platte" };
 
-            // headings and button labels: a hairline of night blue and a soft shadow underneath
-            TextHeavy = new Material(FontHeavy.material) { name = "SF Menu Heavy" };
-            TextHeavy.EnableKeyword("OUTLINE_ON");
-            TextHeavy.SetColor("_OutlineColor", Ink);
-            TextHeavy.SetFloat("_FaceDilate", 0.06f);
-            TextHeavy.SetFloat("_OutlineWidth", 0.08f);
-            TextHeavy.SetFloat("_OutlineSoftness", 0f);
-            TextHeavy.EnableKeyword("UNDERLAY_ON");
-            TextHeavy.SetColor("_UnderlayColor", new Color(0f, 0.02f, 0.04f, 0.65f));
-            TextHeavy.SetFloat("_UnderlayOffsetX", 0f);
-            TextHeavy.SetFloat("_UnderlayOffsetY", -0.55f);
-            TextHeavy.SetFloat("_UnderlayDilate", 0.25f);
-            TextHeavy.SetFloat("_UnderlaySoftness", 0.5f);
-
-            // small print: only the soft shadow
-            TextHeavySoft = new Material(FontHeavy.material) { name = "SF Menu Soft" };
-            TextHeavySoft.SetFloat("_FaceDilate", 0.02f);
-            TextHeavySoft.EnableKeyword("UNDERLAY_ON");
-            TextHeavySoft.SetColor("_UnderlayColor", new Color(0f, 0.02f, 0.04f, 0.55f));
-            TextHeavySoft.SetFloat("_UnderlayOffsetY", -0.4f);
-            TextHeavySoft.SetFloat("_UnderlayDilate", 0.15f);
-            TextHeavySoft.SetFloat("_UnderlaySoftness", 0.45f);
-
-            // plain dark text printed onto light plates (the gold play button)
-            TextPlate = new Material(FontHeavy.material) { name = "SF Menu Plate" };
-            TextPlate.SetFloat("_FaceDilate", 0.08f);
         }
 
         /// <summary>Menu label: semibold, tracked, soft shadow.</summary>
@@ -550,6 +524,9 @@ namespace SoccerFight
             TextAlignmentOptions align = TextAlignmentOptions.Center, float spacing = 4f, Material mat = null)
         {
             var t = UiKit.Label(name, parent, text, size, color, align, pos, box, true, spacing);
+            // Fließtext bleibt lesbar; nur Menüüberschriften und Aktionen nutzen die Originalbuchstaben.
+            foreach (char c in text) if (char.IsLower(c)) return t;
+            if (size < 30f && name != "Label" && name != "Name" && name != "Role" && name != "FrontName" && name != "Title" && name != "Head" && name != "Header") return t;
             if (FontHeavy != null) t.font = FontHeavy;
             var m = mat != null ? mat : TextHeavy;
             if (m != null) t.fontSharedMaterial = m;

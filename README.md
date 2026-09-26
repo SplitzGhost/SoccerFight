@@ -104,9 +104,15 @@ Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitz
 Seiten verwenden die ursprüngliche Entwurfsgestaltung: gemalte, plastische Steinplatten in Petrol mit
 breiten Facettenkanten, eingravierten Spiralen und Sportsymbolen. Gold hebt Hauptaktionen hervor. In der oberen Leiste ist nur der aktive Menüpunkt
 hell; die übrigen Platten und Symbole bleiben dunkel, damit der Seiteninhalt im Mittelpunkt steht.
-`UI/ButtonSkin.cs` stellt die gemalten Originalflächen (`original-plates.png`) und die beiden Symbolatlanten unter
-`Resources/UiButtons/` bereit. Derselbe Stil gilt für Shop, Spielerauswahl, Optionen, Pause,
-Entwicklermenü und Belohnungskarten; Bedienung und Spielfunktionen bleiben gleich.
+Die Grafiken werden direkt aus den freigegebenen Probebildern ausgeschnitten, einschließlich ihrer gemalten
+Symbole und festen Beschriftungen. Es gibt keine vereinfachte oder neu generierte Ersatzgestaltung.
+`tools/extract-menu-buttons.py --sources Inspiration/MenuPreviews` erzeugt die Atlanten unter
+`Resources/UiButtons/Exact/`; `layout.json` hält Herkunftsbild und Ausschnitt jedes Elements fest.
+`UI/ExactButtonArt.cs` und `UI/ButtonSkin.cs` laden diese Originalgrafiken für Shop, Spielerauswahl, Optionen,
+Pause, Duo, Entwicklermenü und Belohnungsbuttons. Leere Flächen für wechselnde Werte stammen ebenfalls
+aus denselben Originalplatten; `UI/ExactMenuFont.cs` verwendet ausgeschnittene Originalbuchstaben für
+veränderliche Menübeschriftungen. Preise, Stufen, Raumcodes und Tastenbelegungen bleiben aktuell und bedienbar.
+Die Funktionen bleiben gleich; das Hauptmenü zeigt keine Quests.
 
 Statt eines Mauszeigers gibt es das Fadenkreuz aus dem Spiel. **Knöpfe werden nicht angeklickt, sondern
 abgeschossen:** Ein Linksklick tritt einen Ball aus der Ich-Perspektive ins Bild – er startet groß am unteren Rand,

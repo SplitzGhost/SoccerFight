@@ -66,12 +66,12 @@ namespace SoccerFight
                 keyRows[a] = UiKit.MakeKeyRow(Root, KeyBindings.ActionName(a), new Vector2(rx, y), colW, () => BeginCapture(action));
                 y -= 44f;
             }
-            UiKit.MakeButton(Root, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 14f), new Vector2(colW, 46f), KeyBindings.ResetDefaults, false, 14f);
-            UiKit.Label("KeyHint", Root, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 56f), new Vector2(colW, 20f), true, 4f);
-            UiKit.Label("Pause", Root, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC  ·  F3  DEVELOPER", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 78f), new Vector2(colW, 20f), true, 4f);
+            UiKit.MakeButton(Root, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 31f), new Vector2(305f, 83f), KeyBindings.ResetDefaults, false, 14f);
+            UiKit.Label("KeyHint", Root, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 94f), new Vector2(colW, 20f), true, 4f);
+            UiKit.Label("Pause", Root, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC  ·  F3  DEVELOPER", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 116f), new Vector2(colW, 20f), true, 4f);
 
             if (withBackButton)
-                UiKit.MakeButton(Root, "ZURÜCK", new Vector2(0f, -354f), new Vector2(280f, 54f), () => BackRequested?.Invoke(), true);
+                UiKit.MakeButton(Root, "ZURÜCK", new Vector2(0f, -354f), new Vector2(354f, 91f), () => BackRequested?.Invoke(), true);
 
             KeyBindings.Changed += RefreshKeys;
             RefreshKeys();
@@ -123,10 +123,8 @@ namespace SoccerFight
             {
                 var row = kv.Value;
                 bool waiting = capturing && kv.Key == captureAction;
-                row.Background.color = waiting
-                    ? Color.Lerp(UiKit.ButtonHover, Palette.ShotCyan * 0.55f, pulse * 0.6f)
-                    : Color.Lerp(UiKit.ButtonBase, UiKit.ButtonHover, row.Anim.Hover);
-                row.Rim.color = waiting ? Palette.ShotCyan.WithAlpha(0.6f + 0.4f * pulse) : Color.white.WithAlpha(0.14f + 0.2f * row.Anim.Hover);
+                row.Background.color = Color.white;
+                row.Rim.color = waiting ? Palette.ShotCyan.WithAlpha(.3f + .3f * pulse) : Color.clear;
                 row.Key.color = waiting ? Color.white : Color.Lerp(Palette.UiText, Palette.ShotCyan, row.Anim.Hover * 0.6f);
             }
         }

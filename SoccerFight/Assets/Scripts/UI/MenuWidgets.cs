@@ -22,6 +22,16 @@ namespace SoccerFight
         Image shineImg;
         float shineT;
         readonly float lip;
+        Image original;
+        string originalKey;
+        public Transform OriginalText;
+
+        public void UseExact(string key)
+        {
+            originalKey = key;
+            if (original == null) original = UiKit.Img("Probebild", Face, ExactButtonArt.Get(key), Color.white,
+                Vector2.zero, Size);
+        }
 
         public const float LipHeight = 5f;
 
@@ -69,7 +79,7 @@ namespace SoccerFight
             Flash = UiKit.Img("Flash", Face, MenuArt.Body, Color.white.WithAlpha(0f), Vector2.zero, size, Image.Type.Sliced);
         }
 
-        Color BodyColor(Color c) => Filled ? c : Color.Lerp(ButtonSkin.Slate, c, 0.08f);
+        Color BodyColor(Color c) => Color.white;
 
         Color LipColor(Color c) => Filled ? new Color(c.r * 0.45f, c.g * 0.35f, c.b * 0.25f, 1f) : new Color(0.01f, 0.025f, 0.04f, 0.95f);
 
@@ -113,6 +123,23 @@ namespace SoccerFight
         /// <param name="fade">page / entrance visibility</param>
         public void Style(float hover, float hit, float punch, float fade, float time)
         {
+            var source = originalKey != null ? ExactButtonArt.Get(originalKey) : Label != null ? ExactButtonArt.Action(Label.text) : null;
+            if (source != null)
+            {
+                if (original == null) original = UiKit.Img("Probebild", Face, source, Color.white, Vector2.zero, Size);
+                original.sprite = source;
+                original.preserveAspect = true;
+                foreach (Transform child in Face) child.gameObject.SetActive(child == original.transform || child == OriginalText);
+                Lip.gameObject.SetActive(false); Glow.gameObject.SetActive(false); Shadow.gameObject.SetActive(false);
+                original.color = Color.white.WithAlpha(fade * (Disabled ? 0.65f : 1f));
+                Face.anchoredPosition = new Vector2(0f, -Mathf.Clamp01(hit) * lip);
+                Root.localScale = Vector3.one;
+                return;
+            }
+            if (original != null)
+            {
+                foreach (Transform child in Face) child.gameObject.SetActive(child != original.transform);
+            }
             float h = Disabled ? hover * 0.4f : hover;
             float press = Mathf.Clamp01(hit * 1.4f);
             Face.anchoredPosition = new Vector2(0f, -lip * press + h * 2f);
@@ -123,7 +150,9 @@ namespace SoccerFight
 
             // hovered, the glass takes a breath of the accent and the bar at the bottom lights up
             Color hoverGlass = Color.Lerp(BodyColor(c), new Color(0.42f, 0.63f, 0.69f, 1f), 0.35f);
-            Body.color = (Filled ? Color.Lerp(c, Color.white, h * 0.12f) : Color.Lerp(BodyColor(c), hoverGlass, h)).WithAlpha(fade);
+            Body.sprite = ExactButtonArt.Plate(Filled);
+            Body.color = Color.white.WithAlpha(fade);
+            Lip.gameObject.SetActive(false); Glow.gameObject.SetActive(false); Shadow.gameObject.SetActive(false);
             Lip.color = LipColor(c).WithAlpha(fade);
             Shadow.color = new Color(0f, 0.01f, 0.03f, 0.5f * fade);
             Wash.color = (Filled ? Color.white : c).WithAlpha(fade * (Filled ? 0f : 0.01f + 0.02f * h));
@@ -151,6 +180,8 @@ namespace SoccerFight
                 shine.anchoredPosition = new Vector2(Mathf.Lerp(-Size.x * 0.7f, Size.x * 0.7f, MathUtil.EaseInOutSine(u)), 0f);
                 shineImg.color = Color.white.WithAlpha(fade * 0.075f * (u < 1f ? 1f : 0f));
             }
+            Wash.color = Gloss.color = Rim.color = Bar.color = Flash.color = Color.clear;
+            if (shineImg != null) shineImg.color = Color.clear;
         }
     }
 
@@ -162,54 +193,22 @@ namespace SoccerFight
         public readonly RectTransform Root;
         public readonly Vector2 Size;
         public readonly int Page;
-        readonly Image plate, lip, icon, flash;
-        readonly TextMeshProUGUI label;
-        readonly RectTransform face;
-        float active, activeVel;
-        public static readonly Color Moon = ButtonSkin.Gold;
-
+        readonly Image original;
+        public static readonly Color Moon = Color.white;
         public NavTab(Transform parent, string text, int page, float fontSize, float height)
         {
-            ButtonSkin.Build();
             Page = page;
-            var probe = MenuArt.Label("Label", null, text, fontSize, Color.white, Vector2.zero,
-                new Vector2(600f, height), TextAlignmentOptions.Center, fontSize * 0.16f);
-            float w = probe.GetPreferredValues(text).x + fontSize * 1.7f;
-            Size = new Vector2(w, height);
+            var sprite = ExactButtonArt.Navigation(page);
+            Size = sprite.rect.size * (1920f / 1672f);
             Root = UiKit.Node("Tab " + text, parent, Vector2.zero, Size);
-            lip = UiKit.Img("Lip", Root, ButtonSkin.Plate, new Color(0.025f, 0.05f, 0.065f),
-                new Vector2(0f, -3f), new Vector2(w - 5f, height - 12f), Image.Type.Sliced);
-            face = UiKit.Node("Face", Root, Vector2.zero, Size);
-            plate = UiKit.Img("Plate", face, ButtonSkin.Plate, ButtonSkin.Slate,
-                Vector2.zero, new Vector2(w - 5f, height - 16f), Image.Type.Sliced);
-            icon = UiKit.Img("Icon", face, ButtonSkin.Nav(page), Color.white,
-                new Vector2(0f, 12f), new Vector2(38f, 38f));
-            icon.preserveAspect = true;
-            probe.transform.SetParent(face, false);
-            label = probe;
-            label.fontSize = fontSize * 0.79f;
-            label.characterSpacing = 1f;
-            label.rectTransform.sizeDelta = new Vector2(w - 10f, 25f);
-            label.rectTransform.anchoredPosition = new Vector2(0f, -19f);
-            flash = UiKit.Img("Flash", face, ButtonSkin.Plate, Color.clear,
-                Vector2.zero, new Vector2(w - 5f, height - 16f), Image.Type.Sliced);
+            original = UiKit.Img("Probebild", Root, sprite, Color.white, Vector2.zero, Size);
         }
-
         public void Style(float hover, float hit, float punch, float fade, bool isActive, float udt)
         {
-            MathUtil.Spring(ref active, ref activeVel, isActive ? 1f : 0f, 7f, 0.8f, udt);
-            float a = Mathf.Clamp01(active), h = hover * (1f - a);
-            float scale = 1f + hover * 0.015f + punch * 0.04f;
-            Root.localScale = new Vector3(scale, scale, 1f);
-            face.anchoredPosition = new Vector2(0f, -hit * 3f);
-            // Nur die offene Seite ist hell; die übrigen Symbole treten hinter den Inhalt zurück.
-            plate.color = Color.Lerp(new Color(0.10f + h * 0.05f, 0.18f + h * 0.07f, 0.22f + h * 0.07f), Moon, a).WithAlpha(fade);
-            lip.color = new Color(0.025f, 0.05f, 0.065f, fade);
-            icon.color = Color.Lerp(new Color(0.32f + h * 0.15f, 0.42f + h * 0.15f, 0.47f + h * 0.15f), Color.white, a).WithAlpha(fade);
-            label.color = Color.Lerp(new Color(0.43f + h * 0.15f, 0.53f + h * 0.15f, 0.58f + h * 0.15f), MenuArt.Ink, a).WithAlpha(fade);
-            var mat = a > 0.5f ? MenuArt.TextPlate : MenuArt.TextHeavy;
-            if (mat != null && label.fontSharedMaterial != mat) label.fontSharedMaterial = mat;
-            flash.color = Color.white.WithAlpha(fade * hit * 0.12f);
+            // Originalfarben; nur der weiterhin gewünschte inaktive Zustand wird gedämpft.
+            original.color = new Color(isActive ? 1f : .65f, isActive ? 1f : .65f, isActive ? 1f : .65f, fade);
+            Root.localScale = Vector3.one;
+            original.rectTransform.anchoredPosition = new Vector2(0f, -hit * 3f);
         }
     }
 
@@ -221,7 +220,7 @@ namespace SoccerFight
         {
             var rt = UiKit.Node(name, parent, pos, size);
             UiKit.Img("Shadow", rt, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.45f), new Vector2(0f, -12f), size * 1.08f + new Vector2(60f, 60f));
-            var body = UiKit.Img("Body", rt, MenuArt.CardBody, ButtonSkin.Slate, Vector2.zero, size, Image.Type.Sliced);
+            var body = UiKit.Img("Body", rt, MenuArt.CardBody, Color.white, Vector2.zero, size, Image.Type.Sliced);
             UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(ButtonSkin.Slate, accent, 0.2f).WithAlpha(rim * 0.7f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
             UiKit.Img("TopLight", rt, UiArt.LineFade, accent.WithAlpha(0.16f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return body;
