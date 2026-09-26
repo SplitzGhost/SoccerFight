@@ -2,13 +2,14 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Gemeinsame, ruhige Facetten und gemalte Symbole für alle Menübuttons.</summary>
+    /// <summary>Gemalte Originalplatten mit gravierten Spiralen und plastischen Menü-Symbolen.</summary>
     public static class ButtonSkin
     {
         public static Sprite Plate, Panel, Frame, Socket;
-        public static readonly Color Slate = new Color(0.24f, 0.40f, 0.47f, 1f);
+        public static readonly Color Slate = new Color(0.36f, 0.59f, 0.67f, 1f);
         public static readonly Color Gold = new Color(0.86f, 0.65f, 0.30f, 1f);
         static readonly Sprite[] menu = new Sprite[16], sport = new Sprite[16];
+        static readonly Sprite[] originalPlates = new Sprite[2];
         static bool built;
         [System.Serializable] sealed class AtlasLayout { public AtlasRect[] icons; }
         [System.Serializable] sealed class AtlasRect { public float x, y, width, height; }
@@ -20,8 +21,9 @@ namespace SoccerFight
         {
             if (built) return;
             built = true;
-            Plate = Surface("ButtonPlate", false, false);
-            Panel = Surface("ButtonPanel", true, false);
+            Load("original-plates", originalPlates, true);
+            Plate = originalPlates[0];
+            Panel = originalPlates[1];
             Frame = Surface("ButtonFrame", false, true);
             Socket = Panel;
             Load("menu-icons", menu);
@@ -46,7 +48,7 @@ namespace SoccerFight
             return UiArt.ToUi(c, name, new Vector4(36f, 36f, 36f, 36f));
         }
 
-        static void Load(string name, Sprite[] icons)
+        static void Load(string name, Sprite[] icons, bool sliced = false)
         {
             var tex = Resources.Load<Texture2D>("UiButtons/" + name);
             if (tex == null) { Debug.LogError("Buttonatlas fehlt: " + name); return; }
@@ -61,8 +63,11 @@ namespace SoccerFight
                     var r = layout.icons[i];
                     rect = new Rect(r.x, r.y, r.width, r.height);
                 }
+                var border = sliced ? new Vector4(Mathf.Min(220f, rect.width * 0.25f),
+                    Mathf.Min(220f, rect.height * 0.49f), Mathf.Min(220f, rect.width * 0.25f),
+                    Mathf.Min(220f, rect.height * 0.49f)) : Vector4.zero;
                 icons[i] = Sprite.Create(tex, rect,
-                    new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+                    new Vector2(0.5f, 0.5f), sliced ? 450f : 100f, 0, SpriteMeshType.FullRect, border);
                 icons[i].name = name + "-" + i;
             }
         }

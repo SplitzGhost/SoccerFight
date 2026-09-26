@@ -39,8 +39,8 @@ namespace SoccerFight
     /// <summary>Gemeinsame Erzeuger für plastische Buttons, Schalter, Regler und Menüplatten.</summary>
     public static class UiKit
     {
-        public static readonly Color ButtonBase = new Color(0.24f, 0.40f, 0.47f, 1f);
-        public static readonly Color ButtonHover = new Color(0.34f, 0.53f, 0.60f, 1f);
+        public static readonly Color ButtonBase = new Color(0.36f, 0.59f, 0.67f, 1f);
+        public static readonly Color ButtonHover = new Color(0.46f, 0.70f, 0.77f, 1f);
         public static readonly Color Track = new Color(0.14f, 0.2f, 0.3f, 1f);
 
         public static RectTransform Node(string name, Transform parent, Vector2 pos, Vector2 size)

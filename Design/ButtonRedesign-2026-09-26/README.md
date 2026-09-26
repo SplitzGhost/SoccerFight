@@ -4,11 +4,13 @@ Ursprünglicher Entwurfsstand: 26.09.2026. Sieben mit dem integrierten Imagegen-
 
 ## Umsetzung im Spiel
 
-Die freigegebene Richtung ist inzwischen eingebaut, auf Wunsch mit ruhigeren Flächen, weniger Glanz und ohne eingravierte Spiralen. Der Quest-Platzhalter ist entfernt. Nur der aktive Navigationstab bleibt hell, die übrigen Symbole sind gedämpft. Funktionen, Preise, Tastenbelegungen und die Auswahl durch Balltreffer bleiben erhalten.
+Die ursprüngliche Gestaltung ist inzwischen eingebaut. Nach der Korrektur des Nutzers werden die vereinfachten Flächen wieder durch gemalte Platten mit breiten Facetten, Steinstruktur und eingravierten Spiralen ersetzt. Der Quest-Platzhalter bleibt entfernt. Nur der aktive Navigationstab bleibt hell, die übrigen Symbole sind gedämpft. Funktionen, Preise, Tastenbelegungen und die Auswahl durch Balltreffer bleiben erhalten.
 
-`UI/ButtonSkin.cs` liefert skalierbare Platten und Rahmen. Zwei neu mit Imagegen erzeugte, transparente Atlanten unter `Resources/UiButtons/` enthalten die gemalten Menü- und Sportsymbole. Die zugehörigen Layoutdateien beschreiben die tatsächlichen Symbolausschnitte; sie vermeiden angeschnittene Symbole und unnötige transparente Ränder. Beschriftungen bleiben echte Spieltexte. Gemeinsam verwendet in `ChunkButton`, `NavTab`, `UiKit`, Entwicklermenü und Belohnungskarten.
+`UI/ButtonSkin.cs` verwendet skalierbare, gemalte Platten aus `Resources/UiButtons/original-plates.png`. Der Originalbogen `01-hauptmenue.png` wurde mit dem integrierten Imagegen-Werkzeug für die Verwendung im Spiel aufbereitet: Beschriftungen und Symbole getrennt, Oberfläche und Verzierungen beibehalten, neutral eingefärbt für Petrol/Gold im Spiel. Zwei weitere transparente Atlanten enthalten die gemalten Menü- und Sportsymbole. Die zugehörigen Layoutdateien beschreiben die tatsächlichen Ausschnitte; sie vermeiden angeschnittene Grafiken und unnötige transparente Ränder. Beschriftungen bleiben echte Spieltexte. Gemeinsam verwendet in `ChunkButton`, `NavTab`, `UiKit`, Entwicklermenü und Belohnungskarten.
 
-Unity-Prüfung: Szenarien `menu`, `meta` und `buttons`; Aufnahmen liegen unter `.build/cap/buttons-*`. Der folgende Abschnitt dokumentiert die ursprünglichen Konzeptbögen.
+Prompt für die Originalplatten: Originalform des SPIELEN-Buttons aus Bild 01 mit breiten gemalten Facetten, sichtbarer Unterkante, kleinen Kerben und allen vier Spiralgravuren exakt beibehalten; Text, Ball und Symbole entfernen. Zwei transparente, neutral silbergraue Platten übereinander: eine gefüllte Buttonfläche und eine passende Platte mit dunklem eingelassenem Zentrum. Keine vereinfachte Vektorform, keine neue Gestaltung. Die Farben werden zur Laufzeit gesetzt.
+
+Unity-Prüfung: Szenarien `menu`, `meta` und `buttons`; Aufnahmen der Originalflächen liegen unter `.build/cap/buttons-original`. Der folgende Abschnitt dokumentiert die ursprünglichen Konzeptbögen.
 
 ## Gestaltungsrichtung
 

@@ -101,10 +101,10 @@ zu Spielern, Shop, Events, Rangliste und Optionen. Rangliste, Freunde und Events
 („kommt bald“), Info erklärt Steuerung und Spielprinzip. **Beim allerersten Start** öffnet das Menü auf der
 Starterwahl (siehe „Fortschritt“) und lässt einen erst danach aufs Hauptmenü. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
 Ball direkt auf die Kamera zu, der Ball füllt das Bild, und hinter dem Aufblitzen beginnt der Lauf. Die Knöpfe und
-Seiten verwenden abgeschrägte, plastische Platten in gedämpftem Petrol mit gemalten Sportsymbolen und
-zurückhaltenden Lichtkanten. Gold hebt Hauptaktionen hervor. In der oberen Leiste ist nur der aktive Menüpunkt
+Seiten verwenden die ursprüngliche Entwurfsgestaltung: gemalte, plastische Steinplatten in Petrol mit
+breiten Facettenkanten, eingravierten Spiralen und Sportsymbolen. Gold hebt Hauptaktionen hervor. In der oberen Leiste ist nur der aktive Menüpunkt
 hell; die übrigen Platten und Symbole bleiben dunkel, damit der Seiteninhalt im Mittelpunkt steht.
-`UI/ButtonSkin.cs` stellt die gemeinsamen Flächen und die beiden Symbolatlanten unter
+`UI/ButtonSkin.cs` stellt die gemalten Originalflächen (`original-plates.png`) und die beiden Symbolatlanten unter
 `Resources/UiButtons/` bereit. Derselbe Stil gilt für Shop, Spielerauswahl, Optionen, Pause,
 Entwicklermenü und Belohnungskarten; Bedienung und Spielfunktionen bleiben gleich.
 
