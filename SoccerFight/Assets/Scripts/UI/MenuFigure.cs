@@ -7,7 +7,7 @@ namespace SoccerFight
     /// The player as a UI puppet: the rig's own body sprites placed as images (each rotates around
     /// its sprite pivot, which is the joint) and posed every frame with the same two-bone maths the
     /// rig uses, on the character's own bones. Three moods: standing (cards), showing off (the
-    /// title screen: keep-ups, or a quicker dribble for a basketball player), and one big strike
+    /// title screen: keep-ups, or a dribble for a basketball player), and one big strike
     /// on the way into the game (a kick, or a two-handed pass for the basketball players).
     /// </summary>
     public sealed class MenuFigure
@@ -27,7 +27,7 @@ namespace SoccerFight
         CharacterDef def;
         PlayerBody body = PlayerBody.Soccer;
         bool hoops, hiRes, openShown;
-        float dribU;
+        float dribU, dribW = -1f;
         float scale, spin, phase;
         float kickT = -1f;
 
@@ -193,8 +193,9 @@ namespace SoccerFight
         }
 
         /// <summary>
-        /// A basketball player: dribbles with the near hand (quicker and lower when showing off),
-        /// the free arm guarding; the strike is a two-handed chest pass straight at the camera.
+        /// A basketball player: on the title screen he dribbles with the near hand, the free arm guarding;
+        /// standing on a card (shop, roster) he just grooves a little, the ball resting at his feet like
+        /// the footballers'. The strike is a two-handed chest pass straight at the camera.
         /// </summary>
         void UpdateHoops(float dt, Mode mode, Vector2 lookAt)
         {
@@ -207,12 +208,21 @@ namespace SoccerFight
             // Ein gleichmäßiger, entspannter Takt auf Titelbild und Spielerkarten.
             float bps = 1.25f;
             dribU = Mathf.Repeat(dribU + bps * dt, 1f);
+            // Dribbeln nur beim Zeigen (Titelbild, gewählte Karte); sonst weich in den lockeren Stand
+            float wantDribble = show || kick >= 0f ? 1f : 0f;
+            dribW = dribW < 0f ? wantDribble : Mathf.MoveTowards(dribW, wantDribble, dt * 2.5f);
+            float w = MathUtil.Smooth01(dribW);
             float lowK = 0f;
             float breathe = Mathf.Sin(t * 2.1f);
+            // lockerer Stand: ein ruhiger Takt – leichtes Wippen in den Knien, der Kopf nickt mit
+            float beat = Mathf.Sin(t * Mathf.PI * 1.6f);
+            float groove = (1f - w) * (kick < 0f ? 1f : 0f);
+            float bob = groove * (beat * 0.5f + 0.5f);
+            lookAt += new Vector2(0f, -groove * 0.35f * Mathf.Max(0f, beat));
             // Ruhiger Stand: Füße unter der Hüfte, nur eine kleine Atembewegung.
             // Ball und Arm werden aus derselben endgültigen Schulterposition berechnet.
-            float lean0 = -1f + 0.35f * breathe;
-            Vector2 hip0 = new Vector2(0f, body.StandHip - 0.004f * (breathe * 0.5f + 0.5f));
+            float lean0 = -1f + 0.35f * breathe + groove * 0.8f * beat;
+            Vector2 hip0 = new Vector2(groove * 0.006f * Mathf.Sin(t * Mathf.PI * 0.8f), body.StandHip - 0.004f * (breathe * 0.5f + 0.5f) - 0.012f * bob);
             Vector2 hip = hip0 + new Vector2(0f, -0.07f * windup + 0.03f * strike);
             float lean = lean0 + 6f * windup - 12f * strike;
 
@@ -230,7 +240,8 @@ namespace SoccerFight
             PoseBody(hip, lean, nearAnkle, farAnkle, 0f, lookAt, 0f, t, 0f);
 
             Vector2 nearSh = NearShoulder(hip, lean), farSh = FarShoulder(hip, lean);
-            Vector2 dribble = d.Ball;
+            // Ball ruht neben dem Fuß (wie bei den Fußballern) oder springt in der Dribbelhand
+            Vector2 dribble = Vector2.Lerp(new Vector2(0.44f, Art.BallRadius), d.Ball, w);
             Vector2 chest = new Vector2(0.22f, hip.y + body.Shoulder.y * 0.72f);
             Vector2 pass = new Vector2(0.5f, hip.y + body.Shoulder.y * 0.78f);
             Vector2 b = dribble;
@@ -240,13 +251,19 @@ namespace SoccerFight
                 b = Vector2.Lerp(b, pass, MathUtil.EaseInQuad(Mathf.Clamp01((kick - 0.2f) / 0.08f)));
             }
 
-            SetOpenHand(kick < 0f && look.OpenHand != null);
+            bool open = kick < 0f && look.OpenHand != null && w > 0.5f;
+            SetOpenHand(open);
             if (kick < 0f)
             {
-                // die offene Hand drückt den Ball mit dem ganzen Arm; der freie Arm schirmt ab
-                ArmTo(nearHand, nearFore, nearUpper, nearSh, d.Wrist, 0f, b, look.OpenHand != null ? 0f : 1f);
-                if (look.OpenHand != null) nearHand.rectTransform.localRotation = Quaternion.Euler(0f, 0f, d.HandAngle);
-                Arm(farHand, farFore, farUpper, farSh, -8f + breathe, 18f);
+                // die offene Hand drückt den Ball mit dem ganzen Arm; der freie Arm schirmt ab.
+                // Im lockeren Stand hängt der Arm entspannt und schwingt ein wenig im Takt.
+                float relaxed = -6f + breathe * 0.6f + groove * 2.5f * beat;
+                Vector2 dirU = MathUtil.Rotate(Vector2.down, relaxed);
+                Vector2 rest = nearSh + dirU * body.UpperArmLen + MathUtil.Rotate(dirU, 22f) * body.ForearmLen;
+                if (w < 0.001f) Arm(nearHand, nearFore, nearUpper, nearSh, relaxed, 22f);
+                else ArmTo(nearHand, nearFore, nearUpper, nearSh, Vector2.Lerp(rest, d.Wrist, w), 0f, b, open ? 0f : w);
+                if (open) nearHand.rectTransform.localRotation = Quaternion.Euler(0f, 0f, d.HandAngle);
+                Arm(farHand, farFore, farUpper, farSh, -8f + breathe - groove * 2f * beat, 18f);
             }
             else
             {
@@ -257,7 +274,7 @@ namespace SoccerFight
                 ArmTo(nearHand, nearFore, nearUpper, nearSh, nw, 60f, b, 1f - release);
                 ArmTo(farHand, farFore, farUpper, farSh, fw, 60f, b, 1f - release);
             }
-            spin = kick >= 0f ? spin - dt * 200f : spin - dt * 60f * (show ? 1.5f : 1f);
+            spin = kick >= 0f ? spin - dt * 200f : Mathf.Lerp(spin, spin - dt * 90f, w);
             PlaceBall(b, kick);
         }
 

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
@@ -5,7 +6,12 @@ using UnityEngine.UI;
 
 namespace SoccerFight
 {
-    /// <summary>Freigegebene Originalansicht mit echten Werten und getrenntem Upgrade-Ziel.</summary>
+    /// <summary>
+    /// Freigegebene Originalansicht mit echten Werten und getrenntem Upgrade-Ziel. Die gemalten Knöpfe
+    /// (Zurück, Upgrade) heben sich beim Zeigen an: ein weich begrenzter Ausschnitt desselben Bildes liegt
+    /// deckungsgleich darüber und wird vergrößert. Ein Upgrade löst eine ruhige grüne Welle aus: Ring am
+    /// Knopf, aufsteigende Funken, dann leuchten Stufe und Werte nacheinander auf („+8“ steigt auf).
+    /// </summary>
     public sealed class CharacterDetailPage
     {
         public SubPage Page { get; private set; }
@@ -18,19 +24,83 @@ namespace SoccerFight
         public string LoopId => loop.CharacterId;
         public bool VideoPlaying => loop.IsPlaying;
         public int CompletedLoops => loop.CompletedLoops;
-        TextMeshProUGUI level, life, damage, speed, cost, gems, coins;
-        Image upgradeGlow;
-        RectTransform upgrade;
-        int shownLevel = -1, shownGems = -1, shownCoins = -1;
-        float pulse;
-        readonly PlayerStats stats = new PlayerStats();
-        static readonly Color Ink = new Color(0.025f, 0.16f, 0.23f);
+
+        sealed class Lift
+        {
+            public RectTransform Mask, Inner;
+            public RawImage Img;
+            public Image Glow, Shine;
+            public Vector2 Size;
+        }
+
+        sealed class Stat
+        {
+            public TextMeshProUGUI Value, Delta, Rise;
+            public Image Glow;
+            public float Delay, Pop, PopVel;
+            public bool Kicked;
+        }
+
+        sealed class Spark
+        {
+            public Image Img;
+            public Vector2 Pos, Vel;
+            public float Age, Life = -1f, Size, Spin;
+        }
+
+        TextMeshProUGUI level, plaque, cost;
+        CurrencyBar gemBar, coinBar;
+        readonly Stat[] stats = new Stat[3];
+        Lift back, upgrade, plaquePatch;
+        MenuTarget backTarget, upgradeTarget;
+        Image badgeGlow, ring, flash;
+        readonly List<Spark> sparks = new List<Spark>();
+        RectTransform fxRoot;
+        int shownLevel = -1, shownGems = -1;
+        float time, fxT = 99f, levelPop, levelPopVel, costShake;
+        bool affordable, maxed, levelKicked = true;
+        readonly PlayerStats now = new PlayerStats(), next = new PlayerStats();
+
+        static readonly Color Ink = new Color(0.035f, 0.14f, 0.22f);
+        static readonly Color Bronze = new Color(0.24f, 0.1f, 0.05f);
+        /// <summary>Das Upgrade-Grün: frisch, nicht grell (linearer Farbraum + Bloom).</summary>
+        static readonly Color Mint = new Color(0.36f, 1f, 0.58f);
+        static Material statMat, levelMat, deltaMat;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { statMat = levelMat = deltaMat = null; }
 
         static Vector2 At(float x, float y) => new Vector2(x - 836f, 470.5f - y);
+
+        /// <summary>Kräftige Zahl: verdickte Buchstaben, darunter eine helle (geprägt) oder dunkle Kante.</summary>
+        static Material NumberMat(float dilate, Color underlay, float offsetY, Color outline, float outlineW)
+        {
+            var src = UiArt.FontBold != null ? UiArt.FontBold.material : null;
+            if (src == null) return null;
+            var m = new Material(src) { name = "Charakterwerte" };
+            m.SetFloat("_FaceDilate", dilate);
+            if (outlineW > 0f)
+            {
+                m.EnableKeyword("OUTLINE_ON");
+                m.SetColor("_OutlineColor", outline);
+                m.SetFloat("_OutlineWidth", outlineW);
+            }
+            m.EnableKeyword("UNDERLAY_ON");
+            m.SetColor("_UnderlayColor", underlay);
+            m.SetFloat("_UnderlayOffsetY", offsetY);
+            m.SetFloat("_UnderlayDilate", 0.15f);
+            m.SetFloat("_UnderlaySoftness", 0.25f);
+            return m;
+        }
 
         public void Build(RectTransform parent, MenuNav menu)
         {
             nav = menu;
+            if (statMat == null)
+            {
+                statMat = NumberMat(0.24f, new Color(1f, 1f, 1f, 0.45f), -0.9f, Color.clear, 0f);
+                levelMat = NumberMat(0.2f, new Color(1f, 0.78f, 0.6f, 0.55f), -1.1f, Color.clear, 0f);
+                deltaMat = NumberMat(0.2f, new Color(0f, 0.08f, 0.04f, 0.6f), -0.8f, new Color(0.02f, 0.2f, 0.1f, 0.95f), 0.2f);
+            }
             Page = new SubPage(parent, MenuPage.CharacterDetails, "CHARAKTER", "", MenuArt.Accent, menu.Register, menu.Back, true);
             // Außerhalb von 16:9 bleibt ein ruhiger Rand; die freigegebene Grafik wird nie verzerrt.
             MenuUi.Stretch(UiKit.Img("Rand", Page.Root, null, new Color(0.015f, 0.1f, 0.13f), Vector2.zero, Vector2.zero).rectTransform);
@@ -38,28 +108,76 @@ namespace SoccerFight
             art = UiKit.Node("Freigegebenes Probebild", Page.Content, Vector2.zero, Page.ArtworkSize).gameObject.AddComponent<RawImage>();
             art.raycastTarget = false;
             loop = new CharacterLoopPlayer(art, parent);
-            level = Number("Stufe", 1051f, 176f, 64f, new Vector2(85f, 70f), new Color(0.94f, 0.66f, 0.45f));
-            life = Number("Leben", 1054f, 628f, 37f, new Vector2(100f, 42f), Ink);
-            damage = Number("Schaden", 1275f, 628f, 37f, new Vector2(100f, 42f), Ink);
-            speed = Number("Tempo", 1487f, 628f, 37f, new Vector2(100f, 42f), Ink);
-            cost = Number("Kristallpreis", 1285f, 731f, 31f, new Vector2(92f, 38f), Color.white);
-            gems = Number("Kristalle", 1448f, 38f, 26f, new Vector2(72f, 35f), Color.white);
-            coins = Number("Münzen", 1589f, 38f, 29f, new Vector2(93f, 35f), Color.white);
 
-            var back = UiKit.Node("Zurück", Page.Content, At(77f, 75f), new Vector2(120f, 124f));
-            nav.Register(new MenuTarget { Id = "detail_back", Root = back, Size = back.sizeDelta,
-                Page = MenuPage.CharacterDetails, Action = () => Return?.Invoke(), Accent = MenuArt.Accent });
-            upgrade = UiKit.Node("Upgrade", Page.Content, At(1272f, 823f), new Vector2(260f, 158f));
-            upgradeGlow = UiKit.Img("Upgrade-Licht", upgrade, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(220f, 170f));
-            nav.Register(new MenuTarget { Id = "detail_upgrade", Root = upgrade, Size = upgrade.sizeDelta,
-                Page = MenuPage.CharacterDetails, Action = Upgrade, Accent = MenuArt.Accent,
-                Draw = t => upgradeGlow.color = new Color(0.1f, 0.8f, 0.9f, Mathf.Clamp01(t.Hover * 0.09f + pulse * 0.14f)) });
+            // Stufe: tief in die Bronze geprägt; das Schild unten trägt nur noch „STUFE“. Die Videoloops
+            // stammen noch aus Bildern mit gemalter „1“ im Schild: dort liegt das bereinigte Standbild darüber.
+            plaquePatch = MakeLift("Schild-Abdeckung", 1053f, 226f, new Vector2(70f, 44f), 10);
+            badgeGlow = UiKit.Img("Stufen-Licht", Page.Content, UiArt.Glow, Color.clear, At(1052f, 180f), new Vector2(260f, 260f));
+            level = Number("Stufe", 1052f, 168f, 60f, new Vector2(84f, 64f), Bronze, levelMat);
+            plaque = MenuArt.Label("Schild", Page.Content, "STUFE", 11f, Bronze.WithAlpha(0.85f), At(1053f, 226f), new Vector2(46f, 16f), TextAlignmentOptions.Center, 0.5f, MenuArt.TextHeavySoft);
+
+            float[] xs = { 1051f, 1271f, 1486f };
+            for (int i = 0; i < 3; i++)
+            {
+                var st = new Stat { Delay = 0.22f + i * 0.07f };
+                st.Glow = UiKit.Img("Wert-Licht", Page.Content, UiArt.Glow, Color.clear, At(xs[i], 600f), new Vector2(250f, 250f));
+                st.Value = Number("Wert", xs[i], 630f, 38f, new Vector2(104f, 42f), Ink, statMat);
+                st.Delta = Number("Vorschau", xs[i], 658f, 19f, new Vector2(74f, 22f), Mint, deltaMat);
+                st.Rise = Number("Zuwachs", xs[i], 657f, 26f, new Vector2(110f, 30f), Mint, deltaMat);
+                stats[i] = st;
+            }
+
+            gemBar = new CurrencyBar(Page.Content, Currencies.Gems, At(1430.8f, 39.8f), 1f);
+            coinBar = new CurrencyBar(Page.Content, Currencies.Coins, At(1573.7f, 40f), 1f);
+
+            back = MakeLift("Zurück", 77f, 75f, new Vector2(150f, 150f), 22);
+            backTarget = new MenuTarget { Id = "detail_back", Root = back.Mask, Size = new Vector2(120f, 124f),
+                Page = MenuPage.CharacterDetails, Action = () => Return?.Invoke(), Accent = MenuArt.Accent, Draw = DrawBack };
+            nav.Register(backTarget);
+
+            upgrade = MakeLift("Upgrade", 1272f, 800f, new Vector2(290f, 236f), 30);
+            cost = Number("Kristallpreis", 1285f, 731f, 30f, new Vector2(92f, 38f), Color.white, CurrencyBar.Numbers, upgrade.Inner, 1272f, 800f);
+            upgradeTarget = new MenuTarget { Id = "detail_upgrade", Root = upgrade.Mask, Size = new Vector2(260f, 190f),
+                Page = MenuPage.CharacterDetails, Action = Upgrade, Accent = Mint, Draw = DrawUpgrade };
+            nav.Register(upgradeTarget);
+
+            // Effekte liegen über allem
+            fxRoot = UiKit.Node("Upgrade-Effekte", Page.Content, Vector2.zero, Page.ArtworkSize);
+            flash = UiKit.Img("Welle-Licht", fxRoot, UiArt.Glow, Color.clear, At(1272f, 825f), new Vector2(420f, 420f));
+            ring = UiKit.Img("Welle", fxRoot, MenuArt.Shock, Color.clear, At(1272f, 825f), new Vector2(100f, 100f));
+            for (int i = 0; i < 18; i++)
+            {
+                var img = UiKit.Img("Funke", fxRoot, MenuArt.Sparkle, Color.clear, Vector2.zero, new Vector2(20f, 20f));
+                sparks.Add(new Spark { Img = img });
+            }
         }
 
-        TextMeshProUGUI Number(string name, float x, float y, float size, Vector2 box, Color color)
+        /// <summary>Ein Ausschnitt des Bildes, deckungsgleich über dem gemalten Knopf, mit weichem Rand.</summary>
+        Lift MakeLift(string name, float x, float y, Vector2 size, int soft)
         {
-            var text = UiKit.Label(name, Page.Content, "", size, color, TextAlignmentOptions.Center, At(x, y), box);
-            text.fontSharedMaterial = UiArt.FontBold.material;
+            var l = new Lift { Size = size };
+            l.Mask = UiKit.Node(name, Page.Content, At(x, y), size);
+            var mask = l.Mask.gameObject.AddComponent<RectMask2D>();
+            mask.softness = new Vector2Int(soft, soft);
+            l.Inner = UiKit.Node("Bild", l.Mask, Vector2.zero, size);
+            l.Img = l.Inner.gameObject.AddComponent<RawImage>();
+            l.Img.raycastTarget = false;
+            Vector2 a = Page.ArtworkSize;
+            l.Img.uvRect = new Rect((x - size.x * 0.5f) / a.x, 1f - (y + size.y * 0.5f) / a.y, size.x / a.x, size.y / a.y);
+            l.Glow = UiKit.Img("Licht", l.Inner, UiArt.Glow, Color.clear, Vector2.zero, size * 0.9f);
+            l.Shine = UiKit.Img("Glanz", l.Inner, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(size.y * 0.22f, size.y * 1.3f));
+            l.Shine.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -24f);
+            return l;
+        }
+
+        TextMeshProUGUI Number(string name, float x, float y, float size, Vector2 box, Color color, Material mat,
+            Transform parent = null, float px = 836f, float py = 470.5f)
+        {
+            // parent: ein Knopf-Ausschnitt (Koordinaten relativ zu seiner Mitte px/py)
+            Vector2 pos = parent == null ? At(x, y) : new Vector2(x - px, py - y);
+            var text = UiKit.Label(name, parent != null ? parent : Page.Content, "", size, color, TextAlignmentOptions.Center, pos, box);
+            if (UiArt.FontBold != null) text.font = UiArt.FontBold;
+            if (mat != null) text.fontSharedMaterial = mat;
             text.fontStyle = FontStyles.Bold;
             text.enableAutoSizing = true;
             text.fontSizeMin = size * 0.55f;
@@ -76,7 +194,10 @@ namespace SoccerFight
                 texture = Resources.Load<Texture2D>("Menu/CharacterDetails/" + def.Id);
                 art.texture = texture;
             }
-            shownLevel = shownGems = shownCoins = -1;
+            shownLevel = shownGems = -1;
+            fxT = 99f;
+            gemBar.Snap();
+            coinBar.Snap();
             loop.Open(def.Id, texture);
             Refresh();
         }
@@ -87,43 +208,110 @@ namespace SoccerFight
             int current = CharacterProgression.Level(character);
             if (current >= CharacterProgression.MaxLevel)
             {
-                nav.Say("MAXIMALE STUFE ERREICHT", upgrade);
+                nav.Say("MAXIMALE STUFE ERREICHT", upgrade.Mask);
                 return;
             }
             int price = CharacterProgression.UpgradeCost(current);
             if (!CharacterProgression.TryUpgrade(character))
             {
-                nav.Say("DIR FEHLEN " + Currencies.Format(Mathf.Max(0, price - Wallet.Get(Currencies.Gems))) + " KRISTALLE", upgrade);
+                costShake = 1f;
+                nav.Say("DIR FEHLEN " + Currencies.Format(Mathf.Max(0, price - Wallet.Get(Currencies.Gems))) + " KRISTALLE", upgrade.Mask);
                 return;
             }
             if (Game.I != null && Game.I.Run != null) Game.I.Run.Rebuild();
             if (Game.I != null && Game.I.Player != null) Game.I.Player.ApplyStats(false);
-            pulse = 1f;
+            // die Zuwächse steigen gleich in Grün aus den Rauten auf
+            for (int i = 0; i < 3; i++) { stats[i].Rise.text = stats[i].Delta.text; stats[i].Kicked = false; }
+            levelKicked = false;
+            fxT = 0f;
+            for (int i = 0; i < sparks.Count; i++)
+            {
+                var s = sparks[i];
+                float a = Random.Range(-0.9f, 0.9f);
+                s.Pos = At(1272f, 830f) + new Vector2(Mathf.Sin(a) * 60f, Random.Range(-20f, 30f));
+                s.Vel = new Vector2(Mathf.Sin(a) * Random.Range(40f, 120f), Random.Range(160f, 340f));
+                s.Age = -Random.Range(0f, 0.15f);
+                s.Life = Random.Range(0.7f, 1.15f);
+                s.Size = Random.Range(12f, 26f);
+                s.Spin = Random.Range(-200f, 200f);
+            }
             Refresh();
         }
+
+        static string Decimal(float v, string format) => v.ToString(format, CultureInfo.InvariantCulture).Replace('.', ',');
 
         void Refresh()
         {
             if (character == null) return;
             int n = CharacterProgression.Level(character);
-            int g = Wallet.Get(Currencies.Gems), c = Wallet.Get(Currencies.Coins);
-            if (n == shownLevel && g == shownGems && c == shownCoins) return;
-            shownLevel = n; shownGems = g; shownCoins = c;
-            stats.Reset();
-            MetaPassives.Apply(stats, character);
-            CharacterProgression.Apply(stats, character);
-            // Dauerhafte Werte des normalen Schusses/Wurfs, ohne zufällige Krits und Laufkarten.
-            float shot = Player.ShotDamage * stats.DamageMul * stats.ShotDamageMul * stats.CategoryMul(SkillCategory.Shot);
+            int g = Wallet.Get(Currencies.Gems);
+            if (n == shownLevel && g == shownGems) return;
+            shownLevel = n; shownGems = g;
+            Measure(now, n, out float hp, out float dmg, out float spd);
             level.text = n.ToString();
-            life.text = Mathf.RoundToInt(Player.BaseMaxHp + stats.MaxHpBonus).ToString();
-            damage.text = shot.ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',');
-            speed.text = (Player.MaxSpeed * stats.MoveSpeedMul).ToString("0.0", CultureInfo.InvariantCulture).Replace('.', ',');
-            bool max = n >= CharacterProgression.MaxLevel;
+            stats[0].Value.text = Mathf.RoundToInt(hp).ToString();
+            stats[1].Value.text = Decimal(dmg, "0.#");
+            stats[2].Value.text = Decimal(spd, "0.0");
+            maxed = n >= CharacterProgression.MaxLevel;
             int price = CharacterProgression.UpgradeCost(n);
-            cost.text = max ? "MAX" : price.ToString();
-            cost.color = max || g >= price ? Color.white : MetaUi.Danger;
-            gems.text = Currencies.Format(g);
-            coins.text = Currencies.Format(c);
+            affordable = !maxed && g >= price;
+            cost.text = maxed ? "MAX" : price.ToString();
+            cost.color = maxed || affordable ? Color.white : MetaUi.Danger;
+            if (maxed) { foreach (var s in stats) s.Delta.text = ""; return; }
+            // Vorschau der nächsten Stufe (erscheint beim Zeigen auf den Upgrade-Knopf)
+            Measure(next, n + 1, out float hp1, out float dmg1, out float spd1);
+            stats[0].Delta.text = "+" + Mathf.RoundToInt(hp1 - Mathf.RoundToInt(hp));
+            stats[1].Delta.text = "+" + Decimal(Mathf.Max(0.1f, dmg1 - dmg), "0.0");
+            stats[2].Delta.text = "+" + Decimal(Mathf.Max(0.1f, spd1 - spd), "0.0");
+        }
+
+        /// <summary>Dauerhafte Werte des normalen Schusses/Wurfs, ohne zufällige Krits und Laufkarten.</summary>
+        void Measure(PlayerStats s, int lvl, out float hp, out float dmg, out float spd)
+        {
+            s.Reset();
+            MetaPassives.Apply(s, character);
+            CharacterProgression.ApplyLevel(s, lvl);
+            hp = Player.BaseMaxHp + s.MaxHpBonus;
+            dmg = Player.ShotDamage * s.DamageMul * s.ShotDamageMul * s.CategoryMul(SkillCategory.Shot);
+            spd = Player.MaxSpeed * s.MoveSpeedMul;
+        }
+
+        void DrawBack(MenuTarget t)
+        {
+            float h = Mathf.Clamp01(t.Hover);
+            float s = 1f + h * 0.07f + t.Punch * 0.06f;
+            back.Inner.localScale = new Vector3(s, s, 1f);
+            back.Inner.anchoredPosition = new Vector2(-h * 3f, h * 3f);
+            back.Inner.localRotation = Quaternion.Euler(0f, 0f, h * 5f + Mathf.Sin(time * 3f) * h * 1.2f);
+            back.Glow.color = new Color(0.6f, 0.95f, 1f, h * 0.07f + t.Hit * 0.12f);
+            Sweep(back, h);
+        }
+
+        void DrawUpgrade(MenuTarget t)
+        {
+            float h = Mathf.Clamp01(t.Hover);
+            // bezahlbar: der Knopf atmet leise, auch ohne Zeiger
+            float breathe = affordable ? 0.5f + 0.5f * Mathf.Sin(time * 2.6f) : 0f;
+            float wave = Mathf.Clamp01(1f - fxT / 0.5f);
+            float shake = costShake * Mathf.Sin(time * 60f) * 5f;
+            float s = 1f + h * 0.045f + breathe * 0.008f + t.Punch * 0.05f + wave * 0.03f;
+            upgrade.Inner.localScale = new Vector3(s, s, 1f);
+            upgrade.Inner.anchoredPosition = new Vector2(shake, h * 4f);
+            Color glow = maxed ? new Color(1f, 0.85f, 0.4f) : affordable ? Mint : new Color(0.4f, 0.85f, 1f);
+            upgrade.Glow.color = glow.WithAlpha(h * 0.08f + breathe * 0.03f + wave * 0.18f + t.Hit * 0.1f);
+            upgrade.Glow.rectTransform.anchoredPosition = new Vector2(0f, -25f);
+            Sweep(upgrade, h);
+            // Vorschau der Zuwächse
+            float show = maxed ? 0f : h;
+            foreach (var st in stats) st.Delta.alpha = show * (affordable ? 1f : 0.55f);
+        }
+
+        /// <summary>Ein schmaler Lichtstreif gleitet beim Zeigen über den Knopf.</summary>
+        void Sweep(Lift l, float h)
+        {
+            float u = Mathf.Repeat(time * 0.7f, 1.4f);
+            l.Shine.rectTransform.anchoredPosition = new Vector2(Mathf.Lerp(-0.6f, 0.6f, u) * l.Size.x, 0f);
+            l.Shine.color = Color.white.WithAlpha(h * 0.09f * (u < 1f ? Mathf.Sin(u * Mathf.PI) : 0f));
         }
 
         public void Update(float dt, bool selected)
@@ -134,8 +322,66 @@ namespace SoccerFight
                 return;
             }
             Page.Update(dt);
-            pulse = Mathf.MoveTowards(pulse, 0f, dt * 2f);
+            time += dt;
+            costShake = Mathf.MoveTowards(costShake, 0f, dt * 2.5f);
+            // die Knopf-Ausschnitte zeigen immer das aktuelle Bild (Standbild oder Videoloop)
+            if (back.Img.texture != art.texture) { back.Img.texture = art.texture; upgrade.Img.texture = art.texture; }
+            if (plaquePatch.Img.texture != texture) plaquePatch.Img.texture = texture;
             Refresh();
+            gemBar.Update(dt);
+            coinBar.Update(dt);
+            UpdateFx(dt);
+        }
+
+        void UpdateFx(float dt)
+        {
+            fxT += dt;
+            // Ring und Licht am Knopf
+            float r = Mathf.Clamp01(fxT / 0.6f);
+            ring.rectTransform.sizeDelta = Vector2.one * Mathf.Lerp(90f, 520f, MathUtil.EaseOutCubic(r));
+            ring.color = Mint.WithAlpha(r < 1f ? 0.45f * (1f - r) * (1f - r) : 0f);
+            flash.color = Mint.WithAlpha(0.22f * Mathf.Clamp01(1f - fxT / 0.45f));
+            // Stufe: nach kurzer Pause leuchtet das Schild auf, die Zahl springt
+            float lt = fxT - 0.12f;
+            if (lt >= 0f && !levelKicked) { levelKicked = true; levelPopVel += 9f; }
+            MathUtil.Spring(ref levelPop, ref levelPopVel, 0f, 5f, 0.35f, dt);
+            float lf = lt >= 0f ? Mathf.Clamp01(1f - lt / 0.8f) : 0f;
+            level.rectTransform.localScale = Vector3.one * (1f + levelPop * 0.12f);
+            level.color = Color.Lerp(Bronze, new Color(0.05f, 0.4f, 0.16f), lf);
+            badgeGlow.color = Mint.WithAlpha(0.2f * lf);
+            // Werte: nacheinander grün, der Zuwachs steigt auf
+            foreach (var st in stats)
+            {
+                float t = fxT - st.Delay;
+                if (t >= 0f && !st.Kicked) { st.Kicked = true; st.PopVel += 8f; }
+                MathUtil.Spring(ref st.Pop, ref st.PopVel, 0f, 5f, 0.35f, dt);
+                float f = t >= 0f ? Mathf.Clamp01(1f - t / 0.9f) : 0f;
+                st.Value.rectTransform.localScale = Vector3.one * (1f + st.Pop * 0.1f);
+                st.Value.color = Color.Lerp(Ink, new Color(0.04f, 0.42f, 0.18f), f);
+                st.Glow.color = Mint.WithAlpha(0.13f * f);
+                float rise = t >= 0f ? Mathf.Clamp01(t / 0.9f) : 0f;
+                bool on = t >= 0f && rise < 1f;
+                st.Rise.alpha = on ? Mathf.Clamp01(rise / 0.12f) * (1f - MathUtil.Smooth01((rise - 0.45f) / 0.55f)) : 0f;
+                var home = (Vector2)st.Value.rectTransform.anchoredPosition;
+                st.Rise.rectTransform.anchoredPosition = home + new Vector2(0f, 20f + MathUtil.EaseOutCubic(rise) * 55f);
+                st.Rise.rectTransform.localScale = Vector3.one * (0.8f + 0.2f * MathUtil.EaseOutBack(Mathf.Clamp01(rise * 4f)));
+            }
+            // Funken steigen aus dem Knopf
+            foreach (var s in sparks)
+            {
+                if (s.Life < 0f) continue;
+                s.Age += dt;
+                if (s.Age < 0f) { s.Img.color = Color.clear; continue; }
+                float u = s.Age / s.Life;
+                if (u >= 1f) { s.Life = -1f; s.Img.color = Color.clear; continue; }
+                s.Vel *= 1f - dt * 1.4f;
+                s.Pos += s.Vel * dt;
+                var rt = s.Img.rectTransform;
+                rt.anchoredPosition = s.Pos;
+                rt.sizeDelta = Vector2.one * s.Size * (1f - 0.6f * u);
+                rt.localRotation = Quaternion.Euler(0f, 0f, s.Spin * s.Age);
+                s.Img.color = Color.Lerp(Color.white, Mint, 0.55f + 0.45f * u).WithAlpha(0.8f * Mathf.Clamp01(u / 0.1f) * (1f - u));
+            }
         }
 
         void ReleaseArt()

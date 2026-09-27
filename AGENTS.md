@@ -119,6 +119,10 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Neun-Teilungen kleiner als ihre Ecken verkleinert `UiKit.FitBorders` gleichmäßig. Fertige Knopfbilder (`action-*`)
   passen nur in Knöpfe mit gleichem Seitenverhältnis, breite Kartenknöpfe nutzen `ChunkButton.PlainPlate`.
   Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte Schrift hat keine Ziffern).
+  Kristalle/Münzen zeigt im Menü immer `CurrencyBar` (Grafik aus `tools/newdesign/currency.js`, per Real-ESRGAN –
+  Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen. Die Charakter-Detailbilder erzeugt
+  `tools/extract-character-menu.py` (Python mit PIL, z. B. `~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`).
+  Gemalte Knöpfe dort animiert ein weich begrenzter Bildausschnitt darüber (`CharacterDetailPage.MakeLift`).
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
 - Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus

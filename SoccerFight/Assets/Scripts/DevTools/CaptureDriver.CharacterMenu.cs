@@ -47,7 +47,13 @@ namespace SoccerFight
             Require(Wallet.Get(Currencies.Gems) == wallet, "Karte kauft kein Upgrade");
             int level = CharacterProgression.Level(Characters.Current);
             int price = CharacterProgression.UpgradeCost(level);
-            yield return Kick("detail_upgrade");
+            // Zeigen: der Knopf hebt sich, die Zuwächse erscheinen in Grün
+            GameInput.AimScreen = G.Menu.TargetScreen("detail_upgrade");
+            yield return Seconds(0.8f);
+            yield return Shot("c02h_zeigen");
+            yield return Kick("detail_upgrade", false);
+            yield return Seconds(0.35f);
+            yield return Shot("c02w_upgrade_welle");
             yield return Seconds(0.6f);
             Require(CharacterProgression.Level(Characters.Current) == level + 1, "Upgrade erhöht genau eine Stufe");
             Require(Wallet.Get(Currencies.Gems) == wallet - price, "Upgrade bucht genau den Kristallpreis");
@@ -75,6 +81,16 @@ namespace SoccerFight
             Require(CharacterProgression.Level(Characters.Current) == CharacterProgression.MaxLevel && Wallet.Get(Currencies.Gems) == 500,
                 "Maximalstufe bleibt ohne Abbuchung");
             yield return Shot("c04_maximum");
+
+            // Basketballer auf den Karten: locker im Takt statt Dribbeln
+            yield return Kick("detail_back");
+            yield return Seconds(1f);
+            yield return Kick("sport1");
+            yield return Seconds(1.2f);
+            yield return Shot("c05_spieler_basketball");
+            yield return Kick("tab_shop");
+            yield return Seconds(1.5f);
+            yield return Shot("c06_shop");
             Debug.Log("[Capture] Charaktermenü: alle sechs Ansichten und Upgrade-Prüfungen bestanden");
         }
 

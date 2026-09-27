@@ -17,7 +17,9 @@ target.mkdir(parents=True, exist_ok=True)
 fields = [(1012, 143, 1090, 207), (1020, 610, 1088, 651),
           (1240, 610, 1310, 651), (1452, 610, 1522, 651),
           (1260, 716, 1310, 746), (1406, 24, 1469, 51),
-          (1555, 24, 1624, 51)]
+          (1555, 24, 1624, 51),
+          # die gemalte „1“ im Stufenschild (die Stufe steht groß darüber)
+          (1040, 213, 1066, 239)]
 
 def clear(im, box, numbers_only=False):
     # Farben aus den freien Rändern derselben Originalplatte; kein neues Grafikdesign.

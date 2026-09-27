@@ -155,6 +155,17 @@ Karte kauft kein Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht all
 Schadensminderung, Fähigkeits-Abklingzeiten und Wirkungsfläche; kleine Tempoboni kommen dazu. Stufe 10 ist das Maximum.
 Die Charakter-Stufen 1 / 3 / 5 / 7 / 9 öffnen die fünf Level.
 
+Die Detailseite fühlt sich wie ein Teil des Spiels an: Die gemalten Knöpfe (Zurück, Upgrade) heben sich beim
+Zeigen an, ein Lichtstreif gleitet darüber, und ein bezahlbares Upgrade atmet leise. Zeigt man auf das Upgrade,
+erscheinen unter Leben, Schaden und Tempo die Zuwächse der nächsten Stufe in Grün. Die Stufe steht groß und
+geprägt im Bronzeschild (darunter „STUFE“), die Werte in kräftiger dunkler Schrift unter ihren Namen. Ein Upgrade
+löst eine ruhige grüne Welle aus: Ring und Funken am Knopf, dann leuchten Stufe und Werte nacheinander auf und
+der Zuwachs („+8“) steigt aus den Rauten. Zu wenig Kristalle lassen den Preis rot zittern.
+
+**Kristall- und Münzanzeige** (`UI/CurrencyBar.cs`): überall im Menü dieselbe Leiste wie in der Charakteransicht
+(Symbol + Steinleiste, weiße Zahl) – in der oberen Menüleiste Kristalle links, Münzen rechts; ein Treffer öffnet den
+Shop. `tools/newdesign/currency.js` stellt die Leisten aus dem Probebild frei (`Resources/Menu/Currency`).
+
 Die sechs Detailansichten haben eigene **stumme 8-Sekunden-Videoloops** (1600 × 900, 30 FPS): sanfte
 Atembewegung und Gewichtsverlagerung, ruhiger Fackelschein und einzelne Lichtpunkte. Die Menüsymbole
 bleiben fest; aktuelle Stats, Stufe, Preise und Währungen liegen als echte Oberfläche über dem Video.
@@ -214,7 +225,7 @@ und legt pro Figur einen Atlas + JSON nach `Resources/Characters`. Das JSON enth
 Schulter, Hals, Kopf, Zopf-Wurzel), das `PlayerArt` beim Start in den `PlayerBody` der Figur schreibt – das Rig
 bewegt die Teile damit wie gehabt (IK, Federn). Miras Pferdeschwanz und Novas Zöpfe schwingen als eigenes Teil nach;
 Dre trägt den Kompressionsärmel nur am vorderen Arm. Beim Dribbeln führen DRE, TITAN und NOVA den Ball mit einer offenen
-Hand: Oberarm und Ellbogen führen den Druck nach unten und nehmen den aufsteigenden Ball wieder an; das Handgelenk folgt nur leicht. Im Menü stehen sie aufrecht und dribbeln ruhig mit 1,25 Schlägen pro Sekunde. Die zusätzlichen
+Hand: Oberarm und Ellbogen führen den Druck nach unten und nehmen den aufsteigenden Ball wieder an; das Handgelenk folgt nur leicht. Auf dem Titelbild (und auf der gewählten Spielerkarte) dribbeln sie ruhig mit 1,25 Schlägen pro Sekunde; im Shop und auf den übrigen Karten stehen sie wie die Fußballer locker mit dem Ball am Fuß und wippen leicht im Takt. Die zusätzlichen
 Hände stammen aus `tools/newdesign/sources/dribble-hands.png` und werden von `characters.js` in die Figurenatlanten aufgenommen.
 Für die übrigen Basketball-Moves wird weiterhin die gemessene Faustlänge verwendet (`PlayerRig.Palm/GripNear`). Der
 Ball springt vor der gemessenen Schuhspitze auf statt darauf. Neue oder bessere Bögen → Umrisse/Gelenke in `characters.def.js`

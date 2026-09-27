@@ -31,9 +31,12 @@ namespace SoccerFight
         }
 
         /// <summary>Every level improves offence, defence and abilities; level 10 is roughly +36 % power.</summary>
-        public static void Apply(PlayerStats s, CharacterDef c)
+        public static void Apply(PlayerStats s, CharacterDef c) => ApplyLevel(s, Level(c));
+
+        /// <summary>Dasselbe für eine beliebige Stufe (Vorschau der nächsten Stufe im Menü).</summary>
+        public static void ApplyLevel(PlayerStats s, int level)
         {
-            int steps = Mathf.Max(0, Level(c) - 1);
+            int steps = Mathf.Max(0, level - 1);
             if (steps == 0) return;
             float power = 0.04f * steps;
             s.DamageMul += power;

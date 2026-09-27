@@ -74,9 +74,8 @@ namespace SoccerFight
         DuoPage duo;
         TextMeshProUGUI modeName, modeSub;
         MenuNav nav;
-        TextMeshProUGUI coinAmount, gemAmount;
-        RectTransform coinPill;
-        float coinShown = -1f, coinPop, coinPopVel;
+        CurrencyBar gemBar, coinBar;
+        float gemHover, coinHover, gemPunch, coinPunch;
         MenuPages pages;
         readonly SubPage[] subPages = new SubPage[MenuPage.Count];
         readonly List<MenuTarget> targets = new List<MenuTarget>();
@@ -449,11 +448,12 @@ namespace SoccerFight
             friends.UseExact("friends");
             Button(friends, "friends", () => Open(MenuPage.Friends), null, MenuPage.Global);
             rx -= 84f;
-            gemAmount = Currency("gems", MenuArt.IconGem, new Vector2(rx - 78f, 0f));
-            rx -= 168f;
-            coinAmount = Currency("coins", MenuArt.IconCoin, new Vector2(rx - 84f, 0f));
-            coinPill = (RectTransform)coinAmount.transform.parent;
-            rightWidth = -(rx - 168f);
+            // Kristalle, dann Münzen – dieselben Leisten wie in der Charakteransicht
+            const float unit = 0.95f;
+            coinBar = Currency(Currencies.Coins, ref rx, unit, t => { coinHover = t.Hover; coinPunch = t.Punch; });
+            rx -= 10f;
+            gemBar = Currency(Currencies.Gems, ref rx, unit, t => { gemHover = t.Hover; gemPunch = t.Punch; });
+            rightWidth = -rx + 8f;
         }
 
         float rightWidth, leftWidth;
@@ -467,24 +467,16 @@ namespace SoccerFight
             return rt;
         }
 
-        TextMeshProUGUI Currency(string id, Sprite icon, Vector2 pos)
+        /// <summary>Eine Währungsleiste rechts in der Leiste (von rx nach links); ein Treffer öffnet den Shop.</summary>
+        CurrencyBar Currency(CurrencyDef currency, ref float rx, float unit, System.Action<MenuTarget> draw)
         {
-            float w = id == "coins" ? 164f : 150f;
-            var pill = UiKit.Node(id, barRight, pos, new Vector2(w, 54f));
-            Color accent = id == "coins" ? Gold : MenuArt.Accent;
-            UiKit.Img("Originalzähler", pill, ExactButtonArt.Get(id == "coins" ? "currency-coins" : "currency-gems"),
-                Color.white, Vector2.zero, new Vector2(w, 46f));
-            var amount = MenuArt.Label("Amount", pill, "0", 22f, Color.white, new Vector2(4f, 0f), new Vector2(w - 90f, 40f), TextAlignmentOptions.Center, 2f);
-            amount.enableAutoSizing = true;
-            amount.fontSizeMin = 13f;
-            amount.fontSizeMax = 22f;
-            var plus = new ChunkButton(pill, "Plus", new Vector2(w * 0.5f - 22f, 0f), new Vector2(32f, 32f), accent, null, 0f, MenuArt.IconPlus, 14f);
-            plus.UseExact("plus");
-            plus.Root.gameObject.SetActive(false);
-            var t = new MenuTarget { Id = id, Root = pill, Size = pill.sizeDelta, Page = MenuPage.Global, Action = () => Open(MenuPage.Shop), Accent = plus.Color };
-            t.Draw = m => plus.Style(m.Hover, m.Hit, m.Punch, m.Fade, time);
-            Register(t);
-            return amount;
+            var bar = new CurrencyBar(barRight, currency, Vector2.zero, unit);
+            bar.Home = new Vector2(rx - bar.Size.x * 0.5f, 0f);
+            bar.Update(0f);
+            rx -= bar.Size.x;
+            Register(new MenuTarget { Id = currency.Id, Root = bar.Root, Size = bar.Size, Page = MenuPage.Global,
+                Action = () => Open(MenuPage.Shop), Accent = currency.Color, Draw = draw });
+            return bar;
         }
 
         void BuildLogo(RectTransform parent)
@@ -546,20 +538,11 @@ namespace SoccerFight
 
         // ------------------------------------------------------------------ wallet, shop hooks
 
-        /// <summary>The wallet pills show the real balances; the coin count rolls and pops when it changes.</summary>
+        /// <summary>Die Leisten zeigen den echten Stand; die Zahl rollt und hüpft, wenn er sich ändert.</summary>
         void UpdateWallet(float udt)
         {
-            int coins = Wallet.Get(Currencies.Coins);
-            if (coinShown < 0f) coinShown = coins;
-            if (Mathf.Abs(coinShown - coins) > 0.5f)
-            {
-                coinShown = Mathf.MoveTowards(coinShown, coins, Mathf.Max(40f, Mathf.Abs(coins - coinShown) * 6f) * udt);
-                if (Mathf.Abs(coinShown - coins) <= 0.5f) { coinShown = coins; coinPopVel += 8f; }
-            }
-            coinAmount.text = Currencies.Format(Mathf.RoundToInt(coinShown));
-            gemAmount.text = Currencies.Format(Wallet.Get(Currencies.Gems));
-            MathUtil.Spring(ref coinPop, ref coinPopVel, 0f, 5f, 0.3f, udt);
-            coinPill.localScale = Vector3.one * (1f + coinPop * 0.08f);
+            coinBar.Update(udt, coinHover, coinPunch);
+            gemBar.Update(udt, gemHover, gemPunch);
         }
 
         void OpenShop(ShopItem item)
@@ -645,7 +628,8 @@ namespace SoccerFight
             // the first launch opens on the starter pick until a starter is chosen
             page = Profile.Onboarded ? MenuPage.Main : MenuPage.Starter;
             if (page == MenuPage.Starter) onboarding.Reset();
-            coinShown = -1f;
+            coinBar?.Snap();
+            gemBar?.Snap();
             foreach (var p in subPages) if (p != null) { p.T = p.Vel = 0f; p.Root.gameObject.SetActive(false); }
             openT = openVel = 0f;
             hovered = null;
