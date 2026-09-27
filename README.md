@@ -143,21 +143,14 @@ Karte kauft kein Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht all
 Schadensminderung, Fähigkeits-Abklingzeiten und Wirkungsfläche; kleine Tempoboni kommen dazu. Stufe 10 ist das Maximum.
 Die Charakter-Stufen 1 / 3 / 5 / 7 / 9 öffnen die fünf Level.
 
-Die sechs Detailansichten haben eigene **stumme 8-Sekunden-Videoloops** (1600 × 900, 30 FPS):
-kurzes Dribbeln, Wechsel in eine zweite Haltung und weiche Rückkehr zur unveränderten Originalpose.
-Die Fußballer führen den Ball mit dem Fuß, die Basketballer lassen ihn dreimal am Boden aufspringen.
-Ball und Figur sind getrennt; ein weiches Gelenkgitter bewegt Bein, Arm und Oberkörper mit festem Standfuß.
-Die Menüsymbole
+Die sechs Detailansichten haben eigene **stumme 8-Sekunden-Videoloops** (1600 × 900, 30 FPS): sanfte
+Atembewegung und Gewichtsverlagerung, ruhiger Fackelschein und einzelne Lichtpunkte. Die Menüsymbole
 bleiben fest; aktuelle Stats, Stufe, Preise und Währungen liegen als echte Oberfläche über dem Video.
 Nur der sichtbare Charakter wird abgespielt, beim Verlassen stoppt der Decoder. Bis zum ersten Frame
 bleibt das Originalbild sichtbar. Die MP4-Dateien liegen unter `Assets/StreamingAssets/CharacterLoops`,
 damit auch der Browser sie per URL laden kann (`UI/CharacterLoopPlayer.cs`).
 `tools/render-character-loops.ps1 -Encoder <ffmpeg.exe>` erstellt alle sechs Clips mit
-`Editor/CharacterLoopExporter.cs`, `Editor/DribbleLoopScene.cs` und den Ebenen-Shadern unter
-`Resources/Menu/Animation`. Die mit dem eingebauten Bildwerkzeug vorbereiteten Hintergrundplatten und
-transparenten Figuren liegen unter `tools/menu-animation/sources`, die Prompts unter
-`tools/menu-animation/prompts.md`. Diese Vorlagen bleiben außerhalb der Spieldaten; nur die MP4s werden
-zur Laufzeit geladen. Anfang und Ende jedes Clips blenden auf das exakte Originalbild zurück.
+`Editor/CharacterLoopExporter.cs` und dem periodischen Shader `Resources/Menu/Animation/CharacterIdle.shader`.
 Die Videowerkzeuge liegen lokal unter `.build/video-tools`; sie werden nicht mit veröffentlicht.
 
 **Drei Klassen, drei Talente** (`Meta/ClassDefs.cs`, alle Zahlen in `ClassTuning`):
