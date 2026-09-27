@@ -19,17 +19,33 @@ namespace SoccerFight
         public static TMP_FontAsset Get()
         {
             if (font != null) return font;
-            var atlas = UnityEngine.Object.Instantiate(Resources.Load<Texture2D>("UiButtons/Exact/letters"));
-            var layout = JsonUtility.FromJson<Layout>(Resources.Load<TextAsset>("UiButtons/Exact/letters").text);
+            // Den fertigen Atlas direkt verwenden: eine Kopie nicht lesbarer Texturen
+            // verliert in WebGL ihre Bilddaten. Es wird keine neue Schrift gerastert.
+            var atlas = Resources.Load<Texture2D>("UiButtons/Exact/letters");
+            var source = Resources.Load<TextAsset>("UiButtons/Exact/letters");
+            var shader = Resources.Load<Shader>("UiButtons/Exact/OriginalLetters");
+            if (atlas == null || source == null || shader == null || !shader.isSupported)
+            {
+                Debug.LogWarning("Originalschrift nicht verfügbar; Menü verwendet die Standardschrift.");
+                return UiArt.FontBold;
+            }
+            var layout = JsonUtility.FromJson<Layout>(source.text);
+            // RASTER lädt zunächst den im Web-Build entfernten TMP-Bitmap-Shader.
+            // Über den vorhandenen SDF-Shader initialisieren, danach das eigene
+            // Material einsetzen. Der statische Atlas wird dabei nicht gerastert.
             font = TMP_FontAsset.CreateFontAsset(Resources.Load<Font>("Fonts/Inter-SemiBold"), 64, 0,
-                GlyphRenderMode.RASTER, atlas.width, atlas.height, AtlasPopulationMode.Static);
+                GlyphRenderMode.SDFAA, atlas.width, atlas.height, AtlasPopulationMode.Static);
+            if (font == null) return UiArt.FontBold;
             font.name = "Originalschrift der Probebilder";
             font.atlasPopulationMode = AtlasPopulationMode.Static;
             font.faceInfo = new FaceInfo { familyName = font.name, styleName = "Gemalt", pointSize = 64,
                 scale = 1f, lineHeight = 80f, ascentLine = 70f, capLine = 64f, meanLine = 32f, descentLine = -10f };
+            // Die nur zur Initialisierung angelegten Ressourcen werden nicht gebraucht.
+            UnityEngine.Object.Destroy(font.atlasTextures[0]);
+            UnityEngine.Object.Destroy(font.material);
             font.atlasTextures = new[] { atlas };
             font.glyphTable.Clear(); font.characterTable.Clear();
-            font.material = new Material(Resources.Load<Shader>("UiButtons/Exact/OriginalLetters"));
+            font.material = new Material(shader);
             font.material.mainTexture = atlas;
             foreach (var e in layout.items)
             {

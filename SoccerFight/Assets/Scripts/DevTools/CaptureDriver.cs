@@ -1039,6 +1039,8 @@ namespace SoccerFight
             G.ToMenu();
             GameInput.AimScreen = menu.ScreenOf(new Vector2(-260f, 160f));
             yield return Seconds(2.4f);
+            Require(menu.IsOpen && menu.Page == MenuPage.Main, "Spiel startet im Hauptmenü");
+            Require(ExactMenuFont.Get().characterLookupTable.ContainsKey('A'), "Menüschrift enthält Tastenbeschriftungen");
             yield return Shot("m00_title");
 
             GameInput.AimScreen = menu.TargetScreen("play");
@@ -1063,10 +1065,12 @@ namespace SoccerFight
             {
                 yield return Kick(ids[i]);
                 yield return Seconds(0.9f);
+                Require(menu.Page == pages[i], "Menüseite öffnet: " + ids[i]);
                 yield return Shot("m0" + (4 + i) + "_" + ids[i]);
                 if (i < ids.Length - 1) yield return Kick("tab_home");
                 else GameInput.PausePressed = true;   // Esc also leads back
                 yield return Seconds(0.9f);
+                Require(menu.Page == MenuPage.Main, "Zurück führt ins Hauptmenü: " + ids[i]);
             }
 
             // a shot into empty space: the ball flies, falls, nothing else happens
