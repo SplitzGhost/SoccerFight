@@ -114,9 +114,13 @@ Die Grafiken werden direkt aus den freigegebenen Probebildern ausgeschnitten, ei
 Symbole und festen Beschriftungen. Es gibt keine vereinfachte oder neu generierte Ersatzgestaltung.
 `tools/extract-menu-buttons.py --sources Inspiration/MenuPreviews` erzeugt die Atlanten unter
 `Resources/UiButtons/Exact/`; `layout.json` hält Herkunftsbild und Ausschnitt jedes Elements fest. Danach bessert
-`node tools/fix-exact-art.js` einzelne Ausschnitte nach (saubere Tafelecken, Spielmodus-Knopf ohne Schriftzug,
-leere Namensplatte, AN/AUS-Schalter immer mit AUS links, Symbole ohne dunklen Kasten). Karten halten ihre Bilder und
-Knöpfe innerhalb des gemalten Rahmens (`MenuUi.PanelInset`). Texte, deren Zeichen die gemalte Schrift nicht kennt
+`node tools/fix-exact-art.js` einzelne Ausschnitte nach (Spielmodus-Knopf ohne Schriftzug, leere Namensplatte,
+AN/AUS-Schalter immer mit AUS links, Symbole ohne dunklen Kasten). Tafeln, Rahmen, Belohnungskarten und Knopfplatten
+baut es jedes Mal neu aus dem Probebild: die dunkle Innenfläche folgt genau der Innenkante des Steinrahmens (gestufte
+Ecksteine oben, Schrägen unten, Namenslasche der Belohnungskarte), die Knopfplatten haben eine durchgehende Fläche mit
+vollständigen Spiralen an beiden Enden. Karten halten ihre Bilder und Knöpfe innerhalb des gemalten Rahmens
+(`MenuUi.PanelInset`); Spieler- und Shopbilder liegen hinter den Ecksteinen (`MenuUi.FrameOnTop`), der WÄHLEN-Knopf der
+Belohnungskarten steht auf der Innenkante des Rahmens. Texte, deren Zeichen die gemalte Schrift nicht kennt
 (Ziffern, „·“, Klammern), stehen ganz in der normalen Menüschrift (`ExactMenuFont.Covers`).
 `UI/ExactButtonArt.cs` und `UI/ButtonSkin.cs` laden diese Originalgrafiken für Shop, Spielerauswahl, Optionen,
 Pause, Duo, Entwicklermenü und Belohnungsbuttons. Leere Flächen für wechselnde Werte stammen ebenfalls

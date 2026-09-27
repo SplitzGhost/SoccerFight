@@ -18,7 +18,7 @@ namespace SoccerFight
         {
             public RectTransform rt, content;
             public CanvasGroup group;
-            public Image glow, border, shine, medGlow;
+            public Image glow, shine, medGlow;
             public Color color;
             public float delay, revealT, lift;
             public bool epic, legendary;
@@ -163,13 +163,15 @@ namespace SoccerFight
             c.group = c.rt.gameObject.AddComponent<CanvasGroup>();
             c.glow = UiKit.Img("Glow", c.rt, UiArt.Glow, color.WithAlpha(0.1f), new Vector2(0f, 10f), size * 1.5f);
             UiKit.Img("Shadow", c.rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.6f), new Vector2(0f, -24f), size * 1.3f);
-            var glass = UiKit.Img("Glass", c.rt, ExactButtonArt.Get("reward-frame"), Color.white, Vector2.zero, size, Image.Type.Sliced, true);
-            c.content = UiKit.Node("Content", c.rt, Vector2.zero, size);
-            c.border = UiKit.Img("Border", c.rt, ButtonSkin.Frame, color.WithAlpha(0.45f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
-            c.content.gameObject.AddComponent<RectMask2D>();
+            var frame = ExactButtonArt.Get("reward-frame");
+            var glass = UiKit.Img("Glass", c.rt, frame, Color.white, Vector2.zero, size, Image.Type.Sliced, true);
+            // der Inhalt bleibt in der Kartenform (Lasche, schräge Ecken): Licht und Glanz ragen nicht über den Rahmen hinaus.
+            // Die Seltenheit zeigt der Schein hinter der Karte, kein zweiter, anders geformter Rahmen darüber.
+            var clip = UiKit.Img("Content", c.rt, frame, Color.white, Vector2.zero, size, Image.Type.Sliced);
+            clip.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+            c.content = clip.rectTransform;
             // coloured light pooling in the top half of the card
             UiKit.Img("TopLight", c.content, UiArt.Glow, color.WithAlpha(legendary ? 0.07f : epic ? 0.05f : 0.03f), new Vector2(0f, size.y * 0.42f), new Vector2(size.x * 1.7f, size.y * 0.9f));
-            UiKit.Img("Band", c.content, UiArt.LineFade, color.WithAlpha(0.3f), new Vector2(0f, size.y * 0.5f - 2f), new Vector2(size.x * 0.9f, 3f));
             if (epic || legendary)
             {
                 c.shine = UiKit.Img("Shine", c.content, UiArt.LineFade, Color.white.WithAlpha(0f), Vector2.zero, new Vector2(size.y * 1.8f, legendary ? 90f : 60f));
@@ -201,11 +203,15 @@ namespace SoccerFight
             art.preserveAspect = true;
         }
 
-        static void ChooseFooter(Transform parent, Vector2 pos, float width, int index)
-        {
-            UiKit.Img("Wählen", parent, ExactButtonArt.Get("choose-" + index), Color.white,
-                pos + new Vector2(0f, 12f), new Vector2(width, width * 82f / 295f));
+        /// <summary>Innenkante des gemalten Kartenrahmens unten und Mitte der Namenslasche oben (vom Kartenrand gemessen).</summary>
+        const float FrameBottom = 21f, TabCenter = 25f;
 
+        /// <summary>Der WÄHLEN-Knopf steht auf der Innenkante des Rahmens, nie darüber.</summary>
+        static void ChooseFooter(Transform parent, Vector2 cardSize, float width, int index)
+        {
+            float h = width * 82f / 295f;
+            UiKit.Img("Wählen", parent, ExactButtonArt.Get("choose-" + index), Color.white,
+                new Vector2(0f, -cardSize.y * 0.5f + FrameBottom + 3f + h * 0.5f), new Vector2(width, h));
         }
 
         void BuildUpgradeCards()
@@ -218,7 +224,7 @@ namespace SoccerFight
                 Color rc = Rarities.Of(u.Rarity);
                 var c = MakeCard(i, offer.Count, size, rc, u.Rarity >= Rarity.Epic, u.Rarity == Rarity.Legendary);
                 var ct = c.content;
-                UiKit.Label("Rarity", ct, Rarities.Name(u.Rarity), 13f, rc, TextAlignmentOptions.Center, new Vector2(0f, 205f), new Vector2(300f, 20f), true, 9f);
+                UiKit.Label("Rarity", ct, Rarities.Name(u.Rarity), 13f, rc, TextAlignmentOptions.Center, new Vector2(0f, size.y * 0.5f - TabCenter), new Vector2(200f, 20f), true, 9f);
                 Medallion(c, ct, new Vector2(0f, 110f), 164f, UpgradeIcons.Get(u.Icon), 0.66f);
                 var name = UiKit.Label("Name", ct, u.Name, 27f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, 20f), new Vector2(310f, 36f), true, 3f);
                 name.enableAutoSizing = true; name.fontSizeMin = 18f; name.fontSizeMax = 27f;
@@ -237,15 +243,16 @@ namespace SoccerFight
                     {
                         bool owned = k < level - 1, next = k == level - 1;
                         var pip = UiKit.Img("Pip", ct, UiArt.Diamond, owned ? rc : next ? Color.white : Color.white.WithAlpha(0.18f),
-                            new Vector2((k - (n - 1) * 0.5f) * 18f, -150f), Vector2.one * (next ? 13f : 10f));
+                            new Vector2((k - (n - 1) * 0.5f) * 18f, -114f), Vector2.one * (next ? 13f : 10f));
                         if (next) UiKit.Img("PipGlow", ct, UiArt.Glow, rc.WithAlpha(0.5f), pip.rectTransform.anchoredPosition, Vector2.one * 34f);
                     }
                     UiKit.Label("Level", ct, level == 1 ? "NEU" : "STUFE " + level + " / " + u.Max, 11f, level == 1 ? Palette.Heal : Palette.UiMuted,
-                        TextAlignmentOptions.Center, new Vector2(0f, -170f), new Vector2(300f, 16f), true, 4f);
+                        TextAlignmentOptions.Center, new Vector2(0f, -130f), new Vector2(300f, 16f), true, 4f);
                 }
-                else UiKit.Label("Level", ct, "EINMALIG", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -162f), new Vector2(300f, 16f), true, 5f);
+                else UiKit.Label("Level", ct, "EINMALIG", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(0f, -124f), new Vector2(300f, 16f), true, 5f);
 
-                ChooseFooter(ct, new Vector2(0f, -204f), 278f, i);
+                // Punkte und Stufe über dem Knopf, der Knopf auf der Innenkante des Rahmens
+                ChooseFooter(ct, size, 250f, i);
                 cards.Add(c);
             }
         }
@@ -267,22 +274,26 @@ namespace SoccerFight
                 bool classBonus = cat != null && cat.Value == cls.Specialty;
                 string kind = cat != null ? SkillCatalog.CategoryName(cat.Value) : "FÄHIGKEIT";
                 if (classBonus) kind += "  ·  " + cls.Name + "-BONUS";
-                UiKit.Label("Kind", ct, kind, 13f, classBonus ? cls.Accent : ac, TextAlignmentOptions.Center, new Vector2(0f, 232f), new Vector2(400f, 20f), true, classBonus ? 6f : 10f);
+                // die Art sitzt mitten in der Namenslasche (die Lasche ist in der breiten Karte etwa 290 breit)
+                var kindLabel = UiKit.Label("Kind", ct, kind, 13f, classBonus ? cls.Accent : ac, TextAlignmentOptions.Center, new Vector2(0f, size.y * 0.5f - TabCenter), new Vector2(240f, 20f), true, classBonus ? 6f : 10f);
+                kindLabel.enableAutoSizing = true;
+                kindLabel.fontSizeMin = 9f;
+                kindLabel.fontSizeMax = 13f;
                 Medallion(c, ct, new Vector2(0f, 110f), 170f, Abilities.Icon(a), 0.74f);
-                UiKit.Label("Name", ct, Abilities.Name(a), 34f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, -8f), new Vector2(420f, 44f), true, 5f);
-                UiKit.Img("Divider", ct, UiArt.LineFade, Color.white.WithAlpha(0.14f), new Vector2(0f, -42f), new Vector2(300f, 2f));
-                Wrap(UiKit.Label("Desc", ct, Abilities.Description(a), 19f, Palette.UiText, TextAlignmentOptions.Top, new Vector2(0f, -100f), new Vector2(370f, 100f), false, 0f));
+                UiKit.Label("Name", ct, Abilities.Name(a), 34f, Color.white, TextAlignmentOptions.Center, new Vector2(0f, -4f), new Vector2(420f, 44f), true, 5f);
+                UiKit.Img("Divider", ct, UiArt.LineFade, Color.white.WithAlpha(0.14f), new Vector2(0f, -34f), new Vector2(300f, 2f));
+                Wrap(UiKit.Label("Desc", ct, Abilities.Description(a), 19f, Palette.UiText, TextAlignmentOptions.Top, new Vector2(0f, -88f), new Vector2(370f, 96f), false, 0f));
 
                 // it lands in the next free slot, so that is the key it will answer to
                 string keyName = a == Ability.AirKick ? "IN DER LUFT: " + KeyBindings.DisplayName(GameAction.Shoot)
                     : "PLATZ " + (Game.I.Run.SkillCount + 1) + ":  " + KeyBindings.DisplayName((GameAction)((int)GameAction.Skill1 + Mathf.Min(RunState.MaxSkills - 1, Game.I.Run.SkillCount)));
-                var kb = UiKit.Img("KeyBack", ct, ButtonSkin.Socket, Color.white.WithAlpha(0.08f), new Vector2(0f, -174f), new Vector2(260f, 30f), Image.Type.Sliced);
-                UiKit.Label("KeyName", kb.transform, keyName, 13f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(260f, 30f), true, 3f);
+                var kb = UiKit.Img("KeyBack", ct, UiArt.Pill, Color.white.WithAlpha(0.05f), new Vector2(0f, -146f), new Vector2(260f, 28f), Image.Type.Sliced);
+                UiKit.Label("KeyName", kb.transform, keyName, 13f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(260f, 28f), true, 3f);
                 int unlocks = 0;
                 foreach (var u in UpgradeDb.All) if (u.NeedsAbility == a) unlocks++;
                 if (unlocks > 0)
-                    UiKit.Label("Unlocks", ct, "SCHALTET " + unlocks + " NEUE UPGRADES FREI", 12f, Palette.Gold, TextAlignmentOptions.Center, new Vector2(0f, -212f), new Vector2(380f, 18f), true, 4f);
-                ChooseFooter(ct, new Vector2(0f, -246f), 360f, i);
+                    UiKit.Label("Unlocks", ct, "SCHALTET " + unlocks + " NEUE UPGRADES FREI", 12f, Palette.Gold, TextAlignmentOptions.Center, new Vector2(0f, -124f), new Vector2(380f, 18f), true, 4f);
+                ChooseFooter(ct, size, 300f, i);
                 cards.Add(c);
             }
         }
@@ -403,8 +414,7 @@ namespace SoccerFight
 
             float breathe = 0.5f + 0.5f * Mathf.Sin(openT * 2.6f + index);
             float rarityPulse = c.legendary ? 0.1f * breathe : c.epic ? 0.05f * breathe : 0f;
-            c.border.color = c.color.WithAlpha(0.24f + 0.24f * hover + rarityPulse + (isChosen ? 0.6f * pick : 0f));
-            c.glow.color = c.color.WithAlpha(0.025f + 0.04f * hover + rarityPulse * 0.3f + (isChosen ? 0.3f * pick : 0f));
+            c.glow.color = c.color.WithAlpha(0.05f + 0.07f * hover + rarityPulse * 0.6f + (isChosen ? 0.4f * pick : 0f));
             if (c.medGlow != null) c.medGlow.color = c.color.WithAlpha(0.04f + 0.04f * hover + rarityPulse * 0.2f);
 
             // a sheen sweeps across epic and legendary cards every few seconds

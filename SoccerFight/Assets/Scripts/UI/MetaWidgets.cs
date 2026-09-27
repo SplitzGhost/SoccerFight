@@ -234,6 +234,7 @@ namespace SoccerFight
             Button.IconLeft(40f);
             coin = UiKit.Img("Coin", Button.Face, CoinArt.Ui, Color.white, Vector2.zero, new Vector2(30f, 30f));
             coin.transform.SetSiblingIndex(Button.Label.transform.GetSiblingIndex());
+            MenuUi.FrameOnTop(Root, size);
         }
 
         void BuildStarterBody(ClassDef cls, float y)
@@ -428,6 +429,8 @@ namespace SoccerFight
             Button = new ChunkButton(Root, "Buy", new Vector2(cx, bottom + 25f), new Vector2(tw, 48f), def.Accent, "KAUFEN", 21f) { PlainPlate = true };
             coin = UiKit.Img("Coin", Button.Face, CoinArt.Ui, Color.white, Vector2.zero, new Vector2(26f, 26f));
             coin.transform.SetSiblingIndex(Button.Label.transform.GetSiblingIndex());
+            // das Bild reicht bis an die Ecksteine: der Rahmen liegt darüber
+            MenuUi.FrameOnTop(Root, size);
         }
 
         public void Update(float udt, Vector2 aim, float alpha) => figure.Update(udt, MenuFigure.Mode.Idle, aim, alpha);

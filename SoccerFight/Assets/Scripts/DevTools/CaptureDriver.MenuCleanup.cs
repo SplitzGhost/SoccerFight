@@ -57,6 +57,40 @@ namespace SoccerFight
             }
             yield return Kick("tab_home");
             yield return Seconds(1f);
+
+            // Duo-Seite und die Tafeln im Spiel: Belohnungen, Fähigkeiten, Pause, Optionen, Entwicklermenü
+            yield return Kick("friends");
+            yield return Seconds(1.2f);
+            yield return Shot("x06_duo");
+            G.Waves.Enabled = true;
+            G.Restart();
+            yield return Seconds(1.1f);
+            G.Director.DebugJump(2, 3, 5, true);
+            yield return Seconds(1f);
+            G.Director.DebugOpenReward(false);
+            yield return Seconds(1.3f);
+            yield return Shot("x07_belohnung");
+            G.Rewards.DebugPick(1);
+            yield return Seconds(1f);
+            G.Director.DebugOpenReward(true);
+            yield return Seconds(1.3f);
+            G.Rewards.DebugPick(0);
+            yield return Seconds(1.4f);
+            yield return Shot("x08_faehigkeit");
+            G.Rewards.DebugPick(0);
+            yield return Seconds(1.4f);
+            G.Pause.Open();
+            yield return Seconds(0.8f);
+            yield return Shot("x09_pause");
+            G.Pause.OpenSettings();
+            yield return Seconds(0.8f);
+            yield return Shot("x10_pause_optionen");
+            G.Pause.Close();
+            yield return Seconds(0.5f);
+            G.Dev.Open();
+            yield return Seconds(0.8f);
+            yield return Shot("x11_entwickler");
+            G.Dev.Close();
         }
     }
 }

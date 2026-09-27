@@ -110,10 +110,15 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - `ProjectSettings` productName bleibt absichtlich `SoccerFight` (sonst geht der WebGL-Spielstand verloren).
 - **Menügrafik:** `tools/extract-menu-buttons.py` schneidet die Knöpfe/Tafeln aus `Inspiration/MenuPreviews`, danach
   muss einmal `node tools/fix-exact-art.js` laufen (Masken, leere Flächen, Symbol-Hintergründe; merkt sich in
-  `layout.json` `"fixed": true` und läuft nicht doppelt). Kartenbilder und -knöpfe bleiben innerhalb von
-  `MenuUi.PanelInset`; fertige Knopfbilder (`action-*`) passen nur in Knöpfe mit gleichem Seitenverhältnis, breite
-  Kartenknöpfe nutzen `ChunkButton.PlainPlate`. Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte
-  Schrift hat keine Ziffern).
+  `layout.json` `"fixed": true` und läuft nicht doppelt). Tafel/Rahmen (`panel-border`, `frame-only`, `pause-panel`),
+  Belohnungskarte (`reward-frame`) und Knopfplatten (`plate-*`) baut es dagegen bei jedem Lauf neu aus dem Probebild:
+  ihre Innenfläche folgt der vermessenen Innenkante des Steinrahmens (`PANEL_INNER` usw.), die Ecken liegen ganz in
+  den Rändern der Neun-Teilung. Nie eine rechteckige Füllung über gestufte Ecken legen, keinen zweiten, anders
+  geformten Rahmen über/unter eine gemalte Tafel. Kartenbilder und -knöpfe bleiben innerhalb von
+  `MenuUi.PanelInset`; reicht ein Bild bis an die Ecksteine, kommt `MenuUi.FrameOnTop` als letztes Kind darüber.
+  Neun-Teilungen kleiner als ihre Ecken verkleinert `UiKit.FitBorders` gleichmäßig. Fertige Knopfbilder (`action-*`)
+  passen nur in Knöpfe mit gleichem Seitenverhältnis, breite Kartenknöpfe nutzen `ChunkButton.PlainPlate`.
+  Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte Schrift hat keine Ziffern).
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
 - Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus

@@ -64,7 +64,27 @@ namespace SoccerFight
             img.type = type;
             img.color = color;
             img.raycastTarget = raycast;
+            if (type == Image.Type.Sliced) FitBorders(img);
             return img;
+        }
+
+        /// <summary>
+        /// Ist eine Neun-Teilung kleiner als ihre Ecken, wird der ganze Rand gleichmäßig verkleinert. Unity würde die
+        /// Ecken sonst nur in der zu knappen Richtung stauchen, und gemalte Rahmen und Stufen passten nicht mehr zusammen.
+        /// </summary>
+        public static void FitBorders(Image img)
+        {
+            if (img.sprite == null) return;
+            var s = img.rectTransform.sizeDelta;
+            if (s.x <= 0f || s.y <= 0f) return;   // an den Eltern ausgerichtet: Größe steht erst später fest
+            float unit = 100f / img.sprite.pixelsPerUnit;   // Sprite-Pixel → UI-Einheiten (referencePixelsPerUnit 100)
+            var b = img.sprite.border * unit;
+            float k = Mathf.Max(1f, (b.x + b.z) / s.x, (b.y + b.w) / s.y);
+            // flache Platten (Ränder oben und unten über die halbe Höhe): die Enden mit ihren Spiralen und Fasen
+            // gleichmäßig mit der Höhe verkleinern, statt sie senkrecht zu stauchen
+            float spriteH = img.sprite.rect.height * unit;
+            if (b.y + b.w >= spriteH * 0.5f) k = Mathf.Max(k, spriteH / s.y);
+            img.pixelsPerUnitMultiplier = k;
         }
 
         public static TextMeshProUGUI Label(string name, Transform parent, string text, float size, Color color,
@@ -217,9 +237,8 @@ namespace SoccerFight
             var rt = Node(name, parent, Vector2.zero, size);
             group = rt.gameObject.AddComponent<CanvasGroup>();
             Img("Shadow", rt, UiArt.Glow, new Color(0f, 0f, 0.02f, 0.55f), new Vector2(0f, -20f), size * 1.35f);
-            Img("Border", rt, ButtonSkin.Frame, ButtonSkin.Slate.WithAlpha(0.6f), Vector2.zero, size + new Vector2(3f, 3f), Image.Type.Sliced);
+            // die gemalte Tafel bringt ihren Steinrahmen mit: kein zweiter Rahmen darunter, keine Lichtlinie über den Steinen
             Img("Glass", rt, ButtonSkin.Panel, Color.white, Vector2.zero, size, Image.Type.Sliced, true);
-            Img("Top Light", rt, UiArt.LineFade, Palette.ShotCyan.WithAlpha(0.12f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return rt;
         }
     }

@@ -226,7 +226,9 @@ namespace SoccerFight
     {
         /// <summary>
         /// Innenabstand des gemalten Tafelrahmens (links, unten, rechts, oben) in Menüeinheiten: Bilder, Knöpfe und
-        /// Texte einer Karte bleiben innerhalb davon, sonst liegen sie über dem Rahmen.
+        /// Texte einer Karte bleiben innerhalb davon, sonst liegen sie über dem Rahmen. Die Steinleisten selbst sind
+        /// etwa 17 breit, die gestuften Ecksteine oben reichen aber bis 44 hinunter, die Schrägen unten bis 52 hinauf:
+        /// was bis in die Ecken reicht, verdeckt MenuUi.FrameOnTop.
         /// </summary>
         public static readonly Vector4 PanelInset = new Vector4(34f, 30f, 34f, 32f);
 
@@ -256,17 +258,23 @@ namespace SoccerFight
             }
         }
 
-        /// <summary>A dark glass panel with a soft shadow, a hairline frame and a lit top edge in the accent colour.</summary>
+        /// <summary>The painted stone panel with a soft shadow; its frame can be lightly tinted in the accent colour.</summary>
         public static Image Plate(Transform parent, string name, Vector2 pos, Vector2 size, Color accent, float rim = 0.3f)
         {
             var rt = UiKit.Node(name, parent, pos, size);
             UiKit.Img("Shadow", rt, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.45f), new Vector2(0f, -12f), size * 1.08f + new Vector2(60f, 60f));
             var body = UiKit.Img("Body", rt, MenuArt.CardBody, Color.white, Vector2.zero, size, Image.Type.Sliced);
-            // derselbe gemalte Rahmen genau deckungsgleich darüber (leicht getönt), nie versetzt
+            // derselbe gemalte Rahmen genau deckungsgleich darüber (leicht getönt), nie versetzt; keine Lichtlinie über den Steinen
             UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(ButtonSkin.Slate, accent, 0.2f).WithAlpha(rim * 0.7f), Vector2.zero, size, Image.Type.Sliced);
-            UiKit.Img("TopLight", rt, UiArt.LineFade, accent.WithAlpha(0.16f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return body;
         }
+
+        /// <summary>
+        /// Der Steinrahmen der Tafel noch einmal ungetönt über dem Inhalt: Bilder, die bis an den Rand reichen, liegen
+        /// dann hinter den gestuften Ecksteinen statt darüber. Als letztes Kind der Karte anlegen.
+        /// </summary>
+        public static Image FrameOnTop(Transform parent, Vector2 size) =>
+            UiKit.Img("FrontFrame", parent, MenuArt.Frame, Color.white, Vector2.zero, size, Image.Type.Sliced);
 
         /// <summary>A heading between two thin lines that fade out (like the in-game stage titles).</summary>
         public static TextMeshProUGUI Banner(Transform parent, string name, string text, Vector2 pos, float width, Color color, float fontSize = 24f)

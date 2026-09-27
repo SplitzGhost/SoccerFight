@@ -247,7 +247,6 @@ namespace SoccerFight
             var plate = toastPlate.transform.parent;
             toastShadow = plate.Find("Shadow").GetComponent<Image>();
             toastFrame = plate.Find("Frame").GetComponent<Image>();
-            toastLight = plate.Find("TopLight").GetComponent<Image>();
             toast = MenuArt.Label("Text", toastRoot, "", 24f, Gold, new Vector2(0f, 1f), new Vector2(900f, 56f), TextAlignmentOptions.Center, 7f);
             BuildCursor();
             // in captures the canvas is drawn by the game camera, which then only draws these layers
@@ -255,7 +254,7 @@ namespace SoccerFight
             canvas.gameObject.SetActive(false);
         }
 
-        Image toastShadow, toastFrame, toastLight;
+        Image toastShadow, toastFrame;
 
         static readonly Color Gold = new Color(1f, 0.8f, 0.4f);
         static readonly Color Cool = new Color(0.8f, 0.95f, 1f);
@@ -1314,10 +1313,10 @@ namespace SoccerFight
             toastT = 0f;
             float w = toast.GetPreferredValues(text).x + 80f;
             ((RectTransform)toastPlate.transform.parent).sizeDelta = new Vector2(w, 60f);
+            // Tafel und ihr getönter Rahmen immer deckungsgleich
             toastPlate.rectTransform.sizeDelta = new Vector2(w, 60f);
-            toastFrame.rectTransform.sizeDelta = new Vector2(w + 2f, 62f);
+            toastFrame.rectTransform.sizeDelta = new Vector2(w, 60f);
             toastShadow.rectTransform.sizeDelta = new Vector2(w * 1.08f + 60f, 125f);
-            toastLight.rectTransform.sizeDelta = new Vector2(w * 0.7f, 2f);
             Rect r = root.rect;
             float half = w * 0.5f + 20f;
             // under the bar when the hit was up there, otherwise just above the hit
