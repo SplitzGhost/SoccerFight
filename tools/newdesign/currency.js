@@ -2,6 +2,7 @@
 // Die Leisten liegen dort auf hellem Himmel: der Himmel wird pro Zeile zwischen linkem und rechtem Rand
 // geschätzt, alles vom Rand aus zusammenhängend Himmelfarbene wird durchsichtig, Kanten und Schatten
 // werden gegen diese Himmelfarbe entmischt. Innen (Glanzlichter des Kristalls) bleibt alles deckend.
+// Die Bilder sind etwa dreimal so groß wie im Menü angezeigt und haben darum Mipmaps (trilinear).
 // Aufruf: node tools/newdesign/currency.js  (braucht die Grafikkarte für Real-ESRGAN, sonst Lanczos)
 'use strict';
 const sharp = require('sharp');
@@ -92,7 +93,10 @@ const F = 3;   // Endgröße: dreifache Auflösung des Probebilds
         if (!fs.existsSync(meta)) {
             let m = fs.readFileSync(META, 'utf8');
             m = m.replace(/^guid: .*$/m, 'guid: ' + crypto.randomBytes(16).toString('hex'))
-                .replace('alphaIsTransparency: 0', 'alphaIsTransparency: 1');
+                .replace('alphaIsTransparency: 0', 'alphaIsTransparency: 1')
+                // im Menü etwa dreifach verkleinert: ohne Mipmaps entstehen Treppenkanten
+                .replace(/^    enableMipMap: 0$/m, '    enableMipMap: 1')
+                .replace(/^    filterMode: 1$/m, '    filterMode: 2');
             fs.writeFileSync(meta, m);
         }
     }

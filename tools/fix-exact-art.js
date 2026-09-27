@@ -286,6 +286,71 @@ function clearBluish(img) {
     }
 }
 
+// Reiter der Menüleiste oben: im Probebild liegen sie auf der dunklen Leiste, die als Achteck mit ausgeschnitten wurde
+// und auf hellem Himmel als schwarzer Rand und Schatten um die herausragenden Symbole stand. Jetzt deckt nur noch die
+// vermessene Platte (Achteck mit schrägen Ecken) und darüber das Symbol mit seiner gemalten Kontur.
+const NAV = [['home', 367, 496], ['chars', 506, 637], ['shop', 644, 771], ['events', 775, 904], ['ranking', 910, 1042], ['settings', 1049, 1178]];
+const NAV_H = 90;
+
+async function rebuildNav(set) {
+    const main = await load(path.join(SRC, MAIN));
+    for (const [name, x0, x1] of NAV) {
+        const img = crop(main, x0, 4, x1 - x0, NAV_H);
+        const { w, h } = img;
+        // Plattenfläche: türkis/gold, deutlich grüner als der nachtblaue Grund
+        const plate = (x, y) => px(img, x, y)[1] >= 55;
+        // Seiten aus der Textzeile (dort liegt weder Symbol noch Leuchtlinie), Oberkante neben dem Symbol
+        let L = w, R = 0, T = h;
+        for (let y = 40; y <= 70; y++) for (let x = 0; x < w; x++) if (plate(x, y)) { L = Math.min(L, x); R = Math.max(R, x + 1); }
+        for (const cx of [22, w - 22]) for (let y = 0; y < h; y++) if (plate(cx, y)) { T = Math.min(T, y); break; }
+        const B = 87, top = 19, topH = 18, bot = 13;
+        const poly = [[L + top, T], [R - top, T], [R, T + topH], [R, B - bot], [R - bot, B], [L + bot, B], [L, B - bot], [L, T + topH]];
+        const m = polyMask(w, h, poly);
+        // Stufen, die das Achteck nicht kennt (linke Ecke von SPIELEN): vom Rand aus zusammenhängender Grund fällt weg
+        const bg = new Uint8Array(w * h), q = [];
+        const seed = i => { const d = img.d; if (!bg[i] && d[i * 4 + 1] < 42 && d[i * 4] < 70 && d[i * 4 + 2] < 100) { bg[i] = 1; q.push(i); } };
+        for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+        for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+        while (q.length) {
+            const p = q.pop(), x = p % w, y = (p / w) | 0;
+            if (x > 0) seed(p - 1);
+            if (x < w - 1) seed(p + 1);
+            if (y > 0) seed(p - w);
+            if (y < h - 1) seed(p + w);
+        }
+        // Symbol über der Platte: sein heller Körper (Löcher gefüllt), darum 1 px deckende und 1 px halbe Kontur.
+        // Die gemalte Kontur ist fast so dunkel wie der Grund, darum wird sie nicht gesucht, sondern angelegt.
+        const top0 = T, core = new Uint8Array(w * h);
+        for (let y = 0; y < top0; y++) for (let x = (w >> 1) - 34; x < (w >> 1) + 34; x++) {
+            const c = px(img, x, y);
+            if (Math.max(c[0], c[1], c[2]) > 100) core[y * w + x] = 1;
+        }
+        // Löcher (dunkles Truhenblech, Zahnradmitte): was von oben/seitlich nicht erreichbar ist, gehört dazu
+        const out = new Uint8Array(w * h), st = [];
+        const reach = i => { if (!out[i] && !core[i]) { out[i] = 1; st.push(i); } };
+        for (let x = 0; x < w; x++) reach(x);
+        for (let y = 0; y < top0; y++) { reach(y * w); reach(y * w + w - 1); }
+        while (st.length) {
+            const p = st.pop(), x = p % w, y = (p / w) | 0;
+            if (x > 0) reach(p - 1);
+            if (x < w - 1) reach(p + 1);
+            if (y > 0) reach(p - w);
+            if (y < top0 - 1) reach(p + w);
+        }
+        const dist = i => { const x = i % w, y = (i / w) | 0; let d = 9;
+            for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+                const nx = x + dx, ny = y + dy;
+                if (nx >= 0 && ny >= 0 && nx < w && ny < top0 && !out[ny * w + nx]) d = Math.min(d, Math.hypot(dx, dy));
+            } return d; };
+        for (let i = 0; i < w * h; i++) {
+            let a = bg[i] ? 0 : m[i];
+            if ((i / w | 0) < top0) a = Math.max(a, Math.max(0, Math.min(1, 2.2 - dist(i))));
+            img.d[i * 4 + 3] = Math.round(255 * a);
+        }
+        set('nav-' + name, img);
+    }
+}
+
 // Belohnungskarte: Steinrahmen mit Namenslasche oben; innen eine dunkle Fläche bis an die Innenkante der Fase.
 const REWARDS = 'exec-ac920881-1b84-4135-a559-c9f72682b3d5.png';
 const REWARD_BOX = [297, 245, 337, 451];
@@ -349,6 +414,7 @@ async function main() {
     await rebuildPanels(get, set);
     await rebuildReward(set);
     await rebuildPlates(set);
+    await rebuildNav(set);
     // Pokal: bläulicher Grund in den Henkeln und neben dem Fuß (goldene Pixel sind nie bläulich, darum wiederholbar)
     { const img = get('menu-icon-4'); clearBluish(img); set('menu-icon-4', img); }
     // alles Weitere nur einmal auf frisch ausgeschnittene Atlanten (Abdunkeln und Masken würden sich sonst verdoppeln)

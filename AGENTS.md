@@ -111,7 +111,8 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - **Menügrafik:** `tools/extract-menu-buttons.py` schneidet die Knöpfe/Tafeln aus `Inspiration/MenuPreviews`, danach
   muss einmal `node tools/fix-exact-art.js` laufen (Masken, leere Flächen, Symbol-Hintergründe; merkt sich in
   `layout.json` `"fixed": true` und läuft nicht doppelt). Tafel/Rahmen (`panel-border`, `frame-only`, `pause-panel`),
-  Belohnungskarte (`reward-frame`) und Knopfplatten (`plate-*`) baut es dagegen bei jedem Lauf neu aus dem Probebild:
+  Belohnungskarte (`reward-frame`), Knopfplatten (`plate-*`) und die Reiter der Menüleiste (`nav-*`, nur Platte + Symbol,
+  ohne den dunklen Leistengrund des Probebilds) baut es dagegen bei jedem Lauf neu aus dem Probebild:
   ihre Innenfläche folgt der vermessenen Innenkante des Steinrahmens (`PANEL_INNER` usw.), die Ecken liegen ganz in
   den Rändern der Neun-Teilung. Nie eine rechteckige Füllung über gestufte Ecken legen, keinen zweiten, anders
   geformten Rahmen über/unter eine gemalte Tafel. Kartenbilder und -knöpfe bleiben innerhalb von
@@ -119,7 +120,7 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Neun-Teilungen kleiner als ihre Ecken verkleinert `UiKit.FitBorders` gleichmäßig. Fertige Knopfbilder (`action-*`)
   passen nur in Knöpfe mit gleichem Seitenverhältnis, breite Kartenknöpfe nutzen `ChunkButton.PlainPlate`.
   Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte Schrift hat keine Ziffern).
-  Kristalle/Münzen zeigt im Menü immer `CurrencyBar` (Grafik aus `tools/newdesign/currency.js`, per Real-ESRGAN –
+  Kristalle/Münzen zeigt im Menü immer `CurrencyBar` (Grafik aus `tools/newdesign/currency.js`, per Real-ESRGAN, mit Mipmaps –
   Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen. Die Charakter-Detailbilder erzeugt
   `tools/extract-character-menu.py` (Python mit PIL, z. B. `~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`).
   Gemalte Knöpfe dort animiert ein weich begrenzter Bildausschnitt darüber (`CharacterDetailPage.MakeLift`).
