@@ -38,6 +38,7 @@ namespace SoccerFight
 
         /// <summary>Kick a locked character: the menu opens the shop on it.</summary>
         public System.Action<ShopItem> ShowInShop;
+        public System.Action<CharacterDef> ShowDetails;
 
         public SubPage Page => page;
 
@@ -137,21 +138,8 @@ namespace SoccerFight
                 return;
             }
             card.Jiggle = 1f;
-            if (Characters.Current == def)
-            {
-                int level = CharacterProgression.Level(def);
-                if (level >= CharacterProgression.MaxLevel) { nav.Say(def.Name + " HAT BEREITS STUFE 10", card.Root); return; }
-                int cost = CharacterProgression.UpgradeCost(level);
-                if (!CharacterProgression.TryUpgrade(def))
-                {
-                    nav.Say("DIR FEHLEN " + Currencies.Format(Mathf.Max(0, cost - Wallet.Get(Currencies.Gems))) + " KRISTALLE", card.Root);
-                    return;
-                }
-                if (Game.I != null && Game.I.Player != null) Game.I.Player.ApplyStats(false);
-                nav.Say(def.Name + "  ·  STUFE " + (level + 1) + "  ·  STÄRKER!", card.Root);
-                return;
-            }
-            Characters.Select(Characters.IndexOf(def));
+            if (Characters.Current != def) Characters.Select(Characters.IndexOf(def));
+            ShowDetails?.Invoke(def);
         }
 
         void StyleTab(Group grp, MenuTarget t, int index)
@@ -170,9 +158,7 @@ namespace SoccerFight
             card.Locked = !own;
             string label;
             if (!own) label = "ZUM SHOP";
-            else if (!current) label = "STUFE " + level + "  ·  WÄHLEN";
-            else if (level >= CharacterProgression.MaxLevel) label = "STUFE 10  ·  MAXIMUM";
-            else label = "UPGRADE " + (level + 1) + "  ·  " + CharacterProgression.UpgradeCost(level) + " ◇";
+            else label = "STUFE " + level + "  ·  ANSEHEN";
             card.Style(t, TimeFx.UiDelta, label, current, current ? MetaUi.Gold : def.Accent, current);
         }
 

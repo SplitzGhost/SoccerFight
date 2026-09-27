@@ -21,15 +21,25 @@ namespace SoccerFight
         public readonly bool InBar;
         public float T, Vel;
         readonly RectTransform title;
+        public Vector2 ArtworkSize;
 
         /// <param name="back">null for the first-launch screens: they stand alone, without the top bar.</param>
-        public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back)
+        public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back, bool artwork = false)
         {
             Id = id;
             InBar = back != null;
             Root = UiKit.Node("Page " + heading, parent, Vector2.zero, Vector2.zero);
             MenuUi.Stretch(Root);
             Group = Root.gameObject.AddComponent<CanvasGroup>();
+
+            if (artwork)
+            {
+                // Originalansicht ohne den gemeinsamen dunklen Seitenrahmen.
+                ArtworkSize = new Vector2(1672f, 941f);
+                Content = UiKit.Node("Originalansicht", Root, Vector2.zero, ArtworkSize);
+                title = null;
+                return;
+            }
 
             MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
             var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, 0.55f), Vector2.zero, Vector2.zero);
@@ -56,6 +66,13 @@ namespace SoccerFight
         public void Update(float udt)
         {
             Rect r = Root.rect;
+            if (ArtworkSize != Vector2.zero)
+            {
+                float scale = Mathf.Min(r.width / ArtworkSize.x, r.height / ArtworkSize.y);
+                Content.localScale = Vector3.one * scale;
+                Content.anchoredPosition = Vector2.zero;
+                return;
+            }
             if (InBar)
             {
                 // the page content (its top edge sits ~400 above its centre, the bottom ~470 below)

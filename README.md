@@ -87,15 +87,17 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 
 ## Hauptmenü
 
-Das Spiel startet im Titelbildschirm. Dahinter liegt die Stadion-Grafik
-`Assets/Resources/Menu/StadionUfo.png`: Drei UFOs ziehen Fußballer, Basketballer und Trümmer aus einem
-zerstörten Stadion nach oben. Die Bildmitte am Boden bleibt frei für die separat animierte Spielfigur.
+Das Spiel startet im Titelbildschirm. Dahinter liegt die Ruinenhof-Grafik
+`Assets/Resources/Menu/Ruinenhof.png`: Die freigegebene plastische Cartoon-Kulisse zeigt nahe, verwitterte
+Steinbögen, türkise Banner, Fackeln und Mondlicht. Der offene Rasen reicht fast bis zur Bildmitte und
+bleibt frei für die separat animierte Spielfigur.
 Die ruhigeren Bildränder geben den Bedienelementen Platz. Solange das Menü offen ist, zeichnet die
 Kamera nur die Menüoberfläche statt der Arena.
 
 Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchstaben, dunkle Steinkante, Moos an den
 Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler** auf dem
-Spielfeld, der den Ball hochhält – wer ihn (oder sein Namensschild) abschießt, landet in der Spielerauswahl.
+Spielfeld, der den Ball hochhält – wer ihn abschießt, öffnet seine Charakterdetails; sein Namensschild
+führt zur Spielerauswahl.
 Links steht der Saisonrekord, rechts Spielmodus und der große **SPIELEN**-Knopf. Der Quest-Platzhalter ist entfernt. Die Leiste oben führt
 zu Spielern, Shop, Events, Rangliste und Optionen. Rangliste, Freunde und Events sind Platzhalter-Seiten
 („kommt bald“), Info erklärt Steuerung und Spielprinzip. **Beim allerersten Start** öffnet das Menü auf der
@@ -128,8 +130,16 @@ Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 ## Fortschritt: Klassen, Spieler, Fähigkeiten, Münzen und Kristalle
 
 **Charakter-Stufen 1–10** (`Meta/CharacterProgression.cs`): Jeder gekaufte oder als Starter gewählte Charakter
-beginnt auf Stufe 1 und wird separat gespeichert. Ist er in der Spieler-Seite gewählt, zeigt sein Knopf das nächste
-Kristall-Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht allgemeinen Angriff, maximales Leben,
+beginnt auf Stufe 1 und wird separat gespeichert. Eine eigene **Charakter-Detailseite** öffnet sich über die
+Figur im Hauptmenü oder eine gekaufte Spielerkarte. Sie übernimmt die sechs freigegebenen Originalbilder:
+große Figur links, rechts Spezialfähigkeiten als Symbole, Leben, Schaden, Tempo und das Upgrade-Symbol.
+Es gibt dort weder Beschreibungstexte noch eine Charakter-Wechsel-Leiste. Stufe, Kristallpreis und Währungen
+bleiben aktuell; die Stats zeigen die dauerhaften Werte inklusive Klasse, persönlichem Bonus und Charakter-Stufe,
+ohne temporäre Laufkarten oder zufällige kritische Treffer. Die Originalbilder liegen unter
+`Resources/Menu/CharacterDetails`; `tools/extract-character-menu.py` übernimmt die Grafiken aus den
+nicht versionierten Vorlagen unter `Inspiration/CharacterMenuPreviews` und leert ihre variablen Zahlenfelder.
+Erst das Upgrade-Symbol kauft die nächste Stufe. Zurück führt zur vorherigen Ansicht; die Auswahl einer
+Karte kauft kein Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht allgemeinen Angriff, maximales Leben,
 Schadensminderung, Fähigkeits-Abklingzeiten und Wirkungsfläche; kleine Tempoboni kommen dazu. Stufe 10 ist das Maximum.
 Die Charakter-Stufen 1 / 3 / 5 / 7 / 9 öffnen die fünf Level.
 
@@ -314,7 +324,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Fähigkeiten-Preise, Gratis-Wahl, Klassen-Sperre:** `SkillCatalog.All` (`Meta/SkillCatalog.cs`); Kopfball-Werte `Header*` oben in `Player.cs`, Pose `PoseHeader` in `PlayerRig.cs`
 - **Münzen:** Werte pro Rang, Stage-Aufschlag und Stage-Bonus in `Meta/CoinRewards.cs`; Sprung, Zeigezeit und Flug in `Run/CoinDrops.cs` (`ShowTime`) und `UI/CoinCounter.cs`
 - **Neue Shop-Artikel / Währungen / Upgrades:** `ShopKind` + Eintrag in `Shop.Build`; Währung = Eintrag in `Currencies`; kaufbare Stufen = `PassiveDef` mit `MaxLevel` in `MetaPassives.Leveled` (Stufe liegt in `Profile.Level`)
-- **Hauptmenü:** Aufbau, Bild-Einpassung und Knöpfe in `UI/MainMenu.cs`; Hintergrund in `Resources/Menu/StadionUfo.png`; Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
+- **Hauptmenü:** Aufbau, Bild-Einpassung und Knöpfe in `UI/MainMenu.cs`; Hintergrund in `Resources/Menu/Ruinenhof.png`; Charakterdetails in `UI/CharacterDetailPage.cs`; Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** Generator (Dichte, Größen, Höhen, Bewegung, welche Stücke stehen oder schweben) in `Level.Generate`, Aussehen, Seile und Laternen in `PlatformViews.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Welt-Grafik:** was aus jedem Stage-Bogen wofür ausgeschnitten wird (Plattform/Deko, Lücken der Kulisse, Bodenstreifen, Leuchtfarben) in `tools/newdesign/stages.def.js`, danach `node stages.js [stage]` (`--fast` lässt die Kulissen stehen); Maßstab in `stages.js`; Freistellen in `cutout.js`, Auffüllen in `inpaint.js`; Platzierung der Deko, Lichter in der Kulisse und Parallax-Faktoren in `World/WorldEnvironment.cs`; Pflanzen-Atlas in `tools/newdesign/build.js`

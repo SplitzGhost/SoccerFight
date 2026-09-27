@@ -7,8 +7,8 @@ namespace SoccerFight
 {
     /// <summary>
     /// Titelbildschirm wie eine Lobby: Oben stehen Logo, Seitenreiter und Währungen. Dahinter
-    /// schweben UFOs über einem zerstörten Stadion. Die gewählte Spielfigur steht groß in der
-    /// Mitte; links erscheinen Saisonrekord und Quests, rechts Spielmodus und SPIELEN-Knopf.
+    /// liegt der freigegebene Ruinenhof. Die gewählte Spielfigur steht groß in der
+    /// Mitte; links erscheint der Saisonrekord, rechts Spielmodus und SPIELEN-Knopf.
     ///
     /// Buttons are not pressed with the pointer: the mouse is the game's crosshair and a click kicks
     /// a ball from the player's point of view into the screen — it starts big at the bottom edge,
@@ -67,6 +67,8 @@ namespace SoccerFight
         Image veil;
         MenuFigure figure;
         CharacterPage characters;
+        CharacterDetailPage characterDetails;
+        int detailReturnPage = MenuPage.Main;
         ShopPage shop;
         OnboardingPages onboarding;
         DuoPage duo;
@@ -168,9 +170,9 @@ namespace SoccerFight
             go.AddComponent<GraphicRaycaster>();
             root = (RectTransform)go.transform;
 
-            // Das Stadion liegt hinter allen Menüseiten; die animierte Figur bleibt separat davor.
-            backdrop = UiKit.Node("Stadion", root, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
-            backdrop.texture = Resources.Load<Texture2D>("Menu/StadionUfo");
+            // Der Ruinenhof liegt hinter allen Menüseiten; die animierte Figur bleibt separat davor.
+            backdrop = UiKit.Node("Ruinenhof", root, Vector2.zero, Vector2.zero).gameObject.AddComponent<RawImage>();
+            backdrop.texture = Resources.Load<Texture2D>("Menu/Ruinenhof");
             backdrop.raycastTarget = false;
             backdrop.color = Color.white;
             // night falls over the switch between arena and scene
@@ -200,7 +202,12 @@ namespace SoccerFight
             characters = new CharacterPage();
             characters.Build(pagesRoot, nav);
             characters.ShowInShop = OpenShop;
+            characters.ShowDetails = ShowCharacterDetails;
             subPages[MenuPage.Characters] = characters.Page;
+            characterDetails = new CharacterDetailPage();
+            characterDetails.Build(pagesRoot, nav);
+            characterDetails.Return = Back;
+            subPages[MenuPage.CharacterDetails] = characterDetails.Page;
             pages = new MenuPages();
             pages.Build(pagesRoot, Register, Back);
             foreach (var p in pages.Pages) subPages[p.Id] = p;
@@ -274,7 +281,7 @@ namespace SoccerFight
             figure.Build(stack, new Vector2(-30f, FeetY), FigureScale, PlayerArt.Get(Characters.Index), Characters.Current, true);
 
             var hit = UiKit.Node("FigureHit", stack, new Vector2(0f, FeetY + 270f), new Vector2(380f, 580f));
-            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawFigure, Accent = MenuArt.Accent };
+            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => ShowCharacterDetails(Characters.Current), Draw = DrawFigure, Accent = MenuArt.Accent };
             Register(figureTarget);
 
             // name tag floating above the player's head
@@ -361,7 +368,7 @@ namespace SoccerFight
             barGroup = bar.gameObject.AddComponent<CanvasGroup>();
 
             // a band of night glass with a hairline of moonlight along its lower edge
-            var back = UiKit.Img("Back", bar, null, new Color(0.01f, 0.03f, 0.05f, 0.72f), Vector2.zero, Vector2.zero);
+            var back = UiKit.Img("Back", bar, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(back.rectTransform);
             var shade = UiKit.Img("Shade", bar, UiArt.Glow, new Color(0f, 0.01f, 0.02f, 0.5f), Vector2.zero, Vector2.zero);
             shade.rectTransform.anchorMin = new Vector2(0f, 0f);
@@ -650,6 +657,7 @@ namespace SoccerFight
             page = id;
             if (id == MenuPage.Main) return;
             if (id == MenuPage.Characters) characters.Open();
+            else if (id == MenuPage.CharacterDetails) characterDetails.Open(Characters.Current);
             else if (id == MenuPage.Shop) shop.Refresh();
             else if (id == MenuPage.Friends) duo.OnOpened();
             else pages.Refresh();
@@ -660,8 +668,16 @@ namespace SoccerFight
             if (state != State.Menu) return;
             if (page == MenuPage.Settings && pages.Settings.IsCapturing) pages.Settings.CancelCapture();
             if (MenuPage.IsOnboarding(page)) return;
+            if (page == MenuPage.CharacterDetails) { Open(detailReturnPage); return; }
             if (page != MenuPage.Main) RefreshRecord();
             page = MenuPage.Main;
+        }
+
+        void ShowCharacterDetails(CharacterDef character)
+        {
+            if (!Profile.OwnsCharacter(character.Id)) { OpenShop(Shop.ForCharacter(character)); return; }
+            detailReturnPage = page == MenuPage.Characters ? MenuPage.Characters : MenuPage.Main;
+            Open(MenuPage.CharacterDetails);
         }
 
         void Play()
@@ -833,7 +849,7 @@ namespace SoccerFight
         }
 
         /// <summary>The top bar is there on every page but the first-launch ones.</summary>
-        bool NavVisible => !MenuPage.IsOnboarding(page) && navFade > 0.5f;
+        bool NavVisible => !MenuPage.IsOnboarding(page) && page != MenuPage.CharacterDetails && navFade > 0.5f;
 
         /// <summary>Pointer position in canvas space, hover state, and the click that kicks a ball.</summary>
         void Aim()
@@ -918,6 +934,7 @@ namespace SoccerFight
             pages.Update(udt);
             var aim = AimNorm();
             characters.Update(udt, aim);
+            characterDetails.Update(udt);
             shop.Update(udt, aim);
             onboarding.Update(udt, aim);
             duo.Update(udt, aim);
@@ -998,7 +1015,7 @@ namespace SoccerFight
             bool onboard = MenuPage.IsOnboarding(page);
             float barIn = MathUtil.EaseOutCubic(Mathf.Clamp01(openT * 1.3f));
             navFade = Mathf.Clamp01(openT * 1.5f) * (1f - leave);
-            float barA = onboard ? 0f : navFade;
+            float barA = onboard || page == MenuPage.CharacterDetails ? 0f : navFade;
             barGroup.alpha = Mathf.MoveTowards(barGroup.alpha, barA, udt * 4f);
             bar.anchoredPosition = new Vector2(0f, (1f - barIn) * 110f + leave * 110f);
             stripGroup.alpha = barGroup.alpha;
@@ -1041,8 +1058,10 @@ namespace SoccerFight
         {
             if (backdrop.texture == null) return;
             float aspect = (float)backdrop.texture.width / backdrop.texture.height;
-            float height = Mathf.Max(root.rect.height, root.rect.width / aspect);
+            // Wie im freigegebenen Hauptmenü beginnt die Szene unter der dunklen Kopfleiste.
+            float height = Mathf.Max(root.rect.height, root.rect.width / aspect) * 1.05f;
             backdrop.rectTransform.sizeDelta = new Vector2(height * aspect, height);
+            backdrop.rectTransform.anchoredPosition = new Vector2(0f, -SubPage.TopBar - (height - root.rect.height) * 0.5f);
         }
 
         /// <summary>Logo on the left, the icons and wallet on the right, the tabs centred in between (smaller if they must).</summary>
