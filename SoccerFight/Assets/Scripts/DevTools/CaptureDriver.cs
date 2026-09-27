@@ -93,6 +93,7 @@ namespace SoccerFight
             else if (scenario == "menu") yield return MenuTour();
             else if (scenario == "buttons") yield return ButtonTour();
             else if (scenario == "menu-design") yield return CharacterMenuDesign();
+            else if (scenario == "menu-loops") yield return CharacterMenuLoops();
             else if (scenario == "vista") yield return VistaShots();
             else if (scenario == "newskills") yield return NewSkills();
             else if (scenario == "look") yield return UpgradeLook();

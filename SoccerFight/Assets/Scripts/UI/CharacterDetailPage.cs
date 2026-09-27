@@ -14,6 +14,10 @@ namespace SoccerFight
         CharacterDef character;
         RawImage art;
         Texture2D texture;
+        CharacterLoopPlayer loop;
+        public string LoopId => loop.CharacterId;
+        public bool VideoPlaying => loop.IsPlaying;
+        public int CompletedLoops => loop.CompletedLoops;
         TextMeshProUGUI level, life, damage, speed, cost, gems, coins;
         Image upgradeGlow;
         RectTransform upgrade;
@@ -33,6 +37,7 @@ namespace SoccerFight
             Page.Content.SetAsLastSibling();
             art = UiKit.Node("Freigegebenes Probebild", Page.Content, Vector2.zero, Page.ArtworkSize).gameObject.AddComponent<RawImage>();
             art.raycastTarget = false;
+            loop = new CharacterLoopPlayer(art, parent);
             level = Number("Stufe", 1051f, 176f, 64f, new Vector2(85f, 70f), new Color(0.94f, 0.66f, 0.45f));
             life = Number("Leben", 1054f, 628f, 37f, new Vector2(100f, 42f), Ink);
             damage = Number("Schaden", 1275f, 628f, 37f, new Vector2(100f, 42f), Ink);
@@ -72,6 +77,7 @@ namespace SoccerFight
                 art.texture = texture;
             }
             shownLevel = shownGems = shownCoins = -1;
+            loop.Open(def.Id, texture);
             Refresh();
         }
 
@@ -120,8 +126,9 @@ namespace SoccerFight
             coins.text = Currencies.Format(c);
         }
 
-        public void Update(float dt)
+        public void Update(float dt, bool selected)
         {
+            loop.Update(selected || Page.T >= 0.004f);
             if (Page.T < 0.004f)
             {
                 return;
@@ -133,6 +140,7 @@ namespace SoccerFight
 
         void ReleaseArt()
         {
+            loop.Stop();
             if (texture == null) return;
             art.texture = null;
             Resources.UnloadAsset(texture);

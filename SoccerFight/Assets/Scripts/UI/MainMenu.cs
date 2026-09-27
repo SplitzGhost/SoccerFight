@@ -680,6 +680,11 @@ namespace SoccerFight
             Open(MenuPage.CharacterDetails);
         }
 
+        // Für die Menüprüfung: Decoder und Auswahl müssen denselben Charakter zeigen.
+        public string CharacterLoopId => characterDetails.LoopId;
+        public bool CharacterVideoPlaying => characterDetails.VideoPlaying;
+        public int CharacterVideoLoops => characterDetails.CompletedLoops;
+
         void Play()
         {
             if (state != State.Menu) return;
@@ -934,7 +939,7 @@ namespace SoccerFight
             pages.Update(udt);
             var aim = AimNorm();
             characters.Update(udt, aim);
-            characterDetails.Update(udt);
+            characterDetails.Update(udt, page == MenuPage.CharacterDetails);
             shop.Update(udt, aim);
             onboarding.Update(udt, aim);
             duo.Update(udt, aim);
