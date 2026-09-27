@@ -29,7 +29,8 @@ const FIG = require('./characters.def.js');
 // ------------------------------------------------------------------ Bild-Helfer
 
 async function load(file) {
-    const { data, info } = await sharp(path.join(SRC, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const full = path.isAbsolute(file) ? file : path.join(SRC, file);
+    const { data, info } = await sharp(full).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const W = info.width, H = info.height, N = W * H;
     const rgb = new Float32Array(N * 3), a = new Float32Array(N);
     for (let i = 0; i < N; i++) {
@@ -265,6 +266,10 @@ function orient(img, reg, pivot, dir) {
             u0 = Math.min(u0, u); v0 = Math.min(v0, v); u1 = Math.max(u1, u); v1 = Math.max(v1, v);
         }
     }
+    // an empty region (poly landed somewhere with no opaque pixels — often a coordinate measured in the
+    // wrong space, e.g. half-image-local instead of full-sheet) leaves the u0/v0/u1/v1 sentinels untouched;
+    // failing loudly here beats new Float32Array(hugeNegativeNumber)'s cryptic "Invalid typed array length".
+    if (u1 < u0) throw new Error('orient(): region has no opaque pixels at pivot ' + JSON.stringify(pivot) + ' — check the coordinate is in full-sheet space, not cropped/half-image space');
     const pad = MARGIN;
     const U0 = Math.floor(u0) - pad, V0 = Math.floor(v0) - pad, W = Math.ceil(u1) + pad - U0, H = Math.ceil(v1) + pad - V0;
     const buf = new Float32Array(W * H * 4);   // vormultipliziert
@@ -604,7 +609,9 @@ function plainMeta(file, folder) {
 
 // ------------------------------------------------------------------ Start
 
-module.exports = { buildFigure, load, region };
+// orient/clip/inPoly/bboxOf/cover/writeMeta/plainMeta are also reused by monsters.js (same cutout technique,
+// different atlas layout/JSON shape, so it keeps its own writeAtlas instead of this file's).
+module.exports = { buildFigure, load, region, orient, clip, inPoly, bboxOf, cover, writeMeta, plainMeta };
 
 if (require.main === module) (async () => {
     const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(FIG);

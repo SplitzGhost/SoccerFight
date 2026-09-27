@@ -48,6 +48,9 @@ namespace SoccerFight
         public bool Pupil = true;
         public bool Wide;              // white eyeball with a dark pupil (wisps) instead of a glowing eye
         public Color? Color;           // glowing eyes in a colour of their own
+        /// <summary>A painted eye cut from the monster's own art (iris+pupil baked in): no shared tint,
+        /// no separate pupil child; the whole eye shifts a little towards the player instead.</summary>
+        public Sprite Sprite;
     }
 
     /// <summary>A trailing chain of sprites in world space: tails, tentacles, tendrils, a wyrm's body.</summary>
@@ -73,6 +76,12 @@ namespace SoccerFight
         public Look Look;
         public StageTheme Theme;
         public bool Wisp;
+        /// <summary>True once this look is built from cut monster art (Resources/Monsters) instead of the
+        /// SDF generator: body/parts then need the straight-alpha cutout material, not the premultiplied one.</summary>
+        public bool Cutout;
+        /// <summary>Set alongside Cutout: which MonsterAtlas.Load(stage, look) this LookDef came from, so
+        /// Trim() can release it instead of running the SDF sprites' Owned-destroy loop on it.</summary>
+        public string AtlasStage, AtlasLook;
         public Sprite Body;
         public readonly List<PartDef> Parts = new List<PartDef>();
         public readonly List<EyeDef> Eyes = new List<EyeDef>();
@@ -181,12 +190,15 @@ namespace SoccerFight
             foreach (var th in drop)
             {
                 foreach (var d in cache[th].Values)
+                {
+                    if (d.Cutout) { MonsterAtlas.Unload(d.AtlasStage, d.AtlasLook); continue; }
                     foreach (var s in d.Owned)
                     {
                         if (s == null) continue;
                         if (s.texture != null) Object.Destroy(s.texture);
                         Object.Destroy(s);
                     }
+                }
                 cache.Remove(th);
             }
         }
@@ -713,6 +725,38 @@ namespace SoccerFight
 
         /// <summary>Irrlicht: a dart-shaped flyer with bat wings and a whip tail; folds its wings to dive.</summary>
         static LookDef Diver(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "diver");
+            if (atlas == null) return DiverProcedural(t);
+            var d = New(t, Look.Diver, true);
+            d.Cutout = true;
+            d.AtlasStage = t.Kit; d.AtlasLook = "diver";
+            d.Body = atlas.Sprite("Body");
+            Vector2 wingPos = atlas.Anchor("wing");
+            var wingFar = Part(d, "WingFar", wingPos.x - 0.02f, wingPos.y + 0.01f, 58).Animate(PartAnim.Flap, 30f, 14f, 0.5f, -60f);
+            var wingNear = Part(d, "WingNear", wingPos.x, wingPos.y, 61).Scaled(1.1f, 1.1f).Animate(PartAnim.Flap, 30f, 14f, 0f, -60f);
+            wingFar.Sprite = wingNear.Sprite = atlas.Sprite("Wing");
+            wingFar.Tint = new Color(0.7f, 0.7f, 0.8f);
+            Vector2 tailPos = atlas.Anchor("tail");
+            var tail = new ChainDef
+            {
+                Anchor = tailPos, Count = 5, Spacing = 0.1f, Hang = new Vector2(-0.08f, -0.012f),
+                Scale0 = 0.8f, Scale1 = 0.3f, Wave = 0.03f, WaveFreq = 7f, Stiff = 16f, Sprite = atlas.Sprite("Tail"),
+            };
+            d.Chains.Add(tail);
+            // some stage variants' eye colour didn't get auto-detected by the cutter (tools/newdesign/monsters.js
+            // findEye): rather than place a generic eye at a wrong/default spot, leave the one already painted
+            // into the body alone — static instead of blinking, but correctly placed and coloured.
+            var eyeSprite = atlas.Sprite("Eye");
+            if (eyeSprite != null) { Vector2 eyePos = atlas.Anchor("eye"); EyeAt(d, eyePos.x, eyePos.y, 1f).Sprite = eyeSprite; }
+            d.Tilt = 0.6f;
+            d.GlowSize = 1.5f;
+            d.HpY = 0.55f;
+            return d;
+        }
+
+        /// <summary>Old SDF-drawn Irrlicht body: kept as a fallback for stages the art pack doesn't cover yet.</summary>
+        static LookDef DiverProcedural(StageTheme t)
         {
             var d = New(t, Look.Diver, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow;

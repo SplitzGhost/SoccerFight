@@ -15,6 +15,7 @@ namespace SoccerFight
         public static Material SpriteAddMat;     // additive, LDR
         public static Material SpriteGlowMat;    // additive, HDR (blooms)
         public static Material CharacterMat;     // rigged characters: moon rim, grass bounce, contact shade
+        public static Material MonsterCutoutMat; // monster parts cut from art (own instance: moon rim only, no player floor/bounce state)
         public static Material SpriteEmissiveMat;// alpha blended but HDR (eyes, neon)
         public static Material UiFigureMat;      // UI images of the cut-out player parts (menu figure)
 
@@ -105,6 +106,11 @@ namespace SoccerFight
             SpriteEmissiveMat = MakeSpriteMaterial("SF Sprite Emissive", 2.2f, false);
             CharacterMat = new Material(FindShader("SoccerFight/Character")) { name = "SF Character" };
             CharacterMat.SetColor("_RimColor", Palette.MoonRim);
+            // own instance: PlayerRig writes per-frame floor/grass-bounce uniforms onto CharacterMat that
+            // must not leak onto monsters (wrong contact surface). Moon rim alone (shader defaults) is enough.
+            MonsterCutoutMat = new Material(FindShader("SoccerFight/Character")) { name = "SF Monster Cutout" };
+            MonsterCutoutMat.SetColor("_RimColor", Palette.MoonRim);
+            MonsterCutoutMat.SetFloat("_BounceStrength", 0f);
             UiFigureMat = new Material(FindShader("SoccerFight/UIFigure")) { name = "SF UI Figure" };
         }
 

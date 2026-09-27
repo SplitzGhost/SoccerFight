@@ -159,9 +159,18 @@ namespace SoccerFight
                 var d = def.Eyes[i];
                 Transform at = d.Parent >= 0 ? parts[d.Parent].T : body;
                 int order = Mathf.Max(62, d.Parent >= 0 ? def.Parts[d.Parent].Order + 1 : 62);
-                var sr = Art.MakeSprite("Eye", at, d.Wide ? MonsterArt.WispEye : MonsterArt.Eye, order, Art.SpriteEmissiveMat, Color.white);
-                var e = new EyeRt { D = d, Sr = sr, T = sr.transform };
-                if (!d.Wide) { e.Pupil = Art.MakeSprite("Pupil", sr.transform, MonsterArt.Pupil, order + 1); }
+                EyeRt e;
+                if (d.Sprite != null)
+                {
+                    var sr = Art.MakeSprite("Eye", at, d.Sprite, order, Art.MonsterCutoutMat, Color.white);
+                    e = new EyeRt { D = d, Sr = sr, T = sr.transform };
+                }
+                else
+                {
+                    var sr = Art.MakeSprite("Eye", at, d.Wide ? MonsterArt.WispEye : MonsterArt.Eye, order, Art.SpriteEmissiveMat, Color.white);
+                    e = new EyeRt { D = d, Sr = sr, T = sr.transform };
+                    if (!d.Wide) e.Pupil = Art.MakeSprite("Pupil", sr.transform, MonsterArt.Pupil, order + 1);
+                }
                 eyes[i] = e;
             }
             chains = new ChainRt[def.Chains.Count];
@@ -261,7 +270,7 @@ namespace SoccerFight
             }
         }
 
-        static Material MatOf(PartMat m) => m == PartMat.Glow ? Art.SpriteGlowMat : m == PartMat.Emissive ? Art.SpriteEmissiveMat : Art.SpriteMat;
+        static Material MatOf(PartMat m, bool cutout) => m == PartMat.Glow ? Art.SpriteGlowMat : m == PartMat.Emissive ? Art.SpriteEmissiveMat : cutout ? Art.MonsterCutoutMat : Art.SpriteMat;
 
         /// <summary>Put on the body in this stage's colours (the renderers were built for the same body).</summary>
         void ApplyLook()
@@ -283,7 +292,7 @@ namespace SoccerFight
                 var e = eyes[i];
                 e.D = look.Eyes[i];
                 e.T.localPosition = e.D.Pos;
-                e.Sr.color = e.D.Wide ? Color.white : e.D.Color ?? look.Eye;
+                e.Sr.color = e.D.Sprite != null || e.D.Wide ? Color.white : e.D.Color ?? look.Eye;
                 if (e.Pupil != null) e.Pupil.enabled = e.D.Pupil;
             }
             for (int i = 0; i < chains.Length; i++)
@@ -315,12 +324,13 @@ namespace SoccerFight
 
         void SetBodyMaterial(bool white)
         {
-            bodySr.sharedMaterial = white ? Art.SpriteSolidMat : Art.SpriteMat;
+            bool cutout = look.Cutout;
+            bodySr.sharedMaterial = white ? Art.SpriteSolidMat : cutout ? Art.MonsterCutoutMat : Art.SpriteMat;
             bodySr.color = Color.white;
             foreach (var p in parts)
             {
                 bool glowing = p.D.Mat == PartMat.Glow;
-                p.Sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(p.D.Mat);
+                p.Sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(p.D.Mat, cutout);
                 if (white && !glowing) p.Sr.color = Color.white;
             }
             foreach (var c in chains)
@@ -328,7 +338,7 @@ namespace SoccerFight
                 bool glowing = c.D.Mat == PartMat.Glow;
                 foreach (var sr in c.Srs)
                 {
-                    sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(c.D.Mat);
+                    sr.sharedMaterial = white && !glowing ? Art.SpriteSolidMat : MatOf(c.D.Mat, cutout);
                     if (white && !glowing) sr.color = Color.white;
                 }
             }
@@ -1180,6 +1190,9 @@ namespace SoccerFight
                 e.T.localScale = new Vector3(st.x, st.y * Mathf.Max(0.1f, eyeY), 1f);
                 if (e.Pupil != null && e.Pupil.enabled)
                     e.Pupil.transform.localPosition = new Vector3(Mathf.Abs(dir.x) * 0.018f + 0.004f, dir.y * 0.022f, 0f);
+                else if (e.D.Sprite != null)
+                    // painted eye: no separate pupil to nudge, so the whole eye leans towards the player instead
+                    e.T.localPosition = e.D.Pos + new Vector2(Mathf.Abs(dir.x) * 0.018f + 0.004f, dir.y * 0.022f);
                 Color ec = e.Sr.color; ec.a = fade; e.Sr.color = ec;
             }
 
