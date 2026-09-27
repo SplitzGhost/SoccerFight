@@ -206,7 +206,7 @@ namespace SoccerFight
             BallHighlight = BallHighlightCanvas(256f).ToSprite("BallHighlight", Vector2.zero);
         }
 
-        const float BallExt = BallRadius * 1.12f;
+        public const float BallExt = BallRadius * 1.12f;
         static Rect BallRect => new Rect(-BallExt, -BallExt, BallExt * 2f, BallExt * 2f);
 
         /// <summary>The ball's panels at a given texture size (the title screen wants a much bigger one). Thread-safe.</summary>

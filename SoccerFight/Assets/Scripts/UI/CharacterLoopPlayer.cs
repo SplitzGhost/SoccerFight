@@ -49,6 +49,8 @@ namespace SoccerFight
             Graphics.Blit(original,surface);
             player.targetTexture = surface;
             player.url = Application.streamingAssetsPath.TrimEnd('/') + "/CharacterLoops/" + id + ".mp4";
+            // Neue Bewegungen dürfen im Browser nicht durch den zuvor zwischengespeicherten Clip ersetzt werden.
+            if (Application.platform == RuntimePlatform.WebGLPlayer) player.url += "?v=dribble-2";
             player.Prepare();
         }
 
