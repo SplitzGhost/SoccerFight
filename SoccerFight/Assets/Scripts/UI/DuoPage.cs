@@ -86,7 +86,8 @@ namespace SoccerFight
                 Vector2 p = center + new Vector2((i - (CodeLength - 1) * 0.5f) * step, 0f);
                 UiKit.Img("BoxShade", parent, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.4f), p + new Vector2(0f, -6f), box * 1.3f);
                 boxes[i] = UiKit.Img("Box" + i, parent, ExactButtonArt.Get("code-cell"), Color.white, p, box, Image.Type.Sliced);
-                letters[i] = MenuArt.Label("Letter" + i, parent, "", font, Color.white, p + new Vector2(0f, 2f), box, TextAlignmentOptions.Center, 0f);
+                // Raumcodes mischen Buchstaben und Ziffern: immer die normale Schrift, sonst stünden zwei Schriften nebeneinander
+                letters[i] = UiKit.Label("Letter" + i, parent, "", font, Color.white, TextAlignmentOptions.Center, p + new Vector2(0f, 2f), box, true, 0f);
             }
         }
 
@@ -332,10 +333,10 @@ namespace SoccerFight
             }
             var mine = Characters.Current;
             var theirs = Characters.All[pi];
-            meName.text = mine.Name + "  (DU)";
+            MenuArt.SetText(meName, mine.Name + "  (DU)");
             meName.color = Color.Lerp(mine.Accent, Color.white, 0.5f);
             meRole.text = mine.Role.ToUpperInvariant() + (IsHost ? "  ·  HOST" : "");
-            partnerName.text = theirs.Name;
+            MenuArt.SetText(partnerName, theirs.Name);
             partnerName.color = Color.Lerp(theirs.Accent, Color.white, 0.5f);
             partnerRole.text = theirs.Role.ToUpperInvariant() + (IsHost ? "" : "  ·  HOST");
             lobbyCode.text = "RAUM " + (s.Link.JoinCode ?? "");

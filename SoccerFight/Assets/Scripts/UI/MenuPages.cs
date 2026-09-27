@@ -131,8 +131,8 @@ namespace SoccerFight
 
         ChunkButton SoonButton(Transform parent, int page, string id, Vector2 pos, Vector2 size, Color color, string label, float font, string soon)
         {
-            var b = new ChunkButton(parent, id, pos, size, color, label, font, MenuArt.IconLock, size.y * 0.42f);
-            b.IconLeft(24f);
+            var b = new ChunkButton(parent, id, pos, size, color, label, font, MenuArt.IconLock, size.y * 0.36f) { PlainPlate = true };
+            b.IconLeft(46f);
             b.Disabled = true;
             register(new MenuTarget { Id = id, Root = b.Root, Size = size, Page = page, Button = b, Soon = soon, Accent = color });
             return b;
@@ -166,14 +166,14 @@ namespace SoccerFight
             var page = NewPage(parent, MenuPage.Ranking, "RANGLISTE", "BESTE STAGES", Gold);
             var panel = UiKit.Node("Panel", page.Content, new Vector2(0f, 0f), new Vector2(960f, 640f));
             MenuUi.Plate(panel, "Back", Vector2.zero, new Vector2(960f, 640f), Gold, 0.3f);
-            Emblem(panel, MenuArt.IconTrophy, new Vector2(0f, 240f), 110f, Gold);
+            Emblem(panel, MenuArt.IconTrophy, new Vector2(0f, 236f), 110f, Gold, true);
             for (int i = 0; i < 6; i++)
             {
-                float y = 130f - i * 70f;
+                float y = 136f - i * 66f;
                 bool you = i == 0;
                 var row = UiKit.Node("Row" + i, panel, new Vector2(0f, y), new Vector2(860f, 58f));
-                UiKit.Img("Plate", row, MenuArt.CardBody, you ? new Color(0.16f, 0.14f, 0.09f, 0.9f) : new Color(0.03f, 0.06f, 0.09f, 0.7f), Vector2.zero, new Vector2(860f, 58f), Image.Type.Sliced);
-                UiKit.Img("Frame", row, MenuArt.Frame, (you ? Gold : Muted).WithAlpha(you ? 0.7f : 0.15f), Vector2.zero, new Vector2(862f, 60f), Image.Type.Sliced);
+                UiKit.Img("Frame", row, UiArt.Pill, (you ? Gold : Muted).WithAlpha(you ? 0.55f : 0.14f), Vector2.zero, new Vector2(862f, 60f), Image.Type.Sliced);
+                UiKit.Img("Plate", row, UiArt.Pill, you ? new Color(0.13f, 0.11f, 0.07f, 0.95f) : new Color(0.03f, 0.06f, 0.09f, 0.9f), Vector2.zero, new Vector2(858f, 56f), Image.Type.Sliced);
                 Color medal = i == 0 ? Gold : i == 1 ? new Color(0.8f, 0.87f, 0.92f) : i == 2 ? new Color(0.9f, 0.6f, 0.4f) : Muted;
                 MenuUi.Medallion(row, "Rank", new Vector2(-380f, 0f), 42f, medal);
                 MenuArt.Label("N", row, (i + 1).ToString(), 22f, Color.white, new Vector2(-380f, 0f), new Vector2(42f, 42f), TextAlignmentOptions.Center, 0f, MenuArt.TextHeavySoft);
@@ -181,7 +181,7 @@ namespace SoccerFight
                 var value = MenuArt.Label("Value", row, you ? "STAGE 0" : "—", 26f, you ? Gold : Muted.WithAlpha(0.7f), new Vector2(300f, 0f), new Vector2(240f, 44f), TextAlignmentOptions.Right, 4f);
                 if (you) { rankYou = name; rankValue = value; }
             }
-            Body(panel, "Die Online-Rangliste kommt später — bis dahin jagst du hier deinen eigenen Rekord.", new Vector2(0f, -280f), new Vector2(820f, 60f), 20f);
+            Body(panel, "Die Online-Rangliste kommt später — bis dahin jagst du hier deinen eigenen Rekord.", new Vector2(0f, -258f), new Vector2(820f, 40f), 19f);
         }
 
         // ------------------------------------------------------------------ friends
@@ -203,14 +203,13 @@ namespace SoccerFight
             {
                 var card = UiKit.Node("Event" + i, page.Content, new Vector2((i - 0.5f) * 600f, 20f), new Vector2(540f, 560f));
                 MenuUi.Plate(card, "Card", Vector2.zero, new Vector2(540f, 560f), cols[i], 0.35f);
-                Emblem(card, icons[i], new Vector2(0f, 120f), 170f, cols[i]);
+                Emblem(card, icons[i], new Vector2(0f, 120f), 170f, cols[i], true);
                 MenuArt.Label("Name", card, names[i], 34f, Color.white, new Vector2(0f, -20f), new Vector2(520f, 50f), TextAlignmentOptions.Center, 6f);
                 Body(card, lines[i], new Vector2(0f, -84f), new Vector2(460f, 70f));
                 var timer = UiKit.Node("Timer", card, new Vector2(0f, -148f), new Vector2(240f, 40f));
                 UiKit.Img("Pill", timer, UiArt.Pill, new Color(0.02f, 0.05f, 0.08f, 0.85f), Vector2.zero, new Vector2(240f, 40f), Image.Type.Sliced);
                 MenuArt.Label("T", timer, "STARTET BALD", 18f, Gold, Vector2.zero, new Vector2(240f, 40f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
                 SoonButton(card, MenuPage.Events, "event" + i, new Vector2(0f, -218f), new Vector2(320f, 72f), cols[i], "MITMACHEN", 26f, "EVENTS STARTEN BALD");
-                MenuUi.Tag(card, "BALD", new Vector2(208f, 250f), Gold);
             }
         }
 
@@ -221,22 +220,22 @@ namespace SoccerFight
             var page = NewPage(parent, MenuPage.Info, "INFO", "STEUERUNG UND TIPPS", MenuArt.Accent);
             var left = UiKit.Node("Controls", page.Content, new Vector2(-370f, 0f), new Vector2(680f, 700f));
             MenuUi.Plate(left, "Back", Vector2.zero, new Vector2(680f, 700f), MenuArt.Accent, 0.3f);
-            MenuArt.Label("Head", left, "STEUERUNG", 30f, MenuArt.Accent, new Vector2(0f, 300f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
-            float y = 232f;
+            MenuArt.Label("Head", left, "STEUERUNG", 30f, MenuArt.Accent, new Vector2(0f, 284f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
+            float y = 236f;
             foreach (var a in KeyBindings.All)
             {
-                MenuArt.Label("Action", left, KeyBindings.ActionName(a), 20f, Color.white, new Vector2(-120f, y), new Vector2(360f, 40f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
-                var plate = UiKit.Img("Key", left, UiArt.Pill, new Color(0.08f, 0.14f, 0.2f, 0.95f), new Vector2(190f, y), new Vector2(210f, 38f), Image.Type.Sliced);
-                UiKit.Img("KeyRim", left, UiArt.Pill, Color.white.WithAlpha(0.12f), new Vector2(190f, y), new Vector2(212f, 40f), Image.Type.Sliced).transform.SetSiblingIndex(plate.transform.GetSiblingIndex());
+                MenuArt.Label("Action", left, KeyBindings.ActionName(a), 20f, Color.white, new Vector2(-116f, y), new Vector2(360f, 40f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
+                var plate = UiKit.Img("Key", left, UiArt.Pill, new Color(0.08f, 0.14f, 0.2f, 0.95f), new Vector2(180f, y), new Vector2(210f, 38f), Image.Type.Sliced);
+                UiKit.Img("KeyRim", left, UiArt.Pill, Color.white.WithAlpha(0.12f), new Vector2(180f, y), new Vector2(212f, 40f), Image.Type.Sliced).transform.SetSiblingIndex(plate.transform.GetSiblingIndex());
                 var key = MenuArt.Label("K", plate.transform, "", 18f, new Color(0.85f, 0.95f, 1f), Vector2.zero, new Vector2(200f, 38f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
                 keyRows.Add((key, a));
-                y -= 46f;
+                y -= 50f;
             }
-            Body(left, "LINKSKLICK HALTEN = DAUERFEUER  ·  ESC PAUSE", new Vector2(0f, -306f), new Vector2(620f, 36f), 18f);
+            Body(left, "LINKSKLICK HALTEN = DAUERFEUER  ·  ESC PAUSE", new Vector2(0f, -292f), new Vector2(600f, 32f), 17f);
 
             var right = UiKit.Node("About", page.Content, new Vector2(370f, 0f), new Vector2(680f, 700f));
             MenuUi.Plate(right, "Back", Vector2.zero, new Vector2(680f, 700f), Gold, 0.3f);
-            MenuArt.Label("Head", right, "SO GEHT'S", 30f, Gold, new Vector2(0f, 300f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
+            MenuArt.Label("Head", right, "TIPPS", 30f, Gold, new Vector2(0f, 284f), new Vector2(600f, 44f), TextAlignmentOptions.Center, 10f);
             string[] tips =
             {
                 "Schieß dich mit dem Ball durch Wellen von Monstern — jede Stage endet mit einem Boss.",
@@ -246,17 +245,20 @@ namespace SoccerFight
                 "Rote Markierungen am Boden zeigen, wohin ein Boss springt oder stürmt.",
             };
             Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconStar, MenuArt.IconCoin, MenuArt.IconSkiller, MenuArt.IconDefender };
-            float ty = 206f;
+            float ty = 208f;
             for (int i = 0; i < tips.Length; i++)
             {
-                bool coin = icons[i] == MenuArt.IconCoin;
-                UiKit.Img("TipRing", right, MenuArt.RoundFrame, Gold.WithAlpha(0.5f), new Vector2(-282f, ty), new Vector2(56f, 56f));
-                var ic = UiKit.Img("TipIcon", right, icons[i], coin ? Color.white : Color.Lerp(Gold, Color.white, 0.5f), new Vector2(-282f, ty), new Vector2(32f, 32f));
+                UiKit.Img("TipDisc", right, MenuArt.Round, new Color(0.02f, 0.05f, 0.08f, 0.85f), new Vector2(-246f, ty), new Vector2(58f, 58f));
+                UiKit.Img("TipRing", right, MenuArt.RoundFrame, Gold.WithAlpha(0.5f), new Vector2(-246f, ty), new Vector2(60f, 60f));
+                var ic = UiKit.Img("TipIcon", right, icons[i], Color.white, new Vector2(-246f, ty), new Vector2(36f, 36f));
                 ic.preserveAspect = true;
-                Body(right, tips[i], new Vector2(40f, ty), new Vector2(540f, 90f), 20f, TextAlignmentOptions.Left);
+                var tip = Body(right, tips[i], new Vector2(42f, ty), new Vector2(480f, 84f), 19f, TextAlignmentOptions.Left);
+                tip.enableAutoSizing = true;
+                tip.fontSizeMin = 14f;
+                tip.fontSizeMax = 19f;
                 ty -= 100f;
             }
-            Body(right, "SPORTFIGHTER  ·  Grafik und Animation komplett im Code erzeugt  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEV", new Vector2(0f, -312f), new Vector2(620f, 40f), 15f);
+            Body(right, "SPORTFIGHTER  ·  F1 FPS  ·  F2 VSYNC  ·  F3 DEVELOPER", new Vector2(0f, -292f), new Vector2(600f, 30f), 15f);
             RefreshKeys();
         }
 
@@ -272,7 +274,7 @@ namespace SoccerFight
             var page = NewPage(parent, MenuPage.Settings, "OPTIONEN", "ANZEIGE · EFFEKTE · TASTEN", MenuArt.Accent);
             var holder = UiKit.Node("Holder", page.Content, new Vector2(0f, -30f), SettingsPanel.Size);
             // the card is cut down to the rows it holds (its own title is replaced by the page heading)
-            Vector2 cardSize = new Vector2(SettingsPanel.Size.x, 660f), cardPos = new Vector2(0f, 22f);
+            Vector2 cardSize = new Vector2(SettingsPanel.Size.x, 730f), cardPos = new Vector2(0f, -8f);
             Settings = new SettingsPanel();
             Settings.Build(holder, false);
             Recolor(Settings.Root, "Glass", Color.white, cardPos, cardSize);
@@ -298,7 +300,7 @@ namespace SoccerFight
         {
             if (rankYou != null)
             {
-                rankYou.text = "DU  (" + Characters.Current.Name + ")";
+                MenuArt.SetText(rankYou, "DU  (" + Characters.Current.Name + ")");
                 int best = RunState.BestStage;
                 rankValue.text = best > 0 ? "STAGE " + best : "—";
             }

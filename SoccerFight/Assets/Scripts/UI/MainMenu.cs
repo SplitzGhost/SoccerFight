@@ -95,7 +95,8 @@ namespace SoccerFight
 
         // home page
         RectTransform logoRoot, logoSpin, logoShine, leftCol, rightCol, tagRoot;
-        Image logoShineImg, pedestalGlow, tagBadge, tagIcon, playHalo, recordFill, modeGlow;
+        Image logoShineImg, pedestalGlow, tagBallPattern, playHalo, recordFill, modeGlow, modeLock;
+        RectTransform tagBall;
         TextMeshProUGUI tagName, tagRole, recordValue;
         ChunkButton play, tagButton, modeButton;
         MenuTarget figureTarget, tagTarget;
@@ -175,6 +176,14 @@ namespace SoccerFight
             backdrop.texture = Resources.Load<Texture2D>("Menu/Ruinenhof");
             backdrop.raycastTarget = false;
             backdrop.color = Color.white;
+            // zum oberen Rand hin wird der Himmel dunkler (nie ganz schwarz), damit die Kopfleiste lesbar bleibt
+            var topShade = UiKit.Img("TopShade", root, MenuUi.FadeDown, new Color(0.01f, 0.03f, 0.06f, 0.62f), Vector2.zero, Vector2.zero);
+            topShade.raycastTarget = false;
+            topShade.rectTransform.anchorMin = new Vector2(0f, 1f);
+            topShade.rectTransform.anchorMax = new Vector2(1f, 1f);
+            topShade.rectTransform.pivot = new Vector2(0.5f, 1f);
+            topShade.rectTransform.sizeDelta = new Vector2(0f, 420f);
+            topShade.rectTransform.anchoredPosition = Vector2.zero;
             // night falls over the switch between arena and scene
             veil = UiKit.Img("Veil", root, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(veil.rectTransform);
@@ -288,18 +297,23 @@ namespace SoccerFight
             tagRoot = UiKit.Node("Tag", stack, new Vector2(-12f, TagY), new Vector2(336f, 93f));
             tagGroup = tagRoot.gameObject.AddComponent<CanvasGroup>();
             tagButton = new ChunkButton(tagRoot, "Plate", Vector2.zero, new Vector2(336f, 93f), MenuArt.Accent, null, 0f);
-            tagButton.UseExact("main-tag");
-            tagBadge = UiKit.Img("Badge", tagButton.Face, MenuArt.Badge, Color.white, new Vector2(-112f, 0f), new Vector2(50f, 50f));
-            tagIcon = UiKit.Img("Icon", tagBadge.transform, MenuArt.IconStriker, Color.white, Vector2.zero, new Vector2(26f, 26f));
-            tagIcon.preserveAspect = true;
-            tagName = MenuArt.Label("Name", tagButton.Face, "", 30f, Color.white, new Vector2(10f, 11f), new Vector2(170f, 38f), TextAlignmentOptions.Left, 7f);
-            tagRole = MenuArt.Label("Role", tagButton.Face, "", 15f, Color.white, new Vector2(10f, -17f), new Vector2(170f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+            // die gemalte Platte ohne Schrift; Name und Rolle stehen in ihrer dunklen Einlassung
+            tagButton.UseExact("main-tag-blank");
             var originalTagText = UiKit.Node("VariableBeschriftung", tagButton.Face, Vector2.zero, tagButton.Size);
-            tagName.transform.SetParent(originalTagText, false);
-            tagRole.transform.SetParent(originalTagText, false);
-            tagName.rectTransform.anchoredPosition = new Vector2(31f, 17f);
-            tagRole.rectTransform.anchoredPosition = new Vector2(31f, -16f);
-            UiKit.Img("Swap", tagButton.Face, MenuArt.IconSwap, MenuArt.Accent.WithAlpha(0.85f), new Vector2(122f, 0f), new Vector2(24f, 24f));
+            tagButton.OriginalText = originalTagText;
+            // Basketballer bekommen ihren Ball über den gemalten Fußball gelegt
+            tagBall = UiKit.Node("Ball", originalTagText, new Vector2(-108.5f, 1f), Vector2.one * 74f);
+            tagBallPattern = UiKit.Img("Pattern", tagBall, Art.HoopPattern, Color.white, Vector2.zero, Vector2.one * 74f);
+            UiKit.Img("Shade", tagBall, Art.BallShade, Color.white, Vector2.zero, Vector2.one * 74f);
+            UiKit.Img("Hi", tagBall, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * 74f);
+            tagName = MenuArt.Label("Name", originalTagText, "", 30f, Color.white, new Vector2(24f, 12f), new Vector2(146f, 36f), TextAlignmentOptions.Left, 5f);
+            tagName.enableAutoSizing = true;
+            tagName.fontSizeMin = 20f;
+            tagName.fontSizeMax = 30f;
+            tagRole = MenuArt.Label("Role", originalTagText, "", 15f, Color.white, new Vector2(24f, -17f), new Vector2(146f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
+            tagRole.enableAutoSizing = true;
+            tagRole.fontSizeMin = 11f;
+            tagRole.fontSizeMax = 15f;
             tagTarget = new MenuTarget { Id = "tag", Root = tagRoot, Size = tagRoot.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawTag, Accent = MenuArt.Accent };
             Register(tagTarget);
         }
@@ -312,11 +326,14 @@ namespace SoccerFight
 
             // season heading and the record as a progress bar through the eight stages
             var season = UiKit.Node("Season", leftCol, new Vector2(0f, 262f), new Vector2(500f, 170f));
+            // weicher Nachtschatten hinter dem Block, damit Überschrift und Rekord vor den hellen Ruinen lesbar bleiben
+            UiKit.Img("Shade", season, UiArt.Glow, new Color(0.01f, 0.03f, 0.06f, 0.55f), new Vector2(10f, 4f), new Vector2(760f, 300f));
             MenuArt.Label("Overline", season, "SAISON 1", 22f, MenuArt.Accent, new Vector2(0f, 62f), new Vector2(500f, 30f), TextAlignmentOptions.Left, 9f, MenuArt.TextHeavySoft);
             UiKit.Img("Title", season, ExactButtonArt.Get("main-title"), Color.white, new Vector2(-23f, 14f), new Vector2(454f, 70f));
             MenuArt.Label("RecordLabel", season, "REKORD", 17f, Muted, new Vector2(0f, -40f), new Vector2(500f, 24f), TextAlignmentOptions.Left, 5f, MenuArt.TextHeavySoft);
-            recordValue = MenuArt.Label("RecordValue", season, "", 17f, Gold, new Vector2(-40f, -40f), new Vector2(420f, 24f), TextAlignmentOptions.Right, 4f, MenuArt.TextHeavySoft);
-            UiKit.Img("RecordTrophy", season, MenuArt.IconTrophy, Gold, new Vector2(232f, -40f), new Vector2(22f, 22f)).preserveAspect = true;
+            recordValue = MenuArt.Label("RecordValue", season, "", 17f, Gold, new Vector2(-30f, -40f), new Vector2(440f, 24f), TextAlignmentOptions.Right, 4f, MenuArt.TextHeavySoft);
+            // der gemalte Pokal in seinen eigenen Farben, direkt am Ende des Balkens
+            UiKit.Img("RecordTrophy", season, MenuArt.IconTrophy, Color.white, new Vector2(234f, -38f), new Vector2(30f, 30f)).preserveAspect = true;
             UiKit.Img("Track", season, UiArt.Pill, new Color(0.02f, 0.05f, 0.08f, 0.85f), new Vector2(0f, -66f), new Vector2(500f, 12f), Image.Type.Sliced);
             recordFill = UiKit.Img("Fill", season, UiArt.Pill, Gold, new Vector2(-250f, -66f), new Vector2(0f, 8f), Image.Type.Sliced);
             recordFill.rectTransform.pivot = new Vector2(0f, 0.5f);
@@ -332,19 +349,27 @@ namespace SoccerFight
         {
             rightCol = UiKit.Node("Right", main, Vector2.zero, new Vector2(541f, 380f));
 
-            // the game mode, like a card: emblem, name, what a run holds, and a strip to change it
+            // Spielmodus: die gemalte Platte (Berg, LEVEL WECHSELN) ohne Schriftzug; der Name des gewählten
+            // Levels steht in der freien Fläche, darüber eine Zeile mit Stufe, Stages und Kristallen
             var mode = new ChunkButton(rightCol, "Mode", new Vector2(0f, 83f), new Vector2(522f, 195f), MenuArt.Accent, null, 0f);
             modeButton = mode;
-            var face = mode.Face;
-            modeGlow = UiKit.Img("EmblemGlow", face, UiArt.Glow, MenuArt.Accent.WithAlpha(0.06f), new Vector2(-160f, 16f), new Vector2(190f, 190f));
-            UiKit.Img("Emblem", face, MenuArt.IconMode, Color.white, new Vector2(-160f, 16f), new Vector2(110f, 110f)).preserveAspect = true;
-            MenuArt.Label("Overline", face, "SPIELMODUS", 15f, MenuArt.Accent, new Vector2(66f, 52f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
-            modeName = MenuArt.Label("Name", face, "LEVEL 1", 30f, Color.white, new Vector2(66f, 9f), new Vector2(290f, 40f), TextAlignmentOptions.Left, 4f);
-            modeSub = MenuArt.Label("Sub", face, "3 STAGES  ·  EINFACH", 15f, Muted, new Vector2(66f, -12f), new Vector2(290f, 22f), TextAlignmentOptions.Left, 3f, MenuArt.TextHeavySoft);
-            var change = UiKit.Node("Change", face, new Vector2(0f, -62f), new Vector2(440f, 38f));
-            UiKit.Img("Strip", change, MenuArt.CardBody, new Color(0.3f, 0.8f, 0.95f, 0.14f), Vector2.zero, new Vector2(440f, 38f), Image.Type.Sliced);
-            UiKit.Img("SwapIcon", change, MenuArt.IconSwap, MenuArt.Accent, new Vector2(-100f, 0f), new Vector2(20f, 20f));
-            MenuArt.Label("Text", change, "LEVEL WECHSELN", 16f, new Color(0.75f, 0.96f, 1f), new Vector2(18f, 0f), new Vector2(240f, 30f), TextAlignmentOptions.Center, 6f, MenuArt.TextHeavySoft);
+            mode.UseExact("main-mode-blank");
+            modeGlow = UiKit.Img("EmblemGlow", mode.Root, UiArt.Glow, MenuArt.Accent.WithAlpha(0.06f), new Vector2(-150f, 0f), new Vector2(240f, 240f));
+            modeGlow.transform.SetAsFirstSibling();
+            var text = UiKit.Node("Beschriftung", mode.Face, Vector2.zero, mode.Size);
+            mode.OriginalText = text;
+            modeName = MenuArt.Label("Name", text, "ERSTE SCHRITTE", 32f, Color.white, new Vector2(64f, 33f), new Vector2(282f, 44f), TextAlignmentOptions.Center, 3f);
+            modeName.enableAutoSizing = true;
+            modeName.fontSizeMin = 22f;
+            modeName.fontSizeMax = 32f;
+            modeLock = UiKit.Img("Lock", text, MenuArt.IconLock, Color.white, new Vector2(-128f, -50f), new Vector2(44f, 44f));
+            modeLock.preserveAspect = true;
+            var info = UiKit.Node("Info", mode.Root, new Vector2(0f, 124f), new Vector2(470f, 34f));
+            UiKit.Img("Back", info, UiArt.Pill, new Color(0.01f, 0.03f, 0.06f, 0.72f), Vector2.zero, new Vector2(470f, 34f), Image.Type.Sliced);
+            modeSub = MenuArt.Label("Sub", info, "", 15f, Muted, new Vector2(0f, 0.5f), new Vector2(450f, 30f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
+            modeSub.enableAutoSizing = true;
+            modeSub.fontSizeMin = 11f;
+            modeSub.fontSizeMax = 15f;
             Move(mode.Root, new Vector2(700f, 0f), 0.22f, Button(mode, "mode", CycleChallenge));
 
             // the one warm, solid thing on the screen: lantern gold, like the power shot's ring
@@ -352,7 +377,6 @@ namespace SoccerFight
             play = new ChunkButton(rightCol, "Play", new Vector2(0f, -100f), new Vector2(541f, 164f), Gold, "SPIELEN", 48f, MenuArt.IconPlay, 68f, true, true);
             play.IconLeft(64f);
             play.UseExact("main-play");
-            modeButton.UseExact("main-mode");
             Move(play.Root, new Vector2(700f, 0f), 0.3f, Button(play, "play", Play));
         }
 
@@ -367,20 +391,11 @@ namespace SoccerFight
             bar.sizeDelta = new Vector2(0f, SubPage.TopBar);
             barGroup = bar.gameObject.AddComponent<CanvasGroup>();
 
-            // a band of night glass with a hairline of moonlight along its lower edge
-            var back = UiKit.Img("Back", bar, null, new Color(0.01f, 0.03f, 0.05f, 1f), Vector2.zero, Vector2.zero);
+            // ein durchscheinendes Band aus Nachtglas: der Himmel bleibt dahinter sichtbar
+            var back = UiKit.Img("Back", bar, MenuUi.FadeDown, new Color(0.01f, 0.03f, 0.05f, 0.35f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(back.rectTransform);
-            var shade = UiKit.Img("Shade", bar, UiArt.Glow, new Color(0f, 0.01f, 0.02f, 0.5f), Vector2.zero, Vector2.zero);
-            shade.rectTransform.anchorMin = new Vector2(0f, 0f);
-            shade.rectTransform.anchorMax = new Vector2(1f, 0f);
-            shade.rectTransform.sizeDelta = new Vector2(400f, 60f);
-            shade.rectTransform.anchoredPosition = new Vector2(0f, -22f);
-            shade.transform.SetAsFirstSibling();
-            var line = UiKit.Img("Line", bar, MenuArt.Sliver, MenuArt.Accent.WithAlpha(0.35f), Vector2.zero, Vector2.zero);
-            line.rectTransform.anchorMin = new Vector2(0f, 0f);
-            line.rectTransform.anchorMax = new Vector2(1f, 0f);
-            line.rectTransform.sizeDelta = new Vector2(0f, 4f);
-            line.rectTransform.anchoredPosition = Vector2.zero;
+            back.rectTransform.sizeDelta = new Vector2(0f, 40f);
+            back.rectTransform.anchoredPosition = new Vector2(0f, -20f);
 
             barLeft = Inner(bar, new Vector2(0f, 0.5f));
             barRight = Inner(bar, new Vector2(1f, 0.5f));
@@ -832,13 +847,11 @@ namespace SoccerFight
             bool hoops = def.Sport == Sport.Basketball;
             if (logoPattern != null) logoPattern.sprite = Art.PatternFor(def.Sport);
             if (heroPattern != null) heroPattern.sprite = hoops ? (MenuScenery.HeroHoop != null ? MenuScenery.HeroHoop : Art.HoopPattern) : (MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern);
-            tagName.text = def.Name;
+            MenuArt.SetText(tagName, def.Name);
             tagRole.text = def.Role;
-            tagButton.UseExact(def.Id == "rio" ? "main-tag" : "main-tag-blank");
-            tagButton.OriginalText = def.Id == "rio" ? null : tagName.transform.parent;
-            tagRole.color = Color.Lerp(def.Accent, Color.white, 0.4f);
-            tagBadge.color = Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f);
-            tagIcon.sprite = MenuArt.ClassIcon(def.Class);
+            tagBall.gameObject.SetActive(hoops);
+            tagBallPattern.sprite = Art.PatternFor(def.Sport);
+            tagRole.color = Color.Lerp(def.Accent, Color.white, 0.55f);
             tagButton.Color = def.Accent;
             RefreshChallenge();
             if (changed) swapFlash = 1f;
@@ -961,18 +974,17 @@ namespace SoccerFight
             var c = ChallengeLevels.Current;
             bool unlocked = ChallengeLevels.IsUnlocked(c, Characters.Current);
             bool duoReady = room != null && room.Link.Connected && room.PartnerHello;
-            string level = "LEVEL " + c.Number + "  ·  ";
+            string level = "LEVEL " + c.Number + " / " + ChallengeLevels.All.Length + "  ·  ";
             string name = duoReady ? "DUO-LAUF" : room != null ? "DUO-RAUM OFFEN" : c.Name;
-            string sub = !unlocked ? level + "AB CHARAKTER-STUFE " + c.RequiredCharacterLevel
+            string sub = !unlocked ? level + "GESPERRT  ·  AB CHARAKTER-STUFE " + c.RequiredCharacterLevel + " (DEINE: " + CharacterProgression.Level(Characters.Current) + ")"
                 : duoReady ? level + "MIT " + (room.PartnerName ?? "").ToUpperInvariant()
                 : room != null ? "WARTE AUF MITSPIELER"
-                : level + c.Stages + " STAGES  ·  KRISTALLE ×" + c.CrystalMultiplier.ToString("0.0");
-            modeButton.UseExact(name == "ERSTE SCHRITTE" ? "main-mode" : "main-mode-blank");
-            modeButton.OriginalText = name == "ERSTE SCHRITTE" ? null : modeName.transform;
-            if (modeName.text != name) modeName.text = name;
+                : level + c.Stages + " STAGES  ·  KRISTALLE ×" + c.CrystalMultiplier.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+            MenuArt.SetText(modeName, name);
             if (modeSub.text != sub) modeSub.text = sub;
-            modeName.color = unlocked ? Color.white : MetaUi.Muted;
-            modeSub.color = unlocked ? Muted : MetaUi.Danger;
+            modeName.color = unlocked ? Color.white : new Color(0.72f, 0.8f, 0.86f);
+            modeSub.color = unlocked ? new Color(0.8f, 0.9f, 0.96f) : MetaUi.Danger;
+            modeLock.enabled = !unlocked;
         }
 
         Vector2 AimNorm()
@@ -1063,10 +1075,13 @@ namespace SoccerFight
         {
             if (backdrop.texture == null) return;
             float aspect = (float)backdrop.texture.width / backdrop.texture.height;
-            // Wie im freigegebenen Hauptmenü beginnt die Szene unter der dunklen Kopfleiste.
-            float height = Mathf.Max(root.rect.height, root.rect.width / aspect) * 1.05f;
+            float w = root.rect.width, h = root.rect.height;
+            // Der Boden bleibt, wo er unter der Figur lag; das Bild reicht nach oben bis an den
+            // Bildschirmrand (auch hinter die Kopfleiste) und füllt immer die ganze Breite.
+            float bottom = h * 0.5f - SubPage.TopBar - Mathf.Max(h, w / aspect) * 1.05f;
+            float height = Mathf.Max(h * 0.5f - bottom, w / aspect);
             backdrop.rectTransform.sizeDelta = new Vector2(height * aspect, height);
-            backdrop.rectTransform.anchoredPosition = new Vector2(0f, -SubPage.TopBar - (height - root.rect.height) * 0.5f);
+            backdrop.rectTransform.anchoredPosition = new Vector2(0f, bottom + height * 0.5f);
         }
 
         /// <summary>Logo on the left, the icons and wallet on the right, the tabs centred in between (smaller if they must).</summary>

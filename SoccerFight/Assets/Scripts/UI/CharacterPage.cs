@@ -60,9 +60,10 @@ namespace SoccerFight
                 var grp = new Group { Sport = sport };
                 int index = g;
                 Color accent = SportAccent(sport);
+                // eigene Platte statt der Probebilder: dort ist FUSSBALL immer hell (aktiv) gemalt, BASKETBALL immer dunkel
                 grp.Tab = new ChunkButton(content, "Tab" + sport, new Vector2((g - (tabCount - 1) * 0.5f) * tabStep, 372f), new Vector2(tabW, 60f), accent,
-                    Characters.SportName(sport), 22f, MenuArt.SportIcon(sport), 28f);
-                grp.Tab.IconLeft(30f);
+                    Characters.SportName(sport), 22f, MenuArt.SportIcon(sport), 36f) { PlainPlate = true };
+                grp.Tab.IconLeft(34f);
                 nav.Register(new MenuTarget
                 {
                     Id = "sport" + g, Root = grp.Tab.Root, Size = grp.Tab.Size, Page = MenuPage.Characters,
@@ -92,8 +93,8 @@ namespace SoccerFight
             {
                 int g = Characters.Sports.Length + s;
                 var b = new ChunkButton(content, "Tab" + soonNames[s], new Vector2((g - (tabCount - 1) * 0.5f) * tabStep, 372f), new Vector2(tabW, 60f),
-                    MetaUi.Muted, soonNames[s], 22f, soonIcons[s](), 28f);
-                b.IconLeft(30f);
+                    MetaUi.Muted, soonNames[s], 22f, soonIcons[s](), 36f) { PlainPlate = true, Disabled = true };
+                b.IconLeft(34f);
                 soonTabs.Add(b);
                 nav.Register(new MenuTarget
                 {
@@ -156,10 +157,13 @@ namespace SoccerFight
             int level = CharacterProgression.Level(def);
             card.IsChosen = current;
             card.Locked = !own;
-            string label;
-            if (!own) label = "ZUM SHOP";
-            else label = "STUFE " + level + "  ·  ANSEHEN";
-            card.Style(t, TimeFx.UiDelta, label, current, current ? MetaUi.Gold : def.Accent, current);
+            if (!own)
+            {
+                // gesperrt: der Knopf zeigt den Preis mit Münze (ein Treffer führt in den Shop)
+                card.Style(t, TimeFx.UiDelta, def.Cost.ToString(), false, Wallet.CanAfford(def.Cost) ? def.Accent : MetaUi.Danger, false, true);
+                return;
+            }
+            card.Style(t, TimeFx.UiDelta, "STUFE " + level + "  ·  ANSEHEN", current, current ? MetaUi.Gold : def.Accent, false);
         }
 
         public void Update(float udt, Vector2 aim)

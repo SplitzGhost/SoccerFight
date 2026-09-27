@@ -88,7 +88,8 @@ Die Szene enthält nur ein GameObject mit der Komponente `Game`, der Rest wird b
 ## Hauptmenü
 
 Das Spiel startet im Titelbildschirm. Dahinter liegt die Ruinenhof-Grafik
-`Assets/Resources/Menu/Ruinenhof.png`: Die freigegebene plastische Cartoon-Kulisse zeigt nahe, verwitterte
+`Assets/Resources/Menu/Ruinenhof.png`; sie füllt den ganzen Bildschirm (auch hinter der durchscheinenden Kopfleiste)
+und dunkelt nach oben hin leicht ab. Die freigegebene plastische Cartoon-Kulisse zeigt nahe, verwitterte
 Steinbögen, türkise Banner, Fackeln und Mondlicht. Der offene Rasen reicht fast bis zur Bildmitte und
 bleibt frei für die separat animierte Spielfigur.
 Die ruhigeren Bildränder geben den Bedienelementen Platz. Solange das Menü offen ist, zeichnet die
@@ -98,7 +99,10 @@ Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchst
 Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler** auf dem
 Spielfeld, der den Ball hochhält – wer ihn abschießt, öffnet seine Charakterdetails; sein Namensschild
 führt zur Spielerauswahl.
-Links steht der Saisonrekord, rechts Spielmodus und der große **SPIELEN**-Knopf. Der Quest-Platzhalter ist entfernt. Die Leiste oben führt
+Links steht der Saisonrekord, rechts Spielmodus und der große **SPIELEN**-Knopf. Der Spielmodus-Knopf zeigt den Namen
+des gewählten Levels (ERSTE SCHRITTE, WILDE HAINE, STURMFRONT, GLUTPROBE, FINALE EKLIPSE), darüber eine Zeile mit
+Stages und Kristall-Faktor; ein Treffer auf ihn wechselt zum nächsten Level. Gesperrte Level tragen ein Schloss und
+nennen die nötige Charakter-Stufe, SPIELEN startet sie nicht. Der Quest-Platzhalter ist entfernt. Die Leiste oben führt
 zu Spielern, Shop, Events, Rangliste und Optionen. Rangliste, Freunde und Events sind Platzhalter-Seiten
 („kommt bald“), Info erklärt Steuerung und Spielprinzip. **Beim allerersten Start** öffnet das Menü auf der
 Starterwahl (siehe „Fortschritt“) und lässt einen erst danach aufs Hauptmenü. **SPIELEN:** das Menü räumt sich weg, der Spieler tritt den
@@ -109,7 +113,11 @@ hell; die übrigen Platten und Symbole bleiben dunkel, damit der Seiteninhalt im
 Die Grafiken werden direkt aus den freigegebenen Probebildern ausgeschnitten, einschließlich ihrer gemalten
 Symbole und festen Beschriftungen. Es gibt keine vereinfachte oder neu generierte Ersatzgestaltung.
 `tools/extract-menu-buttons.py --sources Inspiration/MenuPreviews` erzeugt die Atlanten unter
-`Resources/UiButtons/Exact/`; `layout.json` hält Herkunftsbild und Ausschnitt jedes Elements fest.
+`Resources/UiButtons/Exact/`; `layout.json` hält Herkunftsbild und Ausschnitt jedes Elements fest. Danach bessert
+`node tools/fix-exact-art.js` einzelne Ausschnitte nach (saubere Tafelecken, Spielmodus-Knopf ohne Schriftzug,
+leere Namensplatte, AN/AUS-Schalter immer mit AUS links, Symbole ohne dunklen Kasten). Karten halten ihre Bilder und
+Knöpfe innerhalb des gemalten Rahmens (`MenuUi.PanelInset`). Texte, deren Zeichen die gemalte Schrift nicht kennt
+(Ziffern, „·“, Klammern), stehen ganz in der normalen Menüschrift (`ExactMenuFont.Covers`).
 `UI/ExactButtonArt.cs` und `UI/ButtonSkin.cs` laden diese Originalgrafiken für Shop, Spielerauswahl, Optionen,
 Pause, Duo, Entwicklermenü und Belohnungsbuttons. Leere Flächen für wechselnde Werte stammen ebenfalls
 aus denselben Originalplatten; `UI/ExactMenuFont.cs` verwendet ausgeschnittene Originalbuchstaben für

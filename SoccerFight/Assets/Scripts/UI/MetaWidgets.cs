@@ -147,11 +147,11 @@ namespace SoccerFight
     }
 
     /// <summary>
-    /// A player card in the language of the in-game cards: header with class diamond and class name,
-    /// a tall portrait with the live figure standing in its own coloured light, the name over the
-    /// portrait, and a body that either shows the class strengths (the starter pick) or flavour,
-    /// talent, perk and bars (the roster). Locked characters sit behind a dark veil with a lock and
-    /// their price. The owning page fills the button.
+    /// A player card in the language of the in-game cards: header with class diamond and the name, a tall
+    /// portrait with the live figure standing in its own coloured light, and a body that either shows the
+    /// class strengths (the starter pick) or flavour, talent, perk and bars (the roster). Everything stays
+    /// inside the painted frame (MenuUi.PanelInset). Locked characters sit behind a dark veil with a lock;
+    /// the button then shows their price. The owning page fills the button.
     /// </summary>
     public sealed class CharacterCard
     {
@@ -167,9 +167,8 @@ namespace SoccerFight
         public bool IsChosen, Locked;
 
         readonly RectTransform portrait;
-        readonly Image frame, frameGlow, wash, spot, veil, lockIcon;
+        readonly Image frameGlow, wash, spot, veil, lockIcon, coin;
         readonly TextMeshProUGUI best;
-        readonly PriceTag veilPrice;
         readonly PortraitSlot figure;
         float time;
 
@@ -179,90 +178,101 @@ namespace SoccerFight
             Home = pos;
             var cls = def.ClassDef;
             var size = new Vector2(W, H);
+            var inset = MenuUi.PanelInset;
+            float left = -W * 0.5f + inset.x, right = W * 0.5f - inset.z, top = H * 0.5f - inset.w, bottom = -H * 0.5f + inset.y;
             Root = UiKit.Node(def.Name, parent, pos, size);
             frameGlow = UiKit.Img("FrameGlow", Root, UiArt.Glow, MetaUi.Gold.WithAlpha(0f), Vector2.zero, size + new Vector2(240f, 240f));
             MenuUi.Plate(Root, "Card", Vector2.zero, size, def.Accent, 0f);
-            frame = UiKit.Img("Frame", Root, MenuArt.Frame, MetaUi.Soft(def.Accent).WithAlpha(0.4f), Vector2.zero, size + new Vector2(4f, 4f), Image.Type.Sliced);
 
-            // portrait: the player's colour as light in the dark, a pool of light on the floor
-            const float top = H * 0.5f - 72f, bottom = -44f;
-            float ph = top - bottom, pw = W - 20f;
-            portrait = UiKit.Node("Portrait", Root, new Vector2(0f, (top + bottom) * 0.5f), new Vector2(pw, ph));
-            portrait.gameObject.AddComponent<RectMask2D>();
-            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.07f), Vector2.zero, new Vector2(pw, ph));
-            wash = UiKit.Img("Light", portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 30f), new Vector2(560f, 560f));
-            UiKit.Img("Moon", portrait, UiArt.Glow, new Color(0.75f, 0.95f, 1f, 0.12f), new Vector2(90f, ph * 0.5f - 40f), new Vector2(300f, 300f));
-            spot = UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-10f, -ph * 0.5f + 34f), new Vector2(300f, 70f));
-            UiKit.Img("TopShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.6f), new Vector2(0f, ph * 0.5f), new Vector2(pw * 1.6f, 60f));
-            figure = new PortraitSlot(portrait, def, new Vector2(-20f, -ph * 0.5f - 130f), 222f);
-            UiKit.Img("FrontShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.75f), new Vector2(0f, -ph * 0.5f + 30f), new Vector2(pw * 1.6f, 90f));
-            MenuArt.Label("FrontName", portrait, def.Name, 56f, Color.white, new Vector2(-pw * 0.5f + 24f + 200f, -ph * 0.5f + 40f), new Vector2(400f, 80f), TextAlignmentOptions.Left, 12f);
-            // locked: a dark veil over the portrait with a lock and the price
-            veil = UiKit.Img("FrontVeil", portrait, null, new Color(0.01f, 0.02f, 0.04f, 0.55f), Vector2.zero, new Vector2(pw, ph));
-            lockIcon = UiKit.Img("FrontLock", portrait, UiArt.IconLock, Color.white.WithAlpha(0.9f), new Vector2(0f, 40f), new Vector2(64f, 64f));
-            veilPrice = new PriceTag(portrait, new Vector2(0f, -14f), 30f);
-            veilPrice.Root.name = "FrontPrice";
-            UiKit.Img("PortraitFrame", Root, MenuArt.Frame, Color.white.WithAlpha(0.08f), portrait.anchoredPosition, new Vector2(pw + 2f, ph + 2f), Image.Type.Sliced);
-
-            // header: class diamond, class name, record
-            float hy = H * 0.5f - 38f;
-            var badge = UiKit.Img("Badge", Root, MenuArt.Badge, Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f), new Vector2(-W * 0.5f + 40f, hy), new Vector2(58f, 58f));
-            var icon = UiKit.Img("ClassIcon", badge.transform, cls.Icon(), Color.white, Vector2.zero, new Vector2(30f, 30f));
+            // header: class diamond, the name, the record
+            float hy = top - 30f;
+            var badge = UiKit.Img("Badge", Root, MenuArt.Badge, Color.Lerp(def.Accent, new Color(0.05f, 0.09f, 0.14f), 0.35f), new Vector2(left + 26f, hy), new Vector2(50f, 50f));
+            var icon = UiKit.Img("ClassIcon", badge.transform, cls.Icon(), Color.white, Vector2.zero, new Vector2(26f, 26f));
             icon.preserveAspect = true;
-            var role = MenuArt.Label("Role", Root, cls.Name, 24f, MetaUi.Soft(def.Accent), new Vector2(-W * 0.5f + 80f + 110f, hy), new Vector2(220f, 40f), TextAlignmentOptions.Left, 6f);
-            role.enableAutoSizing = true;
-            role.fontSizeMin = 16f;
-            role.fontSizeMax = 24f;
+            var name = MenuArt.Label("Name", Root, def.Name, 34f, Color.white, new Vector2(left + 62f + 110f, hy + 1f), new Vector2(220f, 44f), TextAlignmentOptions.Left, 6f);
+            name.enableAutoSizing = true;
+            name.fontSizeMin = 24f;
+            name.fontSizeMax = 34f;
             if (mode == Mode.Roster)
             {
-                UiKit.Img("Trophy", Root, MenuArt.IconTrophy, MetaUi.Gold, new Vector2(W * 0.5f - 96f, hy), new Vector2(30f, 30f));
-                best = MenuArt.Label("Best", Root, "0", 26f, MetaUi.Gold, new Vector2(W * 0.5f - 46f, hy), new Vector2(70f, 40f), TextAlignmentOptions.Center, 0f);
+                UiKit.Img("Trophy", Root, MenuArt.IconTrophy, Color.white, new Vector2(right - 62f, hy), new Vector2(30f, 30f)).preserveAspect = true;
+                best = MenuArt.Label("Best", Root, "0", 24f, MetaUi.Gold, new Vector2(right - 24f, hy), new Vector2(44f, 36f), TextAlignmentOptions.Center, 0f);
             }
 
-            if (mode == Mode.Starter) BuildStarterBody(cls);
-            else BuildRosterBody(cls);
+            // portrait: the player's colour as light in the dark, a pool of light on the floor
+            float pTop = hy - 32f, pBottom = -8f;
+            float ph = pTop - pBottom, pw = right - left;
+            portrait = UiKit.Node("Portrait", Root, new Vector2((left + right) * 0.5f, (pTop + pBottom) * 0.5f), new Vector2(pw, ph));
+            portrait.gameObject.AddComponent<RectMask2D>();
+            UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.07f), Vector2.zero, new Vector2(pw, ph));
+            wash = UiKit.Img("Light", portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 20f), new Vector2(520f, 520f));
+            UiKit.Img("Moon", portrait, UiArt.Glow, new Color(0.75f, 0.95f, 1f, 0.12f), new Vector2(90f, ph * 0.5f - 40f), new Vector2(300f, 300f));
+            spot = UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-10f, -ph * 0.5f + 30f), new Vector2(300f, 70f));
+            UiKit.Img("TopShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.6f), new Vector2(0f, ph * 0.5f), new Vector2(pw * 1.6f, 50f));
+            // head to about the knees, the head at the same height on every card
+            figure = new PortraitSlot(portrait, def, new Vector2(-20f, -ph * 0.5f - 138f), 185f);
+            UiKit.Img("FrontShade", portrait, UiArt.LineFade, new Color(0.01f, 0.03f, 0.05f, 0.7f), new Vector2(0f, -ph * 0.5f + 16f), new Vector2(pw * 1.6f, 56f));
+            // locked: a dark veil over the portrait with a lock (the price is on the button)
+            veil = UiKit.Img("FrontVeil", portrait, null, new Color(0.01f, 0.02f, 0.04f, 0.55f), Vector2.zero, new Vector2(pw, ph));
+            lockIcon = UiKit.Img("FrontLock", portrait, MenuArt.IconLock, Color.white, new Vector2(0f, 6f), new Vector2(72f, 72f));
+            lockIcon.preserveAspect = true;
+            UiKit.Img("PortraitEdge", Root, UiArt.LineFade, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(portrait.anchoredPosition.x, pBottom), new Vector2(pw, 2f));
 
-            Button = new ChunkButton(Root, "Pick", new Vector2(0f, -H * 0.5f + 48f), new Vector2(W - 70f, 64f), def.Accent, "WÄHLEN", 26f, MenuArt.IconCheck, 28f);
-            Button.IconLeft(92f);
+            // under the picture: class and sport in the class colour
+            var role = MenuArt.Label("Role", Root, cls.Name + "  ·  " + Characters.SportName(def.Sport), 15f, MetaUi.Soft(def.Accent), new Vector2(0f, pBottom - 22f), new Vector2(W - 80f, 24f),
+                TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
+            role.enableAutoSizing = true;
+            role.fontSizeMin = 11f;
+            role.fontSizeMax = 15f;
+
+            if (mode == Mode.Starter) BuildStarterBody(cls, pBottom - 44f);
+            else BuildRosterBody(cls, pBottom - 44f);
+
+            // a plain painted plate as wide as the card: the finished button pictures would be fitted in tiny
+            Button = new ChunkButton(Root, "Pick", new Vector2(0f, bottom + 30f), new Vector2(W - 84f, 56f), def.Accent, "WÄHLEN", 24f, MenuArt.IconCheck, 26f)
+                { PlainPlate = true };
+            Button.IconLeft(40f);
+            coin = UiKit.Img("Coin", Button.Face, CoinArt.Ui, Color.white, Vector2.zero, new Vector2(30f, 30f));
+            coin.transform.SetSiblingIndex(Button.Label.transform.GetSiblingIndex());
         }
 
-        void BuildStarterBody(ClassDef cls)
+        void BuildStarterBody(ClassDef cls, float y)
         {
-            MenuArt.Label("Tagline", Root, cls.Tagline.ToUpperInvariant(), 19f, Color.white, new Vector2(0f, -70f), new Vector2(W - 40f, 30f), TextAlignmentOptions.Center, 3f);
-            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, -96f), new Vector2(W - 40f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
-            float y = -121f;
+            MenuArt.Label("Tagline", Root, cls.Tagline.ToUpperInvariant(), 18f, Color.white, new Vector2(0f, y), new Vector2(W - 80f, 28f), TextAlignmentOptions.Center, 3f);
+            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, y - 24f), new Vector2(W - 80f, 24f), TextAlignmentOptions.Center, 5f, MenuArt.TextHeavySoft);
+            y -= 48f;
             foreach (var s in cls.Strengths)
             {
-                UiKit.Img("Check", Root, MenuArt.IconCheck, MetaUi.Soft(Def.Accent), new Vector2(-W * 0.5f + 40f, y), new Vector2(20f, 20f));
-                var t = MenuArt.Label("Strength", Root, s, 15f, MetaUi.Body, new Vector2(20f, y), new Vector2(W - 100f, 24f), TextAlignmentOptions.Left, 1.5f, MenuArt.TextHeavySoft);
+                UiKit.Img("Check", Root, MenuArt.IconCheck, Color.white, new Vector2(-W * 0.5f + 52f, y), new Vector2(20f, 20f)).preserveAspect = true;
+                var t = MenuArt.Label("Strength", Root, s, 15f, MetaUi.Body, new Vector2(18f, y), new Vector2(W - 120f, 24f), TextAlignmentOptions.Left, 1.5f, MenuArt.TextHeavySoft);
                 t.enableAutoSizing = true;
-                t.fontSizeMin = 11f;
+                t.fontSizeMin = 10f;
                 t.fontSizeMax = 15f;
-                y -= 23f;
+                y -= 21f;
             }
             // the character's own perk on top of the class talent: its name, then what it does
             if (Def.Perk != null)
             {
-                MenuArt.Label("Perk", Root, "PERK  ·  " + Def.Perk.Name, 13f, MetaUi.Gold, new Vector2(0f, y), new Vector2(W - 40f, 20f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
-                var perk = MenuArt.Label("PerkText", Root, Def.Perk.Text, 13f, MetaUi.Soft(MetaUi.Gold), new Vector2(0f, y - 19f), new Vector2(W - 40f, 20f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
+                MenuArt.Label("Perk", Root, "PERK  ·  " + Def.Perk.Name, 13f, MetaUi.Gold, new Vector2(0f, y), new Vector2(W - 80f, 20f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
+                var perk = MenuArt.Label("PerkText", Root, Def.Perk.Text, 13f, MetaUi.Soft(MetaUi.Gold), new Vector2(0f, y - 18f), new Vector2(W - 80f, 20f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
                 perk.enableAutoSizing = true;
                 perk.fontSizeMin = 10f;
                 perk.fontSizeMax = 13f;
                 y -= 40f;
             }
             if (!string.IsNullOrEmpty(cls.Drawback))
-                MenuArt.Label("Drawback", Root, "DAFÜR: " + cls.Drawback, 14f, MetaUi.Danger, new Vector2(0f, y - 1f), new Vector2(W - 40f, 22f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
+                MenuArt.Label("Drawback", Root, "DAFÜR: " + cls.Drawback, 13f, MetaUi.Danger, new Vector2(0f, y), new Vector2(W - 80f, 20f), TextAlignmentOptions.Center, 3f, MenuArt.TextHeavySoft);
         }
 
-        void BuildRosterBody(ClassDef cls)
+        void BuildRosterBody(ClassDef cls, float y)
         {
-            var flavour = MetaUi.Text(Root, "Flavour", Def.Flavour, 16f, new Color(0.75f, 0.84f, 0.9f), new Vector2(0f, -76f), new Vector2(W - 50f, 44f));
+            var flavour = MetaUi.Text(Root, "Flavour", Def.Flavour, 16f, new Color(0.78f, 0.86f, 0.92f), new Vector2(0f, y - 8f), new Vector2(W - 84f, 42f));
             flavour.enableAutoSizing = true;
             flavour.fontSizeMin = 12f;
             flavour.fontSizeMax = 16f;
-            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, -114f), new Vector2(W - 40f, 24f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
+            MenuArt.Label("Trait", Root, "TALENT  ·  " + cls.TraitName, 15f, MetaUi.Soft(Def.Accent), new Vector2(0f, y - 40f), new Vector2(W - 80f, 24f), TextAlignmentOptions.Center, 4f, MenuArt.TextHeavySoft);
             var perk = MenuArt.Label("Perk", Root, Def.Perk != null ? "PERK  ·  " + Def.Perk.Name + ":  " + Def.Perk.Text : "NUR DAS KLASSEN-TALENT", 13f,
-                Def.Perk != null ? MetaUi.Gold : MetaUi.Muted, new Vector2(0f, -141f), new Vector2(W - 40f, 30f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
+                Def.Perk != null ? MetaUi.Gold : MetaUi.Muted, new Vector2(0f, y - 67f), new Vector2(W - 84f, 30f), TextAlignmentOptions.Center, 1f, MenuArt.TextHeavySoft);
             perk.textWrappingMode = TextWrappingModes.Normal;
             perk.enableAutoSizing = true;
             perk.fontSizeMin = 10f;
@@ -272,18 +282,18 @@ namespace SoccerFight
             int[] values = { Def.Attack, Def.Defence, Def.Tech };
             Color[] cols = { new Color(1f, 0.45f, 0.42f), new Color(0.45f, 0.66f, 1f), new Color(0.8f, 0.55f, 1f) };
             Sprite[] icons = { MenuArt.IconStriker, MenuArt.IconDefender, MenuArt.IconSkiller };
+            float x0 = -W * 0.5f + MenuUi.PanelInset.x;
             for (int r = 0; r < 3; r++)
             {
-                float y = -170f - r * 26f;
-                var si = UiKit.Img("StatIcon", Root, icons[r], MetaUi.Soft(cols[r]), new Vector2(-W * 0.5f + 40f, y), new Vector2(20f, 20f));
-                si.preserveAspect = true;
-                MenuArt.Label(names[r], Root, names[r], 15f, new Color(0.85f, 0.9f, 0.94f), new Vector2(-W * 0.5f + 60f + 70f, y), new Vector2(140f, 26f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+                float ry = y - 100f - r * 24f;
+                UiKit.Img("StatIcon", Root, icons[r], Color.white, new Vector2(x0 + 18f, ry), new Vector2(20f, 20f)).preserveAspect = true;
+                MenuArt.Label(names[r], Root, names[r], 14f, new Color(0.85f, 0.9f, 0.94f), new Vector2(x0 + 40f + 60f, ry), new Vector2(120f, 24f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
                 for (int s = 0; s < 5; s++)
                 {
-                    float x = -W * 0.5f + 226f + s * 40f;
+                    float x = x0 + 184f + s * 38f;
                     bool on = s < values[r];
-                    UiKit.Img("Seg", Root, UiArt.Pill, on ? cols[r] : new Color(0.12f, 0.18f, 0.24f, 0.9f), new Vector2(x, y), new Vector2(34f, 9f), Image.Type.Sliced);
-                    if (on) UiKit.Img("SegGlow", Root, UiArt.Glow, cols[r].WithAlpha(0.18f), new Vector2(x, y), new Vector2(60f, 28f));
+                    UiKit.Img("Seg", Root, UiArt.Pill, on ? cols[r] : new Color(0.12f, 0.18f, 0.24f, 0.9f), new Vector2(x, ry), new Vector2(32f, 9f), Image.Type.Sliced);
+                    if (on) UiKit.Img("SegGlow", Root, UiArt.Glow, cols[r].WithAlpha(0.16f), new Vector2(x, ry), new Vector2(56f, 26f));
                 }
             }
         }
@@ -297,7 +307,8 @@ namespace SoccerFight
             figure.Update(udt, lively ? MenuFigure.Mode.Juggle : MenuFigure.Mode.Idle, aim, alpha);
         }
 
-        public void Style(MenuTarget t, float udt, string label, bool filled, Color buttonColor, bool iconOn)
+        /// <param name="price">shown with a coin instead of the icon (locked characters)</param>
+        public void Style(MenuTarget t, float udt, string label, bool filled, Color buttonColor, bool iconOn, bool price = false)
         {
             time += udt;
             MathUtil.Spring(ref Chosen, ref ChosenVel, IsChosen ? 1f : 0f, 5f, 0.6f, udt);
@@ -312,8 +323,8 @@ namespace SoccerFight
             Root.localScale = new Vector3(s + t.Punch * 0.015f, s - t.Punch * 0.04f, 1f);
 
             float pulse = 0.75f + 0.25f * Mathf.Sin(time * 2.4f);
-            frame.color = Color.Lerp(MetaUi.Soft(Def.Accent), MetaUi.Gold, pick).WithAlpha(Mathf.Lerp(0.4f + 0.4f * h, 0.95f, pick));
-            frameGlow.color = MetaUi.Gold.WithAlpha(pick * 0.22f * pulse + t.Hit * 0.35f);
+            // the chosen card glows gold around its painted frame (a tinted frame would turn olive)
+            frameGlow.color = MetaUi.Gold.WithAlpha(pick * 0.2f * pulse + t.Hit * 0.35f + h * 0.05f);
             wash.color = Def.Accent.WithAlpha((0.2f + 0.1f * h + 0.1f * pick) * (Locked ? 0.5f : 1f));
             spot.color = MetaUi.Soft(Def.Accent).WithAlpha(0.28f + 0.2f * pick);
 
@@ -322,29 +333,46 @@ namespace SoccerFight
             {
                 veil.gameObject.SetActive(veiled);
                 lockIcon.gameObject.SetActive(veiled);
-                veilPrice.SetActive(veiled);
             }
-            if (veiled)
-            {
-                veilPrice.Set(Def.Cost, Wallet.CanAfford(Def.Cost));
-                lockIcon.rectTransform.localScale = Vector3.one * (1f + 0.05f * Mathf.Sin(time * 3f) + 0.1f * h);
-            }
+            if (veiled) lockIcon.rectTransform.localScale = Vector3.one * (1f + 0.04f * Mathf.Sin(time * 3f) + 0.08f * h);
 
             Button.Filled = filled;
             Button.Color = buttonColor;
             if (Button.Label.text != label) Button.Label.text = label;
-            Button.Icon.enabled = iconOn;
+            Button.Icon.enabled = iconOn && !price;
+            // price: coin and number centred as one group; otherwise the label fills the plate beside the icon
+            coin.enabled = price;
+            if (price)
+            {
+                float lw = Button.Label.GetPreferredValues(label).x;
+                float group = 36f + lw;
+                coin.rectTransform.anchoredPosition = new Vector2(-group * 0.5f + 15f, 0f);
+                Button.Label.rectTransform.anchoredPosition = new Vector2(18f, 0f);
+                Button.Label.rectTransform.sizeDelta = new Vector2(Button.Size.x - 60f, Button.Size.y);
+                coin.color = Color.white.WithAlpha(t.Fade);
+            }
+            else if (iconOn)
+            {
+                Button.Label.rectTransform.anchoredPosition = new Vector2(20f, 0f);
+                Button.Label.rectTransform.sizeDelta = new Vector2(Button.Size.x - 110f, Button.Size.y);
+            }
+            else
+            {
+                Button.Label.rectTransform.anchoredPosition = Vector2.zero;
+                Button.Label.rectTransform.sizeDelta = new Vector2(Button.Size.x - 60f, Button.Size.y);
+            }
             Button.Style(h, t.Hit, 0f, t.Fade, time);
         }
     }
 
     /// <summary>
     /// A compact shop card for a character: portrait on the left, name, class, perk and description
-    /// on the right and the buy button underneath (price with a coin; a second hit confirms).
+    /// on the right and the buy button underneath (price with a coin; a second hit confirms). Like the
+    /// big cards, everything stays inside the painted frame.
     /// </summary>
     public sealed class ShopCharacterCard
     {
-        public const float W = 500f, H = 232f;
+        public const float W = 500f, H = 250f;
 
         public readonly ShopItem Item;
         public readonly RectTransform Root;
@@ -352,7 +380,7 @@ namespace SoccerFight
         public Vector2 Home;
         public float Jiggle;
 
-        readonly Image frame, frameGlow, coin;
+        readonly Image frameGlow, coin;
         readonly PortraitSlot figure;
         float time;
 
@@ -363,38 +391,42 @@ namespace SoccerFight
             var def = item.Character;
             var cls = def.ClassDef;
             var size = new Vector2(W, H);
+            var inset = MenuUi.PanelInset;
+            float left = -W * 0.5f + inset.x, right = W * 0.5f - inset.z, top = H * 0.5f - inset.w, bottom = -H * 0.5f + inset.y;
             Root = UiKit.Node(def.Name, parent, pos, size);
             frameGlow = UiKit.Img("FrameGlow", Root, UiArt.Glow, MetaUi.Gold.WithAlpha(0f), Vector2.zero, size + new Vector2(200f, 180f));
             MenuUi.Plate(Root, "Card", Vector2.zero, size, def.Accent, 0f);
-            frame = UiKit.Img("Frame", Root, MenuArt.Frame, MetaUi.Soft(def.Accent).WithAlpha(0.35f), Vector2.zero, size + new Vector2(4f, 4f), Image.Type.Sliced);
 
-            const float pw = 168f, ph = H - 16f;
-            var portrait = UiKit.Node("Portrait", Root, new Vector2(-W * 0.5f + 8f + pw * 0.5f, 0f), new Vector2(pw, ph));
+            float pw = 150f, ph = top - bottom;
+            var portrait = UiKit.Node("Portrait", Root, new Vector2(left + pw * 0.5f, (top + bottom) * 0.5f), new Vector2(pw, ph));
             portrait.gameObject.AddComponent<RectMask2D>();
             UiKit.Img("Back", portrait, null, Color.Lerp(new Color(0.02f, 0.05f, 0.08f), def.Accent, 0.08f), Vector2.zero, new Vector2(pw, ph));
             UiKit.Img("Light", portrait, UiArt.Glow, def.Accent.WithAlpha(0.3f), new Vector2(0f, 10f), new Vector2(300f, 320f));
-            UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-4f, -ph * 0.5f + 18f), new Vector2(170f, 40f));
-            figure = new PortraitSlot(portrait, def, new Vector2(-10f, -ph * 0.5f + 8f), 118f);
-            UiKit.Img("PortraitFrame", Root, MenuArt.Frame, Color.white.WithAlpha(0.08f), portrait.anchoredPosition, new Vector2(pw + 2f, ph + 2f), Image.Type.Sliced);
+            UiKit.Img("Floor", portrait, UiArt.Glow, MetaUi.Soft(def.Accent).WithAlpha(0.35f), new Vector2(-4f, -ph * 0.5f + 16f), new Vector2(170f, 40f));
+            figure = new PortraitSlot(portrait, def, new Vector2(-8f, -ph * 0.5f - 21f), 100f);
+            UiKit.Img("PortraitEdge", Root, UiArt.LineFade, MetaUi.Soft(def.Accent).WithAlpha(0.3f), new Vector2(left + pw + 1f, (top + bottom) * 0.5f), new Vector2(ph, 2f))
+                .rectTransform.localRotation = Quaternion.Euler(0f, 0f, 90f);
 
-            float x0 = -W * 0.5f + pw + 28f, tw = W - pw - 44f, cx = x0 + tw * 0.5f;
-            MenuArt.Label("Name", Root, def.Name, 32f, Color.white, new Vector2(cx, 80f), new Vector2(tw, 40f), TextAlignmentOptions.Left, 8f);
-            var badge = UiKit.Img("ClassIcon", Root, cls.Icon(), MetaUi.Soft(def.Accent), new Vector2(x0 + 11f, 48f), new Vector2(20f, 20f));
-            badge.preserveAspect = true;
-            MenuArt.Label("Class", Root, cls.Name + "  ·  " + Characters.SportName(def.Sport), 14f, MetaUi.Soft(def.Accent), new Vector2(cx + 14f, 48f), new Vector2(tw - 28f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+            float x0 = left + pw + 18f, tw = right - x0, cx = x0 + tw * 0.5f;
+            MenuArt.Label("Name", Root, def.Name, 30f, Color.white, new Vector2(cx, top - 22f), new Vector2(tw, 38f), TextAlignmentOptions.Left, 6f);
+            UiKit.Img("ClassIcon", Root, cls.Icon(), Color.white, new Vector2(x0 + 10f, top - 50f), new Vector2(20f, 20f)).preserveAspect = true;
+            var clsLabel = MenuArt.Label("Class", Root, cls.Name + "  ·  " + Characters.SportName(def.Sport), 14f, MetaUi.Soft(def.Accent), new Vector2(cx + 14f, top - 50f), new Vector2(tw - 28f, 22f), TextAlignmentOptions.Left, 4f, MenuArt.TextHeavySoft);
+            clsLabel.enableAutoSizing = true;
+            clsLabel.fontSizeMin = 10f;
+            clsLabel.fontSizeMax = 14f;
             var perk = MenuArt.Label("Perk", Root, def.Perk != null ? def.Perk.Name + ":  " + def.Perk.Text : "TALENT  ·  " + cls.TraitName, 13f,
-                def.Perk != null ? MetaUi.Gold : MetaUi.Soft(def.Accent), new Vector2(cx, 20f), new Vector2(tw, 34f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
+                def.Perk != null ? MetaUi.Gold : MetaUi.Soft(def.Accent), new Vector2(cx, top - 80f), new Vector2(tw, 32f), TextAlignmentOptions.Left, 1f, MenuArt.TextHeavySoft);
             perk.textWrappingMode = TextWrappingModes.Normal;   // up to two lines between the class and the description
             perk.enableAutoSizing = true;
             perk.fontSizeMin = 10f;
             perk.fontSizeMax = 13f;
-            var desc = MetaUi.Text(Root, "Desc", def.Flavour, 14f, MetaUi.Body, new Vector2(cx, -18f), new Vector2(tw, 40f), TextAlignmentOptions.TopLeft);
+            var desc = MetaUi.Text(Root, "Desc", def.Flavour, 13f, MetaUi.Body, new Vector2(cx, top - 116f), new Vector2(tw, 36f), TextAlignmentOptions.TopLeft);
             desc.enableAutoSizing = true;
-            desc.fontSizeMin = 11f;
-            desc.fontSizeMax = 14f;
+            desc.fontSizeMin = 10f;
+            desc.fontSizeMax = 13f;
 
-            Button = new ChunkButton(Root, "Buy", new Vector2(cx, -76f), new Vector2(tw, 54f), def.Accent, "KAUFEN", 22f);
-            coin = UiKit.Img("Coin", Button.Face, CoinArt.Ui, Color.white, Vector2.zero, new Vector2(28f, 28f));
+            Button = new ChunkButton(Root, "Buy", new Vector2(cx, bottom + 25f), new Vector2(tw, 48f), def.Accent, "KAUFEN", 21f) { PlainPlate = true };
+            coin = UiKit.Img("Coin", Button.Face, CoinArt.Ui, Color.white, Vector2.zero, new Vector2(26f, 26f));
             coin.transform.SetSiblingIndex(Button.Label.transform.GetSiblingIndex());
         }
 
@@ -410,8 +442,8 @@ namespace SoccerFight
             float s = 1f + h * 0.02f + t.Punch * 0.04f;
             Root.localScale = new Vector3(s + t.Punch * 0.015f, s - t.Punch * 0.04f, 1f);
             float pulse = 0.5f + 0.5f * Mathf.Sin(time * 9f);
-            frame.color = Color.Lerp(MetaUi.Soft(Item.Accent), MetaUi.Gold, confirm ? 0.6f + 0.4f * pulse : 0f).WithAlpha(0.35f + 0.5f * h + (confirm ? 0.3f : 0f));
-            frameGlow.color = MetaUi.Gold.WithAlpha(t.Hit * 0.3f + (confirm ? 0.12f + 0.1f * pulse : 0f));
+            // gold glow while a purchase waits for its confirming second hit
+            frameGlow.color = MetaUi.Gold.WithAlpha(t.Hit * 0.3f + h * 0.05f + (confirm ? 0.2f + 0.14f * pulse : 0f));
 
             Button.Filled = filled;
             Button.Color = color;
@@ -420,8 +452,9 @@ namespace SoccerFight
             float lw = Button.Label.GetPreferredValues(label).x;
             float group = (showCoin ? 34f : 0f) + lw;
             coin.enabled = showCoin;
-            coin.rectTransform.anchoredPosition = new Vector2(-group * 0.5f + 14f, 0f);
+            coin.rectTransform.anchoredPosition = new Vector2(-group * 0.5f + 13f, 0f);
             Button.Label.rectTransform.anchoredPosition = new Vector2(showCoin ? 17f : 0f, 0f);
+            Button.Label.rectTransform.sizeDelta = new Vector2(Button.Size.x - 40f, Button.Size.y);
             coin.color = Color.white.WithAlpha(t.Fade);
             Button.Style(h, t.Hit, 0f, t.Fade, time);
         }

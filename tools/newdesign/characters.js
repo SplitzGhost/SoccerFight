@@ -404,7 +404,7 @@ async function buildFigure(id) {
     // Rumpf, Hose, Hals, Kopf. Die Hose endet unten rund, knapp über dem Saum: das Hosenbein darunter gehört zum
     // Oberschenkel und schwingt mit dem Bein (sonst hinge beim Hochziehen des Knies ein starrer Kasten darunter).
     parts.Torso = o(region(img, F.torso, [F.arm]), J.hip, null);
-    parts.Pelvis = o(clip(region(img, F.pelvis, [F.arm, F.torso]), ellipseSdf([J.hip[0] + 3, J.hip[1] - 6], th * 1.45, th * 0.98), 5), J.hip, null);
+    parts.Pelvis = o(clip(region(img, F.pelvis, [F.arm, F.torso, ...(F.clothHide || [])]), ellipseSdf([J.hip[0] + 3, J.hip[1] - 6], th * 1.45, th * 0.98), 5), J.hip, null);
     parts.Neck = o(region(img, F.neck, [F.torso, ...(F.neckHide || [])]), J.neck, null);
     parts.Head = o(region(img, F.head, F.headHide || []), J.head, null);
     if (F.tuft) parts.HairTuft = o(region(img, F.tuft.poly), F.tuft.root, null);
@@ -424,7 +424,7 @@ async function buildFigure(id) {
     // so bleibt sein Umriss beim Anheben des Beins gleich, statt dass eine gerade Stoffkante wie eine Klappe
     // herausragt. Nach unten weitet es sich bis zum Saum auf die volle Hosenbreite.
     const rTop = th * 1.15, rHem = th * 1.3, hemT = Math.max(10, hem - J.hip[1]);
-    const leg = region(img, legPoly, [F.arm, F.boot, F.torso], zones, null, { c: J.hip, r: rTop });
+    const leg = region(img, legPoly, [F.arm, F.boot, F.torso, ...(F.clothHide || [])], zones, null, { c: J.hip, r: rTop });
     const kneeEnd = segSdf(J.hip, J.knee, null, F.r.kneeCap);
     const thighSdf = (x, y) => {
         const ux = J.knee[0] - J.hip[0], uy = J.knee[1] - J.hip[1], L = Math.hypot(ux, uy);

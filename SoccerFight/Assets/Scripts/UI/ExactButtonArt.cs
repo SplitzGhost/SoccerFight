@@ -14,6 +14,8 @@ namespace SoccerFight
             public int page;
             public float x, y, width, height, border;
             public float[] sourceRect;
+            /// <summary>Optional je Seite (links, unten, rechts, oben), z. B. für die gestuften Tafelecken.</summary>
+            public float[] borders;
         }
         static readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
         static readonly Dictionary<string, Rect> references = new Dictionary<string, Rect>();
@@ -32,7 +34,8 @@ namespace SoccerFight
             foreach (var e in layout.items)
             {
                 var s = Sprite.Create(pages[e.page], new Rect(e.x, e.y, e.width, e.height),
-                    new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, Vector4.one * e.border);
+                    new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+                    e.borders != null && e.borders.Length == 4 ? new Vector4(e.borders[0], e.borders[1], e.borders[2], e.borders[3]) : Vector4.one * e.border);
                 s.name = "Probebild " + e.name;
                 sprites[e.name] = s;
                 references[e.name] = new Rect(e.sourceRect[0], e.sourceRect[1], e.sourceRect[2] - e.sourceRect[0], e.sourceRect[3] - e.sourceRect[1]);

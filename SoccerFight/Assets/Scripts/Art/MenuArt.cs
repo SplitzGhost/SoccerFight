@@ -527,10 +527,27 @@ namespace SoccerFight
             // Fließtext bleibt lesbar; nur Menüüberschriften und Aktionen nutzen die Originalbuchstaben.
             foreach (char c in text) if (char.IsLower(c)) return t;
             if (size < 30f && name != "Label" && name != "Name" && name != "Role" && name != "FrontName" && name != "Title" && name != "Head" && name != "Header") return t;
+            if (!ExactMenuFont.Covers(text)) return t;
             if (FontHeavy != null) t.font = FontHeavy;
             var m = mat != null ? mat : TextHeavy;
             if (m != null) t.fontSharedMaterial = m;
             return t;
+        }
+
+        /// <summary>
+        /// Neuer Text für eine Überschrift in gemalter Schrift: kennt die gemalte Schrift nicht alle Zeichen,
+        /// wechselt das Feld ganz in die normale Menüschrift (kein Buchstaben-Mischmasch), sonst zurück.
+        /// </summary>
+        public static void SetText(TMP_Text t, string text)
+        {
+            if (t.text == text) return;
+            t.text = text;
+            bool painted = FontHeavy != null && ExactMenuFont.Covers(text);
+            var font = painted ? FontHeavy : UiArt.FontBold;
+            if (t.font == font) return;
+            t.font = font;
+            var m = painted ? TextHeavy : UiArt.FontBoldShadow;
+            if (m != null) t.fontSharedMaterial = m;
         }
     }
 }

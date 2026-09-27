@@ -67,8 +67,9 @@ namespace SoccerFight
                 y -= 44f;
             }
             UiKit.MakeButton(Root, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 31f), new Vector2(305f, 83f), KeyBindings.ResetDefaults, false, 14f);
-            UiKit.Label("KeyHint", Root, "TASTE ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 94f), new Vector2(colW, 20f), true, 4f);
-            UiKit.Label("Pause", Root, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC  ·  F3  DEVELOPER", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(rx, y - 116f), new Vector2(colW, 20f), true, 4f);
+            // die Hinweise stehen unter der linken Spalte (dort ist Platz), damit ein ZURÜCK-Knopf unten nichts verdeckt
+            UiKit.Label("KeyHint", Root, "TASTEN: ANKLICKEN, DANN NEUE TASTE DRÜCKEN", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(lx, -272f), new Vector2(colW, 20f), true, 4f);
+            UiKit.Label("Pause", Root, "ESC  PAUSE  ·  F1  FPS  ·  F2  VSYNC  ·  F3  DEVELOPER", 11f, Palette.UiMuted, TextAlignmentOptions.Center, new Vector2(lx, -294f), new Vector2(colW, 20f), true, 4f);
 
             if (withBackButton)
                 UiKit.MakeButton(Root, "ZURÜCK", new Vector2(0f, -354f), new Vector2(354f, 91f), () => BackRequested?.Invoke(), true);

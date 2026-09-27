@@ -143,7 +143,7 @@ namespace SoccerFight
             if (artwork == null) Label("Label", root, text, 15f, Color.white, TextAlignmentOptions.Left,
                 new Vector2(-width * .27f, 0f), new Vector2(width * .45f, 30f), true, 1f);
             var valueText = Label("Value", root, format(get()), 14f, Color.white, TextAlignmentOptions.Center,
-                new Vector2(width * .4f, speed ? -height * .12f : 0f), new Vector2(width * .13f, 26f), true, 1f);
+                new Vector2(width * (speed ? .4f : .405f), speed ? -height * .12f : 0f), new Vector2(width * .12f, 26f), true, 1f);
             float trackWidth = width * (speed ? .59f : .375f);
             var sliderRt = Node("Slider", root, new Vector2(width * (speed ? -.02f : .16f), speed ? -height * .12f : 0f), new Vector2(trackWidth, 30f));
             var bg = Img("Background", sliderRt, ExactButtonArt.Get(speed ? "dev-slider-track" : "slider-track"), Color.white, Vector2.zero,
@@ -189,11 +189,14 @@ namespace SoccerFight
             Img("Originalzeile", row, artwork != null ? artwork : ButtonSkin.Plate, Color.white, Vector2.zero, new Vector2(width, 44f), artwork != null ? Image.Type.Simple : Image.Type.Sliced);
             if (artwork == null) Label("Action", row, action, 16f, Palette.UiText, TextAlignmentOptions.Left,
                 new Vector2(-width * .2f, 0f), new Vector2(width * .6f, 30f), true, 3f);
-            var rim = Img("Rim", row, ButtonSkin.Frame, Color.clear, new Vector2(width * .29f, 0f), new Vector2(width * .34f, 38f), Image.Type.Sliced);
+            var rim = Img("Rim", row, ExactButtonArt.Get("key-face"), Color.clear, new Vector2(width * .29f, 0f), new Vector2(width * .34f + 6f, 42f), Image.Type.Sliced);
             var bg = Img("Key", row, ExactButtonArt.Get("key-face"), Color.white, new Vector2(width * .29f, 0f),
                 new Vector2(width * .34f, 36f), Image.Type.Sliced, true);
-            var key = Label("KeyLabel", bg.transform, "", 15f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(width * .33f, 32f), true, 1f);
-            key.font = ExactMenuFont.Get();
+            // Tastennamen wechseln (MAUS 5, LEERTASTE …): einheitlich in der normalen Menüschrift, passend verkleinert
+            var key = Label("KeyLabel", bg.transform, "", 15f, Palette.UiText, TextAlignmentOptions.Center, Vector2.zero, new Vector2(width * .3f, 30f), true, 1f);
+            key.enableAutoSizing = true;
+            key.fontSizeMin = 10f;
+            key.fontSizeMax = 15f;
             var button = bg.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() => onClick?.Invoke());

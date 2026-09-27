@@ -36,6 +36,7 @@ Spieländerungen mitgepflegt werden.**
   Anders als die Welt-Bilder haben die Figuren-Atlanten **normales Alpha** (Shader multipliziert, sonst dunkle Nähte
   an den Gelenken) und eine Umriss-Maske `<id>_rim.png` (Sekundärtextur `_RimMask` für das Mondlicht); Menüfigur-Teile
   brauchen das Material `Art.UiFigureMat`.
+  Stoffstellen, die in der Vorlage halb verdeckt sind (z. B. Dres Hosenstreifen), füllt `clothHide` in `characters.def.js`.
   Offene Dribbelhände für Basketball: Zusatzbogen `tools/newdesign/sources/dribble-hands.png` (mit versioniert),
   `characters.js` übernimmt ihn als `OpenHand` in die drei Atlanten. Die offene Hand zeigt im Atlas nach rechts
   statt nach unten; `PlayerRig.Hoops` steuert ihren Ballkontakt und den Winkel im Handgelenk.
@@ -107,6 +108,12 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Weiße Blitze/additive Glows überstrahlen mit Bloom schnell – gedämpft halten.
 - Spielstand: ein JSON in PlayerPrefs `sf_profile`. Tests/Captures nutzen `Profile.UseTransient()`.
 - `ProjectSettings` productName bleibt absichtlich `SoccerFight` (sonst geht der WebGL-Spielstand verloren).
+- **Menügrafik:** `tools/extract-menu-buttons.py` schneidet die Knöpfe/Tafeln aus `Inspiration/MenuPreviews`, danach
+  muss einmal `node tools/fix-exact-art.js` laufen (Masken, leere Flächen, Symbol-Hintergründe; merkt sich in
+  `layout.json` `"fixed": true` und läuft nicht doppelt). Kartenbilder und -knöpfe bleiben innerhalb von
+  `MenuUi.PanelInset`; fertige Knopfbilder (`action-*`) passen nur in Knöpfe mit gleichem Seitenverhältnis, breite
+  Kartenknöpfe nutzen `ChunkButton.PlainPlate`. Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte
+  Schrift hat keine Ziffern).
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
 - Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus

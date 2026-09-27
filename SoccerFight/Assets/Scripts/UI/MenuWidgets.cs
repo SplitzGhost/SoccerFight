@@ -18,6 +18,11 @@ namespace SoccerFight
         public Vector2 Size;
         public bool Disabled;
         public bool Filled;
+        /// <summary>
+        /// Immer die gemalte Grundplatte mit eigener Beschriftung, nie ein fertiges Knopfbild aus den Probebildern:
+        /// deren Seitenverhältnis passt nicht in breite, flache Kartenknöpfe (sie würden winzig eingepasst).
+        /// </summary>
+        public bool PlainPlate;
         RectTransform shine;
         Image shineImg;
         float shineT;
@@ -123,7 +128,7 @@ namespace SoccerFight
         /// <param name="fade">page / entrance visibility</param>
         public void Style(float hover, float hit, float punch, float fade, float time)
         {
-            var source = originalKey != null ? ExactButtonArt.Get(originalKey) : Label != null ? ExactButtonArt.Action(Label.text) : null;
+            var source = originalKey != null ? ExactButtonArt.Get(originalKey) : Label != null && !PlainPlate ? ExactButtonArt.Action(Label.text) : null;
             if (source != null)
             {
                 if (original == null) original = UiKit.Img("Probebild", Face, source, Color.white, Vector2.zero, Size);
@@ -166,7 +171,11 @@ namespace SoccerFight
             if (Ring != null) Ring.color = bright.WithAlpha(fade * (0.16f + 0.16f * h));
             if (Label != null)
             {
-                var mat = Filled ? MenuArt.TextPlate : MenuArt.TextHeavy;
+                // wechselnde Beschriftungen mit Ziffern oder „·“ ganz in der normalen Schrift (siehe ExactMenuFont.Covers)
+                bool painted = MenuArt.FontHeavy != null && ExactMenuFont.Covers(Label.text);
+                var font = painted ? MenuArt.FontHeavy : UiArt.FontBold;
+                var mat = painted ? (Filled ? MenuArt.TextPlate : MenuArt.TextHeavy) : UiArt.FontBoldShadow;
+                if (Label.font != font) Label.font = font;
                 if (mat != null && Label.fontSharedMaterial != mat) Label.fontSharedMaterial = mat;
             }
             if (Label != null) Label.color = (Filled ? MenuArt.Ink : Disabled ? new Color(0.72f, 0.78f, 0.84f) : Color.white).WithAlpha(fade);
@@ -215,13 +224,46 @@ namespace SoccerFight
     /// <summary>Small helpers shared by the menu pages.</summary>
     public static class MenuUi
     {
+        /// <summary>
+        /// Innenabstand des gemalten Tafelrahmens (links, unten, rechts, oben) in Menüeinheiten: Bilder, Knöpfe und
+        /// Texte einer Karte bleiben innerhalb davon, sonst liegen sie über dem Rahmen.
+        /// </summary>
+        public static readonly Vector4 PanelInset = new Vector4(34f, 30f, 34f, 32f);
+
+        static Sprite fadeDown;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => fadeDown = null;
+
+        /// <summary>Senkrechter Verlauf: oben deckend, nach unten weich auslaufend (Abdunklung zum Bildrand).</summary>
+        public static Sprite FadeDown
+        {
+            get
+            {
+                if (fadeDown != null) return fadeDown;
+                const int n = 128;
+                var tex = new Texture2D(1, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+                var px = new Color32[n];
+                for (int y = 0; y < n; y++)
+                {
+                    float u = y / (n - 1f);   // 0 unten, 1 oben
+                    float a = u * u * (3f - 2f * u);
+                    px[y] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
+                }
+                tex.SetPixels32(px);
+                tex.Apply(false, true);
+                fadeDown = Sprite.Create(tex, new Rect(0f, 0f, 1f, n), new Vector2(0.5f, 0.5f), 100f);
+                return fadeDown;
+            }
+        }
+
         /// <summary>A dark glass panel with a soft shadow, a hairline frame and a lit top edge in the accent colour.</summary>
         public static Image Plate(Transform parent, string name, Vector2 pos, Vector2 size, Color accent, float rim = 0.3f)
         {
             var rt = UiKit.Node(name, parent, pos, size);
             UiKit.Img("Shadow", rt, UiArt.Glow, new Color(0f, 0.01f, 0.03f, 0.45f), new Vector2(0f, -12f), size * 1.08f + new Vector2(60f, 60f));
             var body = UiKit.Img("Body", rt, MenuArt.CardBody, Color.white, Vector2.zero, size, Image.Type.Sliced);
-            UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(ButtonSkin.Slate, accent, 0.2f).WithAlpha(rim * 0.7f), Vector2.zero, size + new Vector2(2f, 2f), Image.Type.Sliced);
+            // derselbe gemalte Rahmen genau deckungsgleich darüber (leicht getönt), nie versetzt
+            UiKit.Img("Frame", rt, MenuArt.Frame, Color.Lerp(ButtonSkin.Slate, accent, 0.2f).WithAlpha(rim * 0.7f), Vector2.zero, size, Image.Type.Sliced);
             UiKit.Img("TopLight", rt, UiArt.LineFade, accent.WithAlpha(0.16f), new Vector2(0f, size.y * 0.5f - 1f), new Vector2(size.x * 0.7f, 2f));
             return body;
         }

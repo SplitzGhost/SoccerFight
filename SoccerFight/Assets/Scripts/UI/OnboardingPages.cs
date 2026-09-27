@@ -46,8 +46,8 @@ namespace SoccerFight
                 int index = g;
                 Color accent = CharacterPage.SportAccent(sport);
                 grp.Tab = new ChunkButton(content, "Tab" + sport, new Vector2((g - (n - 1) * 0.5f) * 330f, 392f), new Vector2(300f, 58f), accent,
-                    Characters.SportName(sport), 22f, MenuArt.SportIcon(sport), 28f);
-                grp.Tab.IconLeft(30f);
+                    Characters.SportName(sport), 22f, MenuArt.SportIcon(sport), 36f) { PlainPlate = true };   // aktiver Reiter golden (siehe CharacterPage)
+                grp.Tab.IconLeft(34f);
                 nav.Register(new MenuTarget
                 {
                     Id = "starterSport" + g, Root = grp.Tab.Root, Size = grp.Tab.Size, Page = MenuPage.Starter,

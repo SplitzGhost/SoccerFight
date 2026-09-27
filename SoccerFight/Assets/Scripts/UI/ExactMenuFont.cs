@@ -16,6 +16,21 @@ namespace SoccerFight
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reset() => font = null;
 
+        /// <summary>
+        /// Kennt die gemalte Schrift jedes Zeichen des Textes? Sonst setzt TMP fehlende Zeichen (Ziffern, „·“)
+        /// aus der Ersatzschrift ein – das ergibt ein unruhiges Buchstaben-Mischmasch. Solche Texte bleiben
+        /// deshalb ganz in der normalen Menüschrift.
+        /// </summary>
+        public static bool Covers(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return true;
+            var f = Get();
+            if (f == UiArt.FontBold) return false;
+            foreach (char c in text)
+                if (c != ' ' && !f.characterLookupTable.ContainsKey(c)) return false;
+            return true;
+        }
+
         public static TMP_FontAsset Get()
         {
             if (font != null) return font;
