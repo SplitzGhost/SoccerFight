@@ -542,25 +542,32 @@ function round(o) {
     return r;
 }
 
-/** Unity-Importeinstellungen: normales Alpha, Mipmaps, Clamp, verlustfrei. mask: einkanalig, linear. */
-function writeMeta(file, mask = false) {
+/** Unity-Importeinstellungen: normales Alpha, Mipmaps, Clamp, verlustfrei (mask: einkanalig, linear).
+ * crunch: Standalone/WebGL bekommen DXT5-Crunch (kleiner Download im Browser, siehe commit b4678ff zu den
+ * Stage-Grafiken) statt der verlustfreien Standardeinstellung — der Editor/Default-Eintrag bleibt lossless,
+ * nur die gebauten Plattformen komprimieren. Unity skaliert dafür selbst auf die nächste Zweierpotenz hoch
+ * (nPOTScale: 2), ein eigenes Auffüllen auf Zweierpotenz-Maße ist deshalb nicht nötig. */
+function writeMeta(file, mask = false, crunch = false) {
     const meta = file + '.meta';
     let guid = require('crypto').randomBytes(16).toString('hex');
     if (fs.existsSync(meta)) { const m = /guid: ([0-9a-f]{32})/.exec(fs.readFileSync(meta, 'utf8')); if (m) guid = m[1]; }
-    const platform = t => `  - serializedVersion: 4
+    const platform = t => {
+        const c = crunch && t !== 'DefaultTexturePlatform';
+        return `  - serializedVersion: 4
     buildTarget: ${t}
     maxTextureSize: 2048
     resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 0
-    compressionQuality: 100
-    crunchedCompression: 0
+    textureFormat: ${c ? 29 : -1}
+    textureCompression: ${c ? 1 : 0}
+    compressionQuality: ${c ? 75 : 100}
+    crunchedCompression: ${c ? 1 : 0}
     allowsAlphaSplitting: 0
-    overridden: 0
+    overridden: ${c ? 1 : 0}
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
 `;
+    };
     fs.writeFileSync(meta, `fileFormatVersion: 2
 guid: ${guid}
 TextureImporter:
@@ -590,7 +597,7 @@ TextureImporter:
     wrapU: 1
     wrapV: 1
     wrapW: 1
-  nPOTScale: 0
+  nPOTScale: ${crunch ? 2 : 0}
   lightmap: 0
   compressionQuality: 100
   spriteMode: 0

@@ -279,7 +279,9 @@ async function writeAtlas(stageKey, look, fig) {
     plainMeta(dir, true);
     const file = path.join(dir, look + '.png');
     await sharp(out, { raw: { width: AW, height: AH, channels: 4 } }).png({ compressionLevel: 9 }).toFile(file);
-    writeMeta(file);
+    // Standalone/WebGL crunch (same fix as the stage graphics, commit b4678ff): 48 atlases across up to
+    // 8 stages each, lossless, pushed the WebGL build past GitHub's 100 MB file limit.
+    writeMeta(file, false, true);
     const rimFile = path.join(dir, look + '_rim.png');
     await sharp(rim, { raw: { width: AW, height: AH, channels: 1 } }).png({ compressionLevel: 9 }).toFile(rimFile);
     writeMeta(rimFile, true);
