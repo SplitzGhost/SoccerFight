@@ -13,6 +13,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const { writeMeta, plainMeta } = require('./characters.js');
+const { RIGS } = require('./monsters.rig.js');
 
 // Inspiration/ ist gitignored: in einem anderen Arbeitsordner die Kopie im Hauptordner nehmen.
 const SRC_LOCAL = path.join(__dirname, '../../Inspiration/Monsterpaket');
@@ -110,9 +111,31 @@ async function cut(entry) {
 
     const json = { ppu: +ppu.toFixed(3),
         sprites: [{ name: 'Body', x: 0, y: 0, w: W, h: H, px: +rootX.toFixed(2), py: +(H - rootY).toFixed(2) }], anchors: [] };
+    const rig = RIGS[stageKey + '/' + look];
+    if (rig) json.rig = rigJson(rig, W, H, rootX, rootY, ppu);
     fs.writeFileSync(path.join(dir, look + '.json'), JSON.stringify(json, null, 1) + '\n');
     plainMeta(path.join(dir, look + '.json'), false);
     console.log(stageKey + '/' + look, W + 'x' + H, 'ppu', ppu.toFixed(1));
+}
+
+/** Knochen aus monsters.rig.js (Prozent des Bildes) in Körper-Einheiten umrechnen (x nach vorn, y nach oben, Drehpunkt 0). */
+function rigJson(rig, W, H, rootX, rootY, ppu) {
+    const r = v => +v.toFixed(4);
+    const pt = ([u, v]) => [r((u / 100 * W - rootX) / ppu), r((rootY - v / 100 * H) / ppu)];
+    const len = p => r(p / 100 * W / ppu);
+    const flat = pts => pts.flatMap(pt);
+    return {
+        bend: rig.bend ?? 1,
+        chains: (rig.chains || []).map(c => {
+            const o = { ...c, pts: flat(c.pts), w: len(c.w) };
+            o.poly = c.poly ? flat(c.poly) : [];
+            return o;
+        }),
+        pulses: (rig.pulses || []).map(q => {
+            const [x, y] = pt(q.c);
+            return { x, y, r: len(q.r), amp: q.amp, freq: q.freq, phase: q.phase, charge: q.charge };
+        }),
+    };
 }
 
 /** Zieht die Randfarben nach außen in die durchsichtigen Pixel (glattes Alpha, keine dunklen Säume beim Filtern). */

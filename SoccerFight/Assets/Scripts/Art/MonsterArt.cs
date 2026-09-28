@@ -83,6 +83,9 @@ namespace SoccerFight
         /// Trim() can release it instead of running the SDF sprites' Owned-destroy loop on it.</summary>
         public string AtlasStage, AtlasLook;
         public Sprite Body;
+        /// <summary>Painted bodies: the rim mask for per-monster copies of <see cref="Body"/>, and how they bend.</summary>
+        public SecondarySpriteTexture[] BodyTextures;
+        public WarpRig Rig;
         public readonly List<PartDef> Parts = new List<PartDef>();
         public readonly List<EyeDef> Eyes = new List<EyeDef>();
         public readonly List<ChainDef> Chains = new List<ChainDef>();
@@ -232,7 +235,7 @@ namespace SoccerFight
         /// <summary>
         /// The painted monster for this stage (tools/newdesign/monsters.js), shown whole and untouched: the
         /// pictures are finished bodies, not separate limbs, so all motion comes from the body as one piece
-        /// (Monster.PoseWhole). Null where the art pack has no picture: the SDF body stands in.
+        /// (Monster.PoseWhole, MonsterWarp). Null where the art pack has no picture: the SDF body stands in.
         /// </summary>
         static LookDef Whole(StageTheme t, Look look)
         {
@@ -245,6 +248,8 @@ namespace SoccerFight
             var d = New(t, look, wisp);
             d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = key;
             d.Body = body;
+            d.BodyTextures = atlas.Secondary;
+            d.Rig = atlas.Rig;
             Bounds b = body.bounds;
             d.HpY = b.max.y + 0.1f;
             d.GlowPos = d.AuraPos = new Vector2(0f, b.center.y);

@@ -89,6 +89,7 @@ namespace SoccerFight
             else if (scenario == "skills") yield return Skills();
             else if (scenario == "bestiary") yield return Bestiary();
             else if (scenario == "monster-art") yield return MonsterArtTour();
+            else if (scenario == "monster-motion") yield return MonsterMotionTour();
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();

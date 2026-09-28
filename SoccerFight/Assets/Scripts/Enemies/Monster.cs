@@ -85,6 +85,9 @@ namespace SoccerFight
         static readonly float[] IceSizes = { 0.85f, 1.15f, 0.95f, 0.75f };
         PartRt[] parts;
         EyeRt[] eyes;
+        /// <summary>Bends a painted body (wings, tails, limbs); null for SDF bodies.</summary>
+        MonsterWarp warp;
+        Vector2 lastVel;
         ChainRt[] chains;
         public Look BuiltLook { get; private set; }
         LookDef look;
@@ -131,6 +134,8 @@ namespace SoccerFight
             // wird nur ein geänderter Aufbau neu erzeugt; innerhalb einer Stage bleibt das Pooling erhalten.
             if (root != null) { root.gameObject.SetActive(false); Object.Destroy(root.gameObject); }
             if (shadow != null) { shadow.gameObject.SetActive(false); Object.Destroy(shadow.gameObject); }
+            warp?.Dispose();
+            warp = def.Cutout ? new MonsterWarp(def.Body, def.BodyTextures, def.Rig, !def.Wisp) : null;
             builtDefinition = def;
             BuiltLook = def.Look;
             K = def.Wisp ? Kind.Wisp : Kind.Blob;
@@ -145,7 +150,7 @@ namespace SoccerFight
             aura = Art.MakeSprite("Aura", body, Art.SoftGlow, 55, Art.SpriteGlowMat, Color.clear);
             auraRing = Art.MakeSprite("AuraRing", body, Art.Ring, 56, Art.SpriteGlowMat, Color.clear);
             glow = Art.MakeSprite("Glow", body, Art.SoftGlow, 57, Art.SpriteGlowMat, Color.clear);
-            bodySr = Art.MakeSprite("Body", body, def.Body, 60);
+            bodySr = Art.MakeSprite("Body", body, warp != null ? warp.Sprite : def.Body, 60);
             // status dressing: a frosty glow with ice shards (slowed / frozen), a warm glow (burning)
             frost = Art.MakeSprite("Frost", body, Art.SoftGlow, 59, Art.SpriteAddMat, Color.clear);
             heat = Art.MakeSprite("Heat", body, Art.SoftGlow, 59, Art.SpriteAddMat, Color.clear);
@@ -240,6 +245,7 @@ namespace SoccerFight
             Alive = true;
             spawnT = 0f; flash = 0f; hpShow = 0f; hpDisplay = 1f; fade = 1f;
             squash = squashVel = 0f;
+            lastVel = s.Vel;
             grounded = false; standing = Level.None; leapPlanned = false; tilt = 0f; poseLean = 0f;
             hopTimer = Random.Range(0.2f, 0.5f);
             diveTimer = Random.Range(2.5f, 4.5f);
@@ -283,7 +289,7 @@ namespace SoccerFight
         /// <summary>Put on the body in this stage's colours (the renderers were built for the same body).</summary>
         void ApplyLook()
         {
-            bodySr.sprite = look.Body;
+            bodySr.sprite = warp != null ? warp.Sprite : look.Body;
             for (int i = 0; i < parts.Length; i++)
             {
                 var p = parts[i];
@@ -371,6 +377,7 @@ namespace SoccerFight
             Vel += dir.normalized * knock * knockMul + Vector2.up * (K == Kind.Blob ? knock * 0.45f * knockMul : 0f);
             if (K == Kind.Blob && Vel.y > 0.5f && Rank != Rank.Boss) { grounded = false; standing = Level.None; leapPlanned = false; }
             squashVel += big ? 14f : 9f;
+            warp?.Impulse(new Vector2(dir.normalized.x * (faceT >= 0f ? 1f : -1f), dir.normalized.y), big ? 1.6f : 1f);
             if (Rank == Rank.Normal) { windup = 0f; diveTime = 0f; attackWind = 0f; }
             var fx = FxSystem.I;
             Vector2 c = Center;
@@ -1186,7 +1193,7 @@ namespace SoccerFight
             float faceVx = Vel.x * side;
             bool air = K == Kind.Blob && !grounded;
             foreach (var p in parts) AnimatePart(p, charge, lunge, speed01, faceVx, air, primed);
-            if (look.Cutout) PoseWhole(dt, charge, lunge, faceVx, air);
+            if (look.Cutout) PoseWhole(dt, charge, lunge, faceVx, side, speed01);
 
             // eyes: look at the player, blink now and then
             blinkTimer -= dt;
@@ -1333,13 +1340,25 @@ namespace SoccerFight
         }
 
         /// <summary>
-        /// A painted monster is one whole picture without limbs of its own, so it lives through the body:
-        /// ground monsters breathe on their soles, lean into their steps, rear back on the wind-up, throw
-        /// themselves forward on the lunge and stretch in the air; flyers bob, sway and pulse with their
-        /// wing beats. Frozen monsters hold still.
+        /// A painted monster is one whole picture: its limbs bend inside it (<see cref="MonsterWarp"/>, springs
+        /// driven by how the body moves), and the body itself breathes on its sole, stretches in the air, rears
+        /// back on the wind-up and throws itself forward on the lunge; flyers bob with their wing beats or drift
+        /// up and down. Frozen monsters hold still.
         /// </summary>
-        void PoseWhole(float dt, float charge, float lunge, float faceVx, bool air)
+        void PoseWhole(float dt, float charge, float lunge, float faceVx, float side, float speed01)
         {
+            if (warp != null)
+            {
+                Vector2 acc = dt > 1e-5f ? (Vel - lastVel) / dt : Vector2.zero;
+                warp.Update(new WarpDrive
+                {
+                    Dt = dt, Time = t + Id * 1.37f, Charge = charge, Lunge = lunge, Speed01 = speed01,
+                    Vel = new Vector2(Vel.x * side, Vel.y), Acc = new Vector2(acc.x * side, acc.y),
+                    Frozen = FreezeTime > 0f, Ground = K == Kind.Blob, Grounded = K == Kind.Blob && grounded, Hidden = !bodySr.isVisible,
+                });
+            }
+            lastVel = Vel;
+
             var tr = bodySr.transform;
             float still = FreezeTime > 0f ? 0f : 1f;
             float ph = t + Id * 1.37f;
@@ -1347,22 +1366,21 @@ namespace SoccerFight
             Vector2 offset = Vector2.zero;
             if (K == Kind.Blob)
             {
-                float breathe = Mathf.Sin(ph * 2.6f) * still;
-                float stretch = air ? Mathf.Clamp(Vel.y * 0.022f, -0.07f, 0.09f) : 0f;
-                sy = 1f + 0.028f * breathe + stretch + 0.05f * charge - 0.04f * lunge;
-                sx = 1f - 0.016f * breathe - stretch * 0.6f - 0.03f * charge + 0.04f * lunge;
-                // rotation about the sole: negative leans towards the facing direction
-                lean = -Mathf.Clamp(faceVx * 1.4f, -7f, 7f) + 1.2f * Mathf.Sin(ph * 1.3f) * still + 8f * charge - 12f * lunge;
+                float breathe = Mathf.Sin(ph * 2.2f) * still;
+                bool air = !grounded;
+                float stretch = air ? Mathf.Clamp(Vel.y * 0.02f, -0.06f, 0.08f) : 0f;
+                sy = 1f + 0.022f * breathe + stretch + 0.05f * charge - 0.04f * lunge;
+                sx = 1f - 0.012f * breathe - stretch * 0.6f - 0.03f * charge + 0.04f * lunge;
+                // rotation about the sole: rears back on the wind-up, throws itself forward on the lunge
+                lean = 8f * charge - 12f * lunge;
             }
             else
             {
-                // wing-beaters pulse fast, drifting bodies slowly
-                bool flapper = look.Look == Look.Diver || look.Look == Look.FrostWyrm;
-                float beat = Mathf.Sin(ph * (flapper ? 11f : 2.4f)) * still;
-                sy = 1f + (flapper ? 0.045f : 0.025f) * beat + 0.04f * charge;
-                sx = 1f - (flapper ? 0.02f : 0.012f) * beat - 0.03f * charge;
-                offset.y = (flapper ? 0.02f * beat : 0.035f * Mathf.Sin(ph * 1.7f) * still);
-                lean = 3.5f * Mathf.Sin(ph * 1.1f) * still - Mathf.Clamp(faceVx * 0.8f, -6f, 6f) + 6f * charge - 8f * lunge;
+                float beat = warp != null ? warp.WingBeat : -1f;
+                sx = 1f - 0.03f * charge; sy = 1f + 0.04f * charge;
+                // wing-beaters rise on every down-stroke, the others drift slowly
+                offset.y = beat >= 0f ? -0.018f * Mathf.Cos(beat) * still : 0.035f * Mathf.Sin(ph * 1.7f) * still;
+                lean = 3f * Mathf.Sin(ph * 1.1f) * still - Mathf.Clamp(faceVx * 0.8f, -6f, 6f) + 6f * charge - 8f * lunge;
             }
             poseLean = MathUtil.Damp(poseLean, lean, 9f, dt);
             tr.localPosition = offset;
