@@ -11,6 +11,8 @@ privaten Speicher, damit die andere KI sie auch kennt.
 - Priorität: **Grafik, flüssige Animation, saubere Effekte, hohe FPS** vor Gameplay-Tiefe.
   Flache/minimalistische Optik wurde mehrfach abgelehnt; Ziel ist Ori-/Hollow-Knight-Niveau
   (viele Ebenen, viel feine Bewegung). Menüs, die „KI-generiert“ oder „kindisch“ aussehen, wurden verworfen.
+- Bewegung soll **viel, aber realistisch** sein: physikalisch glaubwürdig (Trägheit, Nachschwingen, Fahrtwind,
+  Gewicht), kein bloßes Sinus-Wackeln und keine Verzerrungen, die das gemalte Bild beschädigen.
 
 ## Das Spiel: SportFighter (Repo-/Ordnername noch SoccerFight)
 
