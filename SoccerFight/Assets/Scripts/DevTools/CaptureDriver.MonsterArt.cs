@@ -37,12 +37,8 @@ namespace SoccerFight
                         var spec = new Monster.SpawnSpec { Type = type, At = new Vector2(0f, 1f),
                             Theme = theme, Level = 1f, Rank = boss ? Rank.Boss : Rank.Normal, Boss = boss ? theme.Boss : null };
                         var look = MonsterArt.Get(theme, Monster.LookFor(spec));
-                        if (!look.Cutout || look.Body == null || look.Eyes.Count == 0)
-                            throw new InvalidOperationException("Monsterbild oder bewegliches Auge fehlt: " + theme.Kit + "/" + look.Look);
-                        foreach (var part in look.Parts) if (part.Sprite == null)
-                            throw new InvalidOperationException("Monsterteil fehlt: " + look.Look + "/" + part.Name);
-                        foreach (var chain in look.Chains) if (chain.Sprite == null)
-                            throw new InvalidOperationException("Monsterschweif fehlt: " + look.Look);
+                        if (!look.Cutout || look.Body == null)
+                            throw new InvalidOperationException("Monsterbild fehlt: " + theme.Kit + "/" + look.Look);
                         var monster = G.Waves.Spawn(spec);
                         for (int pose = 0; pose < 8; pose++)
                         {
@@ -60,7 +56,7 @@ namespace SoccerFight
                             float size = Mathf.Max(0.8f, monster.Radius * 2.5f);
                             yield return SheetCell(monster.Center - P.Pos, size);
                         }
-                        Debug.Log("[MonsterArt] " + theme.Kit + "/" + look.Look + ": acht Zustände, " + look.Parts.Count + " Teile, " + look.Eyes.Count + " Augen");
+                        Debug.Log("[MonsterArt] " + theme.Kit + "/" + look.Look + ": acht Zustände, ganzes Bild");
                     }
                     EndSheet("monster_" + stage + "_" + theme.Kit);
                 }

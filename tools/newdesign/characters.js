@@ -545,8 +545,9 @@ function round(o) {
 /** Unity-Importeinstellungen: normales Alpha, Mipmaps, Clamp, verlustfrei (mask: einkanalig, linear).
  * crunch: Standalone/WebGL bekommen DXT5-Crunch (kleiner Download im Browser, siehe commit b4678ff zu den
  * Stage-Grafiken) statt der verlustfreien Standardeinstellung — der Editor/Default-Eintrag bleibt lossless,
- * nur die gebauten Plattformen komprimieren. Unity skaliert dafür selbst auf die nächste Zweierpotenz hoch
- * (nPOTScale: 2), ein eigenes Auffüllen auf Zweierpotenz-Maße ist deshalb nicht nötig. */
+ * nur die gebauten Plattformen komprimieren. Unity streckt solche Texturen auf die nächste Zweierpotenz
+ * (nPOTScale: 2) – Bilder mit Sprite-Ausschnitten in Pixeln müssen deshalb selbst schon Zweierpotenz-Maße haben,
+ * sonst zeigt der Ausschnitt nur einen Teil des gestreckten Bildes. */
 function writeMeta(file, mask = false, crunch = false) {
     const meta = file + '.meta';
     let guid = require('crypto').randomBytes(16).toString('hex');

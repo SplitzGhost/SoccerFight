@@ -40,6 +40,11 @@ Spieländerungen mitgepflegt werden.**
   Offene Dribbelhände für Basketball: Zusatzbogen `tools/newdesign/sources/dribble-hands.png` (mit versioniert),
   `characters.js` übernimmt ihn als `OpenHand` in die drei Atlanten. Die offene Hand zeigt im Atlas nach rechts
   statt nach unten; `PlayerRig.Hoops` steuert ihren Ballkontakt und den Winkel im Handgelenk.
+- **Monster sind ganze Bilder:** `tools/newdesign/monsters.js` stellt die rechte Ansicht jedes Bogens aus
+  `Inspiration/Monsterpaket` frei → `Resources/Monsters/<stage>/<look>.png/.json/_rim.png`. Die Bilder **nicht** in Glieder
+  zerlegen (Arme/Flügel/Augen herausschneiden und Löcher auffüllen sah im Spiel zerrissen und verschmiert aus und wurde
+  verworfen); Bewegung macht der ganze Körper (`Monster.PoseWhole`). Texturen mit Crunch (`writeMeta(…, crunch)`) streckt
+  Unity auf Zweierpotenz-Maße – Bilder mit Pixel-Ausschnitten im JSON müssen daher selbst schon 512/1024 groß sein.
 - Die Szene `Assets/Scenes/Game.unity` enthält nur ein GameObject mit `Game`.
 - Skripte: `SoccerFight/Assets/Scripts/` (Namespace `SoccerFight`), Ordner Art, Ball, Combat, Core, Enemies, FX,
   Meta, Net, Player, Run, UI, World, Editor, DevTools.

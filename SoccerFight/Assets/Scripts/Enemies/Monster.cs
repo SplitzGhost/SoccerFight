@@ -89,7 +89,7 @@ namespace SoccerFight
         public Look BuiltLook { get; private set; }
         LookDef look;
         StageTheme theme;
-        float spawnT, scaleNow = 1f, flash, hpShow, hpDisplay = 1f, squash, squashVel, faceT = -1f, blinkTimer, blink, t, tilt;
+        float spawnT, scaleNow = 1f, flash, hpShow, hpDisplay = 1f, squash, squashVel, faceT = -1f, blinkTimer, blink, t, tilt, poseLean;
         float sizeMul = 1f, speedMul = 1f, fade = 1f;
         Color auraColor;
         int standVersion;
@@ -240,7 +240,7 @@ namespace SoccerFight
             Alive = true;
             spawnT = 0f; flash = 0f; hpShow = 0f; hpDisplay = 1f; fade = 1f;
             squash = squashVel = 0f;
-            grounded = false; standing = Level.None; leapPlanned = false; tilt = 0f;
+            grounded = false; standing = Level.None; leapPlanned = false; tilt = 0f; poseLean = 0f;
             hopTimer = Random.Range(0.2f, 0.5f);
             diveTimer = Random.Range(2.5f, 4.5f);
             windup = diveTime = 0f;
@@ -1186,6 +1186,7 @@ namespace SoccerFight
             float faceVx = Vel.x * side;
             bool air = K == Kind.Blob && !grounded;
             foreach (var p in parts) AnimatePart(p, charge, lunge, speed01, faceVx, air, primed);
+            if (look.Cutout) PoseWhole(dt, charge, lunge, faceVx, air);
 
             // eyes: look at the player, blink now and then
             blinkTimer -= dt;
@@ -1329,6 +1330,44 @@ namespace SoccerFight
                 fx.Spawn(FxLayer.Front, true, Art.CellGlow, top, new Vector2(Random.Range(-0.2f, 0.2f), Random.Range(1.2f, 2.2f)), Random.Range(0.25f, 0.45f),
                     Radius * Random.Range(0.35f, 0.55f), 0f, new Color(1f, 0.75f, 0.3f), new Color(1f, 0.2f, 0.1f, 0f), 2.6f, 1f, -1f);
             }
+        }
+
+        /// <summary>
+        /// A painted monster is one whole picture without limbs of its own, so it lives through the body:
+        /// ground monsters breathe on their soles, lean into their steps, rear back on the wind-up, throw
+        /// themselves forward on the lunge and stretch in the air; flyers bob, sway and pulse with their
+        /// wing beats. Frozen monsters hold still.
+        /// </summary>
+        void PoseWhole(float dt, float charge, float lunge, float faceVx, bool air)
+        {
+            var tr = bodySr.transform;
+            float still = FreezeTime > 0f ? 0f : 1f;
+            float ph = t + Id * 1.37f;
+            float sx, sy, lean;
+            Vector2 offset = Vector2.zero;
+            if (K == Kind.Blob)
+            {
+                float breathe = Mathf.Sin(ph * 2.6f) * still;
+                float stretch = air ? Mathf.Clamp(Vel.y * 0.022f, -0.07f, 0.09f) : 0f;
+                sy = 1f + 0.028f * breathe + stretch + 0.05f * charge - 0.04f * lunge;
+                sx = 1f - 0.016f * breathe - stretch * 0.6f - 0.03f * charge + 0.04f * lunge;
+                // rotation about the sole: negative leans towards the facing direction
+                lean = -Mathf.Clamp(faceVx * 1.4f, -7f, 7f) + 1.2f * Mathf.Sin(ph * 1.3f) * still + 8f * charge - 12f * lunge;
+            }
+            else
+            {
+                // wing-beaters pulse fast, drifting bodies slowly
+                bool flapper = look.Look == Look.Diver || look.Look == Look.FrostWyrm;
+                float beat = Mathf.Sin(ph * (flapper ? 11f : 2.4f)) * still;
+                sy = 1f + (flapper ? 0.045f : 0.025f) * beat + 0.04f * charge;
+                sx = 1f - (flapper ? 0.02f : 0.012f) * beat - 0.03f * charge;
+                offset.y = (flapper ? 0.02f * beat : 0.035f * Mathf.Sin(ph * 1.7f) * still);
+                lean = 3.5f * Mathf.Sin(ph * 1.1f) * still - Mathf.Clamp(faceVx * 0.8f, -6f, 6f) + 6f * charge - 8f * lunge;
+            }
+            poseLean = MathUtil.Damp(poseLean, lean, 9f, dt);
+            tr.localPosition = offset;
+            tr.localRotation = Quaternion.Euler(0f, 0f, poseLean);
+            tr.localScale = new Vector3(sx, sy, 1f);
         }
 
         /// <summary>One part's little life: breathing, swaying, flapping, swinging its fists, gaping, orbiting.</summary>
