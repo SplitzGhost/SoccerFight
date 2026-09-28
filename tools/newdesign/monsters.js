@@ -119,15 +119,17 @@ function ellipsePoly(cx, cy, rx, ry, n = 20) {
 }
 
 async function cutLook(look, stageFolders) {
-    const D = DEF[look];
-    if (!D) { console.warn('no monsters.def.js entry for', look); return; }
-    const refEntry = entry(D.ref, look);
-    const refView = rightView(refEntry);
+    const base = DEF[look];
+    if (!base) throw new Error('Schnittdefinition fehlt: ' + look);
 
     for (const stageFolder of stageFolders) {
         const e = entry(stageFolder, look);
         if (!e) continue;
         const stageKey = STAGE_KEY[stageFolder];
+        // Varianten mit eigener Referenz werden vollständig in deren lokalen Bildkoordinaten vermessen.
+        const D = { ...base, ...(base.variants && base.variants[stageKey]) };
+        const refEntry = entry(D.ref, look);
+        const refView = rightView(refEntry);
         const file = path.join(SRC, e.datei);
         const img = await load(file);
         const view = rightView(e);
@@ -142,17 +144,33 @@ async function cutLook(look, stageFolders) {
         const scale = (view.bounds[3] - view.bounds[1]) / (refView.bounds[3] - refView.bounds[1]);
         const seamDisc = (refPoint, seamRadius) => {
             const [x, y] = remap(refPoint, refView, view);
-            return circlePoly([x, y, (seamRadius || 70) * scale]);
+            return circlePoly([x, y, (seamRadius ?? 20) * scale]);
         };
+        // Shrinks a poly toward its pivot: hiding a slightly SMALLER copy of the part's own outline (not a
+        // bounding circle — wrong shape for anything long and thin like an arm or tentacle) still leaves the
+        // full-size rendered part covering it completely, edge and all, while keeping the inpainted area as
+        // small as the shape allows — smaller holes blend far better than an oversized one.
+        const shrinkPoly = (poly, pivot, factor) => poly.map(([x, y]) => [pivot[0] + (x - pivot[0]) * factor, pivot[1] + (y - pivot[1]) * factor]);
 
         const partPolys = {};
         for (const [name, p] of Object.entries(D.parts || {})) partPolys[name] = remapPoly(p.poly, refView, view);
-        // the body poly is drawn tight (without the moving parts' own territory) precisely so it never needs
-        // to inpaint-fill a whole part-shaped hole (that only smooths colour, not silhouette, and leaves a
-        // flat part-shaped patch behind) — only a small seam disc at each attachment blends the cut edge.
+        // The body poly is drawn tight (without the moving parts' own territory) precisely so hiding never
+        // has to inpaint-fill a whole part-shaped hole — that only smooths colour, not silhouette, and on a
+        // gradient-shaded surface (inpaint sources from a single dominant colour bin, built for flat cloth)
+        // it leaves a visibly flat/dark patch instead of a plausible continuation of the surface. Prefer a
+        // seam disc sized to the part's own reach, or (for D.hide's redundant "hide the whole part" entries)
+        // a shrunk copy of the part's own outline — either way the part fully covers its hole when drawn back
+        // on top, leaving only the true cut edge to blend. D.hide stays available at full size for spots that
+        // genuinely have nothing else to reveal underneath (e.g. a tail's full sweep for a chain tile).
         const hidePolys = [];
         for (const p of Object.values(D.parts || {})) hidePolys.push(seamDisc(p.pivot, p.seam));
-        for (const poly of Object.values(D.hide || {})) hidePolys.push(remapPoly(poly, refView, view));
+        // a D.hide entry keyed exactly like a D.parts entry is that helper's own "hide the whole part" poly
+        // (ground/bosses/extra .def.js all build it that way) — shrink it toward the part's pivot instead of
+        // hiding it full-size; a hide entry with no matching part (nothing else will cover it) stays full-size.
+        for (const [key, poly] of Object.entries(D.hide || {})) {
+            const part = D.parts && D.parts[key];
+            hidePolys.push(remapPoly(part ? shrinkPoly(poly, part.pivot, 0.8) : poly, refView, view));
+        }
         for (const c of Object.values(D.chains || {})) hidePolys.push(seamDisc(c.anchor, c.seam || 60));
 
         // each named eye either gets a per-stage manual override (an explicit ellipse, already in THIS
@@ -174,17 +192,30 @@ async function cutLook(look, stageFolders) {
                 // window that's still generous relative to how large an eye actually is works better here.
                 info = findEye(img, seed, STAGE_EYE[stageKey] || ed.color, ed.radiusPad || 1.5, 55);
             }
-            if (info) { eyeInfos[eyeName] = info; hidePolys.push(circlePoly([info.cx, info.cy, (ed.seam || 40) * scale])); }
-            else console.warn('  ' + look + ' ' + stageKey + ': eye "' + eyeName + '" not found — add a manual override in monsters.def.js (eyes.' + eyeName + '.overrides.' + stageKey + ' = [cx,cy,rx,ry]), or it stays static (painted, not animated) for this stage.');
+            if (info) {
+                eyeInfos[eyeName] = info;
+                // Das ganze aufgemalte Auge entfernen: ein kleiner Mittelpunkt-Kreis ließe beim Blinzeln
+                // den unbewegten Außenrand stehen. Nur wenige Pixel Reserve gegen doppelte Konturen.
+                if (!ed.parent) hidePolys.push(ellipsePoly(info.cx, info.cy, info.rx, info.ry));
+            } else throw new Error(look + ' ' + stageKey + ': Auge ' + eyeName + ' fehlt; manuellen Override ergänzen.');
         }
 
         const parts = {};
         const bodyPoly = remapPoly(D.body, refView, view);
-        parts.Body = orient(img, region(img, bodyPoly, hidePolys), rootPx, null);
+        // wide colour tolerance: the body is a smoothly gradient-shaded dome/torso, not flat-coloured cloth,
+        // so restricting inpaint sources to one dominant colour bin (characters.js's default, tuned for
+        // trim-free cloth) flattens a hidden area to a single dark/light tone instead of continuing the
+        // surrounding light-to-shadow gradient — let every known body pixel act as a source instead.
+        parts.Body = orient(img, region(img, bodyPoly, hidePolys, [], null, null, 1.8), rootPx, null);
 
         for (const [name, poly] of Object.entries(partPolys)) {
             const pivot = remap(D.parts[name].pivot, refView, view);
-            parts[cap(name)] = orient(img, region(img, poly), pivot, null);
+            const hide = [];
+            for (const [eyeName, ed] of Object.entries(D.eyes || {})) {
+                const info = eyeInfos[eyeName];
+                if (ed.parent === name && info) hide.push(ellipsePoly(info.cx, info.cy, info.rx, info.ry));
+            }
+            parts[cap(name)] = orient(img, region(img, poly, hide), pivot, null);
         }
 
         const anchors = {};
@@ -199,7 +230,9 @@ async function cutLook(look, stageFolders) {
         }
 
         for (const [eyeName, info] of Object.entries(eyeInfos)) {
-            parts[cap(eyeName)] = orient(img, region(img, ellipsePoly(info.cx, info.cy, info.rx, info.ry)), [info.cx, info.cy], null);
+            // region() glättet fünf Pixel außerhalb der verdeckten Fläche. Der Augen-Ausschnitt
+            // überdeckt diesen Rand vollständig, damit in Ruhe kein ovaler Auffüllsaum sichtbar bleibt.
+            parts[cap(eyeName)] = orient(img, region(img, ellipsePoly(info.cx, info.cy, info.rx + 8, info.ry + 8)), [info.cx, info.cy], null);
             anchors[eyeName] = toWorld([info.cx, info.cy]);
         }
 
@@ -250,6 +283,12 @@ async function writeAtlas(stageKey, look, fig) {
     const rimFile = path.join(dir, look + '_rim.png');
     await sharp(rim, { raw: { width: AW, height: AH, channels: 1 } }).png({ compressionLevel: 9 }).toFile(rimFile);
     writeMeta(rimFile, true);
+    // Ein zu kleiner Unity-Import würde die Pixel-Rechtecke im JSON ungültig machen.
+    const importSize = Math.max(2048, 2 ** Math.ceil(Math.log2(Math.max(AW, AH))));
+    for (const metaFile of [file + '.meta', rimFile + '.meta']) {
+        const meta = fs.readFileSync(metaFile, 'utf8');
+        fs.writeFileSync(metaFile, meta.replace(/maxTextureSize: \d+/g, 'maxTextureSize: ' + importSize));
+    }
     const json = { ppu: +fig.ppu.toFixed(3), sprites, anchors: Object.entries(fig.anchors).map(([name, [x, y]]) => ({ name, x: +x.toFixed(4), y: +y.toFixed(4) })) };
     fs.writeFileSync(path.join(dir, look + '.json'), JSON.stringify(json, null, 1) + '\n');
     plainMeta(path.join(dir, look + '.json'), false);

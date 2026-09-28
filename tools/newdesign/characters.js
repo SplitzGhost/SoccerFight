@@ -82,7 +82,15 @@ function cover(box, test) {
 const polyTest = poly => (x, y) => inPoly(poly, x, y);
 // Verdeckte Teile einschließlich ihrer antialiasierten Stoffkante entfernen.
 // Sonst bleibt um den weggeblendeten Arm ein heller Umriss im Trikot stehen.
-const anyPoly = polys => (x, y) => polys.some(p => inPoly(p, x, y) || edgeDistance(p, x, y) < 5);
+const anyPoly = polys => {
+    // Entfernte Ausschnitte können weder innen noch im fünf Pixel breiten Rand liegen.
+    // Die Vorprüfung spart bei großen Monsterbögen Millionen unnötiger Kantenabstände.
+    const regions = polys.map(poly => ({ poly,
+        x0: Math.min(...poly.map(p => p[0])) - 5, x1: Math.max(...poly.map(p => p[0])) + 5,
+        y0: Math.min(...poly.map(p => p[1])) - 5, y1: Math.max(...poly.map(p => p[1])) + 5 }));
+    return (x, y) => regions.some(r => x >= r.x0 && x <= r.x1 && y >= r.y0 && y <= r.y1 &&
+        (inPoly(r.poly, x, y) || edgeDistance(r.poly, x, y) < 5));
+};
 
 function edgeDistance(poly, x, y) {
     let best = Infinity;
@@ -108,7 +116,7 @@ function bboxOf(polys, pad) {
  * zones: Unterbereiche, deren Lücken nur aus ihren eigenen Pixeln gefüllt werden (Hose vs. Haut).
  * disc: zusätzliche Kreisscheibe {c, r}, die mit zum Bereich gehört und aufgefüllt wird (runde Hüfte des Hosenbeins).
  */
-function region(img, poly, hide = [], zones = [], fillFrom = null, disc = null) {
+function region(img, poly, hide = [], zones = [], fillFrom = null, disc = null, colorTol = 0.2) {
     const box = disc ? bboxOf([poly, [[disc.c[0] - disc.r, disc.c[1] - disc.r], [disc.c[0] + disc.r, disc.c[1] + disc.r]]], 3) : bboxOf([poly], 3);
     const [bx, by, w, h] = box;
     const inside = cover(box, polyTest(poly));
@@ -135,12 +143,18 @@ function region(img, poly, hide = [], zones = [], fillFrom = null, disc = null) 
         for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!zone[y * w + x] && inPoly(z, bx + x + 0.5, by + y + 0.5)) zone[y * w + x] = zi + 1;
     });
     if (fillFrom) for (let i = 0; i < w * h; i++) if (known[i] && !fillFrom(bx + i % w, by + ((i / w) | 0), rgb, i)) known[i] = 0;
-    inpaint(rgb, known, a, zone, w, h);
+    inpaint(rgb, known, a, zone, w, h, colorTol);
     return { box, w, h, rgb, a, a0: a };
 }
 
-/** Füllt unbekannte Pixel glatt aus den bekannten (Diffusion, grob → fein), getrennt nach Zonen. */
-function inpaint(rgb, known, a, zone, w, h) {
+/** Füllt unbekannte Pixel glatt aus den bekannten (Diffusion, grob → fein), getrennt nach Zonen.
+ * colorTol: wie weit Quellpixel von der Hauptfarbe der Zone abweichen dürfen. Klein (Standard) hält Borten/
+ * Nummern/Streulicht aus einstöckig gefärbtem Stoff heraus; für großflächig verlaufend schattierte Flächen
+ * (keine feste Grundfarbe, sondern ein Hell-Dunkel-Verlauf über die ganze Zone) reicht das nicht — die enge
+ * Farbbindung schneidet dann genau die hellen/dunklen Enden des Verlaufs als Quellen ab und der Diffusions-
+ * Startwert wird einfarbig flach statt den Verlauf fortzusetzen. Ein hoher Wert (nahe 2, dem maximal möglichen
+ * RGB-Abstand) lässt praktisch jedes bekannte Pixel der Zone als Quelle zu. */
+function inpaint(rgb, known, a, zone, w, h, colorTol = 0.2) {
     const need = new Uint8Array(w * h);
     let any = false;
     for (let i = 0; i < w * h; i++) if (!known[i] && a[i] > 0) { need[i] = 1; any = true; }
@@ -165,7 +179,7 @@ function inpaint(rgb, known, a, zone, w, h) {
         const dom = [best[1] / best[0], best[2] / best[0], best[3] / best[0]];
         const kn = [];
         for (let i = 0; i < w * h; i++) if (known[i] && zone[i] == z &&
-            Math.hypot(rgb[i * 3] - dom[0], rgb[i * 3 + 1] - dom[1], rgb[i * 3 + 2] - dom[2]) < 0.2) kn.push(i);
+            Math.hypot(rgb[i * 3] - dom[0], rgb[i * 3 + 1] - dom[1], rgb[i * 3 + 2] - dom[2]) < colorTol) kn.push(i);
         // Mehrquellen-Breitensuche für den Startwert (andersfarbige bekannte Pixel bleiben unberührt)
         const dist = new Int32Array(w * h).fill(-1), q = new Int32Array(w * h);
         let qh = 0, qt = 0;

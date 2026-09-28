@@ -88,6 +88,7 @@ namespace SoccerFight
             else if (scenario == "platforms") yield return Platforms();
             else if (scenario == "skills") yield return Skills();
             else if (scenario == "bestiary") yield return Bestiary();
+            else if (scenario == "monster-art") yield return MonsterArtTour();
             else if (scenario == "layouts") yield return Layouts();
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
@@ -728,7 +729,7 @@ namespace SoccerFight
             EnemyType[] ground = { EnemyType.Hopper, EnemyType.Spawnling, EnemyType.Splitter, EnemyType.Spitter, EnemyType.Brute, EnemyType.Bomber };
             EnemyType[] air = { EnemyType.Diver, EnemyType.Shade, EnemyType.Lantern };
             float[] gx = { -8.2f, -5.5f, -3.7f, -1f, 1.7f, 5.1f };
-            foreach (int stage in new[] { 1, 4, 5, 6 })
+            foreach (int stage in new[] { 1, 2, 3, 4, 5, 6, 7, 8 })
             {
                 G.Director.DebugJump(stage, 1, 0, false);
                 yield return Frames(2);

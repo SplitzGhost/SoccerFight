@@ -119,3 +119,8 @@ module.exports = {
         eyes: { eye: { seed: [745, 400], color: '#7FD4FF', radiusPad: 1.3, seam: 16 } },
     },
 };
+
+// Getrennte Dateien erlauben gleichzeitig vermessene Looks ohne konkurrierende Änderungen.
+Object.assign(module.exports, require('./monsters.ground.def.js'));
+Object.assign(module.exports, require('./monsters.bosses-a.def.js'), require('./monsters.bosses-b.def.js'));
+Object.assign(module.exports, require('./monsters.extra.def.js'));

@@ -11,7 +11,7 @@ namespace SoccerFight
     }
 
     public enum PartAnim { None, Bob, Sway, Flap, Swing, Pulse, Foot, Orbit, Flicker, Breathe, Jaw }
-    public enum PartMat { Normal, Emissive, Glow }
+    public enum PartMat { Normal, Emissive, Glow, Premultiplied }
 
     /// <summary>A sprite attached to the body (or to another part) with its own little motion.</summary>
     public sealed class PartDef
@@ -191,7 +191,7 @@ namespace SoccerFight
             {
                 foreach (var d in cache[th].Values)
                 {
-                    if (d.Cutout) { MonsterAtlas.Unload(d.AtlasStage, d.AtlasLook); continue; }
+                    if (d.Cutout) MonsterAtlas.Unload(d.AtlasStage, d.AtlasLook);
                     foreach (var s in d.Owned)
                     {
                         if (s == null) continue;
@@ -433,10 +433,268 @@ namespace SoccerFight
 
         static Rect ArmRect(float len, float fist) => Box(-0.16f * fist - 0.05f, -len - 0.24f * fist, 0.4f * fist + 0.12f, len + 0.36f * fist);
 
+        static LookDef King(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "king");
+            if (atlas == null) return KingProcedural(t);
+            var d = New(t, Look.King, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "king";
+            d.Body = atlas.Sprite("Body");
+            for (int i = 0; i < 2; i++)
+                CutoutPart(d, atlas, "foot" + i, "Foot" + i, 61).Animate(PartAnim.Foot, 1f, 1f, i * 1.7f);
+            // Die Seitenansicht zeigt ein Horn und ein Auge.
+            CutoutPart(d, atlas, "horn", "HornL", 61).Animate(PartAnim.Sway, 2f, 1.6f);
+            var crown = CutoutPart(d, atlas, "crown", "Crown", 64).Animate(PartAnim.Bob, 0.01f, 3f);
+            var sceptre = CutoutPart(d, atlas, "sceptre", "Sceptre", 62).Animate(PartAnim.Swing, 8f, 1.5f, 0f, 45f);
+            // Gemessene Kugelmitte (831,330), Handdrehpunkt (774,534), 724 px = 1,1 Welteinheiten.
+            var orb = Part(d, "OrbGlow", 57f * 1.1f / 724f, 204f * 1.1f / 724f, 63, sceptre)
+                .Shine(PartMat.Glow, t.Accent).Animate(PartAnim.Breathe, 0.3f, 2f, 0f, 1f);
+            orb.Shared = 2; orb.Scale = new Vector2(0.21f, 0.21f);
+            var crownGlow = Part(d, "CrownGlow", 13f * 1.1f / 724f, 77f * 1.1f / 724f, 65, crown)
+                .Shine(PartMat.Glow, t.Accent * 0.4f).Animate(PartAnim.Breathe, 0.12f, 2f);
+            crownGlow.Shared = 2; crownGlow.Scale = new Vector2(0.13f, 0.17f);
+            CutoutEye(d, atlas, "eye");
+            d.GlowPos = new Vector2(0f, 0.4f); d.HpY = 1.2f;
+            return d;
+        }
+
+        static LookDef ThornMother(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "thornmother");
+            if (atlas == null) return ThornMotherProcedural(t);
+            var d = New(t, Look.ThornMother, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "thornmother";
+            d.Body = atlas.Sprite("Body");
+            CutoutPart(d, atlas, "vineFar", "VineFar", 61).Animate(PartAnim.Sway, 14f, 1.8f, 1.1f, 30f);
+            CutoutPart(d, atlas, "vineNear", "VineNear", 62).Animate(PartAnim.Sway, 14f, 1.8f, 0f, 30f);
+            CutoutPart(d, atlas, "thornL", "ThornL", 61).Animate(PartAnim.Sway, 2f, 1.5f);
+            CutoutPart(d, atlas, "thornR", "ThornR", 61).Animate(PartAnim.Sway, 2f, 1.5f, 1f);
+            CutoutPart(d, atlas, "bloom", "Bloom", 63).Animate(PartAnim.Pulse, 0.05f, 2.2f, 0f, 0.35f);
+            for (int i = 0; i < 2; i++)
+                CutoutPart(d, atlas, "foot" + i, "Foot" + i, 61).Animate(PartAnim.Foot, 1f, 1f, i * 1.7f);
+            CutoutEye(d, atlas, "eye"); CutoutEye(d, atlas, "eyeHigh"); CutoutEye(d, atlas, "eyeFar");
+            d.GlowPos = new Vector2(0f, 0.4f); d.HpY = 1.3f;
+            return d;
+        }
+
+        static LookDef StormLantern(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "stormlantern");
+            if (atlas == null) return StormLanternProcedural(t);
+            var d = New(t, Look.StormLantern, true);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "stormlantern";
+            d.Body = atlas.Sprite("Body");
+            // Licht bleibt vor dem undurchsichtigen gemalten Kern sichtbar, aber bewusst gedämpft.
+            var eyePos = atlas.Anchor("eye");
+            var core = Part(d, "Core", eyePos.x - 0.12f, eyePos.y, 61)
+                .Shine(PartMat.Glow, t.WispGlow * 0.4f).Scaled(0.36f, 0.36f)
+                .Animate(PartAnim.Breathe, 0.3f, 3.2f, 0f, 1f);
+            core.Shared = 2;
+            CutoutEye(d, atlas, "eye");
+            // Sechs kurze gemalte Glieder pro Kette behalten die bisherige bewegliche Kettensimulation.
+            string[] keys = { "chainL", "chainR", "chainC" };
+            for (int i = 0; i < keys.Length; i++)
+            {
+                bool center = i == 2;
+                d.Chains.Add(new ChainDef {
+                    Anchor = atlas.Anchor(keys[i]), Sprite = atlas.Sprite(center ? "ChainC" : i == 0 ? "ChainL" : "ChainR"),
+                    Count = 6, Spacing = center ? 0.044f : 0.035f,
+                    Hang = new Vector2(0f, center ? -0.044f : -0.035f),
+                    Scale0 = 0.4f, Scale1 = 0.36f, Wave = 0.012f, WaveFreq = 3f,
+                    Phase = i * 1.4f, Stiff = 14f, Align = true, Order = 61
+                });
+            }
+            d.GlowSize = 1.9f; d.HpY = 0.78f;
+            return d;
+        }
+
+        static LookDef CrystalGuard(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "crystalguard");
+            if (atlas == null) return CrystalGuardProcedural(t);
+            var d = New(t, Look.CrystalGuard, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "crystalguard";
+            d.Body = atlas.Sprite("Body");
+            CutoutPart(d, atlas, "armBack", "ArmBack", 61).Animate(PartAnim.Swing, 12f, 1.6f, 1.2f, 45f);
+            for (int i = 0; i < 2; i++)
+                CutoutPart(d, atlas, "foot" + i, "Foot" + i, 61).Animate(PartAnim.Foot, 1f, 1f, i * 1.7f);
+            for (int i = 1; i <= 3; i++)
+                CutoutPart(d, atlas, "shard" + i, "Shard" + i, 61).Animate(PartAnim.Sway, 2f, 1.3f, (i - 1) * 0.8f);
+            CutoutPart(d, atlas, "shardSmall", "ShardSmall", 61).Animate(PartAnim.Sway, 2f, 1.3f, 2.4f);
+            CutoutPart(d, atlas, "armFront", "ArmFront", 62).Animate(PartAnim.Swing, 12f, 1.6f, 0f, 45f);
+            // Brustkristall (575,550), Wurzel (423,5;837), 780 px = 1,15 Welteinheiten.
+            var core = Part(d, "Core", 151.5f * 1.15f / 780f, 287f * 1.15f / 780f, 63)
+                .Shine(PartMat.Glow, t.Glow * 0.45f).Scaled(0.2f, 0.23f)
+                .Animate(PartAnim.Breathe, 0.3f, 2.2f, 0f, 1f);
+            core.Shared = 2;
+            CutoutEye(d, atlas, "eye");
+            d.GlowPos = new Vector2(0.05f, 0.45f); d.HpY = 1.25f;
+            return d;
+        }
+
+        static LookDef MagmaColossus(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "magmacolossus");
+            if (atlas == null) return MagmaColossusProcedural(t);
+            var d = New(t, Look.MagmaColossus, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "magmacolossus";
+            d.Body = atlas.Sprite("Body");
+            CutoutPart(d, atlas, "armBack", "ArmBack", 61).Animate(PartAnim.Swing, 10f, 1.4f, 1.1f, 45f);
+            CutoutPart(d, atlas, "foot1", "Foot1", 61).Animate(PartAnim.Foot, 1f, 1f, 1.7f);
+            CutoutPart(d, atlas, "foot0", "Foot0", 62).Animate(PartAnim.Foot, 1f, 1f);
+            CutoutPart(d, atlas, "armFront", "ArmFront", 63).Animate(PartAnim.Swing, 10f, 1.4f, 0f, 45f);
+            CutoutEye(d, atlas, "eye");
+            // Das pulsierende Lavaleuchten liegt innerhalb der gemalten Brustplatte.
+            var cracks = Part(d, "Lava", 0f, 0f, 61).Shine(PartMat.Glow, t.Glow.WithAlpha(0.32f))
+                .Animate(PartAnim.Breathe, 0.3f, 1.6f, 0f, 1f);
+            Draw(d, "Lava", Box(-0.02f, 0.44f, 0.32f, 0.34f), PB, Vector2.zero, c =>
+            {
+                c.Fill(p => Sdf.Intersect(Mathf.Abs(Noise.Perlin(p.x * 4.2f + 7f, p.y * 4.2f) - 0.5f) - 0.014f,
+                    Sdf.Ellipse(p, new Vector2(0.13f, 0.60f), new Vector2(0.11f, 0.13f))), Color.white, 0.012f);
+            }, s => cracks.Sprite = s);
+            d.GlowPos = new Vector2(0f, 0.45f);
+            d.HpY = 1.22f;
+            return d;
+        }
+
+        static LookDef FrostWyrm(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "frostwyrm");
+            if (atlas == null) return FrostWyrmProcedural(t);
+            var d = New(t, Look.FrostWyrm, true);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "frostwyrm";
+            d.Body = atlas.Sprite("Body");
+            // Der gemalte, gekrümmte Körper ersetzt die identischen Kettenscheiben.
+            // Überlappende Abschnitte bewegen sich versetzt mit der bisherigen Wellenfrequenz.
+            var spine = CutoutPart(d, atlas, "tailBase", "Spine", 61).Animate(PartAnim.Sway, 4f, 3.2f);
+            CutoutPart(d, atlas, "tailTip", "TailTip", 61, spine).Animate(PartAnim.Sway, 7f, 3.2f, 1.2f);
+            var far = CutoutPart(d, atlas, "wing", "WingFar", 58).Animate(PartAnim.Flap, 20f, 7f, 0.6f, -30f);
+            far.Tint = new Color(0.7f, 0.7f, 0.8f);
+            CutoutPart(d, atlas, "wing", "WingNear", 62).Animate(PartAnim.Flap, 20f, 7f, 0f, -30f);
+            CutoutPart(d, atlas, "jaw", "Jaw", 63).Animate(PartAnim.Jaw, 3f, 3f, 0f, -26f);
+            CutoutEye(d, atlas, "eye");
+            d.Tilt = 0.8f; d.GlowSize = 1.9f; d.HpY = 0.65f;
+            return d;
+        }
+
+        static LookDef CometOracle(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "cometoracle");
+            if (atlas == null) return CometOracleProcedural(t);
+            var d = New(t, Look.CometOracle, true);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "cometoracle";
+            d.Body = atlas.Sprite("Body");
+            // Der ursprüngliche Lichtschweif bleibt hinter den gemalten Schweiffahnen.
+            var tail = new ChainDef { Anchor = atlas.Anchor("tail0"), Count = 6, Spacing = 0.16f,
+                Hang = new Vector2(-0.15f, 0.025f), Scale0 = 1.1f, Scale1 = 0.25f,
+                Wave = 0.03f, WaveFreq = 2.5f, Stiff = 8f, Order = 55, Mat = PartMat.Glow, Tint = t.WispGlow };
+            d.Chains.Add(tail);
+            Draw(d, "Tail", Box(-0.2f, -0.2f, 0.4f, 0.4f), PB, Vector2.zero,
+                c => SoftBall(c, 0.19f, new Color(1f, 1f, 1f, 0.8f), new Color(1f, 1f, 1f, 0f)), s => tail.Sprite = s);
+            CutoutPart(d, atlas, "tail0", "TailPlume", 61).Animate(PartAnim.Sway, 5f, 2.5f);
+            CutoutPart(d, atlas, "tail1", "TailNear", 62).Animate(PartAnim.Sway, 6f, 2.5f, 0.8f);
+            CutoutPart(d, atlas, "tail2", "TailFar", 61).Animate(PartAnim.Sway, 5f, 2.5f, 1.6f);
+            CutoutPart(d, atlas, "curl", "TailCurl", 61).Animate(PartAnim.Sway, 7f, 2.5f, 2.1f);
+            CutoutPart(d, atlas, "ringBack", "RingBack", 58).Animate(PartAnim.Bob, 0.015f, 1.2f);
+            CutoutPart(d, atlas, "ringFront", "RingFront", 63).Animate(PartAnim.Bob, 0.015f, 1.2f);
+            for (int i = 0; i < 3; i++)
+            {
+                var shard = CutoutPart(d, atlas, "shard" + i, "Shard" + i, 64).Animate(PartAnim.Orbit, 0.6f, 1.3f, i * 2.1f);
+                // Die Ausschnitte drehen um ihren eigenen Mittelpunkt; die Bahn um die Kugel.
+                shard.Pos = new Vector2(0.15f, 0.035f);
+            }
+            CutoutEye(d, atlas, "eye");
+            d.GlowSize = 2f; d.HpY = 0.63f;
+            return d;
+        }
+
+        static LookDef VoidLord(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "voidlord");
+            if (atlas == null) return VoidLordProcedural(t);
+            var d = New(t, Look.VoidLord, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "voidlord";
+            d.Body = atlas.Sprite("Body");
+            // Die drei gemalten Manteltentakel behalten ihre eigene gekrümmte Silhouette.
+            // Versetzte Wellen ersetzen die alten, pro Tentakel sechs gleichen Kettenglieder.
+            for (int i = 0; i < 3; i++)
+                CutoutPart(d, atlas, "tendril" + i, "Tendril" + i, 61 + i)
+                    .Animate(PartAnim.Sway, 6f, 3f, i * 1.7f);
+            CutoutPart(d, atlas, "cloak", "Cloak", 61).Animate(PartAnim.Sway, 3f, 1.6f, 0.7f);
+            CutoutPart(d, atlas, "handFar", "HandFar", 62).Animate(PartAnim.Bob, 0.06f, 1.8f, 1.2f, 0.18f);
+            CutoutPart(d, atlas, "handNear", "HandNear", 64).Animate(PartAnim.Bob, 0.06f, 1.8f, 0f, 0.18f);
+            // In der Seitenansicht sind zwei der drei Maskenaugen sichtbar.
+            CutoutEye(d, atlas, "eye");
+            CutoutEye(d, atlas, "eyeUpper");
+            d.GlowPos = new Vector2(0f, 0.5f); d.AuraPos = new Vector2(0f, 0.48f); d.HpY = 1.27f;
+            return d;
+        }
+
         // ================================================================== archetypes
+
+        // Gemalte Ausgangspose: Position, Größe und Ruhewinkel stecken bereits im Zuschnitt.
+        // Die Animationsparameter bleiben gleich, die SDF-spezifischen Ruhewinkel entfallen.
+        static PartDef CutoutPart(LookDef d, MonsterAtlas.Set atlas, string key, string name, int order, PartDef parent = null)
+        {
+            Vector2 p = atlas.Anchor(key);
+            if (parent != null) p -= parent.Pos;
+            var part = Part(d, name, p.x, p.y, order, parent);
+            part.Sprite = atlas.Sprite(char.ToUpperInvariant(key[0]) + key.Substring(1));
+            return part;
+        }
+
+        static void CutoutEye(LookDef d, MonsterAtlas.Set atlas, string key, PartDef parent = null)
+        {
+            var sprite = atlas.Sprite(char.ToUpperInvariant(key[0]) + key.Substring(1));
+            if (sprite == null) return;
+            Vector2 p = atlas.Anchor(key);
+            if (parent != null) p -= parent.Pos;
+            EyeAt(d, p.x, p.y, 1f, parent).Sprite = sprite;
+        }
+
+        static LookDef GroundCutout(StageTheme t, Look look, string key)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, key);
+            if (atlas == null) return null;
+            var d = New(t, look, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = key;
+            d.Body = atlas.Sprite("Body");
+            for (int i = 0; i < 2; i++)
+                CutoutPart(d, atlas, "foot" + i, "Foot" + i, 61).Animate(PartAnim.Foot, 1f, 1f, i * 1.7f);
+            if (look == Look.Hopper)
+            {
+                CutoutPart(d, atlas, "horn0", "HornL", 61).Animate(PartAnim.Sway, 3f, 2.4f);
+                CutoutPart(d, atlas, "horn1", "HornR", 61).Animate(PartAnim.Sway, 3f, 2.4f, 1f);
+            }
+            else if (look == Look.Spawnling)
+            {
+                CutoutPart(d, atlas, "sprout", "Sprout", 61).Animate(PartAnim.Sway, 14f, 3.4f);
+                d.GlowPos = new Vector2(0f, 0.3f); d.HpY = 0.95f;
+            }
+            else if (look == Look.Splitter)
+            {
+                CutoutPart(d, atlas, "budL", "BudL", 61).Animate(PartAnim.Pulse, 0.05f, 2.6f);
+                CutoutPart(d, atlas, "budR", "BudR", 61).Animate(PartAnim.Pulse, 0.05f, 2.6f, 1.9f);
+                d.HpY = 1.05f;
+            }
+            else if (look == Look.Brute)
+            {
+                var armB = CutoutPart(d, atlas, "armBack", "ArmBack", 58).Animate(PartAnim.Swing, 16f, 2f, 1.4f, 40f);
+                armB.Tint = new Color(0.72f, 0.72f, 0.78f);
+                for (int i = 1; i <= 3; i++)
+                    CutoutPart(d, atlas, "spike" + i, "Spike" + i, 61).Animate(PartAnim.Sway, 2f, 2f, (i - 1) * 0.7f);
+                CutoutPart(d, atlas, "armFront", "ArmFront", 62).Animate(PartAnim.Swing, 16f, 2f, 0f, 40f);
+                d.HpY = 1.1f;
+            }
+            CutoutEye(d, atlas, "eye"); CutoutEye(d, atlas, "eyeFar");
+            return d;
+        }
 
         /// <summary>Düsterling: the classic horned dome that hops after the player.</summary>
         static LookDef Hopper(StageTheme t)
+            => GroundCutout(t, Look.Hopper, "hopper") ?? HopperProcedural(t);
+
+        static LookDef HopperProcedural(StageTheme t)
         {
             var d = New(t, Look.Hopper, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -484,6 +742,9 @@ namespace SoccerFight
 
         /// <summary>Spawnling: a little seed with one big eye and a sprout that wobbles on its head.</summary>
         static LookDef Spawnling(StageTheme t)
+            => GroundCutout(t, Look.Spawnling, "spawnling") ?? SpawnlingProcedural(t);
+
+        static LookDef SpawnlingProcedural(StageTheme t)
         {
             var d = New(t, Look.Spawnling, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -515,6 +776,9 @@ namespace SoccerFight
 
         /// <summary>Knospling: a fat pod with two sleeping seed-buds on its shoulders — the spawnlings it bursts into.</summary>
         static LookDef Splitter(StageTheme t)
+            => GroundCutout(t, Look.Splitter, "splitter") ?? SplitterProcedural(t);
+
+        static LookDef SplitterProcedural(StageTheme t)
         {
             var d = New(t, Look.Splitter, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -574,6 +838,29 @@ namespace SoccerFight
         /// <summary>Spucker: a squat toad sac with a flared spout, eyes on stalks and a throat that swells before it spits.</summary>
         static LookDef Spitter(StageTheme t)
         {
+            var atlas = MonsterAtlas.Load(t.Kit, "spitter");
+            if (atlas == null) return SpitterProcedural(t);
+            var d = New(t, Look.Spitter, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "spitter";
+            d.Body = atlas.Sprite("Body");
+            CutoutPart(d, atlas, "haunch", "Haunch", 61).Animate(PartAnim.Foot, 1f, 1f);
+            CutoutPart(d, atlas, "foot0", "Foot0", 61).Animate(PartAnim.Foot, 1f, 1f, 0.6f);
+            CutoutPart(d, atlas, "foot1", "Foot1", 61).Animate(PartAnim.Foot, 1f, 1f, 1.2f);
+            CutoutPart(d, atlas, "throat", "Throat", 61).Animate(PartAnim.Pulse, 0.035f, 3f, 0f, 0.4f);
+            var stalkL = CutoutPart(d, atlas, "stalkL", "StalkL", 59).Animate(PartAnim.Sway, 9f, 2.2f);
+            CutoutEye(d, atlas, "eye", stalkL);
+            // some stage sheets only show one eye-stalk in this side view (the other is behind the head)
+            if (atlas.Sprite("StalkR") != null)
+            {
+                var stalkR = CutoutPart(d, atlas, "stalkR", "StalkR", 59).Animate(PartAnim.Sway, 9f, 2.2f, 1.3f);
+                CutoutEye(d, atlas, "eyeFar", stalkR);
+            }
+            d.HpY = 1.05f;
+            return d;
+        }
+
+        static LookDef SpitterProcedural(StageTheme t)
+        {
             var d = New(t, Look.Spitter, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
             var leg = Part(d, "Haunch", -0.22f, 0.07f, 61).Animate(PartAnim.Foot, 1f, 1f);
@@ -623,6 +910,9 @@ namespace SoccerFight
 
         /// <summary>Koloss: a hunched, armour-plated brute with two huge fists, tusks and spikes along its back.</summary>
         static LookDef Brute(StageTheme t)
+            => GroundCutout(t, Look.Brute, "brute") ?? BruteProcedural(t);
+
+        static LookDef BruteProcedural(StageTheme t)
         {
             var d = New(t, Look.Brute, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -672,6 +962,22 @@ namespace SoccerFight
 
         /// <summary>Bombe: an iron-banded bomb with a sparking fuse and glowing cracks that flare when it primes.</summary>
         static LookDef Bomber(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "bomber");
+            if (atlas == null) return BomberProcedural(t);
+            var d = New(t, Look.Bomber, false);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "bomber";
+            d.Body = atlas.Sprite("Body");
+            CutoutPart(d, atlas, "foot0", "Foot0", 61).Animate(PartAnim.Foot, 1f, 1f, 0f);
+            CutoutPart(d, atlas, "foot1", "Foot1", 61).Animate(PartAnim.Foot, 1f, 1f, 1.7f);
+            CutoutPart(d, atlas, "fuse", "Fuse", 59).Animate(PartAnim.Sway, 6f, 3f);
+            CutoutPart(d, atlas, "spark", "Spark", 64).Shine(PartMat.Glow, Color.white).Animate(PartAnim.Flicker, 0.35f, 30f, 0f, 1f);
+            CutoutEye(d, atlas, "eye");
+            d.HpY = 1f;
+            return d;
+        }
+
+        static LookDef BomberProcedural(StageTheme t)
         {
             var d = New(t, Look.Bomber, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -794,6 +1100,26 @@ namespace SoccerFight
         /// <summary>Schemen: a hooded wraith with an empty face, two burning eyes and clawed hands drifting beside it.</summary>
         static LookDef Shade(StageTheme t)
         {
+            var atlas = MonsterAtlas.Load(t.Kit, "shade");
+            if (atlas == null) return ShadeProcedural(t);
+            var d = New(t, Look.Shade, true);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "shade";
+            d.Body = atlas.Sprite("Body");
+            // some stage sheets only show one clawed hand in this side view (the other stays behind the robe)
+            if (atlas.Sprite("HandFar") != null) CutoutPart(d, atlas, "handFar", "HandFar", 58).Animate(PartAnim.Bob, 0.05f, 2.6f, 1.3f, 0.08f);
+            if (atlas.Sprite("HandNear") != null) CutoutPart(d, atlas, "handNear", "HandNear", 62).Animate(PartAnim.Bob, 0.05f, 2.6f, 0f, 0.08f);
+            CutoutEye(d, atlas, "eye");
+            CutoutEye(d, atlas, "eyeFar");
+            var smoke = new ChainDef { Anchor = new Vector2(-0.03f, -0.3f), Count = 4, Spacing = 0.12f, Hang = new Vector2(-0.05f, -0.08f), Scale0 = 0.75f, Scale1 = 0.25f, Wave = 0.04f, WaveFreq = 4f, Stiff = 10f };
+            d.Chains.Add(smoke);
+            Draw(d, "Smoke", Box(-0.16f, -0.16f, 0.32f, 0.32f), P, Vector2.zero, c => SoftBall(c, 0.15f, Color.Lerp(t.WispTop, t.WispBottom, 0.4f).WithAlpha(0.8f), t.WispBottom.WithAlpha(0f)), s => smoke.Sprite = s);
+            d.GlowSize = 1.6f; d.GlowAlpha = 0.24f;
+            d.HpY = 0.6f;
+            return d;
+        }
+
+        static LookDef ShadeProcedural(StageTheme t)
+        {
             var d = New(t, Look.Shade, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow;
             var handFar = Part(d, "HandFar", -0.24f, -0.02f, 58).Scaled(0.85f, 0.85f).Turn(160f).Animate(PartAnim.Bob, 0.05f, 2.6f, 1.3f, 0.08f);
@@ -839,6 +1165,27 @@ namespace SoccerFight
 
         /// <summary>Laterne: a translucent jelly bell with a glowing eye inside and tentacles trailing beneath.</summary>
         static LookDef Lantern(StageTheme t)
+        {
+            var atlas = MonsterAtlas.Load(t.Kit, "lantern");
+            if (atlas == null) return LanternProcedural(t);
+            var d = New(t, Look.Lantern, true);
+            d.Cutout = true; d.AtlasStage = t.Kit; d.AtlasLook = "lantern";
+            d.Body = atlas.Sprite("Body");
+            var core = Part(d, "Core", 0f, 0.02f, 59).Shine(PartMat.Glow, t.WispGlow).Animate(PartAnim.Breathe, 0.25f, 2.4f, 0f, 1f);
+            Draw(d, "Core", Box(-0.2f, -0.2f, 0.4f, 0.4f), P, Vector2.zero, c => SoftBall(c, 0.19f, new Color(1f, 1f, 1f, 1f), new Color(1f, 1f, 1f, 0f)), s => core.Sprite = s);
+            // how many painted tentacles/charms this stage's sheet actually has varies (3-5 tentacles, some
+            // stages add small dangling charms) — only add a part for names the atlas really cut out.
+            for (int i = 0; i < 5 && atlas.Sprite("Tent" + i) != null; i++)
+                CutoutPart(d, atlas, "tent" + i, "Tent" + i, 57 + (i % 2)).Animate(PartAnim.Sway, 10f, 2.6f, i * 1.1f, 18f);
+            for (int i = 0; i < 4 && atlas.Sprite("Charm" + i) != null; i++)
+                CutoutPart(d, atlas, "charm" + i, "Charm" + i, 57 + (i % 2)).Animate(PartAnim.Sway, 14f, 3.2f, i * 0.8f, 12f);
+            CutoutEye(d, atlas, "eye");
+            d.GlowSize = 1.8f;
+            d.HpY = 0.55f;
+            return d;
+        }
+
+        static LookDef LanternProcedural(StageTheme t)
         {
             var d = New(t, Look.Lantern, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow;
@@ -890,7 +1237,7 @@ namespace SoccerFight
         // ================================================================== bosses
 
         /// <summary>Düsterkönig: a fat royal dome in an ermine mantle, crowned, grinning, holding a glowing sceptre.</summary>
-        static LookDef King(StageTheme t)
+        static LookDef KingProcedural(StageTheme t)
         {
             var d = New(t, Look.King, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow, accent = t.Accent;
@@ -953,7 +1300,7 @@ namespace SoccerFight
         }
 
         /// <summary>Dornenmutter: a striped bulb crowned by a bloom, three eyes, a thorny maw and vines for arms.</summary>
-        static LookDef ThornMother(StageTheme t)
+        static LookDef ThornMotherProcedural(StageTheme t)
         {
             var d = New(t, Look.ThornMother, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow, accent = t.Accent;
@@ -1035,7 +1382,7 @@ namespace SoccerFight
         }
 
         /// <summary>Sturmlaterne: a caged iron lantern with a storm eye inside, chains hanging from its base.</summary>
-        static LookDef StormLantern(StageTheme t)
+        static LookDef StormLanternProcedural(StageTheme t)
         {
             var d = New(t, Look.StormLantern, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow;
@@ -1082,7 +1429,7 @@ namespace SoccerFight
         }
 
         /// <summary>Kristallwächter: an angular stone golem with a glowing geode chest, crystal shards and heavy fists.</summary>
-        static LookDef CrystalGuard(StageTheme t)
+        static LookDef CrystalGuardProcedural(StageTheme t)
         {
             var d = New(t, Look.CrystalGuard, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -1143,7 +1490,7 @@ namespace SoccerFight
         }
 
         /// <summary>Magmakoloss: a hulking basalt titan veined with lava, volcanic vents on its shoulders, fists like boulders.</summary>
-        static LookDef MagmaColossus(StageTheme t)
+        static LookDef MagmaColossusProcedural(StageTheme t)
         {
             var d = New(t, Look.MagmaColossus, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;
@@ -1192,7 +1539,7 @@ namespace SoccerFight
         }
 
         /// <summary>Frostwyrm: a horned serpent head with a jaw that gapes before it strikes, trailing a long spined body.</summary>
-        static LookDef FrostWyrm(StageTheme t)
+        static LookDef FrostWyrmProcedural(StageTheme t)
         {
             var d = New(t, Look.FrostWyrm, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow;
@@ -1244,7 +1591,7 @@ namespace SoccerFight
         }
 
         /// <summary>Kometen-Orakel: one enormous eye in a starry orb, girdled by a tilted ring, shards orbiting, a comet's tail behind.</summary>
-        static LookDef CometOracle(StageTheme t)
+        static LookDef CometOracleProcedural(StageTheme t)
         {
             var d = New(t, Look.CometOracle, true);
             Color top = t.WispTop, bottom = t.WispBottom, glow = t.WispGlow, accent = t.Accent;
@@ -1291,7 +1638,7 @@ namespace SoccerFight
         }
 
         /// <summary>Leerenfürst: a cloaked lord with a cracked bone mask of three eyes, a crown of void spikes, tendrils and floating claws.</summary>
-        static LookDef VoidLord(StageTheme t)
+        static LookDef VoidLordProcedural(StageTheme t)
         {
             var d = New(t, Look.VoidLord, false);
             Color top = t.BlobTop, bottom = t.BlobBottom, glow = t.Glow;

@@ -123,8 +123,15 @@ namespace SoccerFight
         int TellKey(int slot) => Id * 8 + slot;
 
         /// <summary>Creates the renderers for one body (parts, eyes, chains). The monster is then pooled for that body.</summary>
+        LookDef builtDefinition;
+
         public void Build(Transform parent, LookDef def)
         {
+            // Stages können unterschiedlich viele gemalte Augen und Teile besitzen. Beim Wiederverwenden
+            // wird nur ein geänderter Aufbau neu erzeugt; innerhalb einer Stage bleibt das Pooling erhalten.
+            if (root != null) { root.gameObject.SetActive(false); Object.Destroy(root.gameObject); }
+            if (shadow != null) { shadow.gameObject.SetActive(false); Object.Destroy(shadow.gameObject); }
+            builtDefinition = def;
             BuiltLook = def.Look;
             K = def.Wisp ? Kind.Wisp : Kind.Blob;
             root = new GameObject(def.Look.ToString()).transform;
@@ -204,6 +211,7 @@ namespace SoccerFight
             DifficultyLevel = s.Level;
             theme = s.Theme ?? StageThemes.All[0];
             look = MonsterArt.Get(theme, LookFor(s));
+            if (!ReferenceEquals(builtDefinition, look)) Build(root.parent, look);
             Pos = s.At;
             Vel = s.Vel;
             var def = EnemyDef.Get(Type);
@@ -270,7 +278,7 @@ namespace SoccerFight
             }
         }
 
-        static Material MatOf(PartMat m, bool cutout) => m == PartMat.Glow ? Art.SpriteGlowMat : m == PartMat.Emissive ? Art.SpriteEmissiveMat : cutout ? Art.MonsterCutoutMat : Art.SpriteMat;
+        static Material MatOf(PartMat m, bool cutout) => m == PartMat.Glow ? Art.SpriteGlowMat : m == PartMat.Emissive ? Art.SpriteEmissiveMat : m == PartMat.Premultiplied ? Art.SpriteMat : cutout ? Art.MonsterCutoutMat : Art.SpriteMat;
 
         /// <summary>Put on the body in this stage's colours (the renderers were built for the same body).</summary>
         void ApplyLook()
@@ -291,6 +299,7 @@ namespace SoccerFight
             {
                 var e = eyes[i];
                 e.D = look.Eyes[i];
+                if (e.D.Sprite != null) e.Sr.sprite = e.D.Sprite;
                 e.T.localPosition = e.D.Pos;
                 e.Sr.color = e.D.Sprite != null || e.D.Wide ? Color.white : e.D.Color ?? look.Eye;
                 if (e.Pupil != null) e.Pupil.enabled = e.D.Pupil;
