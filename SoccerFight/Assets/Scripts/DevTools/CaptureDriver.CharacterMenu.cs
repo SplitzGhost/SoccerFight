@@ -30,9 +30,9 @@ namespace SoccerFight
                 Require(G.Menu.Page == MenuPage.CharacterDetails, "Detailseite öffnet für " + def.Id);
                 GameInput.AimScreen = G.Menu.ScreenOf(new Vector2(-760f, -400f));
                 yield return Shot("c01_" + def.Id);
-                yield return Kick("detail_back");
+                yield return Kick("tab_home");
                 yield return Seconds(1.1f);
-                Require(G.Menu.Page == MenuPage.Main, "Zurück führt aus Figur zum Hauptmenü");
+                Require(G.Menu.Page == MenuPage.Main, "Reiter SPIELEN führt zum Hauptmenü");
             }
 
             // Karte auswählen öffnet Details, kostet aber noch keine Kristalle.
@@ -57,15 +57,15 @@ namespace SoccerFight
             yield return Seconds(0.25f);
             yield return Shot("c02w_upgrade_welle");
             yield return Seconds(0.25f);
-            yield return Shot("c02x_figur");
+            yield return Shot("c02x_werte");
             yield return Seconds(0.4f);
             Require(CharacterProgression.Level(Characters.Current) == level + 1, "Upgrade erhöht genau eine Stufe");
             Require(Wallet.Get(Currencies.Gems) == wallet - price, "Upgrade bucht genau den Kristallpreis");
             Require(CharacterProgression.Level(Characters.Get("bruno")) == 4, "Upgrade betrifft nur RIO");
             yield return Shot("c02_upgrade");
-            yield return Kick("detail_back");
+            yield return Kick("tab_chars");
             yield return Seconds(1f);
-            Require(G.Menu.Page == MenuPage.Characters, "Zurück führt aus Karte zur Auswahl");
+            Require(G.Menu.Page == MenuPage.Characters, "Reiter SPIELER führt zur Auswahl");
             yield return Kick("card_rio");
             yield return Seconds(1f);
 
@@ -87,7 +87,7 @@ namespace SoccerFight
             yield return Shot("c04_maximum");
 
             // Basketballer auf den Karten: locker im Takt statt Dribbeln
-            yield return Kick("detail_back");
+            yield return Kick("tab_chars");
             yield return Seconds(1f);
             yield return Kick("sport1");
             yield return Seconds(1.2f);

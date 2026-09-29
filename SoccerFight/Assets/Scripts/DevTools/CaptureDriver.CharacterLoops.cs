@@ -28,7 +28,7 @@ namespace SoccerFight
                     while (G.Menu.CharacterVideoLoops == 0 && Time.realtimeSinceStartup < timeout) yield return null;
                     Require(G.Menu.CharacterVideoLoops > 0,"RIO startet nahtlos die nächste Schleife");
                 }
-                yield return Kick("detail_back");
+                yield return Kick("tab_home");
                 yield return Seconds(1.3f);
                 Require(!G.Menu.CharacterVideoPlaying,"Decoder stoppt außerhalb der Detailansicht");
             }

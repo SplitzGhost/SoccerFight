@@ -68,3 +68,7 @@ for name in ('rio', 'bruno', 'mira', 'dre', 'titan', 'nova'):
         template = template.replace('enableMipMap: 1', 'enableMipMap: 0').replace('nPOTScale: 2', 'nPOTScale: 0')
         meta.write_text(template, encoding='utf-8', newline='\n')
     print(name)
+
+# Gemalten Zurück-Knopf und gemalte Währung entfernen: darüber liegt im Spiel die normale Menüleiste.
+import subprocess
+subprocess.run(['node', str(root / 'tools/newdesign/character-menu-clean.js')], check=True)

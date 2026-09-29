@@ -132,9 +132,8 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen. Die Charakter-Detailbilder erzeugt
   `tools/extract-character-menu.py` (Python mit PIL, z. B. `~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`).
   Gemalte Knöpfe dort animiert ein weich begrenzter Bildausschnitt darüber (`CharacterDetailPage.MakeLift`).
-  Neue oder geänderte Charakter-Detailbilder: Rumpf und Boden der Figur in `CharacterDetailPage.FigureOf` nachtragen
-  (dorthin fliegen die Upgrade-Funken). Die Menü-Reiter bleiben auf der Detailseite sichtbar und rücken in den
-  Bildbereich x 700–1370; dort darf in neuen Bildern kein Kopf stehen.
+  Auf der Detailseite liegt die normale Menüleiste unverändert (Nutzerwunsch: genau so groß und alles wie im
+  Hauptmenü); `tools/newdesign/character-menu-clean.js` entfernt dafür gemalten Zurück-Knopf und Währung aus den Bildern.
 - **Belohnungskarten** (`UI/RewardScreen.cs`): alle Kartenbilder kommen aus `UI/CardEmblems.cs`, das jede Glyphe gleich
   prägt (Relief, Kontur, Schatten) – Upgrades freistehendes Silber, Fähigkeiten Gold-Medaillon mit Emaille (Glyphen der
   Fähigkeiten dort, der Upgrades in `UpgradeIcons.Draw`). Keine gemalten Einzelbilder dazwischenmischen. Seltenheit zeigen

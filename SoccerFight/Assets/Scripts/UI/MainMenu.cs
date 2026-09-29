@@ -86,8 +86,7 @@ namespace SoccerFight
 
         // top bar and bottom strip
         RectTransform bar, barLeft, barRight, tabsRoot, strip;
-        CanvasGroup barGroup, stripGroup, barSides;
-        float sidesA = 1f;
+        CanvasGroup barGroup, stripGroup;
         readonly List<(NavTab tab, MenuTarget target)> tabs = new List<(NavTab, MenuTarget)>();
         float tabsWidth;
         TextMeshProUGUI stripLeft, stripRight;
@@ -396,13 +395,8 @@ namespace SoccerFight
             back.rectTransform.sizeDelta = new Vector2(0f, 40f);
             back.rectTransform.anchoredPosition = new Vector2(0f, -20f);
 
-            // Logo und rechte Seite (Währung, Knöpfe) weichen auf der Charakterseite deren eigenem Zurück-Knopf
-            // und Kristallen; die Reiter bleiben, damit die Seite sichtbar zum Menü gehört.
-            var sides = UiKit.Node("Seiten", bar, Vector2.zero, Vector2.zero);
-            MenuUi.Stretch(sides);
-            barSides = sides.gameObject.AddComponent<CanvasGroup>();
-            barLeft = Inner(sides, new Vector2(0f, 0.5f));
-            barRight = Inner(sides, new Vector2(1f, 0.5f));
+            barLeft = Inner(bar, new Vector2(0f, 0.5f));
+            barRight = Inner(bar, new Vector2(1f, 0.5f));
             BuildLogo(barLeft);
 
             tabsRoot = UiKit.Node("Tabs", bar, Vector2.zero, new Vector2(10f, SubPage.TopBar));
@@ -856,10 +850,10 @@ namespace SoccerFight
         }
 
         /// <summary>The top bar is there on every page but the first-launch ones.</summary>
+        bool NavVisible => !MenuPage.IsOnboarding(page) && navFade > 0.5f;
+
         /// <summary>Der hervorgehobene Reiter: die Charakterseite gehört zu „SPIELER“.</summary>
         int ActiveTab => page == MenuPage.CharacterDetails ? MenuPage.Characters : page;
-
-        bool NavVisible => !MenuPage.IsOnboarding(page) && navFade > 0.5f;
 
         /// <summary>Pointer position in canvas space, hover state, and the click that kicks a ball.</summary>
         void Aim()
@@ -1026,15 +1020,13 @@ namespace SoccerFight
             navFade = Mathf.Clamp01(openT * 1.5f) * (1f - leave);
             float barA = onboard ? 0f : navFade;
             barGroup.alpha = Mathf.MoveTowards(barGroup.alpha, barA, udt * 4f);
-            sidesA = Mathf.MoveTowards(sidesA, page == MenuPage.CharacterDetails ? 0f : 1f, udt * 4f);
-            barSides.alpha = sidesA;
             bar.anchoredPosition = new Vector2(0f, (1f - barIn) * 110f + leave * 110f);
-            stripGroup.alpha = barGroup.alpha * sidesA;
+            stripGroup.alpha = barGroup.alpha;
             strip.anchoredPosition = new Vector2(0f, -(1f - barIn) * 60f - leave * 60f);
             LayoutBar(w);
             stripRight.text = page == MenuPage.Main ? "SPIELER ANSCHIESSEN  ·  SPIELER WECHSELN" : "ESC  ·  ZURÜCK ZUM START";
             foreach (var t in targets)
-                if (t.Page == MenuPage.Global) t.Fade = barGroup.alpha * (t.Root.IsChildOf(barSides.transform) ? sidesA : 1f);
+                if (t.Page == MenuPage.Global) t.Fade = barGroup.alpha;
 
             // targets that don't move on their own follow the page
             figureTarget.Fade = tagTarget.Fade = (1f - away) * Mathf.Clamp01(openT * 1.4f);
@@ -1090,18 +1082,6 @@ namespace SoccerFight
             tabsRoot.localScale = new Vector3(k, k, 1f);
             // centred on the screen when there is room, otherwise in the gap
             float cx = Mathf.Clamp(0f, left + tabsWidth * k * 0.5f, right - tabsWidth * k * 0.5f);
-            // Charakterseite: die Reiter rücken in den freien Himmel zwischen Figurkopf und Kristallen
-            // (Bildpixel 700…1370 des 1672 breiten Charakterbilds), damit sie keinen Kopf verdecken
-            float d = MathUtil.Smooth01(1f - sidesA);
-            if (d > 0f)
-            {
-                float s = Mathf.Min(w / 1672f, root.rect.height / 941f);
-                float dl = (700f - 836f) * s, dr = (1370f - 836f) * s;
-                float kd = Mathf.Min(k, (dr - dl) / tabsWidth);
-                k = Mathf.Lerp(k, kd, d);
-                cx = Mathf.Lerp(cx, (dl + dr) * 0.5f, d);
-                tabsRoot.localScale = new Vector3(k, k, 1f);
-            }
             tabsRoot.anchoredPosition = new Vector2(cx, 0f);
         }
 

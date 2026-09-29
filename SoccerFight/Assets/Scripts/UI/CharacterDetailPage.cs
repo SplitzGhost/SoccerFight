@@ -7,12 +7,13 @@ using UnityEngine.UI;
 namespace SoccerFight
 {
     /// <summary>
-    /// Freigegebene Originalansicht mit echten Werten und getrenntem Upgrade-Ziel. Die gemalten Knöpfe
-    /// (Zurück, Upgrade) heben sich beim Zeigen an: ein weich begrenzter Ausschnitt desselben Bildes liegt
-    /// deckungsgleich darüber und wird vergrößert. Ein Upgrade löst eine ruhige grüne Welle aus: Ring am
-    /// Knopf, Funken fliegen in weitem Bogen zur Figur, sie leuchtet auf, ein Ring läuft über den Boden, dann
-    /// leuchten Stufe und Werte nacheinander auf („+8“ steigt auf). Die Szene lebt: Bodennebel und Dunst ziehen
-    /// im Wind, Lichtpunkte schweben, und das Bild folgt dem Zeiger mit leichter Parallaxe (vordere Ebenen weiter).
+    /// Freigegebene Originalansicht mit echten Werten und getrenntem Upgrade-Ziel. Darüber liegt die normale
+    /// Menüleiste (Logo, Reiter, Währung); gemalter Zurück-Knopf und gemalte Währung sind aus dem Bild entfernt
+    /// (tools/newdesign/character-menu-clean.js). Der gemalte Upgrade-Knopf hebt sich beim Zeigen an: ein weich
+    /// begrenzter Ausschnitt desselben Bildes liegt deckungsgleich darüber und wird vergrößert. Ein Upgrade löst
+    /// eine ruhige grüne Welle aus: Ring am Knopf, aufsteigende Funken, dann leuchten Stufe und Werte nacheinander
+    /// auf („+8“ steigt auf). Die Szene lebt: Bodennebel und Dunst ziehen im Wind, Lichtpunkte schweben, und das
+    /// Bild folgt dem Zeiger mit leichter Parallaxe (vordere Ebenen weiter).
     /// </summary>
     public sealed class CharacterDetailPage
     {
@@ -45,8 +46,8 @@ namespace SoccerFight
 
         sealed class Spark
         {
-            public Image Img, Trail;
-            public Vector2 Pos, Vel, Target;
+            public Image Img;
+            public Vector2 Pos, Vel;
             public float Age, Life = -1f, Size, Spin;
         }
 
@@ -60,23 +61,15 @@ namespace SoccerFight
         }
 
         TextMeshProUGUI level, plaque, cost;
-        CurrencyBar gemBar, coinBar;
         readonly Stat[] stats = new Stat[3];
-        Lift back, upgrade, plaquePatch;
-        MenuTarget backTarget, upgradeTarget;
+        Lift upgrade, plaquePatch, skyLeft, skyRight;
+        MenuTarget upgradeTarget;
         Image badgeGlow, ring, flash;
         readonly List<Spark> sparks = new List<Spark>();
-        readonly List<Spark> aura = new List<Spark>();
         RectTransform fxRoot;
         int shownLevel = -1, shownGems = -1;
         float time, fxT = 99f, levelPop, levelPopVel, costShake;
         bool affordable, maxed, levelKicked = true;
-
-        // Figur: wohin die Funken fliegen (Rumpf) und wo der Boden unter ihr liegt
-        Vector2 torso, feet;
-        Image figGlow, figCore, groundRing, groundGlow;
-        float energy, impactT = -99f;
-        bool impacted = true;
 
         // Atmosphäre: Dunst hinten, Bodennebel vorn, Lichtpunkte und Lichtflecken; alles treibt im selben Wind
         RectTransform hazeLayer, fogLayer, moteLayer, bokehLayer;
@@ -91,26 +84,9 @@ namespace SoccerFight
         static readonly Color Bronze = new Color(0.24f, 0.1f, 0.05f);
         /// <summary>Das Upgrade-Grün: frisch, nicht grell (linearer Farbraum + Bloom).</summary>
         static readonly Color Mint = new Color(0.36f, 1f, 0.58f);
-        /// <summary>Kräftigeres Grün für Funken und Bodenwelle: hebt sich auch vom hellen Himmel ab.</summary>
-        static readonly Color Leaf = new Color(0.1f, 0.82f, 0.4f);
         static Material statMat, levelMat, deltaMat;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() { statMat = levelMat = deltaMat = null; fogTex = null; }
-
-        /// <summary>Rumpfmitte (x, y) und Bodenhöhe (z) der Figur in jedem Charakterbild (Bildpixel, oben links = 0).</summary>
-        static Vector3 FigureOf(string id)
-        {
-            switch (id)
-            {
-                case "rio": return new Vector3(485f, 390f, 876f);
-                case "bruno": return new Vector3(490f, 390f, 876f);
-                case "mira": return new Vector3(480f, 390f, 880f);
-                case "dre": return new Vector3(505f, 380f, 874f);
-                case "titan": return new Vector3(450f, 390f, 866f);
-                case "nova": return new Vector3(525f, 470f, 846f);
-                default: return new Vector3(490f, 400f, 872f);
-            }
-        }
 
         static Vector2 At(float x, float y) => new Vector2(x - 836f, 470.5f - y);
 
@@ -151,6 +127,10 @@ namespace SoccerFight
             art = UiKit.Node("Freigegebenes Probebild", Page.Content, Vector2.zero, Page.ArtworkSize).gameObject.AddComponent<RawImage>();
             art.raycastTarget = false;
             loop = new CharacterLoopPlayer(art, parent);
+            // Die Videoloops zeigen oben noch den gemalten Zurück-Knopf und die gemalte Währung: dort liegt der
+            // bereinigte Himmel des Standbilds darüber (darauf stehen Logo und Währung der Menüleiste).
+            skyLeft = MakeLift("Himmel links", 84f, 78f, new Vector2(196f, 168f), 14);
+            skyRight = MakeLift("Himmel rechts", 1510f, 44f, new Vector2(344f, 100f), 14);
             BuildAtmosphere();
 
             // Stufe: tief in die Bronze geprägt; das Schild unten trägt nur noch „STUFE“. Die Videoloops
@@ -163,21 +143,13 @@ namespace SoccerFight
             float[] xs = { 1051f, 1271f, 1486f };
             for (int i = 0; i < 3; i++)
             {
-                var st = new Stat { Delay = 0.16f + i * 0.08f };
+                var st = new Stat { Delay = 0.22f + i * 0.07f };
                 st.Glow = UiKit.Img("Wert-Licht", Page.Content, UiArt.Glow, Color.clear, At(xs[i], 600f), new Vector2(250f, 250f));
                 st.Value = Number("Wert", xs[i], 630f, 38f, new Vector2(104f, 42f), Ink, statMat);
                 st.Delta = Number("Vorschau", xs[i], 658f, 19f, new Vector2(74f, 22f), Mint, deltaMat);
                 st.Rise = Number("Zuwachs", xs[i], 657f, 26f, new Vector2(110f, 30f), Mint, deltaMat);
                 stats[i] = st;
             }
-
-            gemBar = new CurrencyBar(Page.Content, Currencies.Gems, At(1430.8f, 39.8f), 1f);
-            coinBar = new CurrencyBar(Page.Content, Currencies.Coins, At(1573.7f, 40f), 1f);
-
-            back = MakeLift("Zurück", 77f, 75f, new Vector2(150f, 150f), 22);
-            backTarget = new MenuTarget { Id = "detail_back", Root = back.Mask, Size = new Vector2(120f, 124f),
-                Page = MenuPage.CharacterDetails, Action = () => Return?.Invoke(), Accent = MenuArt.Accent, Draw = DrawBack };
-            nav.Register(backTarget);
 
             upgrade = MakeLift("Upgrade", 1272f, 800f, new Vector2(290f, 236f), 30);
             cost = Number("Kristallpreis", 1285f, 731f, 30f, new Vector2(92f, 38f), Color.white, CurrencyBar.Numbers, upgrade.Inner, 1272f, 800f);
@@ -187,20 +159,13 @@ namespace SoccerFight
 
             // Effekte liegen über allem
             fxRoot = UiKit.Node("Upgrade-Effekte", Page.Content, Vector2.zero, Page.ArtworkSize);
-            figGlow = UiKit.Img("Figur-Schein", fxRoot, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(640f, 1000f));
-            figCore = UiKit.Img("Figur-Kern", fxRoot, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(320f, 420f));
-            groundGlow = UiKit.Img("Boden-Licht", fxRoot, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(620f, 120f));
-            groundRing = UiKit.Img("Boden-Welle", fxRoot, MenuArt.Shock, Color.clear, Vector2.zero, new Vector2(100f, 20f));
             flash = UiKit.Img("Welle-Licht", fxRoot, UiArt.Glow, Color.clear, At(1272f, 825f), new Vector2(420f, 420f));
             ring = UiKit.Img("Welle", fxRoot, MenuArt.Shock, Color.clear, At(1272f, 825f), new Vector2(100f, 100f));
-            for (int i = 0; i < 22; i++)
+            for (int i = 0; i < 18; i++)
             {
-                var trail = UiKit.Img("Funkenschweif", fxRoot, UiArt.Glow, Color.clear, Vector2.zero, new Vector2(20f, 10f));
                 var img = UiKit.Img("Funke", fxRoot, MenuArt.Sparkle, Color.clear, Vector2.zero, new Vector2(20f, 20f));
-                sparks.Add(new Spark { Img = img, Trail = trail });
+                sparks.Add(new Spark { Img = img });
             }
-            for (int i = 0; i < 16; i++)
-                aura.Add(new Spark { Img = UiKit.Img("Aufstieg", fxRoot, MenuArt.Sparkle, Color.clear, Vector2.zero, new Vector2(14f, 14f)) });
         }
 
         // ------------------------------------------------------------------ Atmosphäre
@@ -402,16 +367,6 @@ namespace SoccerFight
             }
             shownLevel = shownGems = -1;
             fxT = 99f;
-            impactT = -99f;
-            impacted = true;
-            energy = 0f;
-            foreach (var s in sparks) { s.Life = -1f; s.Img.color = s.Trail.color = Color.clear; }
-            foreach (var s in aura) { s.Life = -1f; s.Img.color = Color.clear; }
-            var fig = FigureOf(def.Id);
-            torso = At(fig.x, fig.y);
-            feet = At(fig.x, fig.z);
-            gemBar.Snap();
-            coinBar.Snap();
             loop.Open(def.Id, texture);
             Refresh();
         }
@@ -438,18 +393,15 @@ namespace SoccerFight
             for (int i = 0; i < 3; i++) { stats[i].Rise.text = stats[i].Delta.text; stats[i].Kicked = false; }
             levelKicked = false;
             fxT = 0f;
-            impacted = false;
-            // die Funken springen aus dem Knopf nach oben und werden dann im Bogen zur Figur gezogen
             for (int i = 0; i < sparks.Count; i++)
             {
                 var s = sparks[i];
                 float a = Random.Range(-0.9f, 0.9f);
                 s.Pos = At(1272f, 830f) + new Vector2(Mathf.Sin(a) * 60f, Random.Range(-20f, 30f));
-                s.Vel = new Vector2(Random.Range(-360f, 40f), Random.Range(260f, 560f));
-                s.Target = torso + new Vector2(Random.Range(-110f, 110f), Random.Range(-200f, 160f));
-                s.Age = -Random.Range(0f, 0.16f);
-                s.Life = 1.5f;
-                s.Size = Random.Range(18f, 32f);
+                s.Vel = new Vector2(Mathf.Sin(a) * Random.Range(40f, 120f), Random.Range(160f, 340f));
+                s.Age = -Random.Range(0f, 0.15f);
+                s.Life = Random.Range(0.7f, 1.15f);
+                s.Size = Random.Range(12f, 26f);
                 s.Spin = Random.Range(-200f, 200f);
             }
             Refresh();
@@ -493,17 +445,6 @@ namespace SoccerFight
             spd = Player.MaxSpeed * s.MoveSpeedMul;
         }
 
-        void DrawBack(MenuTarget t)
-        {
-            float h = Mathf.Clamp01(t.Hover);
-            float s = 1f + h * 0.07f + t.Punch * 0.06f;
-            back.Inner.localScale = new Vector3(s, s, 1f);
-            back.Inner.anchoredPosition = new Vector2(-h * 3f, h * 3f);
-            back.Inner.localRotation = Quaternion.Euler(0f, 0f, h * 5f + Mathf.Sin(time * 3f) * h * 1.2f);
-            back.Glow.color = new Color(0.6f, 0.95f, 1f, h * 0.07f + t.Hit * 0.12f);
-            Sweep(back, h);
-        }
-
         void DrawUpgrade(MenuTarget t)
         {
             float h = Mathf.Clamp01(t.Hover);
@@ -542,29 +483,11 @@ namespace SoccerFight
             time += dt;
             costShake = Mathf.MoveTowards(costShake, 0f, dt * 2.5f);
             // die Knopf-Ausschnitte zeigen immer das aktuelle Bild (Standbild oder Videoloop)
-            if (back.Img.texture != art.texture) { back.Img.texture = art.texture; upgrade.Img.texture = art.texture; }
-            if (plaquePatch.Img.texture != texture) plaquePatch.Img.texture = texture;
+            if (upgrade.Img.texture != art.texture) upgrade.Img.texture = art.texture;
+            if (plaquePatch.Img.texture != texture) plaquePatch.Img.texture = skyLeft.Img.texture = skyRight.Img.texture = texture;
             Refresh();
-            gemBar.Update(dt);
-            coinBar.Update(dt);
             UpdateAtmosphere(dt, aim);
             UpdateFx(dt);
-        }
-
-        /// <summary>Die ersten Funken erreichen die Figur: sie leuchtet auf, ein Ring läuft über den Boden, Licht steigt auf.</summary>
-        void Impact()
-        {
-            impacted = true;
-            impactT = fxT;
-            foreach (var s in aura)
-            {
-                s.Pos = feet + new Vector2(Random.Range(-170f, 170f), Random.Range(-10f, 30f));
-                s.Vel = new Vector2(Random.Range(-25f, 25f), Random.Range(140f, 330f));
-                s.Age = -Random.Range(0f, 0.35f);
-                s.Life = Random.Range(0.8f, 1.4f);
-                s.Size = Random.Range(12f, 24f);
-                s.Spin = Random.Range(-160f, 160f);
-            }
         }
 
         void UpdateFx(float dt)
@@ -575,24 +498,8 @@ namespace SoccerFight
             ring.rectTransform.sizeDelta = Vector2.one * Mathf.Lerp(90f, 520f, MathUtil.EaseOutCubic(r));
             ring.color = Mint.WithAlpha(r < 1f ? 0.45f * (1f - r) * (1f - r) : 0f);
             flash.color = Mint.WithAlpha(0.22f * Mathf.Clamp01(1f - fxT / 0.45f));
-            if (!impacted && fxT > 0.9f) Impact();   // Sicherheitsnetz, falls kein Funke ankommt
-            float since = fxT - impactT;
-            // Figur: die ankommenden Funken laden sie auf, das Licht klingt danach ab
-            energy *= Mathf.Exp(-dt * 3.2f);
-            float e = Mathf.Clamp01(energy);
-            figGlow.rectTransform.anchoredPosition = new Vector2(torso.x, (torso.y + feet.y) * 0.5f + 40f);
-            figGlow.color = Mint.WithAlpha(0.07f * e);
-            figCore.rectTransform.anchoredPosition = torso;
-            figCore.color = Color.Lerp(Mint, Color.white, 0.4f).WithAlpha(0.1f * e);
-            float g = Mathf.Clamp01(since / 0.75f);
-            float gw = Mathf.Lerp(120f, 700f, MathUtil.EaseOutCubic(g));
-            groundRing.rectTransform.anchoredPosition = feet;
-            groundRing.rectTransform.sizeDelta = new Vector2(gw, gw * 0.2f);
-            groundRing.color = Leaf.WithAlpha(g < 1f ? 0.75f * (1f - g) * (1f - g) : 0f);
-            groundGlow.rectTransform.anchoredPosition = feet;
-            groundGlow.color = Leaf.WithAlpha(0.2f * Mathf.Clamp01(1f - since / 0.9f));
-            // Stufe: kurz nach dem Aufleuchten der Figur leuchtet das Schild auf, die Zahl springt
-            float lt = since - 0.08f;
+            // Stufe: nach kurzer Pause leuchtet das Schild auf, die Zahl springt
+            float lt = fxT - 0.12f;
             if (lt >= 0f && !levelKicked) { levelKicked = true; levelPopVel += 9f; }
             MathUtil.Spring(ref levelPop, ref levelPopVel, 0f, 5f, 0.35f, dt);
             float lf = lt >= 0f ? Mathf.Clamp01(1f - lt / 0.8f) : 0f;
@@ -602,7 +509,7 @@ namespace SoccerFight
             // Werte: nacheinander grün, der Zuwachs steigt auf
             foreach (var st in stats)
             {
-                float t = since - st.Delay;
+                float t = fxT - st.Delay;
                 if (t >= 0f && !st.Kicked) { st.Kicked = true; st.PopVel += 8f; }
                 MathUtil.Spring(ref st.Pop, ref st.PopVel, 0f, 5f, 0.35f, dt);
                 float f = t >= 0f ? Mathf.Clamp01(1f - t / 0.9f) : 0f;
@@ -616,55 +523,21 @@ namespace SoccerFight
                 st.Rise.rectTransform.anchoredPosition = home + new Vector2(0f, 20f + MathUtil.EaseOutCubic(rise) * 55f);
                 st.Rise.rectTransform.localScale = Vector3.one * (0.8f + 0.2f * MathUtil.EaseOutBack(Mathf.Clamp01(rise * 4f)));
             }
-            // Funken: gedämpfte Feder zum Ziel, die mit der Zeit anzieht → erst Schwung nach oben, dann Bogen zur Figur
+            // Funken steigen aus dem Knopf
             foreach (var s in sparks)
-            {
-                if (s.Life < 0f) continue;
-                s.Age += dt;
-                if (s.Age < 0f) { s.Img.color = s.Trail.color = Color.clear; continue; }
-                float pull = 38f * (1f + s.Age * 5f);
-                Vector2 acc = (s.Target - s.Pos) * pull - s.Vel * (1.3f * Mathf.Sqrt(pull));
-                s.Vel += acc * dt;
-                s.Pos += s.Vel * dt;
-                if ((s.Target - s.Pos).sqrMagnitude < 28f * 28f || s.Age > s.Life)
-                {
-                    s.Life = -1f;
-                    s.Img.color = s.Trail.color = Color.clear;
-                    energy = Mathf.Min(1.4f, energy + 0.14f);
-                    if (!impacted) Impact();
-                    continue;
-                }
-                float fadeIn = Mathf.Clamp01(s.Age / 0.08f);
-                var rt = s.Img.rectTransform;
-                rt.anchoredPosition = s.Pos;
-                rt.sizeDelta = Vector2.one * s.Size;
-                rt.localRotation = Quaternion.Euler(0f, 0f, s.Spin * s.Age);
-                s.Img.color = Color.Lerp(Color.white, Mint, 0.3f).WithAlpha(fadeIn);
-                float speed = s.Vel.magnitude;
-                Vector2 dir = speed > 1f ? s.Vel / speed : Vector2.up;
-                float len = s.Size * 0.8f + speed * 0.05f;
-                var tr = s.Trail.rectTransform;
-                tr.anchoredPosition = s.Pos - dir * len * 0.35f;
-                tr.sizeDelta = new Vector2(len * 1.3f, s.Size * 0.95f);
-                tr.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg);
-                s.Trail.color = Leaf.WithAlpha(0.7f * fadeIn);
-            }
-            // aufsteigendes Licht um die Figur: Auftrieb gegen Luftwiderstand, leichtes Seitwärtswehen
-            foreach (var s in aura)
             {
                 if (s.Life < 0f) continue;
                 s.Age += dt;
                 if (s.Age < 0f) { s.Img.color = Color.clear; continue; }
                 float u = s.Age / s.Life;
                 if (u >= 1f) { s.Life = -1f; s.Img.color = Color.clear; continue; }
-                s.Vel *= 1f - dt * 1.5f;
-                s.Vel.x += Mathf.Sin(s.Age * 4f + s.Spin) * 30f * dt;
+                s.Vel *= 1f - dt * 1.4f;
                 s.Pos += s.Vel * dt;
                 var rt = s.Img.rectTransform;
                 rt.anchoredPosition = s.Pos;
-                rt.sizeDelta = Vector2.one * s.Size * (1f - 0.5f * u);
+                rt.sizeDelta = Vector2.one * s.Size * (1f - 0.6f * u);
                 rt.localRotation = Quaternion.Euler(0f, 0f, s.Spin * s.Age);
-                s.Img.color = Color.Lerp(Mint, Leaf, u).WithAlpha(Mathf.Clamp01(u / 0.1f) * (1f - u * u));
+                s.Img.color = Color.Lerp(Color.white, Mint, 0.55f + 0.45f * u).WithAlpha(0.8f * Mathf.Clamp01(u / 0.1f) * (1f - u));
             }
         }
 
