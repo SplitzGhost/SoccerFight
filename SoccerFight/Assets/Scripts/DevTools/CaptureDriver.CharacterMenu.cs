@@ -52,9 +52,13 @@ namespace SoccerFight
             yield return Seconds(0.8f);
             yield return Shot("c02h_zeigen");
             yield return Kick("detail_upgrade", false);
-            yield return Seconds(0.35f);
+            yield return Seconds(0.18f);
+            yield return Shot("c02v_funken");
+            yield return Seconds(0.25f);
             yield return Shot("c02w_upgrade_welle");
-            yield return Seconds(0.6f);
+            yield return Seconds(0.25f);
+            yield return Shot("c02x_figur");
+            yield return Seconds(0.4f);
             Require(CharacterProgression.Level(Characters.Current) == level + 1, "Upgrade erhöht genau eine Stufe");
             Require(Wallet.Get(Currencies.Gems) == wallet - price, "Upgrade bucht genau den Kristallpreis");
             Require(CharacterProgression.Level(Characters.Get("bruno")) == 4, "Upgrade betrifft nur RIO");

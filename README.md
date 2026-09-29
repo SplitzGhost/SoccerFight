@@ -161,8 +161,14 @@ Die Detailseite fühlt sich wie ein Teil des Spiels an: Die gemalten Knöpfe (Zu
 Zeigen an, ein Lichtstreif gleitet darüber, und ein bezahlbares Upgrade atmet leise. Zeigt man auf das Upgrade,
 erscheinen unter Leben, Schaden und Tempo die Zuwächse der nächsten Stufe in Grün. Die Stufe steht groß und
 geprägt im Bronzeschild (darunter „STUFE“), die Werte in kräftiger dunkler Schrift unter ihren Namen. Ein Upgrade
-löst eine ruhige grüne Welle aus: Ring und Funken am Knopf, dann leuchten Stufe und Werte nacheinander auf und
-der Zuwachs („+8“) steigt aus den Rauten. Zu wenig Kristalle lassen den Preis rot zittern.
+löst eine grüne Welle aus: Ring am Knopf, dann fliegen Funken mit Schweif in weitem Bogen zur Figur. Sie leuchtet
+kurz auf, ein Ring läuft über den Boden unter ihr, Licht steigt an ihr auf, und erst dann leuchten Stufe und Werte
+nacheinander auf und der Zuwachs („+8“) steigt aus den Rauten. Zu wenig Kristalle lassen den Preis rot zittern.
+Die Reiter der Menüleiste bleiben oben stehen („SPIELER“ hervorgehoben) und rücken in den Himmel zwischen
+Figurkopf und Kristallen; Logo und rechte Knöpfe weichen dem eigenen Zurück-Knopf und der Währungsanzeige der
+Seite. Die Szene lebt: Bodennebel vor den Füßen und ferner Dunst ziehen in einem böigen Wind, Lichtpunkte
+schweben darin, und das ganze Bild folgt dem Zeiger träge mit leichter Parallaxe (nahe Ebenen weiter als ferne).
+Wo die Figur in jedem Bild steht, steht in `CharacterDetailPage.FigureOf`.
 
 **Kristall- und Münzanzeige** (`UI/CurrencyBar.cs`): überall im Menü dieselbe Leiste wie in der Charakteransicht
 (Symbol + Steinleiste, weiße Zahl) – in der oberen Menüleiste Kristalle links, Münzen rechts; ein Treffer öffnet den
