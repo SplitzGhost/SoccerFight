@@ -127,7 +127,8 @@ cut('currency-gems','main',(1350,18,1478,64),5,12,erase=[((53,11,76,36),(82,12,8
 frame=cut('frame-only','pause',(607,98,1068,843),45,45)
 ImageDraw.Draw(frame).rectangle((35,36,425,710),fill=(0,0,0,0))
 for name,box in [('WÄHLEN',(899,823,1068,904)),('AUSWÄHLEN',(899,823,1068,904))]:cut('action-'+name,'states',box,12)
-for i,box in enumerate([(318,593,613,675),(690,593,983,675),(1061,593,1356,675)]):cut('choose-'+str(i),'rewards',box,12)
+# choose-blank: Platz für den Knopf ohne Ziffer, den fix-exact-art.js aus choose-0 baut
+for name,box in [('choose-0',(318,593,613,675)),('choose-blank',(1061,593,1356,675))]:cut(name,'rewards',box,12)
 frame=cut('reward-frame','rewards',(297,245,634,696),0,30,erase=[((20,58,315,430),(26,285,35,310)),((69,10,269,44),(65,15,71,33))])
 mask=Image.new('L',frame.size);ImageDraw.Draw(mask).polygon([(71,0),(269,0),(287,16),(317,16),(336,40),(336,417),(317,450),(21,450),(0,423),(0,40),(24,16),(52,16)],fill=255);frame.putalpha(mask)
 cut('upgrade-row','devview',(1128,273,1447,312),5,8,erase=[((15,5,308,35),(64,7,74,33))])

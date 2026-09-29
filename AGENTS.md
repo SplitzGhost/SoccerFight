@@ -132,6 +132,12 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen. Die Charakter-Detailbilder erzeugt
   `tools/extract-character-menu.py` (Python mit PIL, z. B. `~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`).
   Gemalte Knöpfe dort animiert ein weich begrenzter Bildausschnitt darüber (`CharacterDetailPage.MakeLift`).
+- **Belohnungskarten** (`UI/RewardScreen.cs`): alle Kartenbilder kommen aus `UI/CardEmblems.cs`, das jede Glyphe gleich
+  prägt (Relief, Kontur, Schatten) – Upgrades freistehendes Silber, Fähigkeiten Gold-Medaillon mit Emaille (Glyphen der
+  Fähigkeiten dort, der Upgrades in `UpgradeIcons.Draw`). Keine gemalten Einzelbilder dazwischenmischen. Seltenheit zeigen
+  eingefärbter Steinrahmen, Schein, Lichtpunkte, Glanz; Fähigkeitskarten sind goldgerahmt. Alle tragen denselben blauen
+  Knopf `choose-blank` (baut `fix-exact-art.js`), die Ziffer ist Text; keine Karte ist vorab hervorgehoben.
+  Screenshots: Szenario `cards`.
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
 - Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus

@@ -393,6 +393,25 @@ async function rebuildReward(set) {
     item('reward-frame').borders = REWARD_BORDERS;
 }
 
+// WÄHLEN-Knopf ohne Ziffer: alle Belohnungskarten tragen denselben blauen Knopf, die Ziffer setzt das Spiel als Text
+// ins dunkle Feld. Die Ziffer wird zeilenweise zwischen den Innenrändern des Felds links und rechts von ihr aufgefüllt.
+// Der Platz im Atlas ist der des früheren dritten Knopfs (choose-2, gleich groß).
+const CHOOSE_DIGIT = [228, 22, 254, 56];
+
+function rebuildChoose(get, set) {
+    (layout.items.find(i => i.name === 'choose-blank') || item('choose-2')).name = 'choose-blank';
+    const img = get('choose-0');
+    const [x0, y0, x1, y1] = CHOOSE_DIGIT;
+    for (let y = y0; y < y1; y++) {
+        const a = px(img, x0 - 1, y), b = px(img, x1, y);
+        for (let x = x0; x < x1; x++) {
+            const t = (x - x0 + 0.5) / (x1 - x0);
+            put(img, x, y, [0, 1, 2, 3].map(k => a[k] + (b[k] - a[k]) * t));
+        }
+    }
+    set('choose-blank', img);
+}
+
 // ------------------------------------------------------------------ Atlas
 
 const layoutFile = path.join(EXACT, 'layout.json');
@@ -415,6 +434,7 @@ async function main() {
     await rebuildReward(set);
     await rebuildPlates(set);
     await rebuildNav(set);
+    rebuildChoose(get, set);
     // Pokal: bläulicher Grund in den Henkeln und neben dem Fuß (goldene Pixel sind nie bläulich, darum wiederholbar)
     { const img = get('menu-icon-4'); clearBluish(img); set('menu-icon-4', img); }
     // alles Weitere nur einmal auf frisch ausgeschnittene Atlanten (Abdunkeln und Masken würden sich sonst verdoppeln)

@@ -10,11 +10,25 @@ namespace SoccerFight
     public static class UpgradeIcons
     {
         static readonly Dictionary<UpIcon, Sprite> cache = new Dictionary<UpIcon, Sprite>();
-        static readonly Color W = Color.white;
-        static readonly Color H = new Color(1f, 1f, 1f, 0.45f);
+        static readonly Color HalfWhite = new Color(1f, 1f, 1f, 0.45f);
+        /// <summary>Hauptform und Nebenform der Glyphen. CardEmblems zeichnet sie getrennt, um daraus ein Relief zu machen.</summary>
+        internal static Color W = Color.white, H = HalfWhite;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() => cache.Clear();
+        static void ResetStatics() { cache.Clear(); W = Color.white; H = HalfWhite; }
+
+        /// <summary>
+        /// Nur die Form der Glyphe für die Kartenbilder: secondary=true zeichnet Haupt- und Nebenteile voll,
+        /// false nur die Hauptteile (die Nebenteile liegen im Relief tiefer).
+        /// </summary>
+        internal static void DrawMask(SdfCanvas c, UpIcon icon, bool secondary) => DrawMask(c, cc => Draw(cc, icon), secondary);
+
+        internal static void DrawMask(SdfCanvas c, System.Action<SdfCanvas> draw, bool secondary)
+        {
+            H = secondary ? Color.white : Color.clear;
+            try { draw(c); }
+            finally { H = HalfWhite; }
+        }
 
         public static Sprite Get(UpIcon icon)
         {
@@ -37,7 +51,7 @@ namespace SoccerFight
 
         static Vector2 V(float x, float y) => new Vector2(x, y);
 
-        static void Ball(SdfCanvas c, Vector2 bc, float r)
+        internal static void Ball(SdfCanvas c, Vector2 bc, float r)
         {
             c.Fill(p => Sdf.Circle(p, bc, r), W);
             Vector2 pc0 = bc + new Vector2(r * 0.1f, r * 0.08f);
@@ -50,7 +64,7 @@ namespace SoccerFight
         }
 
         /// <summary>A basketball in line art: the disc with its ribs punched out.</summary>
-        static void HoopBall(SdfCanvas c, Vector2 bc, float r)
+        internal static void HoopBall(SdfCanvas c, Vector2 bc, float r)
         {
             c.Fill(p => Sdf.Circle(p, bc, r), W);
             float w = Mathf.Max(1.2f, r * 0.07f);
@@ -63,16 +77,16 @@ namespace SoccerFight
             }
         }
 
-        static void Line(SdfCanvas c, Vector2 a, Vector2 b, float w, Color col) => c.Fill(p => Sdf.Capsule(p, a, b, w), col);
+        internal static void Line(SdfCanvas c, Vector2 a, Vector2 b, float w, Color col) => c.Fill(p => Sdf.Capsule(p, a, b, w), col);
 
-        static void Arrow(SdfCanvas c, Vector2 from, Vector2 to, float w, float head, Color col)
+        internal static void Arrow(SdfCanvas c, Vector2 from, Vector2 to, float w, float head, Color col)
         {
             Vector2 d = (to - from).normalized, n = new Vector2(-d.y, d.x);
             c.Fill(p => Sdf.Capsule(p, from, to - d * head * 0.6f, w), col);
             c.Fill(p => Sdf.Triangle(p, to + d * head * 0.4f, to - d * head + n * head * 0.8f, to - d * head - n * head * 0.8f), col);
         }
 
-        static void Arc(SdfCanvas c, Vector2 center, float r, float thick, float a0, float a1, Color col)
+        internal static void Arc(SdfCanvas c, Vector2 center, float r, float thick, float a0, float a1, Color col)
         {
             float mid = (a0 + a1) * 0.5f, half = Mathf.Abs(a1 - a0) * 0.5f;
             c.Fill(p =>
@@ -85,7 +99,7 @@ namespace SoccerFight
             }, col);
         }
 
-        static float HeartSdf(Vector2 p, Vector2 c, float s)
+        internal static float HeartSdf(Vector2 p, Vector2 c, float s)
         {
             Vector2 q = (p - c) / s;
             Vector2 a = new Vector2(Mathf.Abs(q.x), q.y + 4f);
@@ -111,7 +125,7 @@ namespace SoccerFight
             return Sdf.SmoothUnion(Sdf.SmoothUnion(body, tip, 8f), lick, 5f) * s;
         }
 
-        static void Bolt(SdfCanvas c, Vector2 o, float s, Color col)
+        internal static void Bolt(SdfCanvas c, Vector2 o, float s, Color col)
         {
             c.Fill(p =>
             {
@@ -123,7 +137,7 @@ namespace SoccerFight
             }, col);
         }
 
-        static void Draw(SdfCanvas c, UpIcon icon)
+        internal static void Draw(SdfCanvas c, UpIcon icon)
         {
             switch (icon)
             {
