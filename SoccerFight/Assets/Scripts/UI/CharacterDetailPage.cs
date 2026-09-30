@@ -506,10 +506,9 @@ namespace SoccerFight
             if (fill.enabled != bars) fill.enabled = bars;
             edge.softness = new Vector2Int(barX > 2f ? 110 : 0, barY > 2f ? 110 : 0);
             // ohne Rand bleibt der kleine Überstand der Kamerabewegung unbeschnitten
-            // Höher als 16:9: das Bild schließt oben an (die Menüleiste liegt wie gewohnt auf seinem Himmel),
-            // der freie Platz liegt darunter; die Oberkante wird dann nicht ausgeblendet.
-            artShift = new Vector2(0f, barY > 2f ? barY * 0.5f : 0f);
-            edge.padding = bars ? new Vector4(0f, 0f, 0f, barY > 2f ? -260f : 0f) : Vector4.one * -60f;
+            // Höher als 16:9 (z. B. iPad): das Bild steht mittig, oben und unten füllt seine weiche Kopie den Rest.
+            artShift = Vector2.zero;
+            edge.padding = bars ? Vector4.zero : Vector4.one * -60f;
             if (!bars) return;
             if (art.texture == null) { fill.enabled = false; return; }
             fill.texture = Blurred(art.texture);
