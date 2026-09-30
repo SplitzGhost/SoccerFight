@@ -23,8 +23,6 @@ namespace SoccerFight
         CanvasGroup waitGroup;
         TextMeshProUGUI waitText;
 
-        TextMeshProUGUI restartHint;
-
         const float PartnerBarW = 96f;
 
         void BuildCoop()
@@ -51,9 +49,6 @@ namespace SoccerFight
             waitGroup.alpha = 0f;
             Img("Plate", wait, UiArt.Pill, Palette.UiGlass.WithAlpha(0.85f), Vector2.zero, new Vector2(620f, 46f), Image.Type.Sliced);
             waitText = Text("Text", wait, "", 17f, Palette.ShotCyan, TextAlignmentOptions.Center, Vector2.zero, new Vector2(600f, 30f), true, true, 5f);
-
-            var restart = deathGroup.transform.Find("Restart");
-            if (restart != null) restartHint = restart.GetComponent<TextMeshProUGUI>();
         }
 
         void UpdateCoop(float dt)
@@ -105,8 +100,6 @@ namespace SoccerFight
             bool waiting = on && s.WaitingForPartner && !Game.I.Rewards.IsOpen;
             waitGroup.alpha = MathUtil.Damp(waitGroup.alpha, waiting ? 1f : 0f, 8f, dt);
             if (waiting) waitText.text = "WARTE AUF " + partner + "  ·  " + new string('.', 1 + (int)(time * 2.5f) % 3);
-
-            if (restartHint != null) restartHint.text = Coop.IsClient ? "DER HOST STARTET DEN NÄCHSTEN LAUF" : "[ ENTER ]  NEUER LAUF";
         }
 
         static string PartnerName()

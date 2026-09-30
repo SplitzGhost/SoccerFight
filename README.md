@@ -262,6 +262,10 @@ Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchte
 | F3 | Developer-Modus (auch im Pausemenü): Unverwundbar, keine Abklingzeiten, Ein-Treffer-Kills, Spieltempo, Stage-Sprung, Welle überspringen, Boss/Gegner rufen, Karten öffnen, jedes Upgrade gezielt hinzufügen, Live-Zahlen. Dev-Läufe zählen nicht für den Rekord |
 | Enter | Neuer Lauf nach Niederlage |
 
+**Tod-Menü:** Endet ein Lauf (Niederlage oder Sieg), erscheint eine Steintafel mit der Bilanz – wo der Lauf endete,
+besiegte Gegner, Zeit, Upgrades, verdiente Münzen, Rekord und die gesammelten Upgrades – und zwei Knöpfen:
+**Nochmal spielen** (auch Enter) und **Hauptmenü**. Im Duo startet nur der Host den nächsten Lauf.
+
 ### Die vier Fähigkeits-Plätze
 
 Schuss und Power-Schuss liegen fest auf den Maustasten. Alles andere wird **nicht einzeln belegt**: Es gibt

@@ -17,6 +17,7 @@ namespace SoccerFight
         public PostFx Post { get; private set; }
         public Hud Hud { get; private set; }
         public PauseMenu Pause { get; private set; }
+        public DeathMenu Death { get; private set; }
         public MainMenu Menu { get; private set; }
         public WaveDirector Waves { get; private set; }
         public Player Player { get; private set; }
@@ -160,6 +161,10 @@ namespace SoccerFight
             Pause = new PauseMenu();
             Pause.Build(transform, Cam.Cam, CaptureMode);
             Pause.RestartRequested += () => { Pause.Close(); Restart(); };
+            Death = new DeathMenu();
+            Death.Build(transform, Cam.Cam, CaptureMode);
+            Death.RestartRequested += Restart;
+            Death.MenuRequested += ToMenu;
             Dev = new DevPanel();
             Dev.Build(transform, Cam.Cam, CaptureMode);
             // not while a card choice is open: the dev actions would pull the run out from under it
@@ -238,6 +243,7 @@ namespace SoccerFight
             Profile.Save();
             FxSystem.I.Clear();
             Rewards.Cancel();
+            Death.Close();
             enemyShots.Clear();
             bossTells.Clear();
             echoes.Clear();
@@ -268,7 +274,7 @@ namespace SoccerFight
             float udt = TimeFx.UiDelta;
             Coop.Update(udt);
 
-            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen || Menu.IsOpen;
+            GameInput.Blocked = Pause.IsOpen || Rewards.IsOpen || Dev.IsOpen || Menu.IsOpen || Death.IsOpen;
             GameInput.Poll(Cam.Cam);
 
             if (GameInput.DevPressed && !CaptureMode && !Menu.IsOpen && !Coop.Active)
@@ -281,7 +287,8 @@ namespace SoccerFight
                 if (Menu.IsOpen) Menu.HandleEscape();
                 else if (Dev.IsOpen) Dev.Close();
                 else if (Pause.IsOpen) Pause.HandleEscape();
-                else if (!CaptureMode) Pause.Open();
+                // das Tod-Menü hat seine eigenen Knöpfe: kein Pausemenü darüber
+                else if (!CaptureMode && !Death.IsOpen) Pause.Open();
             }
             // reward screens and the dev panel freeze the fight exactly like the pause menu (a duo's pause menu doesn't: the partner plays on)
             bool paused = (Pause.IsOpen && !Coop.Active) || Rewards.IsOpen || Dev.IsOpen;
@@ -289,7 +296,7 @@ namespace SoccerFight
             TimeFx.Update(udt);
             Hud.SetPaused(paused);
             // the title screen draws the game's crosshair instead of the system pointer
-            Cursor.visible = (paused || Player.Dead) && !Menu.IsOpen;
+            Cursor.visible = (paused || Player.Dead || Death.IsOpen) && !Menu.IsOpen;
 
             if (GameInput.ToggleFps)
             {
@@ -314,12 +321,15 @@ namespace SoccerFight
             }
 
             float dt = Mathf.Min(Time.deltaTime, 1f / 30f);
+            // ein Dev-Sprung kann den Lauf wieder aufnehmen: dann verschwindet das Tod-Menü
+            if (Death.IsOpen && Director.P != RunDirector.Phase.RunOver) Death.Close();
             if (Player.Dead || Director.P == RunDirector.Phase.RunOver)
             {
                 if (Player.Dead) Player.DeadTime += udt;
                 // a duo run is over only when both are down, and only the host starts the next one
                 bool over = !Coop.Active || Director.P == RunDirector.Phase.RunOver;
                 float overTime = Player.Dead ? Player.DeadTime : Director.PhaseTime;
+                if (Director.P == RunDirector.Phase.RunOver && overTime > 0.9f) Death.Open(Run, Director.Won);
                 if (GameInput.RestartPressed && overTime > 0.9f && over && !Coop.IsClient) Restart();
             }
 
@@ -369,6 +379,7 @@ namespace SoccerFight
             Grade.Update(dt, Player, Ball);
             Hud.Update(paused ? 0f : udt);
             Rewards.Update(udt, !Pause.IsOpen);
+            Death.Update(udt);
             Pause.Update(udt);
             Menu.Update(udt);
             Dev.Update(udt);

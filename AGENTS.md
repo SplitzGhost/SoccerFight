@@ -146,6 +146,8 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   eingefärbter Steinrahmen, Schein, Lichtpunkte, Glanz; Fähigkeitskarten sind goldgerahmt. Alle tragen denselben blauen
   Knopf `choose-blank` (baut `fix-exact-art.js`), die Ziffer ist Text; keine Karte ist vorab hervorgehoben.
   Screenshots: Szenario `cards`.
+- **Tod-Menü** (`UI/DeathMenu.cs`): erscheint bei Lauf-Ende (Niederlage oder Sieg) statt der alten HUD-Einblendung – gemalte Tafel,
+  Bilanz, Knöpfe „Nochmal spielen“ (Host/Solo, auch Enter) und „Hauptmenü“. `Game` öffnet/schließt es. Screenshots: Szenario `death`.
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen
   Spielgrafiken unter `Resources/NewDesign` gehören ins Repo (vom Nutzer ausdrücklich so gewünscht).
 - Jede Stage hat ihre eigene Welt (`World/WorldEnvironment.ApplyStage`, Plattformen `World/PlatformViews.cs`, Layout aus
