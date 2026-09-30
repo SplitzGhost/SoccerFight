@@ -121,9 +121,14 @@ namespace SoccerFight
                 deltaMat = NumberMat(0.2f, new Color(0f, 0.08f, 0.04f, 0.6f), -0.8f, new Color(0.02f, 0.2f, 0.1f, 0.95f), 0.2f);
             }
             Page = new SubPage(parent, MenuPage.CharacterDetails, "CHARAKTER", "", MenuArt.Accent, menu.Register, menu.Back, true);
-            // Außerhalb von 16:9 bleibt ein ruhiger Rand; die freigegebene Grafik wird nie verzerrt.
+            // Die freigegebene Grafik wird nie verzerrt oder beschnitten. Außerhalb von 16:9 füllt dasselbe Bild,
+            // stark weichgezeichnet und abgedunkelt, den Rest des Bildschirms; die Kanten laufen weich hinein.
             MenuUi.Stretch(UiKit.Img("Rand", Page.Root, null, new Color(0.015f, 0.1f, 0.13f), Vector2.zero, Vector2.zero).rectTransform);
+            fill = UiKit.Node("Bildfüllung", Page.Root, Vector2.zero, Page.ArtworkSize).gameObject.AddComponent<RawImage>();
+            fill.raycastTarget = false;
+            fill.color = new Color(0.5f, 0.58f, 0.64f);
             Page.Content.SetAsLastSibling();
+            edge = Page.Content.gameObject.AddComponent<RectMask2D>();
             art = UiKit.Node("Freigegebenes Probebild", Page.Content, Vector2.zero, Page.ArtworkSize).gameObject.AddComponent<RawImage>();
             art.raycastTarget = false;
             loop = new CharacterLoopPlayer(art, parent);
@@ -277,7 +282,7 @@ namespace SoccerFight
             MathUtil.Spring(ref sway, ref swayVel, -new Vector2(aim.x * 11f, aim.y * 7f) + idle, 0.8f, 0.72f, dt);
             float k = Page.Content.localScale.x;
             Page.Content.localScale = Vector3.one * (k * 1.025f);   // etwas Überstand: beim Verschieben wird kein Rand sichtbar
-            Page.Content.anchoredPosition = sway * k;
+            Page.Content.anchoredPosition = sway * k + artShift;
             hazeLayer.anchoredPosition = HazeHome - sway * 0.35f;
             moteLayer.anchoredPosition = sway * 0.6f;
             fogLayer.anchoredPosition = FogHome + sway * 0.9f;
@@ -472,6 +477,46 @@ namespace SoccerFight
             l.Shine.color = Color.white.WithAlpha(h * 0.09f * (u < 1f ? Mathf.Sin(u * Mathf.PI) : 0f));
         }
 
+        RawImage fill;
+        Vector2 artShift;
+        RectMask2D edge;
+        RenderTexture[] blur;
+
+        /// <summary>Das aktuelle Bild in drei Schritten auf 26 × 15 Punkte verkleinert: vergrößert ergibt das weiche Farbflächen.</summary>
+        Texture Blurred(Texture source)
+        {
+            if (blur == null)
+            {
+                blur = new RenderTexture[3];
+                for (int i = 0; i < 3; i++)
+                    blur[i] = new RenderTexture(416 >> (i * 2), 234 >> (i * 2), 0, RenderTextureFormat.ARGB32) { name = "Charakter-Unschärfe " + i, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+            }
+            for (int i = 0; i < 3; i++) Graphics.Blit(i == 0 ? source : blur[i - 1], blur[i]);
+            return blur[2];
+        }
+
+        /// <summary>Breiter oder höher als 16:9: das Bild steht ganz in der Mitte, seine vergrößerte Kopie füllt den Rest.</summary>
+        void FillScreen()
+        {
+            Rect r = Page.Root.rect;
+            Vector2 size = Page.ArtworkSize;
+            float fit = Page.Content.localScale.x;
+            float barX = r.width - size.x * fit, barY = r.height - size.y * fit;
+            bool bars = barX > 2f || barY > 2f;
+            if (fill.enabled != bars) fill.enabled = bars;
+            edge.softness = new Vector2Int(barX > 2f ? 110 : 0, barY > 2f ? 110 : 0);
+            // ohne Rand bleibt der kleine Überstand der Kamerabewegung unbeschnitten
+            // Höher als 16:9: das Bild schließt oben an (die Menüleiste liegt wie gewohnt auf seinem Himmel),
+            // der freie Platz liegt darunter; die Oberkante wird dann nicht ausgeblendet.
+            artShift = new Vector2(0f, barY > 2f ? barY * 0.5f : 0f);
+            edge.padding = bars ? new Vector4(0f, 0f, 0f, barY > 2f ? -260f : 0f) : Vector4.one * -60f;
+            if (!bars) return;
+            if (art.texture == null) { fill.enabled = false; return; }
+            fill.texture = Blurred(art.texture);
+            float cover = Mathf.Max(r.width / size.x, r.height / size.y) * 1.04f;
+            fill.rectTransform.sizeDelta = size * cover;
+        }
+
         public void Update(float dt, bool selected, Vector2 aim)
         {
             loop.Update(selected || Page.T >= 0.004f);
@@ -480,6 +525,7 @@ namespace SoccerFight
                 return;
             }
             Page.Update(dt);
+            FillScreen();
             time += dt;
             costShake = Mathf.MoveTowards(costShake, 0f, dt * 2.5f);
             // die Knopf-Ausschnitte zeigen immer das aktuelle Bild (Standbild oder Videoloop)

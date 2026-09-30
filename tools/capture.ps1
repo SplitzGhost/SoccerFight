@@ -4,6 +4,8 @@
 param([string]$Scenario = 'portrait', [Parameter(Mandatory)][string]$Out)
 
 $root   = Split-Path $PSScriptRoot -Parent
+# Unity löst relative Pfade gegen den Projektordner auf: den Zielordner vorher absolut machen
+$Out    = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Out)
 $mirror = Join-Path $root '.build\project'
 $unity  = 'C:\Program Files\Unity\Hub\Editor\6000.6.0f1\Editor\Unity.exe'
 

@@ -163,10 +163,7 @@ namespace SoccerFight
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 canvas.sortingOrder = 60;
             }
-            var scaler = go.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            UiKit.Scale(go);
             go.AddComponent<GraphicRaycaster>();
             root = (RectTransform)go.transform;
 
@@ -993,10 +990,12 @@ namespace SoccerFight
             main.gameObject.SetActive(away < 0.999f || state == State.Starting);
 
             // the player scales with the window height; the columns hug the side edges
-            float k = Mathf.Clamp(Mathf.Min(h / 1080f, w / 1500f), 0.7f, 1.1f);
+            // (auf hohen Bildschirmen wird er größer und bleibt mit den Schuhen auf dem Boden des Hofs)
+            float k = Mathf.Clamp(Mathf.Min(h / 1080f, w / 1500f), 0.7f, 1.3f);
             Vector2 jolt = new Vector2(Mathf.Sin(time * 71f), Mathf.Cos(time * 63f)) * shake * 14f;
             stack.localScale = new Vector3(k, k, 1f);
-            stack.anchoredPosition = jolt;
+            BackdropRect(out float sceneBottom, out float sceneHeight);
+            stack.anchoredPosition = new Vector2(0f, sceneBottom + sceneHeight * GroundLine - FeetY * k) + jolt;
             float s = Mathf.Clamp(Mathf.Min((w - 700f) / 1220f, (h - 60f) / 1020f), 0.6f, 1.08f);
             leftCol.localScale = rightCol.localScale = new Vector3(s, s, 1f);
             leftCol.anchoredPosition = new Vector2(-w * 0.5f + 56f + 250f * s, h * 0.5f - SubPage.TopBar - 6f - 350f * s) + jolt;
@@ -1060,14 +1059,24 @@ namespace SoccerFight
         void UpdateBackdrop()
         {
             if (backdrop.texture == null) return;
-            float aspect = (float)backdrop.texture.width / backdrop.texture.height;
-            float w = root.rect.width, h = root.rect.height;
-            // Der Boden bleibt, wo er unter der Figur lag; das Bild reicht nach oben bis an den
-            // Bildschirmrand (auch hinter die Kopfleiste) und füllt immer die ganze Breite.
-            float bottom = h * 0.5f - SubPage.TopBar - Mathf.Max(h, w / aspect) * 1.05f;
-            float height = Mathf.Max(h * 0.5f - bottom, w / aspect);
-            backdrop.rectTransform.sizeDelta = new Vector2(height * aspect, height);
+            BackdropRect(out float bottom, out float height);
+            backdrop.rectTransform.sizeDelta = new Vector2(height * BackdropAspect, height);
             backdrop.rectTransform.anchoredPosition = new Vector2(0f, bottom + height * 0.5f);
+        }
+
+        const float BackdropAspect = 1672f / 941f;
+        /// <summary>Höhe der Rasenkante im Hofbild, auf der die Figur steht (Anteil der Bildhöhe von unten).</summary>
+        const float GroundLine = 310f / 1242f;
+
+        /// <summary>
+        /// Das Hofbild reicht nach oben bis an den Bildschirmrand (auch hinter die Kopfleiste) und füllt
+        /// auf jedem Format die ganze Fläche; Unterkante und Höhe in Canvas-Einheiten (Ursprung Mitte).
+        /// </summary>
+        void BackdropRect(out float bottom, out float height)
+        {
+            float w = root.rect.width, h = root.rect.height;
+            bottom = h * 0.5f - SubPage.TopBar - Mathf.Max(h, w / BackdropAspect) * 1.05f;
+            height = Mathf.Max(h * 0.5f - bottom, w / BackdropAspect);
         }
 
         /// <summary>Logo on the left, the icons and wallet on the right, the tabs centred in between (smaller if they must).</summary>

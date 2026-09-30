@@ -39,6 +39,21 @@ namespace SoccerFight
     /// <summary>Gemeinsame Erzeuger für plastische Buttons, Schalter, Regler und Menüplatten.</summary>
     public static class UiKit
     {
+        /// <summary>
+        /// Einheitliche Skalierung aller Oberflächen: die Zeichenfläche ist auf jedem Gerät mindestens
+        /// 1920 × 1080 Einheiten groß. Breitere Bildschirme (21:9, 32:9) bekommen zusätzliche Breite,
+        /// höhere (4:3, Hochkant) zusätzliche Höhe – ein für 1920 × 1080 gebautes Layout passt also
+        /// immer ganz ins Bild und wird nie abgeschnitten.
+        /// </summary>
+        public static CanvasScaler Scale(GameObject canvas)
+        {
+            var scaler = canvas.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            return scaler;
+        }
+
         public static readonly Color ButtonBase = new Color(0.36f, 0.59f, 0.67f, 1f);
         public static readonly Color ButtonHover = new Color(0.46f, 0.70f, 0.77f, 1f);
         public static readonly Color Track = new Color(0.14f, 0.2f, 0.3f, 1f);

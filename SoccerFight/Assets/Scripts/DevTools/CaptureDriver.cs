@@ -28,7 +28,8 @@ namespace SoccerFight
             return null;
         }
 
-        const int W = 1920, H = 1080, Cell = 420;
+        const int Cell = 420;
+        int W = 1920, H = 1080;
 
         string outDir;
         RenderTexture rt, cellRt;
@@ -70,7 +71,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "stages" && scenario != "dev" && scenario != "menu" && scenario != "cleanup" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops" && scenario != "cards")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "stages" && scenario != "dev" && scenario != "menu" && scenario != "cleanup" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops" && scenario != "cards" && scenario != "screens")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -108,6 +109,7 @@ namespace SoccerFight
             else if (scenario == "stage1") yield return StageOneLook();
             else if (scenario == "stages") yield return StageLooks();
             else if (scenario == "cards") yield return CardsTour();
+            else if (scenario == "screens") yield return Screens();
             else yield return All();
 
             Debug.Log("[Capture] finished");

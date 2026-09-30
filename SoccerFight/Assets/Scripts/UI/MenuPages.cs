@@ -14,6 +14,8 @@ namespace SoccerFight
     {
         /// <summary>Height of the title screen's top bar and bottom strip (canvas px) — pages stay between them.</summary>
         public const float TopBar = 108f, BottomBar = 46f;
+        /// <summary>So weit wächst eine Seite höchstens über ihre 16:9-Größe, wenn der Bildschirm höher ist.</summary>
+        const float MaxGrow = 1.3f;
 
         public readonly int Id;
         public readonly RectTransform Root, Content;
@@ -54,7 +56,7 @@ namespace SoccerFight
             }
             else
             {
-                MenuUi.Pin(title, new Vector2(0.5f, 1f), new Vector2(0f, -92f));
+                MenuUi.Pin(title, new Vector2(0.5f, 0.5f), new Vector2(0f, 448f));
                 MenuArt.Label("Overline", title, overline, 22f, accent, new Vector2(0f, 46f), new Vector2(1000f, 32f), TextAlignmentOptions.Center, 9f, MenuArt.TextHeavySoft);
                 MenuArt.Label("Title", title, heading, 60f, Color.white, new Vector2(0f, -4f), new Vector2(1200f, 80f), TextAlignmentOptions.Center, 18f);
                 UiKit.Img("Line", title, UiArt.LineFade, accent.WithAlpha(0.5f), new Vector2(0f, -54f), new Vector2(760f, 2f));
@@ -77,19 +79,24 @@ namespace SoccerFight
             {
                 // the page content (its top edge sits ~400 above its centre, the bottom ~470 below)
                 // fits between the overline and the bottom strip
-                float top = r.height * 0.5f - TopBar - 62f;
+                // Auf hohen Bildschirmen (4:3, Hochkant) wächst die Seite mit und steht mittig im freien Platz.
                 float room = r.height - TopBar - 62f - BottomBar - 12f;
-                float s = Mathf.Min(1f, Mathf.Min(r.width / 1700f, room / 870f));
+                float s = Mathf.Min(MaxGrow, Mathf.Min(r.width / 1700f, room / 870f));
+                float spare = Mathf.Max(0f, room - 870f * s) * 0.5f;
+                float top = r.height * 0.5f - TopBar - 62f - spare;
                 Content.localScale = new Vector3(s, s, 1f);
                 Content.anchoredPosition = new Vector2(0f, top - 400f * s);
-                title.localScale = Vector3.one * Mathf.Min(1f, r.width / 1300f);
+                title.localScale = Vector3.one * Mathf.Min(r.width / 1300f, Mathf.Clamp(s, 1f, MaxGrow));
+                title.anchoredPosition = new Vector2(0f, -TopBar - 34f - spare);
                 return;
             }
-            // the whole page fits the window: content shrinks on small canvases
-            float k = Mathf.Min(1f, Mathf.Min(r.width / 1700f, (r.height - 60f) / 1000f));
+            // the whole page fits the window: it shrinks on small canvases, grows on tall ones,
+            // and its heading stays right above it
+            float k = Mathf.Min(MaxGrow, Mathf.Min(r.width / 1700f, (r.height - 60f) / 1000f));
             Content.localScale = new Vector3(k, k, 1f);
             Content.anchoredPosition = new Vector2(0f, -40f * k);
-            title.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, T) * Mathf.Min(1f, r.width / 1300f);
+            title.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, T) * k;
+            title.anchoredPosition = new Vector2(0f, 448f * k);
         }
     }
 

@@ -110,6 +110,12 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   Laufzeit-Grafik geht über `ArtQueue`.
 - Domain Reload beim Play ist aus → statische Felder über `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]`
   zurücksetzen.
+- **Jedes Bildschirmformat:** alle Canvas bekommen ihren Skalierer von `UiKit.Scale` (Zeichenfläche immer mindestens
+  1920 × 1080 Einheiten; breite Bildschirme bekommen mehr Breite, hohe mehr Höhe). Ein für 1920 × 1080 gebautes Layout
+  passt damit überall; keinen eigenen `CanvasScaler` anlegen. Hintergründe strecken/füllen, Inhalte mittig oder an Ränder
+  ankern. Menüseiten wachsen auf hohen Bildschirmen mit (`SubPage.Update`), die Charakterseite füllt den Rest mit ihrem
+  weichgezeichneten Bild (`CharacterDetailPage.FillScreen`). Prüfen mit Szenario `screens` (4:3, 16:10, 21:9, 32:9,
+  Hochkant, 720p; eigene Liste mit `-sfSizes`). Im Browser bittet ein Hinweis Handys im Hochformat, das Gerät zu drehen.
 - UI-Animation mit `TimeFx.UiDelta` (sonst laufen Screenshots in Captures auseinander).
 - Alle Monster-KI zielt auf `Decoys.Focus(...)`/`Monster.focus`, nie direkt auf `player.Pos`.
 - UI mischt im linearen Farbraum: schon 5 % Akzentfarbe über dunklem Glas wirkt stark (Waschungen ~1 %).

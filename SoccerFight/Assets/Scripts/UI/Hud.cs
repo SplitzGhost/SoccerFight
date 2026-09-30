@@ -242,10 +242,7 @@ namespace SoccerFight
                 canvas.sortingOrder = 10;
             }
             canvas.pixelPerfect = false;
-            var scaler = go.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            UiKit.Scale(go);
             canvasRect = (RectTransform)go.transform;
 
             BuildTags();

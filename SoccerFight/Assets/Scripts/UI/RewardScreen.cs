@@ -78,10 +78,7 @@ namespace SoccerFight
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 canvas.sortingOrder = 40;
             }
-            var scaler = go.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            UiKit.Scale(go);
             go.AddComponent<GraphicRaycaster>();
             rootGroup = go.AddComponent<CanvasGroup>();
             root = (RectTransform)go.transform;

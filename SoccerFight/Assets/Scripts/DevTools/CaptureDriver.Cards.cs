@@ -83,10 +83,7 @@ namespace SoccerFight
             canvas.worldCamera = G.Cam.Cam;
             canvas.planeDistance = 0.9f;
             canvas.sortingOrder = 3000;
-            var scaler = go.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            UiKit.Scale(go);
             var root = (RectTransform)go.transform;
             var back = UiKit.Img("Back", root, null, new Color(0.07f, 0.09f, 0.13f, 1f), Vector2.zero, Vector2.zero);
             back.rectTransform.anchorMin = Vector2.zero;
