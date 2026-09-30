@@ -149,9 +149,8 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - **Shop** (`UI/ShopPage.cs`, `UI/ShopCard.cs`): die Karten sind fertige Bilder aus der Vorlage `Inspiration/Shop UI`
   (Bild, Rahmen, Namensleiste mit gemaltem Namen), dazu Münze, gelber Knopf und „GEWÄHLT“ als Einzelteile –
   `tools/newdesign/shop.js` (Real-ESRGAN; Claude: ohne Sandbox starten) → `Resources/Menu/Shop` + `cards.json` (Reihenfolge,
-  hoch/klein). Hintergrund, Menüleiste und Währung kommen nie aus der Vorlage. Mira ist dort abgeschnitten: ihre Karte ist
-  aus dem sichtbaren Hintergrund und dem Figurenbogen zusammengesetzt, bis es eine Vorlage mit ganzer Karte gibt
-  (dann in `CARDS` eintragen). Neue Spieler brauchen ein Kartenbild, sonst fehlen sie im Shop. Die Trefferfläche der
+  hoch/klein). Hintergrund, Menüleiste und Währung kommen nie aus der Vorlage. Im Ordner liegen mehrere Vorlagen (nach Namen
+  sortiert): im ersten Bild ist Mira abgeschnitten, ihre Karte kommt aus dem zweiten (`file: 1` in `CARDS`). Neue Spieler brauchen ein Kartenbild, sonst fehlen sie im Shop. Die Trefferfläche der
   Karte bleibt stehen, nur ihr Inneres hebt sich (sonst flattert der Hover am Rand). Screenshots: Szenario `shop`.
 - **Tod-Menü** (`UI/DeathMenu.cs`): erscheint bei Lauf-Ende (Niederlage oder Sieg) statt der alten HUD-Einblendung – gemalte Tafel,
   Bilanz, Knöpfe „Nochmal spielen“ (Host/Solo, auch Enter) und „Hauptmenü“. `Game` öffnet/schließt es. Screenshots: Szenario `death`.

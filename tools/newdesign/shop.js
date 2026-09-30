@@ -5,9 +5,9 @@
 //  - Karten: Ausschnitt → Preis/Knopf rechts in der Leiste wegfüllen → Real-ESRGAN ×4 → auf einheitliche Größe
 //    setzen (hohe Karte 636×1100, kleine 636×536; Rahmen und Leiste überall gleich hoch, das Bild füllt den Rest).
 //  - Rio und Bruno sind in der Vorlage verschieden hoch: beide bekommen dieselbe Größe (Bild oben bündig beschnitten).
-//  - Mira ist in der Vorlage am Bildrand abgeschnitten: ihr Hintergrund wird aus dem sichtbaren Stück aufgefüllt,
-//    die Figur kommt aus dem Figurenbogen (Inspiration/CharackterNewDesign/mira.png), der Rahmen von Titans Karte.
-//    Gibt es einmal eine Vorlage mit ganzer Mira-Karte: unten in CARDS eintragen wie die anderen.
+//  - Im Ordner liegen mehrere Vorlagen (nach Namen sortiert, `file` in CARDS): im ersten Bild ist Mira am Rand
+//    abgeschnitten, ihre Karte kommt aus dem zweiten. Dort ist die Karte schmaler: das Bild wird auf die gemeinsame
+//    Breite vergrößert (unten fällt etwas weg), der Name in der Leiste bleibt unverzerrt.
 //  - Leistenteile: vom fast schwarzen Leistengrund freigestellt (sie liegen im Spiel wieder auf der Leiste).
 //
 // Aufruf: node tools/newdesign/shop.js   (braucht die Grafikkarte für Real-ESRGAN, sonst Lanczos)
@@ -16,13 +16,11 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-const { upscaleRGB, upscaleRGBA } = require('./aiup');
-const { inpaint } = require('./inpaint');
+const { upscaleRGB } = require('./aiup');
 const { save, writeMeta, plainMeta } = require('./texio');
 
 const ROOT = path.join(__dirname, '..', '..');
 const SRC_DIR = path.join(ROOT, 'Inspiration/Shop UI');
-const SHEET = path.join(ROOT, 'Inspiration/CharackterNewDesign/mira.png');
 const OUT = path.join(ROOT, 'SoccerFight/Assets/Resources/Menu/Shop');
 const DEBUG = process.env.SF_DEBUG;
 
@@ -30,18 +28,19 @@ const DEBUG = process.env.SF_DEBUG;
 const W = 636, H_TALL = 1100, H_SMALL = 536, FRAME = 6, FOOT = 127;
 const F = 4;          // Real-ESRGAN
 const EDGE = 3;       // Rahmenstärke in der Vorlage
+const CARD_W = 325;   // übliche Kartenbreite in der Vorlage (Maßstab der Namensleiste)
 
 // box: Außenkante der Karte in der Vorlage [x0, y0, x1, y1); foot: Zeilen von der Farblinie bis zur Unterkante;
-// erase: Spalten der Leiste, in denen Preis/Knopf/„GEWÄHLT“ stehen; sample: saubere Leistenspalten zum Auffüllen
+// erase: Spalten der Leiste, in denen Preis/Knopf/„GEWÄHLT“ stehen; sample: saubere Leistenspalten zum Auffüllen;
+// file: welche Vorlage (0 = erste im Ordner). Die Reihenfolge hier ist die Reihenfolge im Shop.
 const CARDS = {
     titan: { box: [79, 230, 405, 792], foot: 65, erase: [270, 401], sample: [255, 268] },
     dre: { box: [419, 230, 737, 792], foot: 65, erase: [600, 733], sample: [585, 598] },
     nova: { box: [750, 230, 1071, 792], foot: 65, erase: [940, 1067], sample: [925, 938] },
     rio: { box: [1084, 231, 1409, 520], foot: 60, erase: [1265, 1404], sample: [1250, 1263], small: true, stripe: [255, 120, 96] },
     bruno: { box: [1084, 534, 1409, 796], foot: 62, erase: [1236, 1404], sample: [1225, 1234], small: true },
+    mira: { file: 1, box: [1273, 231, 1566, 795], foot: 65, erase: [1445, 1562], sample: [1428, 1443] },
 };
-// Mira: sichtbares Stück ihrer Karte (Bildfläche) und ihr Name in der Leiste
-const MIRA = { art: [1425, 233, 1586, 727], name: [1440, 740, 1548, 788], nameAt: 18, stripe: [214, 120, 255] };
 // Leistenteile [x0, y0, x1, y1)
 const PARTS = {
     coin: [342, 737, 394, 788],
@@ -95,88 +94,32 @@ function paintStripe(src, c, rgb, test) {
  * Setzt die vergrößerte Karte auf die einheitliche Größe: Rahmen oben/links/rechts und Fuß (Linie + Leiste) werden
  * auf feste Maße gebracht, das Bild füllt die Fläche dazwischen (oben bündig, was übersteht, fällt weg).
  */
-async function compose(up, foot, small, art) {
+async function compose(up, foot, small, split) {
     const H = small ? H_SMALL : H_TALL, e = EDGE * F, f = foot * F;
     const artW = W - 2 * FRAME, artH = H - FRAME - FOOT;
     const piece = (x, y, w, h, tw, th, fit) => raw(up).extract({ left: x, top: y, width: w, height: h })
         .resize(tw, th, { fit, position: 'top', kernel: 'lanczos3' }).png().toBuffer();
-    const inner = art || await piece(e, e, up.w - 2 * e, up.h - e - f, artW, artH, 'cover');
+    const inner = await piece(e, e, up.w - 2 * e, up.h - e - f, artW, artH, 'cover');
     const layers = [
         { input: inner, left: FRAME, top: FRAME },
         { input: await piece(0, 0, up.w, e, W, FRAME, 'fill'), left: 0, top: 0 },
         { input: await piece(0, e, e, up.h - e - f, FRAME, artH, 'fill'), left: 0, top: FRAME },
         { input: await piece(up.w - e, e, e, up.h - e - f, FRAME, artH, 'fill'), left: W - FRAME, top: FRAME },
-        { input: await piece(0, up.h - f, up.w, f, W, FOOT, 'fill'), left: 0, top: H - FOOT },
     ];
+    // Fuß: links der Name und rechts der Rahmen im üblichen Maßstab, die leere Leiste dazwischen füllt die Breite
+    // (bei schmaleren Karten würde der Name sonst in die Breite gezogen)
+    const k = W / (CARD_W * F), s = split * F, r = 8 * F;
+    const lw = Math.round(s * k), rw = Math.round(r * k);
+    layers.push(
+        { input: await piece(0, up.h - f, s, f, lw, FOOT, 'fill'), left: 0, top: H - FOOT },
+        { input: await piece(s, up.h - f, up.w - s - r, f, W - lw - rw, FOOT, 'fill'), left: lw, top: H - FOOT },
+        { input: await piece(up.w - r, up.h - f, r, f, rw, FOOT, 'fill'), left: W - rw, top: H - FOOT });
     const buf = await sharp({ create: { width: W, height: H, channels: 3, background: '#000' } }).composite(layers).removeAlpha().raw().toBuffer();
     return { buf, w: W, h: H };
 }
 
 async function upscale(img) {
     return { buf: await upscaleRGB(img, img.w * F, img.h * F), w: img.w * F, h: img.h * F };
-}
-
-// ------------------------------------------------------------------ Mira
-
-/** Miras Kartenbild: violetter Hintergrund aus dem sichtbaren Stück der Vorlage, die Figur aus dem Figurenbogen. */
-async function miraArt(src) {
-    const part = crop(src, MIRA.art);
-    const w = 320, h = part.h, N = w * h;
-    const img = new Float32Array(N * 3), clean = new Uint8Array(N);
-    for (let y = 0; y < h; y++) for (let x = 0; x < part.w; x++) {
-        const i = (y * part.w + x) * 3, o = y * w + x, r = part.buf[i], g = part.buf[i + 1], b = part.buf[i + 2];
-        img[o * 3] = r; img[o * 3 + 1] = g; img[o * 3 + 2] = b;
-        // der gemalte Grund: kräftiges, helles Violett (Trikot und Hose sind dunkler, Haut und Haar anders getönt)
-        clean[o] = b > 225 && g < 125 && r > 95 && r < 215 && b - r > 35 ? 1 : 0;
-    }
-    // Rand der Figur mit wegnehmen
-    const R = 5, srcMask = new Uint8Array(N);
-    for (let y = 0; y < h; y++) for (let x = 0; x < part.w; x++) {
-        let ok = 1;
-        for (let dy = -R; dy <= R && ok; dy++) for (let dx = -R; dx <= R; dx++) {
-            const X = x + dx, Y = y + dy;
-            if (X < 0 || Y < 0 || Y >= h) continue;
-            if (X >= part.w || !clean[Y * w + X]) { ok = 0; break; }
-        }
-        srcMask[y * w + x] = ok;
-    }
-    // kleine Inseln (helle Stellen im Trikot) sind kein Hintergrund
-    const seen = new Uint8Array(N);
-    for (let s = 0; s < N; s++) {
-        if (!srcMask[s] || seen[s]) continue;
-        const comp = [s]; seen[s] = 1;
-        for (let k = 0; k < comp.length; k++) {
-            const p = comp[k], x = p % w, y = (p / w) | 0;
-            for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1])
-                if (q >= 0 && srcMask[q] && !seen[q]) { seen[q] = 1; comp.push(q); }
-        }
-        if (comp.length < 900) for (const p of comp) srcMask[p] = 0;
-    }
-    const hole = new Uint8Array(N);
-    for (let i = 0; i < N; i++) hole[i] = srcMask[i] ? 0 : 1;
-    if (DEBUG) { const m = Buffer.alloc(N * 3); for (let i = 0; i < N; i++) m[i * 3] = m[i * 3 + 1] = m[i * 3 + 2] = srcMask[i] * 255; await debug('mira-mask', { buf: m, w, h }); }
-    const filled = inpaint(img, w, h, hole, srcMask, { yWeight: 0.4 });
-    const bg = Buffer.alloc(N * 3);
-    for (let i = 0; i < N * 3; i++) bg[i] = Math.max(0, Math.min(255, Math.round(filled[i])));
-    await debug('mira-bg', { buf: bg, w, h });
-
-    const artW = W - 2 * FRAME, artH = H_TALL - FRAME - FOOT;
-    const big = await upscaleRGB({ buf: bg, w, h }, artW, artH);
-
-    // Figur (Dreiviertelansicht, zweite von links): Kopf bis Oberschenkel
-    const box = { left: 440, top: 0, width: 360, height: 600 };
-    const { data } = await sharp(SHEET).ensureAlpha().extract(box).raw().toBuffer({ resolveWithObject: true });
-    for (let i = 0; i < box.width * box.height; i++) data[i * 4 + 3] = Math.round(255 * Math.max(0, Math.min(1, (data[i * 4 + 3] - 10) / 235)));
-    const K = 1.66;
-    const [fig] = await upscaleRGBA([{ buf: data, w: box.width, h: box.height }], K);
-    const top = 62, left = Math.round((artW - fig.w) / 2) - 6;
-    const cut = Math.min(fig.h, artH - top);
-    const figPng = await raw(fig, 4).extract({ left: 0, top: 0, width: fig.w, height: cut }).png().toBuffer();
-    // weicher Schatten hinter der Figur, damit sie im Bild steht wie die gemalten
-    const shadow = await raw(fig, 4).extract({ left: 0, top: 0, width: fig.w, height: cut }).ensureAlpha()
-        .linear([0, 0, 0, 0.45], [40, 0, 70, 0]).blur(14).png().toBuffer();
-    return sharp(big, { raw: { width: artW, height: artH, channels: 3 } })
-        .composite([{ input: shadow, left: left - 10, top: top + 8 }, { input: figPng, left, top }]).png().toBuffer();
 }
 
 // ------------------------------------------------------------------ Leistenteile
@@ -264,45 +207,29 @@ async function savePart(name, img, srcBox) {
 // ------------------------------------------------------------------ Ablauf
 
 (async () => {
-    const file = fs.readdirSync(SRC_DIR).filter(f => /\.png$/i.test(f)).sort()[0];
-    if (!file) throw new Error('Keine Vorlage in ' + SRC_DIR);
-    const orig = await loadRGB(path.join(SRC_DIR, file));
-    const src = { buf: Buffer.from(orig.buf), w: orig.w, h: orig.h };
+    const files = fs.readdirSync(SRC_DIR).filter(f => /\.png$/i.test(f)).sort();
+    if (!files.length) throw new Error('Keine Vorlage in ' + SRC_DIR);
+    const sources = [];
+    const source = async i => sources[i] || (sources[i] = await loadRGB(path.join(SRC_DIR, files[i])));
+    const orig = await source(0);
     fs.mkdirSync(OUT, { recursive: true });
     plainMeta(OUT, true);
 
     for (const [id, c] of Object.entries(CARDS)) {
+        if ((c.file || 0) >= files.length) throw new Error(`Vorlage ${c.file} für ${id} fehlt in ${SRC_DIR}`);
+        const o = await source(c.file || 0);
+        const src = { buf: Buffer.from(o.buf), w: o.w, h: o.h };
         eraseBar(src, c, c.erase[0], c.erase[1], c.sample);
         if (c.stripe) paintStripe(src, c, c.stripe, (r, g, b) => g > r + 40 && g > b + 40);
         const up = await upscale(crop(src, c.box));
-        const card = await compose(up, c.foot, c.small);
+        const card = await compose(up, c.foot, c.small, c.erase[0] - c.box[0] + 4);
         await save(path.join(OUT, id + '.png'), card, { channels: 3, crunch: true });
         await debug(id, card);
         console.log('  Karte', id);
     }
 
-    // Mira: Titans Rahmen und Leiste, Name aus der Vorlage, eigenes Bild
-    {
-        const t = CARDS.titan, shell = { buf: Buffer.from(src.buf), w: src.w, h: src.h };
-        eraseBar(shell, t, t.box[0] + EDGE + 2, t.erase[0], t.sample);
-        paintStripe(shell, t, MIRA.stripe, () => true);
-        const [nx0, ny0, nx1, ny1] = MIRA.name, tx = t.box[0] + MIRA.nameAt;
-        const px = (img, x, y, k) => img.buf[(y * img.w + x) * 3 + k];
-        // Helligkeit des Leistengrunds angleichen, dann nur das Hellere (die Buchstaben) übernehmen
-        const delta = [0, 1, 2].map(k => Math.max(0, px(orig, nx0, ny0, k) - px(shell, tx, ny0, k)));
-        for (let y = ny0; y < ny1; y++) for (let x = nx0; x < nx1; x++) for (let k = 0; k < 3; k++) {
-            const o = (y * shell.w + tx + x - nx0) * 3 + k;
-            shell.buf[o] = Math.max(shell.buf[o], px(orig, x, y, k) - delta[k]);
-        }
-        const up = await upscale(crop(shell, t.box));
-        const card = await compose(up, t.foot, false, await miraArt(orig));
-        await save(path.join(OUT, 'mira.png'), card, { channels: 3, crunch: true });
-        await debug('mira', card);
-        console.log('  Karte mira (zusammengesetzt)');
-    }
-
     // Reihenfolge und Format der Karten (kleine Karten stehen im Shop zu zweit übereinander)
-    const list = [...Object.entries(CARDS).map(([id, c]) => ({ id, small: !!c.small })), { id: 'mira', small: false }];
+    const list = Object.entries(CARDS).map(([id, c]) => ({ id, small: !!c.small }));
     const json = path.join(OUT, 'cards.json');
     fs.writeFileSync(json, JSON.stringify({ cards: list }, null, 1) + '\n');
     plainMeta(json, false);
