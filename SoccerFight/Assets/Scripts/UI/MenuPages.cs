@@ -26,7 +26,8 @@ namespace SoccerFight
         public Vector2 ArtworkSize;
 
         /// <param name="back">null for the first-launch screens: they stand alone, without the top bar.</param>
-        public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back, bool artwork = false)
+        /// <param name="dim">Abdunklung der Szene hinter der Seite (0..1); negativ: die übliche nachtblaue.</param>
+        public SubPage(RectTransform parent, int id, string heading, string overline, Color accent, System.Action<MenuTarget> register, System.Action back, bool artwork = false, float dim = -1f)
         {
             Id = id;
             InBar = back != null;
@@ -43,8 +44,8 @@ namespace SoccerFight
                 return;
             }
 
-            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
-            var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, 0.55f), Vector2.zero, Vector2.zero);
+            MenuUi.Stretch(UiKit.Img("Dim", Root, null, new Color(0.01f, 0.03f, 0.05f, dim >= 0f ? dim : InBar ? 0.66f : 0.72f), Vector2.zero, Vector2.zero).rectTransform);
+            var vignette = UiKit.Img("Vignette", Root, MenuArt.Vignette, new Color(0f, 0f, 0f, dim >= 0f ? Mathf.Min(0.55f, dim + 0.1f) : 0.55f), Vector2.zero, Vector2.zero);
             MenuUi.Stretch(vignette.rectTransform);
 
             title = UiKit.Node("Heading", Root, Vector2.zero, new Vector2(1200f, 150f));

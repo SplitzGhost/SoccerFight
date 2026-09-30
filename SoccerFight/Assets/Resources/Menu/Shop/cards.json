@@ -1,0 +1,28 @@
+{
+ "cards": [
+  {
+   "id": "titan",
+   "small": false
+  },
+  {
+   "id": "dre",
+   "small": false
+  },
+  {
+   "id": "nova",
+   "small": false
+  },
+  {
+   "id": "rio",
+   "small": true
+  },
+  {
+   "id": "bruno",
+   "small": true
+  },
+  {
+   "id": "mira",
+   "small": false
+  }
+ ]
+}

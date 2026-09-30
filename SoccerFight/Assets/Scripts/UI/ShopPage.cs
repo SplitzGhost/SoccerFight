@@ -4,12 +4,12 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>
-    /// SHOP: every character as a compact card, one row per sport, with portrait, class, perk,
-    /// description and price. Skills are not sold — every player has all of them and picks them up
-    /// after boss fights. Buying takes two kicks — the first turns the button into a pulsing gold
-    /// KAUFEN?, the second (within a few seconds) buys — so a stray ball never spends coins. Not
-    /// enough coins: the card shakes and says how many are missing. Bought characters can be
-    /// selected right here.
+    /// SHOP wie in der Vorlage (Inspiration/Shop UI): alle Spieler als gemalte Karten in einer Reihe – hohe Karten
+    /// einzeln, kleine zu zweit übereinander (Reihenfolge und Format aus ShopArt.Cards). In der Namensleiste steht
+    /// der Preis, bei gekauften Spielern der Knopf AUSWÄHLEN bzw. grün GEWÄHLT. Skills are not sold — every player
+    /// has all of them and picks them up after boss fights. Buying takes two kicks — the first turns the price into
+    /// a pulsing KAUFEN?, the second (within a few seconds) buys — so a stray ball never spends coins. Not
+    /// enough coins: the card shakes and says how many are missing.
     /// </summary>
     public sealed class ShopPage
     {
@@ -30,40 +30,49 @@ namespace SoccerFight
         public void Build(RectTransform parent, MenuNav menu)
         {
             nav = menu;
-            page = new SubPage(parent, MenuPage.Shop, "SHOP", "SPIELER  ·  BEZAHLT MIT MÜNZEN", MetaUi.Gold, nav.Register, nav.Back);
+            // die Karten sind farbig gemalt: die Szene dahinter bleibt hell wie in der Vorlage
+            page = new SubPage(parent, MenuPage.Shop, "SHOP", "SHOP  ·  SPIELER KAUFEN", MetaUi.Gold, nav.Register, nav.Back, dim: 0.3f);
             var content = page.Content;
             // the coins sit in the top bar now; the chip stays as the page's own counter but hidden
             wallet = new WalletChip(page.Root, new Vector2(1f, 1f), new Vector2(-150f, -78f));
             wallet.Root.gameObject.SetActive(false);
 
-            // one row per sport, a small heading above each
-            int row = 0;
-            foreach (var sport in Characters.Sports)
+            // Spalten: eine hohe Karte oder zwei kleine übereinander
+            var columns = new List<List<(ShopItem item, bool small)>>();
+            foreach (var e in ShopArt.Cards)
             {
-                int col = 0;
-                float y = 190f - row * (ShopCharacterCard.H + 76f);
-                MenuArt.Label("Sport" + sport, content, Characters.SportName(sport), 18f, MetaUi.Soft(CharacterPage.SportAccent(sport)),
-                    new Vector2(-ShopCharacterCard.W * 1.5f - 22f + 30f + 230f, y + ShopCharacterCard.H * 0.5f + 26f), new Vector2(460f, 28f), TMPro.TextAlignmentOptions.Left, 6f, MenuArt.TextHeavySoft);
-                UiKit.Img("SportIcon" + sport, content, MenuArt.SportIcon(sport), MetaUi.Soft(CharacterPage.SportAccent(sport)),
-                    new Vector2(-ShopCharacterCard.W * 1.5f - 22f + 12f, y + ShopCharacterCard.H * 0.5f + 26f), new Vector2(26f, 26f)).preserveAspect = true;
-                foreach (var cls in Classes.ForSport(sport))
+                var def = Characters.Get(e.id);
+                var item = def != null ? Shop.ForCharacter(def) : null;
+                if (item == null || ShopArt.Get(e.id) == null) continue;
+                var last = columns.Count > 0 ? columns[columns.Count - 1] : null;
+                if (e.small && last != null && last.Count == 1 && last[0].small) last.Add((item, true));
+                else columns.Add(new List<(ShopItem, bool)> { (item, e.small) });
+            }
+            const float step = ShopCharacterCard.W + ShopCharacterCard.Gap;
+            float width = columns.Count * step - ShopCharacterCard.Gap;
+            var row = UiKit.Node("Karten", content, new Vector2(0f, -28f), Vector2.zero);
+            // mehr Spieler als Platz: die Reihe wird als Ganzes kleiner
+            row.localScale = Vector3.one * Mathf.Min(1f, 1664f / Mathf.Max(1f, width));
+            for (int c = 0; c < columns.Count; c++)
+            {
+                float x = (c - (columns.Count - 1) * 0.5f) * step;
+                for (int i = 0; i < columns[c].Count; i++)
                 {
-                    var def = Characters.Of(sport, cls.Class);
-                    if (def == null) continue;
-                    var item = Shop.ForCharacter(def);
-                    var card = new ShopCharacterCard(content, item, new Vector2((col - 1) * (ShopCharacterCard.W + 22f), y));
+                    var (item, small) = columns[c][i];
+                    float y = small ? (0.5f - i) * (ShopCharacterCard.SmallH + ShopCharacterCard.Gap) : 0f;
+                    var card = new ShopCharacterCard(row, item, new Vector2(x, y), small);
                     cards.Add(card);
                     nav.Register(new MenuTarget
                     {
-                        Id = "shop_" + item.Id, Root = card.Root, Size = new Vector2(ShopCharacterCard.W, ShopCharacterCard.H), Page = MenuPage.Shop,
-                        Action = () => HitCharacter(card), Draw = t => StyleCharacter(card, t), Accent = def.Accent,
+                        Id = "shop_" + item.Id, Root = card.Root, Size = card.Size, Page = MenuPage.Shop,
+                        Action = () => HitCharacter(card), Draw = t => StyleCharacter(card, t), Accent = item.Accent,
                     });
-                    col++;
                 }
-                row++;
             }
+            // die Szene ist hier hell: ein weicher dunkler Streifen hält den Hinweis lesbar
+            UiKit.Img("HintShade", content, UiArt.Glow, new Color(0.01f, 0.03f, 0.05f, 0.6f), new Vector2(0f, -452f), new Vector2(1700f, 84f));
             MetaUi.Text(content, "Hint", "Erster Treffer wählt aus, zweiter Treffer kauft.  ·  Münzen lassen besiegte Monster fallen, Bosse besonders viele.  ·  Fähigkeiten hast du alle: nach jedem Boss wählst du eine.",
-                15f, MetaUi.Muted, new Vector2(0f, -452f), new Vector2(1600f, 24f));
+                15f, MetaUi.Body, new Vector2(0f, -452f), new Vector2(1600f, 24f));
         }
 
         /// <summary>Opens the shop straight on an item (a locked character).</summary>
@@ -131,17 +140,10 @@ namespace SoccerFight
         {
             var item = card.Item;
             var def = item.Character;
-            bool confirm = pending == item;
-            string label; bool coin, filled; Color color;
-            if (item.Owned())
-            {
-                bool current = Characters.Current == def;
-                label = current ? "GEWÄHLT" : "AUSWÄHLEN";
-                coin = false; filled = current; color = current ? MetaUi.Gold : def.Accent;
-            }
-            else if (confirm) { label = "KAUFEN?  " + item.Price; coin = true; filled = true; color = MetaUi.Gold; }
-            else { label = item.Price.ToString(); coin = true; filled = false; color = Wallet.CanAfford(item.Price) ? def.Accent : MetaUi.Danger; }
-            card.Style(t, TimeFx.UiDelta, label, coin, filled, color, confirm);
+            var state = item.Owned()
+                ? (Characters.Current == def ? ShopCharacterCard.State.Chosen : ShopCharacterCard.State.Select)
+                : pending == item ? ShopCharacterCard.State.Confirm : ShopCharacterCard.State.Price;
+            card.Style(t, TimeFx.UiDelta, state, Wallet.CanAfford(item.Price), item.Price.ToString());
         }
 
         public void Update(float udt, Vector2 aim)
@@ -150,8 +152,6 @@ namespace SoccerFight
             if (page.T < 0.01f) return;
             wallet.Update(udt);
             if (pending != null && (pendingT += udt) > ConfirmTime) pending = null;
-            PlayerArt.Pump();
-            foreach (var card in cards) card.Update(udt, aim, Mathf.Clamp01(page.T));
         }
     }
 }

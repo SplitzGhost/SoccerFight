@@ -209,10 +209,12 @@ Karten (Porträt, Klasse, Talent, Rechtsklick-Move und Perk); ein beliebiger Spi
 gekaufte Fähigkeit abschießen legt sie in den nächsten freien Platz, nochmal (oder ihren Platz) abschießen nimmt sie
 heraus. Nicht gekaufte zeigen ihren Preis und führen in den Shop; was das Talent der Klasse verstärkt, steht in der Ecke.
 
-**Shop** (`UI/ShopPage.cs`, Logik `Meta/Shop.cs`): Reiter *Spieler* (alle neun, eine Reihe pro Klasse) und
-*Fähigkeiten*. Kaufen braucht **zwei Treffer** – der erste macht aus dem Knopf ein pulsierendes KAUFEN?, der zweite
-kauft –, damit kein verirrter Ball Münzen ausgibt. Gekaufte Spieler lassen sich gleich dort wählen, gekaufte
-Fähigkeiten wandern sofort in einen freien Platz.
+**Shop** (`UI/ShopPage.cs`, Karten `UI/ShopCard.cs`, Logik `Meta/Shop.cs`): alle Spieler als gemalte Karten in einer
+Reihe – hohe Karten einzeln, kleine zu zweit übereinander –, vor der hellen Menüszene. In der schwarzen Namensleiste
+steht der Preis mit Münze, bei gekauften Spielern der gelbe Knopf AUSWÄHLEN, beim gewählten grün GEWÄHLT (dazu eine
+grüne Linie). Unter dem Zeiger hebt sich die Karte an. Kaufen braucht **zwei Treffer** – der erste macht aus dem Preis
+ein pulsierendes KAUFEN?, der zweite kauft –, damit kein verirrter Ball Münzen ausgibt. Die Karten und Leistenteile
+schneidet `tools/newdesign/shop.js` aus der Vorlage in `Inspiration/Shop UI` (`Resources/Menu/Shop`).
 
 **Münzen** (`Run/CoinDrops.cs`, `UI/CoinCounter.cs`, Regeln in `Meta/CoinRewards.cs`): Münzen springen aus besiegten
 Gegnern, klingen beim Aufprall, hüpfen, drehen sich und glitzern, heben nach einer halben Sekunde ab und fliegen auf
@@ -364,7 +366,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Posen:** `PoseKick` (auch Power-Schuss) / `PoseFlick` / `PoseJuggle` / `PoseStepOver` / `PoseBicycle` in `PlayerRig.cs`, Salto über `BicycleSpin`
 - **Spieler-Look:** Umrisse und Gelenke in `tools/newdesign/characters.def.js`, danach `node characters.js`; Mondlicht-Randlicht und Bodenreflex im Shader `SF_Character`
 - **Farben:** `Palette.cs`
-- **Charaktere:** Namen, Klassen, Perks, Preise und alle Farben in `Run/Characters.cs` (neue Figur = neuer Eintrag, hinten anhängen); das Kartenlayout in `UI/MetaWidgets.cs` (`CharacterCard`, `ShopCharacterCard`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
+- **Charaktere:** Namen, Klassen, Perks, Preise und alle Farben in `Run/Characters.cs` (neue Figur = neuer Eintrag, hinten anhängen); das Kartenlayout in `UI/MetaWidgets.cs` (`CharacterCard`) und `UI/ShopCard.cs` (`ShopCharacterCard`, Bild aus `tools/newdesign/shop.js`), die Figur-Posen (Stehen, Hochhalten, Schuss) in `UI/MenuFigure.cs`
 - **Klassen-Talente:** alle Zahlen in `ClassTuning` (`Meta/ClassDefs.cs`); eine neue Klasse = Enum-Wert + `ClassDef` mit Talent (`PassiveDef`)
 - **Fähigkeiten-Preise, Gratis-Wahl, Klassen-Sperre:** `SkillCatalog.All` (`Meta/SkillCatalog.cs`); Kopfball-Werte `Header*` oben in `Player.cs`, Pose `PoseHeader` in `PlayerRig.cs`
 - **Münzen:** Werte pro Rang, Stage-Aufschlag und Stage-Bonus in `Meta/CoinRewards.cs`; Sprung, Zeigezeit und Flug in `Run/CoinDrops.cs` (`ShowTime`) und `UI/CoinCounter.cs`
