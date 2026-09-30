@@ -47,6 +47,8 @@ namespace SoccerFight
         public string[] Strengths;
         /// <summary>The price of the strengths (empty when there is none).</summary>
         public string Drawback;
+        /// <summary>Der Klassenbonus in einem Satz für die Spielerauswahl (zwei Stärken, durch „•“ getrennt).</summary>
+        public string Bonus;
         public Color Accent;
         public System.Func<Sprite> Icon;
         /// <summary>The skill category the class is built around (boss offers mark it as boosted).</summary>
@@ -120,6 +122,7 @@ namespace SoccerFight
             Drawback = "",
             Accent = Hex("#FF5A4A"), Icon = () => MenuArt.IconStriker, Specialty = SkillCategory.Shot, Primary = Ability.Power,
             Attack = 5, Defence = 2, Tech = 3,
+            Bonus = "+" + Pct(ClassTuning.StrikerShotBonus) + " Schaden mit Schüssen • Schuss-Fähigkeiten laden " + Pct(1f - ClassTuning.StrikerShotCooldown) + " schneller",
             Trait = StrikerTrait("SCHUSSGEWALT", "Schüssen"),
         };
 
@@ -137,6 +140,7 @@ namespace SoccerFight
             Drawback = "",
             Accent = Hex("#C77DFF"), Icon = () => MenuArt.IconSkiller, Specialty = SkillCategory.Technique, Primary = Ability.Dash,
             Attack = 2, Defence = 3, Tech = 5,
+            Bonus = "+" + Pct(ClassTuning.SkillerTechBonus) + " Schaden mit Tricks • Tricks laden " + Pct(1f - ClassTuning.SkillerTechCooldown) + " schneller",
             Trait = SkillerTrait,
         };
 
@@ -154,6 +158,7 @@ namespace SoccerFight
             Drawback = Pct(1f - ClassTuning.DefenderDamageMul) + " WENIGER SCHADEN",
             Accent = Hex("#5B8CFF"), Icon = () => MenuArt.IconDefender, Specialty = SkillCategory.Header, Primary = Ability.Header,
             Attack = 3, Defence = 5, Tech = 2,
+            Bonus = "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " maximales Leben • " + Pct(1f - ClassTuning.DefenderDamageTaken) + " weniger erlittener Schaden",
             Trait = DefenderTrait("Kopfball"),
         };
 
@@ -173,6 +178,7 @@ namespace SoccerFight
             Drawback = "",
             Accent = Striker.Accent, Icon = () => MenuArt.IconStriker, Specialty = SkillCategory.Shot, Primary = Ability.Three,
             Attack = 5, Defence = 2, Tech = 3,
+            Bonus = "+" + Pct(ClassTuning.StrikerShotBonus) + " Schaden mit Würfen • Wurf-Fähigkeiten laden " + Pct(1f - ClassTuning.StrikerShotCooldown) + " schneller",
             Trait = StrikerTrait("WURFGEWALT", "Würfen"),
         };
 
@@ -190,6 +196,7 @@ namespace SoccerFight
             Drawback = "",
             Accent = Skiller.Accent, Icon = () => MenuArt.IconSkiller, Specialty = SkillCategory.Technique, Primary = Ability.Crossover,
             Attack = 2, Defence = 3, Tech = 5,
+            Bonus = "+" + Pct(ClassTuning.SkillerTechBonus) + " Schaden mit Tricks • Tricks laden " + Pct(1f - ClassTuning.SkillerTechCooldown) + " schneller",
             Trait = SkillerTrait,
         };
 
@@ -207,6 +214,7 @@ namespace SoccerFight
             Drawback = Pct(1f - ClassTuning.DefenderDamageMul) + " WENIGER SCHADEN",
             Accent = Defender.Accent, Icon = () => MenuArt.IconDefender, Specialty = SkillCategory.Header, Primary = Ability.Dunk,
             Attack = 3, Defence = 5, Tech = 2,
+            Bonus = "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " maximales Leben • " + Pct(1f - ClassTuning.DefenderDamageTaken) + " weniger erlittener Schaden",
             Trait = DefenderTrait("Dunk"),
         };
 

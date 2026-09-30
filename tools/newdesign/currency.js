@@ -1,4 +1,5 @@
-// Kristall- und Münzleiste aus der freigegebenen Charakteransicht (oben rechts) als eigene Menügrafik.
+// Kristall- und Münzleiste aus der früheren Charakteransicht (oben rechts) als eigene Menügrafik. Der Ausschnitt
+// des Probebilds liegt unter tools/newdesign/sources/currency.png (die Charakteransicht selbst gibt es nicht mehr).
 // Die Leisten liegen dort auf hellem Himmel: der Himmel wird pro Zeile zwischen linkem und rechtem Rand
 // geschätzt, alles vom Rand aus zusammenhängend Himmelfarbene wird durchsichtig, Kanten und Schatten
 // werden gegen diese Himmelfarbe entmischt. Innen (Glanzlichter des Kristalls) bleibt alles deckend.
@@ -10,18 +11,18 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { upscaleRGB } = require('./aiup');
+const { writeMeta } = require('./texio');
 
 const ROOT = path.join(__dirname, '..', '..');
-const SRC = path.join(ROOT, 'SoccerFight/Assets/Resources/Menu/CharacterDetails/dre.png');
+const SRC = path.join(__dirname, 'sources/currency.png');
 const OUT = path.join(ROOT, 'SoccerFight/Assets/Resources/Menu/Currency');
-const META = path.join(ROOT, 'SoccerFight/Assets/Resources/Menu/CharacterDetails/dre.png.meta');
-// Ausschnitt im 1672×941-Bild und Trennspalte zwischen Kristall- und Münzleiste
+// Lage des Ausschnitts im 1672×941-Bild und Trennspalte zwischen Kristall- und Münzleiste
 const BOX = { left: 1360, top: 6, width: 296, height: 68 };
 const SPLIT = 1500;
 const F = 3;   // Endgröße: dreifache Auflösung des Probebilds
 
 (async () => {
-    const { data, info } = await sharp(SRC).extract(BOX).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(SRC).removeAlpha().raw().toBuffer({ resolveWithObject: true });
     const W = BOX.width * F, H = BOX.height * F;
     const px = await upscaleRGB({ buf: data, w: info.width, h: info.height }, W, H);
 
@@ -91,13 +92,9 @@ const F = 3;   // Endgröße: dreifache Auflösung des Probebilds
             'Größe', (w / F).toFixed(1), (h / F).toFixed(1), 'Pixel', w, h);
         const meta = file + '.meta';
         if (!fs.existsSync(meta)) {
-            let m = fs.readFileSync(META, 'utf8');
-            m = m.replace(/^guid: .*$/m, 'guid: ' + crypto.randomBytes(16).toString('hex'))
-                .replace('alphaIsTransparency: 0', 'alphaIsTransparency: 1')
-                // im Menü etwa dreifach verkleinert: ohne Mipmaps entstehen Treppenkanten
-                .replace(/^    enableMipMap: 0$/m, '    enableMipMap: 1')
-                .replace(/^    filterMode: 1$/m, '    filterMode: 2');
-            fs.writeFileSync(meta, m);
+            // im Menü etwa dreifach verkleinert: ohne Mipmaps entstehen Treppenkanten
+            writeMeta(file, 0, 1, 1);
+            fs.writeFileSync(meta, fs.readFileSync(meta, 'utf8').replace('alphaIsTransparency: 0', 'alphaIsTransparency: 1').replace('filterMode: 1', 'filterMode: 2'));
         }
     }
 })().catch(e => { console.error(e); process.exit(1); });

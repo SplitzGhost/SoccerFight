@@ -56,6 +56,7 @@ async function x4(jobs) {
             const r = spawnSync(EXE, ['-i', inDir, '-o', outDir, '-n', MODEL, '-f', 'png', '-m', path.join(DIR, 'models')], { env: vulkanEnv(), encoding: 'utf8' });
             for (const i of todo) {
                 const f = path.join(outDir, keys[i] + '.png');
+                if (fs.existsSync(path.join(CACHE, keys[i] + '.png'))) continue;   // zwei gleiche Bilder im selben Lauf (z. B. gleiche Masken)
                 if (!fs.existsSync(f)) throw new Error('Real-ESRGAN lieferte kein Bild: ' + (r.stderr || '').split('\n').slice(-4).join(' '));
                 fs.renameSync(f, path.join(CACHE, keys[i] + '.png'));
             }

@@ -95,8 +95,7 @@ namespace SoccerFight
             else if (scenario == "blackhole") yield return BlackHole();
             else if (scenario == "menu") yield return MenuTour();
             else if (scenario == "buttons") yield return ButtonTour();
-            else if (scenario == "menu-design") yield return CharacterMenuDesign();
-            else if (scenario == "menu-loops") yield return CharacterMenuLoops();
+            else if (scenario == "players" || scenario == "menu-design") yield return CharacterMenuDesign();
             else if (scenario == "cleanup") yield return MenuCleanup();
             else if (scenario == "vista") yield return VistaShots();
             else if (scenario == "newskills") yield return NewSkills();
@@ -1094,12 +1093,14 @@ namespace SoccerFight
             yield return Seconds(1.4f);
             yield return Shot("m10_characters");
             int next = (original + 1) % Characters.All.Length;
-            GameInput.AimScreen = menu.TargetScreen("card_" + Characters.All[next].Id);
+            GameInput.AimScreen = menu.TargetScreen("tile_" + Characters.All[next].Id);
             yield return Seconds(0.8f);
             yield return Shot("m11_card_hover");
             GameInput.ClickPressed = true;
             yield return Frames(22);
             yield return Shot("m12_card_hit");
+            yield return Seconds(1.2f);
+            yield return Kick("player_select");
             yield return Seconds(1.2f);
             yield return Shot("m13_picked");
             Debug.Log("[Capture] character now " + Characters.Current.Name + " (" + Characters.Current.Role + ")");
@@ -1197,7 +1198,7 @@ namespace SoccerFight
             yield return Kick("figure");
             yield return Seconds(2.4f);
             yield return Shot("x15_roster");
-            yield return Kick("sport1");
+            yield return Kick("tile_dre");
             yield return Seconds(2.6f);
             yield return Shot("x16_roster_basketball");
             yield return Kick("tab_home");

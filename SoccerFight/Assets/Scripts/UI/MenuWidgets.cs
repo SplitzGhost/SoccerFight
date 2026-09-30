@@ -339,7 +339,7 @@ namespace SoccerFight
     public static class MenuPage
     {
         public const int Main = 0, Characters = 1, Settings = 2, Shop = 3, Ranking = 4, Friends = 5, Events = 6, Info = 7,
-            Starter = 8, CharacterDetails = 9, Count = 10;
+            Starter = 8, Count = 9;
         /// <summary>Targets in the top bar: shootable on every page the bar is shown on.</summary>
         public const int Global = -1;
 

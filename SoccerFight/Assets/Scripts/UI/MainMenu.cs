@@ -67,8 +67,6 @@ namespace SoccerFight
         Image veil;
         MenuFigure figure;
         CharacterPage characters;
-        CharacterDetailPage characterDetails;
-        int detailReturnPage = MenuPage.Main;
         ShopPage shop;
         OnboardingPages onboarding;
         DuoPage duo;
@@ -207,12 +205,7 @@ namespace SoccerFight
             characters = new CharacterPage();
             characters.Build(pagesRoot, nav);
             characters.ShowInShop = OpenShop;
-            characters.ShowDetails = ShowCharacterDetails;
             subPages[MenuPage.Characters] = characters.Page;
-            characterDetails = new CharacterDetailPage();
-            characterDetails.Build(pagesRoot, nav);
-            characterDetails.Return = Back;
-            subPages[MenuPage.CharacterDetails] = characterDetails.Page;
             pages = new MenuPages();
             pages.Build(pagesRoot, Register, Back);
             foreach (var p in pages.Pages) subPages[p.Id] = p;
@@ -285,7 +278,7 @@ namespace SoccerFight
             figure.Build(stack, new Vector2(-30f, FeetY), FigureScale, PlayerArt.Get(Characters.Index), Characters.Current, true);
 
             var hit = UiKit.Node("FigureHit", stack, new Vector2(0f, FeetY + 270f), new Vector2(380f, 580f));
-            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => ShowCharacterDetails(Characters.Current), Draw = DrawFigure, Accent = MenuArt.Accent };
+            figureTarget = new MenuTarget { Id = "figure", Root = hit, Size = hit.sizeDelta, Page = MenuPage.Main, Action = () => Open(MenuPage.Characters), Draw = DrawFigure, Accent = MenuArt.Accent };
             Register(figureTarget);
 
             // name tag floating above the player's head
@@ -652,7 +645,6 @@ namespace SoccerFight
             page = id;
             if (id == MenuPage.Main) return;
             if (id == MenuPage.Characters) characters.Open();
-            else if (id == MenuPage.CharacterDetails) characterDetails.Open(Characters.Current);
             else if (id == MenuPage.Shop) shop.Refresh();
             else if (id == MenuPage.Friends) duo.OnOpened();
             else pages.Refresh();
@@ -663,22 +655,12 @@ namespace SoccerFight
             if (state != State.Menu) return;
             if (page == MenuPage.Settings && pages.Settings.IsCapturing) pages.Settings.CancelCapture();
             if (MenuPage.IsOnboarding(page)) return;
-            if (page == MenuPage.CharacterDetails) { Open(detailReturnPage); return; }
             if (page != MenuPage.Main) RefreshRecord();
             page = MenuPage.Main;
         }
 
-        void ShowCharacterDetails(CharacterDef character)
-        {
-            if (!Profile.OwnsCharacter(character.Id)) { OpenShop(Shop.ForCharacter(character)); return; }
-            detailReturnPage = page == MenuPage.Characters ? MenuPage.Characters : MenuPage.Main;
-            Open(MenuPage.CharacterDetails);
-        }
-
-        // Für die Menüprüfung: Decoder und Auswahl müssen denselben Charakter zeigen.
-        public string CharacterLoopId => characterDetails.LoopId;
-        public bool CharacterVideoPlaying => characterDetails.VideoPlaying;
-        public int CharacterVideoLoops => characterDetails.CompletedLoops;
+        /// <summary>Für die Menüprüfung: welchen Spieler zeigt die Spielerauswahl gerade?</summary>
+        public CharacterDef ShownCharacter => characters.Shown;
 
         void Play()
         {
@@ -849,8 +831,8 @@ namespace SoccerFight
         /// <summary>The top bar is there on every page but the first-launch ones.</summary>
         bool NavVisible => !MenuPage.IsOnboarding(page) && navFade > 0.5f;
 
-        /// <summary>Der hervorgehobene Reiter: die Charakterseite gehört zu „SPIELER“.</summary>
-        int ActiveTab => page == MenuPage.CharacterDetails ? MenuPage.Characters : page;
+        /// <summary>Der hervorgehobene Reiter.</summary>
+        int ActiveTab => page;
 
         /// <summary>Pointer position in canvas space, hover state, and the click that kicks a ball.</summary>
         void Aim()
@@ -935,7 +917,6 @@ namespace SoccerFight
             pages.Update(udt);
             var aim = AimNorm();
             characters.Update(udt, aim);
-            characterDetails.Update(udt, page == MenuPage.CharacterDetails, aim);
             shop.Update(udt, aim);
             onboarding.Update(udt, aim);
             duo.Update(udt, aim);

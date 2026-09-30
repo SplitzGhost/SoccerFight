@@ -99,8 +99,7 @@ Kamera nur die Menüoberfläche statt der Arena.
 
 Aufbau: oben das **Logo aus Mondstein** (`Art/LogoArt.cs` – eigene Blockbuchstaben, dunkle Steinkante, Moos an den
 Kanten, Risse mit Kristalllicht; im O dreht sich ein echter Ball), in der Mitte der **gewählte Spieler** auf dem
-Spielfeld, der den Ball hochhält – wer ihn abschießt, öffnet seine Charakterdetails; sein Namensschild
-führt zur Spielerauswahl.
+Spielfeld, der den Ball hochhält – wer ihn oder sein Namensschild abschießt, öffnet die Spielerauswahl.
 Links steht der Saisonrekord, rechts Spielmodus und der große **SPIELEN**-Knopf. Der Spielmodus-Knopf zeigt den Namen
 des gewählten Levels (ERSTE SCHRITTE, WILDE HAINE, STURMFRONT, GLUTPROBE, FINALE EKLIPSE), darüber eine Zeile mit
 Stages und Kristall-Faktor; ein Treffer auf ihn wechselt zum nächsten Level. Gesperrte Level tragen ein Schloss und
@@ -144,45 +143,48 @@ Zurück ins Hauptmenü kommt man über **Pause → Hauptmenü** (`Game.ToMenu`).
 ## Fortschritt: Klassen, Spieler, Fähigkeiten, Münzen und Kristalle
 
 **Charakter-Stufen 1–10** (`Meta/CharacterProgression.cs`): Jeder gekaufte oder als Starter gewählte Charakter
-beginnt auf Stufe 1 und wird separat gespeichert. Eine eigene **Charakter-Detailseite** öffnet sich über die
-Figur im Hauptmenü oder eine gekaufte Spielerkarte. Sie übernimmt die sechs freigegebenen Originalbilder:
-große Figur links, rechts Spezialfähigkeiten als Symbole, Leben, Schaden, Tempo und das Upgrade-Symbol.
-Es gibt dort weder Beschreibungstexte noch eine Charakter-Wechsel-Leiste. Stufe, Kristallpreis und Währungen
-bleiben aktuell; die Stats zeigen die dauerhaften Werte inklusive Klasse, persönlichem Bonus und Charakter-Stufe,
-ohne temporäre Laufkarten oder zufällige kritische Treffer. Die Originalbilder liegen unter
-`Resources/Menu/CharacterDetails`; `tools/extract-character-menu.py` übernimmt die Grafiken aus den
-nicht versionierten Vorlagen unter `Inspiration/CharacterMenuPreviews` und leert ihre variablen Zahlenfelder.
-Erst das Upgrade-Symbol kauft die nächste Stufe. Zurück führt zur vorherigen Ansicht; die Auswahl einer
-Karte kauft kein Upgrade. Die Kosten steigen quadratisch. Jede Stufe erhöht allgemeinen Angriff, maximales Leben,
+beginnt auf Stufe 1 und wird separat gespeichert. Verbessert wird er in der Spielerauswahl mit dem UPGRADE-Knopf
+(Kristalle). Die Kosten steigen quadratisch. Jede Stufe erhöht allgemeinen Angriff, maximales Leben,
 Schadensminderung, Fähigkeits-Abklingzeiten und Wirkungsfläche; kleine Tempoboni kommen dazu. Stufe 10 ist das Maximum.
 Die Charakter-Stufen 1 / 3 / 5 / 7 / 9 öffnen die fünf Level.
 
-Die Detailseite fühlt sich wie ein Teil des Spiels an: Die gemalten Knöpfe (Zurück, Upgrade) heben sich beim
-Zeigen an, ein Lichtstreif gleitet darüber, und ein bezahlbares Upgrade atmet leise. Zeigt man auf das Upgrade,
-erscheinen unter Leben, Schaden und Tempo die Zuwächse der nächsten Stufe in Grün. Die Stufe steht groß und
-geprägt im Bronzeschild (darunter „STUFE“), die Werte in kräftiger dunkler Schrift unter ihren Namen. Ein Upgrade
-löst eine ruhige grüne Welle aus: Ring und Funken am Knopf, dann leuchten Stufe und Werte nacheinander auf und
-der Zuwachs („+8“) steigt aus den Rauten. Zu wenig Kristalle lassen den Preis rot zittern.
-Oben liegt die normale Menüleiste, genau wie im Hauptmenü (Logo, Reiter mit „SPIELER“ hervorgehoben, Kristalle,
-Münzen, Knöpfe); zurück geht es über die Reiter oder ESC. Gemalter Zurück-Knopf und gemalte Währung sind deshalb
-aus den Bildern entfernt (`tools/newdesign/character-menu-clean.js`, läuft am Ende von `extract-character-menu.py`);
-über den Videoloops liegt an diesen Stellen der bereinigte Himmel des Standbilds. Die Szene lebt: Bodennebel vor
-den Füßen und ferner Dunst ziehen in einem böigen Wind, Lichtpunkte schweben darin, und das ganze Bild folgt dem
-Zeiger träge mit leichter Parallaxe (nahe Ebenen weiter als ferne).
+**Spielerauswahl** (`UI/CharacterPage.cs`, Reiter SPIELER oder ein Treffer auf die Figur im Hauptmenü): links steht
+der Spieler groß vor seinem Steinbild am Himmel, rechts Stufe (Bronze-Abzeichen), Name und Klasse, die
+Klassenfähigkeit der rechten Maustaste als Medaillon, der Klassenbonus in einem Satz, die drei Werte Leben, Schaden
+und Tempo (dauerhafte Werte mit Klasse, persönlichem Bonus und Stufe, ohne Laufkarten und Krits) und die Knöpfe
+**AUSWÄHLEN** und **UPGRADE**. Unten liegt die Figurenleiste mit allen Spielern; sie lässt sich mit den Pfeilen
+schieben, dahinter warten Boxen und Tennis als „kommt bald“. Oben bleibt die normale Menüleiste mit der echten
+Kristall- und Münzanzeige.
 
-**Kristall- und Münzanzeige** (`UI/CurrencyBar.cs`): überall im Menü dieselbe Leiste wie in der Charakteransicht
+- Eine **Kachel** zeigt einen Spieler nur an (die gezeigte ist golden und steht höher, der eigene Spieler trägt einen
+  grünen Haken, nicht gekaufte ein Schloss). Erst **AUSWÄHLEN** macht ihn zum eigenen Spieler – der Knopf zeigt dann
+  GEWÄHLT. Bei nicht gekauften Spielern steht dort KAUFEN mit dem Münzpreis, ein Treffer führt in den Shop.
+- **UPGRADE** zeigt den Kristallpreis der nächsten Stufe (`CharacterProgression.UpgradeCost`). Zeigt man darauf,
+  erscheinen über den Werten die Zuwächse in Grün. Ein Upgrade löst eine grüne Welle aus: Ring und Funken am Knopf,
+  die Stufe springt, die Werte zählen hoch und leuchten nacheinander auf, „+8“ steigt aus den Platten. Zu wenig
+  Kristalle lassen den Knopf zittern; auf Stufe 10 steht MAX.
+- Ein Treffer auf das **Medaillon** nennt die Taste der Fähigkeit.
+
+Alles lebt: Die Figur atmet (einatmen zügig, ausatmen lang), verlagert langsam ihr Gewicht – die Sohlen bleiben
+stehen –, neigt den Kopf zum Zeiger, und Zopf oder Flechten schwingen mit Trägheit und im Wind nach. Sie ist dabei ein
+ganzes Bild, das über ein feines Gitter weich verformt wird (`UI/FigureWarp.cs`), kein zerschnittenes. Dunst und
+Bodennebel ziehen in böigem Wind, Fackeln flackern, Lichtpunkte treiben, und Kulisse, Steinbild, Figur und Nebel
+verschieben sich mit dem Zeiger leicht gegeneinander. Knöpfe, Medaillon und Kacheln heben sich unter dem Zeiger von
+ihrem Schatten ab, ein Lichtstreif gleitet darüber; ein möglicher AUSWÄHLEN- oder bezahlbarer UPGRADE-Knopf atmet
+leise. Beim Öffnen fahren die Teile gestaffelt ein. Beim Wechsel tritt die alte Figur ab, die neue kommt von links
+und federt in den Stand (sie sackt beim Ankommen kurz ein), das Steinbild blendet über, Name, Medaillon und Bonus
+folgen, die Werte zählen um. AUSWÄHLEN lässt die Figur kurz aufhüpfen, ein goldener Ring läuft über den Boden.
+
+Die Grafik stammt aus sechs Bildentwürfen (`Inspiration/CharacterMenuPreviews`, nicht versioniert).
+`tools/newdesign/playerselect.js` zerlegt sie in Ebenen (`Resources/Menu/Players`): Wo mindestens vier Entwürfe
+übereinstimmen, ist die Kulisse bekannt; was abweicht, ist Figur oder Steinbild – getrennt über die Farben. Die
+Lücken hinter Figur, Tafel und Leiste werden aufgefüllt, Zahlen aus den Platten entfernt, Figuren und Teile mit
+Real-ESRGAN verdoppelt. Auf anderen Bildschirmformaten steht das Bild mittig, seine weichgezeichnete Kulisse füllt
+den Rest.
+
+**Kristall- und Münzanzeige** (`UI/CurrencyBar.cs`): überall im Menü dieselbe Leiste
 (Symbol + Steinleiste, weiße Zahl) – in der oberen Menüleiste Kristalle links, Münzen rechts; ein Treffer öffnet den
-Shop. `tools/newdesign/currency.js` stellt die Leisten aus dem Probebild frei (`Resources/Menu/Currency`).
-
-Die sechs Detailansichten haben eigene **stumme 8-Sekunden-Videoloops** (1600 × 900, 30 FPS): sanfte
-Atembewegung und Gewichtsverlagerung, ruhiger Fackelschein und einzelne Lichtpunkte. Die Menüsymbole
-bleiben fest; aktuelle Stats, Stufe, Preise und Währungen liegen als echte Oberfläche über dem Video.
-Nur der sichtbare Charakter wird abgespielt, beim Verlassen stoppt der Decoder. Bis zum ersten Frame
-bleibt das Originalbild sichtbar. Die MP4-Dateien liegen unter `Assets/StreamingAssets/CharacterLoops`,
-damit auch der Browser sie per URL laden kann (`UI/CharacterLoopPlayer.cs`).
-`tools/render-character-loops.ps1 -Encoder <ffmpeg.exe>` erstellt alle sechs Clips mit
-`Editor/CharacterLoopExporter.cs` und dem periodischen Shader `Resources/Menu/Animation/CharacterIdle.shader`.
-Die Videowerkzeuge liegen lokal unter `.build/video-tools`; sie werden nicht mit veröffentlicht.
+Shop. `tools/newdesign/currency.js` stellt die Leisten aus `tools/newdesign/sources/currency.png` frei (`Resources/Menu/Currency`).
 
 **Drei Klassen, drei Talente** (`Meta/ClassDefs.cs`, alle Zahlen in `ClassTuning`):
 
@@ -342,7 +344,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 | `Combat/` | Zentrale Trefferberechnung mit Krits, Brand, Frost, Kettenfunken, Explosionen und Kill-Effekten (`Combat`), Echo-Bälle, Wirbel/Schwarzes Loch, Zwillingssonne, Freistoß-Mauer (`Barrier`), Lockvogel (`Decoys`) |
 | `Enemies/` | Monster mit 9 Verhaltensarten, Elite-Eigenschaften, Minibossen und Bossen und einem Rig für alle Körper (Teile, Augen, Ketten; `Monster`, `EnemyDefs`), Gegner-Geschosse, Monster-Pool je Körper und Kollisionen (`WaveDirector`) |
 | `FX/` | Partikelsystem, Blitze, Kamera (Follow, Shake, Zoom), Post-Processing (inkl. Eklipse und Dunkelheit) |
-| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Spieler-Kader (`CharacterPage`), erster Start (`OnboardingPages`), Fähigkeiten-Menü (`SkillPage`), Shop (`ShopPage`), deren Karten, Kacheln und Preisschilder (`MetaWidgets`), Münzzähler mit einfliegenden Münzen (`CoinCounter`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
+| `UI/` | HUD (Healthbar, Build-Leiste, Stage-/Wellen-Anzeige, Boss-Leiste, Namensschilder, gesperrte Fähigkeiten, Stage- und Boss-Intro), Karten-Bildschirm (`RewardScreen`), Upgrade-Symbole (`UpgradeIcons`), Titelbildschirm mit Ball-Beschuss (`MainMenu`), Menü-Spielerfigur (`MenuFigure`), Glas-Knöpfe und Rahmen des Menüs (`MenuWidgets`), Unterseiten (`MenuPages`), Spielerauswahl (`CharacterPage`, Grafik `PlayerSelectArt`, verformte Figur `FigureWarp`), erster Start (`OnboardingPages`), Fähigkeiten-Menü (`SkillPage`), Shop (`ShopPage`), deren Karten, Kacheln und Preisschilder (`MetaWidgets`), Münzzähler mit einfliegenden Münzen (`CoinCounter`), Pausemenü (`PauseMenu`), gemeinsame Optionsseite (`SettingsPanel`), Widgets in `UiKit` |
 | `World/ThemeGrade` | Wetterpartikel und Dunkelheit pro Stage; die Farbmatrix für Umgebungsmaterialien (`_EnvGraded`) bleibt neutral, seit jede Stage ihre eigene Grafik hat |
 | `Core/` (Einstellungen) | `KeyBindings` (frei belegbare Tasten), `GameSettings` (Optionen, in PlayerPrefs gespeichert) |
 | `DevTools/`, `Editor/` | Screenshot-Tool für automatisierte Prüfung, Szenen-Setup, WebGL-Build (`WebGLBuilder`) |
@@ -371,7 +373,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Fähigkeiten-Preise, Gratis-Wahl, Klassen-Sperre:** `SkillCatalog.All` (`Meta/SkillCatalog.cs`); Kopfball-Werte `Header*` oben in `Player.cs`, Pose `PoseHeader` in `PlayerRig.cs`
 - **Münzen:** Werte pro Rang, Stage-Aufschlag und Stage-Bonus in `Meta/CoinRewards.cs`; Sprung, Zeigezeit und Flug in `Run/CoinDrops.cs` (`ShowTime`) und `UI/CoinCounter.cs`
 - **Neue Shop-Artikel / Währungen / Upgrades:** `ShopKind` + Eintrag in `Shop.Build`; Währung = Eintrag in `Currencies`; kaufbare Stufen = `PassiveDef` mit `MaxLevel` in `MetaPassives.Leveled` (Stufe liegt in `Profile.Level`)
-- **Hauptmenü:** Aufbau, Bild-Einpassung und Knöpfe in `UI/MainMenu.cs`; Hintergrund in `Resources/Menu/Ruinenhof.png`; Charakterdetails in `UI/CharacterDetailPage.cs`; Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
+- **Hauptmenü:** Aufbau, Bild-Einpassung und Knöpfe in `UI/MainMenu.cs`; Hintergrund in `Resources/Menu/Ruinenhof.png`; Spielerauswahl in `UI/CharacterPage.cs` (Entwürfe zerlegt `tools/newdesign/playerselect.js`); Logo-Buchstaben und -Farben in `Art/LogoArt.cs`; Knopf-, Symbol- und Schriftstil in `Art/MenuArt.cs`; Platzhalter-Seiten in `UI/MenuPages.cs`; Flugbahn und Fall des Balls in `Shoot`/`UpdateShots`/`Land`, der Einstieg ins Spiel in `UpdateTransition`
 - **Kamera:** `BaseSize` (Zoom) und `BaseY` in `CameraRig.cs`; wie stark sie der Plattformhöhe folgt in `CameraRig.Target`
 - **Plattformen:** Generator (Dichte, Größen, Höhen, Bewegung, welche Stücke stehen oder schweben) in `Level.Generate`, Aussehen, Seile und Laternen in `PlatformViews.cs`, Sprungverhalten der Blobs in `Monster.PlanLeap`
 - **Welt-Grafik:** was aus jedem Stage-Bogen wofür ausgeschnitten wird (Plattform/Deko, Lücken der Kulisse, Bodenstreifen, Leuchtfarben) in `tools/newdesign/stages.def.js`, danach `node stages.js [stage]` (`--fast` lässt die Kulissen stehen); Maßstab in `stages.js`; Freistellen in `cutout.js`, Auffüllen in `inpaint.js`; Platzierung der Deko, Lichter in der Kulisse und Parallax-Faktoren in `World/WorldEnvironment.cs`; Pflanzen-Atlas in `tools/newdesign/build.js`

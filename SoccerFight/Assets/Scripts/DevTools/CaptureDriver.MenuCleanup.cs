@@ -44,7 +44,7 @@ namespace SoccerFight
             yield return Kick("tab_chars");
             yield return Seconds(1.4f);
             yield return Shot("x03_spieler_basketball");
-            yield return Kick("sport0");
+            yield return Kick("tile_rio");
             yield return Seconds(1.2f);
             yield return Shot("x04_spieler_fussball");
 

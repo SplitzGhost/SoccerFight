@@ -113,8 +113,8 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
 - **Jedes Bildschirmformat:** alle Canvas bekommen ihren Skalierer von `UiKit.Scale` (Zeichenfläche immer mindestens
   1920 × 1080 Einheiten; breite Bildschirme bekommen mehr Breite, hohe mehr Höhe). Ein für 1920 × 1080 gebautes Layout
   passt damit überall; keinen eigenen `CanvasScaler` anlegen. Hintergründe strecken/füllen, Inhalte mittig oder an Ränder
-  ankern. Menüseiten wachsen auf hohen Bildschirmen mit (`SubPage.Update`), die Charakterseite füllt den Rest mit ihrem
-  weichgezeichneten Bild (`CharacterDetailPage.FillScreen`). Prüfen mit Szenario `screens` (4:3, 16:10, 21:9, 32:9,
+  ankern. Menüseiten wachsen auf hohen Bildschirmen mit (`SubPage.Update`), die Spielerauswahl füllt den Rest mit ihrer
+  weichgezeichneten Kulisse (`CharacterPage.FillScreen`). Prüfen mit Szenario `screens` (4:3, 16:10, 21:9, 32:9,
   Hochkant, 720p; eigene Liste mit `-sfSizes`). Im Browser bittet ein Hinweis Handys im Hochformat, das Gerät zu drehen.
 - UI-Animation mit `TimeFx.UiDelta` (sonst laufen Screenshots in Captures auseinander).
 - Alle Monster-KI zielt auf `Decoys.Focus(...)`/`Monster.focus`, nie direkt auf `player.Pos`.
@@ -135,11 +135,18 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   passen nur in Knöpfe mit gleichem Seitenverhältnis, breite Kartenknöpfe nutzen `ChunkButton.PlainPlate`.
   Wechselnde Überschriften mit `MenuArt.SetText` setzen (die gemalte Schrift hat keine Ziffern).
   Kristalle/Münzen zeigt im Menü immer `CurrencyBar` (Grafik aus `tools/newdesign/currency.js`, per Real-ESRGAN, mit Mipmaps –
-  Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen. Die Charakter-Detailbilder erzeugt
-  `tools/extract-character-menu.py` (Python mit PIL, z. B. `~/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe`).
-  Gemalte Knöpfe dort animiert ein weich begrenzter Bildausschnitt darüber (`CharacterDetailPage.MakeLift`).
-  Auf der Detailseite liegt die normale Menüleiste unverändert (Nutzerwunsch: genau so groß und alles wie im
-  Hauptmenü); `tools/newdesign/character-menu-clean.js` entfernt dafür gemalten Zurück-Knopf und Währung aus den Bildern.
+  Claude: ohne Sandbox starten); keine eigenen Währungs-Pillen bauen (Quelle der
+  Grafik: `tools/newdesign/sources/currency.png`).
+- **Spielerauswahl** (`UI/CharacterPage.cs`, Reiter SPIELER; auch die Figur im Hauptmenü führt dorthin): nach den Bildentwürfen
+  `Inspiration/CharacterMenuPreviews/<Name>.png`, aber aus Ebenen aufgebaut, damit sie lebt. `tools/newdesign/playerselect.js`
+  (Real-ESRGAN; Claude: ohne Sandbox starten, ~2 min) zerlegt die sechs Entwürfe → `Resources/Menu/Players`: gemeinsame Kulisse
+  (`scene`), pro Spieler Steinbild-Ausschnitt (`back_<id>`), freigestellte Figur (`figure_<id>`) und die Einzelteile (Abzeichen,
+  Name, Fähigkeit, Werteplatten, Knöpfe, Kacheln) mit `layout.json` (Lage im Entwurf + Gelenke der Figuren, `RIG` im Skript).
+  Die Figur wird als ganzes Bild verformt (`UI/FigureWarp.cs`: Atmen, Gewicht, Kopf, Haare) – nicht zerschneiden. Währung und
+  Menüleiste kommen nie aus dem Entwurf. Eine Kachel zeigt nur an, erst AUSWÄHLEN wählt (nicht gekauft: Preis → Shop).
+  Neue Spieler: Entwurf dazulegen, in `IDS`/`RIG`/`POSE` eintragen, Skript laufen lassen; ohne Entwurf bekommt der Spieler eine
+  leere Kachel und Textnamen. Überschriften dort in normaler fetter Schrift (`Head`), nicht in der gemalten (K, F, Ä unsauber).
+  Zwei gleiche Spieler-Posen täuschen dem Skript Hintergrund vor – deshalb `POSE`. Screenshots + Prüfungen: Szenario `players`.
 - **Belohnungskarten** (`UI/RewardScreen.cs`): alle Kartenbilder kommen aus `UI/CardEmblems.cs`, das jede Glyphe gleich
   prägt (Relief, Kontur, Schatten) – Upgrades freistehendes Silber, Fähigkeiten Gold-Medaillon mit Emaille (Glyphen der
   Fähigkeiten dort, der Upgrades in `UpgradeIcons.Draw`). Keine gemalten Einzelbilder dazwischenmischen. Seltenheit zeigen

@@ -212,7 +212,7 @@ namespace SoccerFight
             yield return Kick("tab_chars");
             yield return Seconds(2.6f);
             yield return Shot("h_menu_roster_hoops");
-            yield return Kick("sport0");
+            yield return Kick("tile_rio");
             yield return Seconds(2.2f);
             yield return Shot("h_menu_roster_soccer");
             Wallet.Add(Currencies.Coins, 600);
