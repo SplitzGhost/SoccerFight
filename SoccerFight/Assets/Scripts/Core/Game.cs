@@ -42,6 +42,7 @@ namespace SoccerFight
         EchoBalls echoes;
         Vortices vortices;
         Court court;
+        Ultis ultis;
         TwinSun twinSun;
         BossTells bossTells;
         UpgradeVisuals upgradeLook;
@@ -141,6 +142,8 @@ namespace SoccerFight
             vortices.Build(transform);
             court = new Court();
             court.Build(transform);
+            ultis = new Ultis();
+            ultis.Build(transform);
             barrier = new Barrier();
             barrier.Build(transform);
             partnerBarrier = new Barrier();
@@ -249,6 +252,7 @@ namespace SoccerFight
             echoes.Clear();
             vortices.Clear();
             court.Clear();
+            ultis.Clear();
             barrier.Clear();
             decoys.Clear();
             partnerBarrier.Clear();
@@ -345,6 +349,7 @@ namespace SoccerFight
             echoes.Update(dt);
             vortices.Update(dt);
             court.Update(dt);
+            ultis.Update(dt);
             barrier.Update(dt);
             partnerBarrier.Update(dt);
             decoys.Update(dt);

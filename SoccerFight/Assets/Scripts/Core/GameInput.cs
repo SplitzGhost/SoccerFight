@@ -25,6 +25,8 @@ namespace SoccerFight
         public static bool PowerPressed;
         /// <summary>One flag per skill slot (slot 1 = index 0).</summary>
         public static readonly bool[] SkillPressed = new bool[Slots];
+        /// <summary>Die Ulti-Taste (V).</summary>
+        public static bool UltiPressed;
         public static bool RestartPressed;
         public static bool PausePressed;
         public static bool ToggleFps;
@@ -46,7 +48,7 @@ namespace SoccerFight
         static void ResetStatics()
         {
             MoveX = 0f;
-            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = false;
+            JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = UltiPressed = false;
             shootArmed = false;
             RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             ClearSkills();
@@ -89,7 +91,7 @@ namespace SoccerFight
             if (Blocked)
             {
                 MoveX = 0f;
-                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = false;
+                JumpPressed = JumpHeld = DownPressed = DownHeld = ShootPressed = ShootHeld = PowerPressed = UltiPressed = false;
                 shootArmed = false;
                 ClearSkills();
             }
@@ -109,6 +111,7 @@ namespace SoccerFight
                 else if (!shootDown) shootArmed = false;
                 ShootHeld = shootDown && shootArmed;
                 PowerPressed = KeyBindings.WasPressed(GameAction.PowerShot);
+                UltiPressed = KeyBindings.WasPressed(GameAction.Ulti);
                 for (int i = 0; i < SkillPressed.Length; i++)
                     SkillPressed[i] = KeyBindings.WasPressed((GameAction)((int)GameAction.Skill1 + i));
             }
@@ -123,7 +126,7 @@ namespace SoccerFight
         /// <summary>Clears one-frame flags (used by the scripted driver after a frame is consumed).</summary>
         public static void ClearEdges()
         {
-            JumpPressed = DownPressed = ShootPressed = PowerPressed = false;
+            JumpPressed = DownPressed = ShootPressed = PowerPressed = UltiPressed = false;
             RestartPressed = PausePressed = ToggleFps = ToggleVsync = DevPressed = ClickPressed = false;
             ClearSkills();
         }

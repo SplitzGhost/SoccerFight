@@ -282,6 +282,8 @@ namespace SoccerFight
             Coins = new CoinCounter();
             Coins.Build(canvasRect, WorldToCanvas);
             BuildCoop();
+            BuildUlti();
+            RefreshUltiBinding();
         }
 
         void BuildJuggle()
@@ -396,13 +398,14 @@ namespace SoccerFight
                 s.badge.rectTransform.sizeDelta = new Vector2(w, 26f);
                 s.badgeRim.rectTransform.sizeDelta = new Vector2(w + 2f, 28f);
             }
+            RefreshUltiBinding();
             if (hintText != null)
                 hintText.text = KeyBindings.DisplayName(GameAction.Left) + " / " + KeyBindings.DisplayName(GameAction.Right) + "  LAUFEN    "
                     + KeyBindings.DisplayName(GameAction.Jump) + "  SPRINGEN    " + KeyBindings.DisplayName(GameAction.Down) + "  RUNTER    "
                     + KeyBindings.DisplayName(GameAction.Shoot) + "  " + Abilities.Name(Ability.Shot) + "    " + KeyBindings.DisplayName(GameAction.PowerShot) + "  " + Abilities.Name(Game.I != null && Game.I.Run != null ? Game.I.Run.Primary : Ability.Power) + "    ESC  PAUSE\n"
                     + "FÄHIGKEITEN  " + KeyBindings.DisplayName(GameAction.Skill1) + "  " + KeyBindings.DisplayName(GameAction.Skill2)
                     + "  " + KeyBindings.DisplayName(GameAction.Skill3) + "  " + KeyBindings.DisplayName(GameAction.Skill4)
-                    + "   ·   EINE NEUE NACH JEDEM BOSS, HÖCHSTENS " + RunState.MaxSkills;
+                    + "   ·   ULTI  " + KeyBindings.DisplayName(GameAction.Ulti) + "  (LÄDT MIT DEINEM SCHADEN)";
         }
 
         public void SetPaused(bool value) => paused = value;
@@ -746,6 +749,7 @@ namespace SoccerFight
             jugEndT = 99f;
             jugGroup.alpha = 0f;
             Coins?.Reset();
+            ResetUltiHud();
             RefreshBindings();   // the right mouse button names the class move of this run's player
             SyncBuild();
         }
@@ -828,6 +832,7 @@ namespace SoccerFight
             UpdateSlot(backSlot, player.StepCd, player.StepCooldownTotal, player.CanStepBack && free, dt, false, true);
             UpdateSlot(fakeSlot, player.FakeCd, player.FakeCooldownTotal, withBall && player.Grounded, dt, false, true);
             if (shotIconSport != player.Rig.Sport) { shotIconSport = player.Rig.Sport; shotSlot.icon.sprite = Abilities.Icon(Ability.Shot); shotSlot.accent = Abilities.Accent(Ability.Shot); RefreshBindings(); }
+            UpdateUlti(dt);
             UpdateCrosshair(dt);
             UpdateWave(dt, run);
             UpdateBoss(dt);
@@ -918,6 +923,7 @@ namespace SoccerFight
                 if (s.action != action) { s.action = action; rebind = true; }
             }
             if (rebind) RefreshBindings();
+            PlaceUlti(x, dt);
             foreach (var s in slots)
             {
                 bool show = s.ability == Ability.Shot || s.ability == run.Primary ? run.Has(s.ability) : run.SlotOf(s.ability) >= 0;

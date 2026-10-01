@@ -273,6 +273,7 @@ Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchte
 | Linksklick | Schuss Richtung Mauszeiger (Cooldown 0,45 s). **Gedrückt halten = Dauerfeuer:** geschossen wird, sobald der Ball zurück ist und der Cooldown abläuft. In der Luft stößt dich der Rückstoß in die Gegenrichtung: einmal pro Sprung, nach unten geschossen wie ein Doppelsprung |
 | Rechtsklick | Power-Schuss (nur im Stand, Cooldown 3,5 s): langes Ausholen, dann ein gerader goldener Schuss, der durch alle Gegner hindurchfliegt. Macht dafür weniger Schaden (12 statt 18) |
 | E / Q / R / F | **Fähigkeit 1 bis 4** – die vier Plätze deines Loadouts (siehe unten) |
+| V | **Ulti** – die große Attacke deines Spielers, sobald ihre Leiste voll ist (siehe „Ultis“) |
 | 1 / 2 / 3 | Upgrade- bzw. Fähigkeitskarte wählen |
 | Esc | Pausemenü (Weiter, Einstellungen, Neu starten, Hauptmenü, Beenden) |
 | F1 | FPS-Anzeige an/aus |
@@ -283,6 +284,31 @@ Die Farben im **Kit** (`Characters.cs`) färben nur noch Akzente wie das Leuchte
 **Tod-Menü:** Endet ein Lauf (Niederlage oder Sieg), erscheint eine Steintafel mit der Bilanz – wo der Lauf endete,
 besiegte Gegner, Zeit, Upgrades, verdiente Münzen, Rekord und die gesammelten Upgrades – und zwei Knöpfen:
 **Nochmal spielen** (auch Enter) und **Hauptmenü**. Im Duo startet nur der Host den nächsten Lauf.
+
+### Ultis
+
+Jeder Spieler hat eine eigene **Ulti** auf **V** (im Pausemenü umbelegbar). Ihre Leiste ist das große Abzeichen mit dem
+Gesicht des Spielers links neben den Fähigkeiten: Sie füllt sich mit dem **Schaden, den du machst** (an Bossen zählt er
+halb, die Ulti selbst zählt nicht). Eine volle Leiste kostet so viel Schaden, wie eine Welle ungefähr an Leben mitbringt
+(`Player.UltiCostPerBudget` × Wellen-Budget × Lebens-Skalierung, Stage 1 rund 300), also etwa eine Ulti pro Welle. Ist sie voll, leuchtet
+das Abzeichen, ein Lichtpunkt kreist, und an den Füßen steigen Funken auf.
+
+Jede Ulti beginnt mit einem **Kinomoment**: kurze Zeitlupe, das Bild wird dunkler und blasser, die Kamera geht nah ran,
+hinter der Figur ein Lichtkranz mit Strahlen, und der Name der Ulti fährt groß ins Bild. Während der Ulti ist der Spieler
+unverwundbar. Ihr Schaden wächst mit gut der Hälfte der Monster-Stärke mit (`Player.UltiPower`).
+
+| Spieler | Ulti | Was passiert |
+|---|---|---|
+| RIO | **Jahrhundert-Volley** | Lupft den Ball mit der Fußspitze hoch über den Kopf, schaut ihm nach und nimmt ihn volley: ein Feuerkomet (Ball in Flammen, Glut, Rauch) fliegt geradeaus durch die ganze Arena, trifft jeden Gegner auf dem Weg und setzt ihn in Brand; am Ende (Wand, Boden, Himmel) eine große Explosion mit Funkenregen und brennendem Boden |
+| BRUNO | **Bollwerk** | Knie hoch, Arme weit, dann ein Stampfer (Druckwelle, Staubwände, Risse) und eine goldene Kuppel aus Sechseck-Glas um ihn, 5 s lang: feindliche Geschosse prallen ab und fliegen auf die Monster zurück, Gegner werden hinausgedrückt und bekommen Schaden. Am Ende zerspringt die Kuppel in goldene Scherben und trifft alles in der Nähe |
+| MIRA | **Ballzauber-Sturm** | Lupft den Ball über den Kopf und schwebt ein Stück hoch, der Ball teilt sich in fünf Zauberbälle in Regenbogenfarben. Sie kreisen immer schneller um sie (vorne groß, hinten kleiner und hinter ihr) und schießen dann nacheinander mit Regenbogenspur auf die nächsten Gegner; Mira zeigt jedem sein Ziel |
+| DRE | **Buzzer Beater** | Auf bis zu fünf Gegnern rasten Fadenkreuze ein, Dre springt hoch und wirft fünf Bälle im hohen Bogen; eine Wurfuhr zählt 3-2-1, die Würfe folgen ihren Gegnern und schlagen beim **BUZZER!** alle zugleich ein (je „+3“) |
+| TITAN | **Meteor-Dunk** | Am Ziel wächst ein Schatten, Titan springt aus dem Bild (die Kamera bleibt am Ziel), hängt kurz und kracht brennend wie ein Meteor herunter: drei Druckwellen, Gesteinsbrocken, Feuer, ein glühender Krater, der langsam abkühlt |
+| NOVA | **Ankle Breaker** | Springt mit blitzschnellen Crossovers von Gegner zu Gegner (bis zu sieben in der Nähe), jeder fällt um, ist betäubt und nimmt mehr Schaden; am Ende steht Nova da, die Hand in der Hüfte, und lässt den Ball auf dem Finger kreiseln, ein letzter Schlag trifft alle Gefallenen. Ohne Gegner in der Nähe startet sie nicht |
+
+Code: Leiste, Ablauf und Zahlen in `Player/Player.Ulti.cs`, Posen in `Player/PlayerRig.Ulti.cs`, Komet, Kuppel, Zauberbälle,
+Würfe, Fadenkreuze, Meteor-Marke und Krater in `Combat/Ultis.cs`, Abzeichen, Name und Wurfuhr in `UI/Hud.Ulti.cs`. Im Duo
+sieht der Partner alles mit (Ereignis `Ev.Ulti`); Schaden macht nur, wer die Ulti auslöst. Screenshots: Szenario `ultis`.
 
 ### Die vier Fähigkeits-Plätze
 
@@ -374,6 +400,7 @@ VSync, FPS-Anzeige, Bildschirmwackeln, Leuchten (Bloom), den Farbsaum-Effekt und
 - **Fähigkeits-Plätze:** Anzahl in `RunState.MaxSkills` (heute 4); welche Fähigkeit auf welcher Taste liegt, ergibt sich aus der Reihenfolge in `RunState.Skills` (`Player.PressSkill`, `Hud.LayoutSlots`)
 - **Die späteren Moves:** Timing, Reichweiten und Schaden als Konstanten oben in `Player.cs` (`Tackle*`, `Punt*`, `Wall*`, `Nutmeg*`, `Decoy*`, `Whistle*`), Wirkung in den gleichnamigen `Start`/`Update`-Methoden; Mauer in `Combat/Barrier.cs`, Lockvogel in `Combat/Decoys.cs`, Meteor im `Ball.Punt`-Zustand
 - **Schlusspfiff-Leiste:** Ladung pro Kill in `Combat.OnKill`, Wirkung in `Player.BlowWhistle`
+- **Ultis:** Kosten der Leiste `Player.UltiCostPerBudget`, Timing und Schaden als Konstanten oben in `Player/Player.Ulti.cs`, welcher Spieler welche Ulti hat in `UltiDefs.Of`
 - **Spielgefühl:** Konstanten oben in `Player.cs` (Tempo, Sprung, Cooldowns, Schaden)
 - **Timing von Schuss & Flick:** `KickWindup/KickContact/...` und `FlickSet/FlickRoll/...` in `Player.cs`
 - **Hochhalten:** `Juggle*`-Konstanten in `Player.cs` (Zeitfenster, Heilung, Flughöhen, Reihenfolge Fuß/Knie/Kopf)

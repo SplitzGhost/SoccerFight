@@ -64,7 +64,7 @@ namespace SoccerFight
             {
                 var action = a;
                 keyRows[a] = UiKit.MakeKeyRow(Root, KeyBindings.ActionName(a), new Vector2(rx, y), colW, () => BeginCapture(action));
-                y -= 44f;
+                y -= 41f;
             }
             UiKit.MakeButton(Root, "STANDARD WIEDERHERSTELLEN", new Vector2(rx, y - 31f), new Vector2(305f, 83f), KeyBindings.ResetDefaults, false, 14f);
             // die Hinweise stehen unter der linken Spalte (dort ist Platz), damit ein ZURÜCK-Knopf unten nichts verdeckt

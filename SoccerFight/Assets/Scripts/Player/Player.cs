@@ -95,7 +95,9 @@ namespace SoccerFight
 
         public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash,
             // basketball
-            Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake }
+            Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake,
+            // die Ulti des Spielers (welche, sagt UltiKind)
+            Ulti }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -244,6 +246,7 @@ namespace SoccerFight
             ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
             TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = DashCd = 0f;
             Ultimate = 0f;
+            ResetUlti();
             DodgeTime = 0f;
             CurrentAction = Action.None;
             ActionTime = 0f;
@@ -279,6 +282,7 @@ namespace SoccerFight
             headerBuffer = Mathf.Max(0f, headerBuffer - dt);
             dashBuffer = Mathf.Max(0f, dashBuffer - dt);
             powerBuffer = Mathf.Max(0f, powerBuffer - dt);
+            ultiBuffer = Mathf.Max(0f, ultiBuffer - dt);
         }
 
         /// <summary>A skill key was pressed: buffer whatever ability sits in that slot.</summary>
@@ -419,8 +423,10 @@ namespace SoccerFight
                 ShotCd = FlickCd = PowerCd = StepOverCd = BicycleCd = 0f;
                 TackleCd = PuntCd = WallCd = NutmegCd = DecoyCd = HeaderCd = DashCd = 0f;
                 Ultimate = 1f;
+                UltiCharge = 1f;
             }
             TickHoops(dt);
+            TickUlti(dt);
 
             var s = S;
             var run = Run;
@@ -466,11 +472,13 @@ namespace SoccerFight
             if (!Dead)
                 for (int i = 0; i < GameInput.Slots; i++)
                     if (GameInput.SkillPressed[i]) PressSkill(run.SkillAt(i), i);
+            if (GameInput.UltiPressed && !Dead) PressUlti();
 
             // --- start actions
             if (CurrentAction == Action.None && !Dead)
             {
-                if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
+                if (ultiBuffer > 0f && UltiReady && StartUlti()) { }
+                else if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
                 else if (Hoops && StartHoopsAction()) { }
                 else if (dashBuffer > 0f && DashCd <= 0f && (Grounded || airDashes > 0)) StartDash();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
@@ -505,6 +513,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Punt) speedMul = ActionTime < PuntContact ? 0f : 0.35f;
             else if (CurrentAction == Action.Wall || CurrentAction == Action.Whistle) speedMul = 0.15f;
             else if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Decoy) speedMul = 0.1f;
+            else if (CurrentAction == Action.Ulti) speedMul = UltiSpeedMul();
             else if (CurrentAction >= Action.Throw) speedMul = HoopsSpeedMul();
             float target = input * MaxSpeedNow * speedMul;
             float accel;
@@ -565,6 +574,7 @@ namespace SoccerFight
             // The dash is flat even off a ledge; the bicycle kick hangs in the air for the scissor.
             // The dunk flies its own arc onto the target; everything else goes through the physics.
             if (DunkFlying) DunkMove(dt);
+            else if (UltiScripted) UltiMove(dt);
             else
             {
                 if (IsDashing || IsFastBreaking) Vel.y = 0f;
@@ -576,6 +586,7 @@ namespace SoccerFight
                     if (Mathf.Abs(Vel.y) < 1.6f && floaty) g *= 0.55f;
                     if (CurrentAction == Action.Bicycle && ActionTime < BicycleContact + 0.16f) g *= 0.25f;
                     if (CurrentAction == Action.Header && ActionTime < HeaderContact + 0.08f && Vel.y < 2f) g *= 0.3f;
+                    if (CurrentAction == Action.Ulti) g *= UltiGravityMul();
                     g *= s.GravityMul;
                     Vel.y = Mathf.Max(Vel.y - g * dt, -MaxFall * Mathf.Sqrt(s.GravityMul));
                 }
@@ -1148,6 +1159,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Whistle) UpdateWhistle(dt);
             else if (CurrentAction == Action.Header) UpdateHeader(dt);
             else if (CurrentAction == Action.Dash) UpdateDash(dt);
+            else if (CurrentAction == Action.Ulti) UpdateUlti(dt);
             else UpdateHoopsAction(dt);
         }
 
@@ -1709,6 +1721,7 @@ namespace SoccerFight
             }
 
             AbortJuggle();
+            AbortUlti();
             amount *= 1f - Mathf.Min(0.6f, s.Armor);
             // the defender's trait takes its share on top of the armour
             amount *= s.DamageTaken;
@@ -1783,6 +1796,7 @@ namespace SoccerFight
         {
             Dead = true;
             DeadTime = 0f;
+            AbortUlti();
             CurrentAction = Action.None;
             Game.I.Director.OnPlayerDied();
             TimeFx.SlowMo(0.2f, 0.4f, 0.9f);

@@ -19,6 +19,7 @@ namespace SoccerFight
             public Vector2 at;
             public float maxR, dmg, knock, stun, delay, age, dustT;
             public bool local, started;
+            public Src src;
             public readonly HashSet<int> hit = new HashSet<int>();
         }
 
@@ -80,9 +81,9 @@ namespace SoccerFight
         // ------------------------------------------------------------------ dunk shock waves
 
         /// <summary>A ring of force running out from at to maxR. local: it hurts (the partner's only shows).</summary>
-        public void Shockwave(Vector2 at, float maxR, float dmg, float knock, float stun, float delay, bool local)
+        public void Shockwave(Vector2 at, float maxR, float dmg, float knock, float stun, float delay, bool local, Src src = Src.Dunk)
         {
-            waves.Add(new Wave { at = at, maxR = maxR, dmg = dmg, knock = knock, stun = stun, delay = delay, local = local });
+            waves.Add(new Wave { at = at, maxR = maxR, dmg = dmg, knock = knock, stun = stun, delay = delay, local = local, src = src });
         }
 
         void UpdateWaves(float dt)
@@ -138,9 +139,9 @@ namespace SoccerFight
                 w.hit.Add(m.Id);
                 float fall = Mathf.Lerp(1f, 0.55f, Mathf.Clamp01(dist / w.maxR));
                 Vector2 dir = (dist > 0.01f ? d / dist : Vector2.up) + Vector2.up * 0.55f;
-                bool killed = Combat.Hit(m, w.dmg * fall, dir, w.knock * fall, Src.Dunk, big: true);
+                bool killed = Combat.Hit(m, w.dmg * fall, dir, w.knock * fall, w.src, big: true);
                 if (!killed && w.stun > 0f) m.Stun(w.stun);
-                if (killed) Game.I.Player.OnDunkKill();
+                if (killed && w.src == Src.Dunk) Game.I.Player.OnDunkKill();
                 FxSystem.I.Sparks(m.Center, dir, 50f, 5, 4f, 9f, Palette.Slam, 2.4f, 0.04f, 0.22f);
             }
         }

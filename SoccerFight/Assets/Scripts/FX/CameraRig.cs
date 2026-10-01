@@ -73,6 +73,12 @@ namespace SoccerFight
         public void SetZoom(float z) => zoomTarget = z;
 
         public void SetOverride(Vector2 center, float size) { overrideActive = true; overridePos = center; overrideSize = size; }
+
+        // Ulti: die Kamera bleibt eine Weile auf einem Punkt stehen (Titan springt aus dem Bild und kracht hinein)
+        Vector2 holdAt;
+        float holdT;
+
+        public void Hold(Vector2 at, float seconds) { holdAt = at; holdT = seconds; }
         public void ClearOverride() => overrideActive = false;
 
         Vector2 Target(Vector2 player, Vector2 lookAhead)
@@ -92,7 +98,8 @@ namespace SoccerFight
             else if (player.y < anchorTarget) anchorTarget = Mathf.Max(0f, player.y);   // falling off a level
             anchor = Mathf.SmoothDamp(anchor, anchorTarget, ref anchorVel, 0.3f, Mathf.Infinity, dt);
 
-            Vector2 target = Target(player, lookAhead);
+            holdT = Mathf.Max(0f, holdT - dt);
+            Vector2 target = holdT > 0f ? Target(holdAt, Vector2.zero) : Target(player, lookAhead);
             pos.x = Mathf.SmoothDamp(pos.x, target.x, ref vel.x, 0.16f, Mathf.Infinity, dt);
             pos.y = Mathf.SmoothDamp(pos.y, target.y, ref vel.y, 0.28f, Mathf.Infinity, dt);
 

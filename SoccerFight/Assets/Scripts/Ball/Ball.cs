@@ -13,7 +13,9 @@ namespace SoccerFight
         // explodes on the first thing it touches.
         public enum State { Held, Scripted, Shot, Rainbow, Loose, Returning, Pierce, Blast, Meteor, Header,
             // basketball: the three's arc onto the cursor, the alley-oop (up, hang, down on a monster)
-            Lob, Oop }
+            Lob, Oop,
+            // in einer Ulti unterwegs (Komet, Zauberbälle, Buzzer-Würfe): unsichtbar, kommt per Unpark zurück
+            Away }
 
         public State St { get; private set; } = State.Held;
         public Vector2 Pos;
@@ -463,6 +465,25 @@ namespace SoccerFight
         }
 
         public void BeginScripted() { Enter(State.Scripted); }
+
+        /// <summary>Die Ulti nimmt den Ball mit (er wird zum Kometen, zu Zauberbällen, zu Würfen): weg, bis Unpark.</summary>
+        public void Park()
+        {
+            Enter(State.Away);
+            Vel = Vector2.zero;
+            JuggleMode = false;
+            Charge = 0f;
+            SetVisible(false);
+        }
+
+        /// <summary>Der Ball taucht nach der Ulti wieder auf: frei fliegend (er kommt dann heim) oder gleich am Fuß.</summary>
+        public void Unpark(Vector2 at, Vector2 velocity, bool held)
+        {
+            ResetTo(at);
+            SetVisible(true);
+            if (!held) { Enter(State.Loose); Vel = velocity; }
+            squashVel -= 8f;
+        }
 
         /// <summary>Back to the feet after a move that carried the ball.</summary>
         public void EndScripted()

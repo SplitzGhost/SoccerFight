@@ -601,6 +601,12 @@ namespace SoccerFight
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
                     ref extraHipY, ref ballLocal);
             }
+            else if (player.CurrentAction == Player.Action.Ulti)
+            {
+                PoseUlti(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
+                    ref extraHipY, ref ballLocal);
+            }
             else if (player.CurrentAction >= Player.Action.Throw)
             {
                 PoseHoops(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,

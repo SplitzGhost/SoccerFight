@@ -159,6 +159,10 @@ Eine Markierung, die älter als 4 Stunden ist, räumt `publish.ps1` als vergesse
   hoch/klein). Hintergrund, Menüleiste und Währung kommen nie aus der Vorlage. Im Ordner liegen mehrere Vorlagen (nach Namen
   sortiert): im ersten Bild ist Mira abgeschnitten, ihre Karte kommt aus dem zweiten (`file: 1` in `CARDS`). Neue Spieler brauchen ein Kartenbild, sonst fehlen sie im Shop. Die Trefferfläche der
   Karte bleibt stehen, nur ihr Inneres hebt sich (sonst flattert der Hover am Rand). Screenshots: Szenario `shop`.
+- **Ultis** (`Player/Player.Ulti.cs`, Posen `Player/PlayerRig.Ulti.cs`, Welt-Teile `Combat/Ultis.cs`, HUD `UI/Hud.Ulti.cs`, Taste V =
+  `GameAction.Ulti`): jeder Spieler hat eine; die Leiste füllt sich in `Combat.Hit` mit echtem Schaden (nicht mit `Src.Ulti`/`Src.Hazard`).
+  Neue Spieler brauchen einen Eintrag in `UltiDefs.Of`, sonst haben sie keine Ulti. Während einer Ulti kann der Ball „unterwegs“ sein
+  (`Ball.State.Away`, `Ball.Park`/`Unpark`, `Player.UltiBallOut`). Im Duo sieht der Partner sie über `Ev.Ulti`. Screenshots: Szenario `ultis`.
 - **Tod-Menü** (`UI/DeathMenu.cs`): erscheint bei Lauf-Ende (Niederlage oder Sieg) statt der alten HUD-Einblendung – gemalte Tafel,
   Bilanz, Knöpfe „Nochmal spielen“ (Host/Solo, auch Enter) und „Hauptmenü“. `Game` öffnet/schließt es. Screenshots: Szenario `death`.
 - `Inspiration/` ist gitignored (Referenzbilder) – ansehen ja, nie committen. Nur die daraus ausgeschnittenen

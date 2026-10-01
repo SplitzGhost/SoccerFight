@@ -24,6 +24,8 @@ namespace SoccerFight
         public Vector2 BallPos, BallVel, MeteorTarget;
         public float Charge, BallSize, DunkFlight;
         public bool JuggleMode, MeteorFalling;
+        /// <summary>Ulti: wie viele Sprünge Novas Ankle Breaker macht (die Pose am Ende hängt daran).</summary>
+        public int UltiSteps;
 
         public void Write(NetWriter w)
         {
@@ -43,6 +45,7 @@ namespace SoccerFight
             w.Byte((byte)BallSt); w.Pos(BallPos); w.Pos(BallVel); w.Pos(MeteorTarget);
             w.Unit(Charge); w.Unit(BallSize * 0.5f); w.Unit(DunkFlight);
             w.Byte((byte)((JuggleMode ? 1 : 0) | (MeteorFalling ? 2 : 0)));
+            w.Byte((byte)Mathf.Clamp(UltiSteps, 0, 255));
         }
 
         public static PlayerNet Read(NetReader r)
@@ -65,6 +68,7 @@ namespace SoccerFight
             s.Charge = r.Unit(); s.BallSize = r.Unit() * 2f; s.DunkFlight = r.Unit();
             int bf = r.Byte();
             s.JuggleMode = (bf & 1) != 0; s.MeteorFalling = (bf & 2) != 0;
+            s.UltiSteps = r.Byte();
             return s;
         }
 
@@ -119,6 +123,7 @@ namespace SoccerFight
                 Invuln = InvulnTimer, Hp = Hp, MaxHp = MaxHp, DownLeft = downLeft,
                 BallSt = Ball.St, BallPos = Ball.Pos, BallVel = Ball.Vel, MeteorTarget = Ball.MeteorTarget,
                 Charge = Ball.Charge, BallSize = Ball.SizeMul, JuggleMode = Ball.JuggleMode, MeteorFalling = Ball.MeteorFalling, DunkFlight = DunkFlight,
+                UltiSteps = UltiSteps,
             };
         }
 
@@ -134,6 +139,7 @@ namespace SoccerFight
             NextTouch = s.NextTouch; LastTouch = s.LastTouch; SinceTouch = s.SinceTouch; JuggleDropTime = s.JugDropTime; netJugTtc = s.JugTtc;
             InvulnTimer = s.Invuln; Hp = s.Hp; MaxHp = Mathf.Max(1f, s.MaxHp);
             DunkFlight = Mathf.Max(0.3f, s.DunkFlight);
+            UltiSteps = s.UltiSteps;
             Ball.ApplyNet(s.BallSt, s.BallPos, s.BallVel, s.Charge, s.JuggleMode, s.BallSize, s.MeteorTarget, s.MeteorFalling, s.Facing);
         }
 
@@ -150,6 +156,7 @@ namespace SoccerFight
             InvulnTimer = 2.5f;
             CurrentAction = Action.None;
             ActionTime = 0f;
+            UltiBallOut = false;
             Rig.ResetPose();
             Rig.SetVisible(true);
             Ball.ResetTo(Pos + new Vector2(0.5f * Facing, Art.BallRadius));

@@ -223,60 +223,10 @@ namespace SoccerFight
 
                 // ---- the dunk: gather, rise with the ball overhead, cock it back, hammer it down on landing
                 case Player.Action.Dunk:
-                {
-                    float tG = Player.DunkGather, T = player.DunkFlight, tS = tG + T, tE = tS + Player.DunkRecover;
-                    Vector2 chestB = new Vector2(0.22f, hipY + body.Shoulder.y * 0.7f);
-                    Vector2 overhead = sh + new Vector2(0.1f, 0.52f);
-                    Vector2 cocked = sh + new Vector2(-0.14f, 0.46f);
-                    Vector2 slam = new Vector2(0.44f, hipY + body.Shoulder.y * 0.25f);
-                    if (t < tG)
-                    {
-                        float k = MathUtil.Smooth01(t / tG);
-                        extraHipY += -0.15f * k;
-                        leanTarget = Mathf.Lerp(leanTarget, -14f, k);
-                        nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.2f, A), k);
-                        farFoot = Vector2.Lerp(farFoot, new Vector2(-0.18f, A), k);
-                        ballLocal = Vector2.Lerp(player.KickBallLocal, chestB, MathUtil.EaseOutCubic(k));
-                        BallIsScripted = true;
-                        GripNear(ballLocal, new Vector2(0.1f, -1f));
-                        GripFar(ballLocal, new Vector2(-1f, 0.2f));
-                    }
-                    else if (t < tS)
-                    {
-                        float k = Mathf.Clamp01((t - tG) / T);
-                        Vector2 b;
-                        if (k < 0.55f) b = Vector2.Lerp(chestB, overhead, MathUtil.EaseOutCubic(k / 0.55f));
-                        else if (k < 0.82f) b = Vector2.Lerp(overhead, cocked, MathUtil.EaseInOutSine((k - 0.55f) / 0.27f));
-                        else b = Vector2.Lerp(cocked, slam, MathUtil.EaseInQuad((k - 0.82f) / 0.18f));
-                        ballLocal = b;
-                        BallIsScripted = true;
-                        // both hands on the ball: under it on the way up, behind it for the hammer
-                        Vector2 dir = (b - sh).sqrMagnitude > 0.001f ? (b - sh).normalized : Vector2.up;
-                        GripNear(b, -dir + new Vector2(0.15f, 0f));
-                        GripFar(b, -dir + new Vector2(-0.35f, 0.1f));
-                        // the legs: near knee drives up, far leg trails; the body arches, then snaps forward
-                        float cock = MathUtil.Smooth01((k - 0.5f) / 0.3f), whip = MathUtil.Smooth01((k - 0.82f) / 0.18f);
-                        nearFoot = new Vector2(0.24f, hipY - 0.4f);
-                        farFoot = new Vector2(-0.2f, hipY - body.ThighLen - body.ShinLen * 0.85f);
-                        nearFlat = 0f; farFlat = 0f; nearPoint = 0.5f; farPoint = 0.85f;
-                        leanTarget = Mathf.Lerp(Mathf.Lerp(-4f, 12f, cock), -24f, whip);
-                        headTarget = Mathf.Lerp(12f, -10f, whip);
-                    }
-                    else
-                    {
-                        // the landing crouch, arms flung down and out after the slam
-                        float k = Mathf.Clamp01((t - tS) / (tE - tS));
-                        float crouch = 1f - MathUtil.Smooth01(k);
-                        extraHipY += -0.2f * crouch;
-                        nearFoot = new Vector2(0.24f, A); farFoot = new Vector2(-0.24f, A);
-                        nearFlat = farFlat = 1f;
-                        leanTarget = Mathf.Lerp(leanTarget, -26f * crouch, 1f);
-                        nearShoulder = Mathf.Lerp(-20f, nearShoulder, k); nearElbow = Mathf.Lerp(20f, nearElbow, k);
-                        farShoulder = Mathf.Lerp(-40f, farShoulder, k); farElbow = Mathf.Lerp(20f, farElbow, k);
-                        nearIKw = farIKw = 0f;
-                    }
+                    PoseDunk(t, Player.DunkGather, player.DunkFlight, Player.DunkRecover, hipY, ref nearFoot, ref nearFlat, ref nearPoint,
+                        ref farFoot, ref farFlat, ref farPoint, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow,
+                        ref leanTarget, ref headTarget, ref extraHipY, ref ballLocal);
                     break;
-                }
 
                 // ---- the alley-oop: both hands scoop the ball up and fling it straight into the sky
                 case Player.Action.AlleyOop:
@@ -445,6 +395,70 @@ namespace SoccerFight
                     headTarget = Mathf.Lerp(headTarget, Mathf.Lerp(18f, 2f, drop), w);
                     break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// The dunk's body: gather (tG), the flight with the ball overhead, cocked and hammered down (T), the landing
+        /// crouch (tR). The dunk and Titan's meteor dunk (a much longer flight) share it.
+        /// </summary>
+        void PoseDunk(float t, float tG, float T, float tR, float hipY, ref Vector2 nearFoot, ref float nearFlat, ref float nearPoint,
+            ref Vector2 farFoot, ref float farFlat, ref float farPoint,
+            ref float nearShoulder, ref float nearElbow, ref float farShoulder, ref float farElbow,
+            ref float leanTarget, ref float headTarget, ref float extraHipY, ref Vector2 ballLocal)
+        {
+            const float A = PlayerDims.AnkleHeight;
+            Vector2 sh = ShoulderAt(hipY);
+            float tS = tG + T, tE = tS + tR;
+            Vector2 chestB = new Vector2(0.22f, hipY + body.Shoulder.y * 0.7f);
+            Vector2 overhead = sh + new Vector2(0.1f, 0.52f);
+            Vector2 cocked = sh + new Vector2(-0.14f, 0.46f);
+            Vector2 slam = new Vector2(0.44f, hipY + body.Shoulder.y * 0.25f);
+            if (t < tG)
+            {
+                float k = MathUtil.Smooth01(t / tG);
+                extraHipY += -0.15f * k;
+                leanTarget = Mathf.Lerp(leanTarget, -14f, k);
+                nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.2f, A), k);
+                farFoot = Vector2.Lerp(farFoot, new Vector2(-0.18f, A), k);
+                ballLocal = Vector2.Lerp(player.KickBallLocal, chestB, MathUtil.EaseOutCubic(k));
+                BallIsScripted = true;
+                GripNear(ballLocal, new Vector2(0.1f, -1f));
+                GripFar(ballLocal, new Vector2(-1f, 0.2f));
+            }
+            else if (t < tS)
+            {
+                float k = Mathf.Clamp01((t - tG) / T);
+                Vector2 b;
+                if (k < 0.55f) b = Vector2.Lerp(chestB, overhead, MathUtil.EaseOutCubic(k / 0.55f));
+                else if (k < 0.82f) b = Vector2.Lerp(overhead, cocked, MathUtil.EaseInOutSine((k - 0.55f) / 0.27f));
+                else b = Vector2.Lerp(cocked, slam, MathUtil.EaseInQuad((k - 0.82f) / 0.18f));
+                ballLocal = b;
+                BallIsScripted = true;
+                // both hands on the ball: under it on the way up, behind it for the hammer
+                Vector2 dir = (b - sh).sqrMagnitude > 0.001f ? (b - sh).normalized : Vector2.up;
+                GripNear(b, -dir + new Vector2(0.15f, 0f));
+                GripFar(b, -dir + new Vector2(-0.35f, 0.1f));
+                // the legs: near knee drives up, far leg trails; the body arches, then snaps forward
+                float cock = MathUtil.Smooth01((k - 0.5f) / 0.3f), whip = MathUtil.Smooth01((k - 0.82f) / 0.18f);
+                nearFoot = new Vector2(0.24f, hipY - 0.4f);
+                farFoot = new Vector2(-0.2f, hipY - body.ThighLen - body.ShinLen * 0.85f);
+                nearFlat = 0f; farFlat = 0f; nearPoint = 0.5f; farPoint = 0.85f;
+                leanTarget = Mathf.Lerp(Mathf.Lerp(-4f, 12f, cock), -24f, whip);
+                headTarget = Mathf.Lerp(12f, -10f, whip);
+            }
+            else
+            {
+                // the landing crouch, arms flung down and out after the slam
+                float k = Mathf.Clamp01((t - tS) / (tE - tS));
+                float crouch = 1f - MathUtil.Smooth01(k);
+                extraHipY += -0.2f * crouch;
+                nearFoot = new Vector2(0.24f, A); farFoot = new Vector2(-0.24f, A);
+                nearFlat = farFlat = 1f;
+                leanTarget = Mathf.Lerp(leanTarget, -26f * crouch, 1f);
+                nearShoulder = Mathf.Lerp(-20f, nearShoulder, k); nearElbow = Mathf.Lerp(20f, nearElbow, k);
+                farShoulder = Mathf.Lerp(-40f, farShoulder, k); farElbow = Mathf.Lerp(20f, farElbow, k);
+                nearIKw = farIKw = 0f;
             }
         }
     }

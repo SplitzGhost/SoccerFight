@@ -203,6 +203,14 @@ namespace SoccerFight
         }
 
         /// <summary>A pump fake: the ghost ball for the partner's screen, and the bait for the host's monsters.</summary>
+        /// <summary>Ein Schritt der Ulti (0: der Kinomoment, danach je nach Ulti Komet, Kuppel, Bälle, Einschlag …).</summary>
+        public static void SendUlti(UltiKind kind, byte step, Vector2 a, Vector2 b, float f)
+        {
+            if (!Active) return;
+            var w = S.Event(Ev.Ulti);
+            w.Byte((byte)kind); w.Byte(step); w.Vec(a); w.Vec(b); w.Float(f);
+        }
+
         public static void SendFake(Vector2 origin, Vector2 from, Vector2 to, float flight, float life, float radius)
         {
             if (!Active) return;
@@ -267,7 +275,7 @@ namespace SoccerFight
         Hazard = 30, Gust, Eclipse, Toast,
         Stage = 40, Wave, WaveDone, BossDown, Rewards, RewardsDone, RunOver,
         Down = 60, Up,
-        Wall = 70, Decoy, Vortex, Fx, Echo, Fake,
+        Wall = 70, Decoy, Vortex, Fx, Echo, Fake, Ulti,
     }
 
     /// <summary>One room: the link, the partner, the run in common.</summary>
@@ -807,6 +815,15 @@ namespace SoccerFight
                     if (!InRun) break;
                     Court.I?.FakeBall(from, to, flight, life, false);
                     Court.ApplyFake(origin, to, radius, life);   // only the host's monsters listen
+                    break;
+                }
+                case Ev.Ulti:
+                {
+                    var kind = (UltiKind)r.Byte();
+                    int step = r.Byte();
+                    Vector2 a = r.Vec(), b = r.Vec();
+                    float f = r.Float();
+                    if (InRun) Ultis.I?.Remote(kind, step, a, b, f);
                     break;
                 }
                 default:

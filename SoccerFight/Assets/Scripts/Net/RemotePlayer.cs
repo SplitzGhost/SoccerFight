@@ -84,6 +84,7 @@ namespace SoccerFight
             if (s.Character != Character)
             {
                 Character = s.Character;
+                P.CharacterIndex = Character;
                 P.Rig.ApplyLook(PlayerArt.Get(Character));
             }
             DownLeft = s.DownLeft;
@@ -93,9 +94,10 @@ namespace SoccerFight
             {
                 shown = body;
                 P.Rig.SetVisible(body);
-                B.SetVisible(body);
                 if (body) P.Rig.ResetPose();
             }
+            // der Ball steckt gerade in einer Ulti (Komet, Zauberbälle, Würfe): dann ist er nicht zu sehen
+            B.SetVisible(body && s.BallSt != Ball.State.Away);
             if (!body) return;
             P.Rig.Update(dt);
             B.UpdateNet(dt, P);

@@ -4,7 +4,9 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Where a hit came from. Primary sources scale with the build; derived ones (chains, explosions, burn) carry already-scaled damage.</summary>
-    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Three, Dunk, AlleyOop, FastBreak, Block, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard }
+    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Three, Dunk, AlleyOop, FastBreak, Block, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard,
+        /// <summary>Die Ulti eines Spielers (füllt die eigene Ulti-Leiste nicht).</summary>
+        Ulti }
 
     /// <summary>
     /// Every player hit on a monster goes through here: damage multipliers, crits, then the build's
@@ -32,7 +34,7 @@ namespace SoccerFight
 
         static PlayerStats S => Game.I.Run.Stats;
 
-        static bool Primary(Src s) => s <= Src.Vortex;
+        static bool Primary(Src s) => s <= Src.Vortex || s == Src.Ulti;
         static bool Direct(Src s) => s <= Src.Dash;
 
         static float SourceMul(Src src, PlayerStats s)
@@ -96,7 +98,11 @@ namespace SoccerFight
             bool direct = Direct(src);
             bool shock = direct && s.ThermalShock && m.Burning && m.Slowed;
             Vector2 at = m.Center;
+            // die Ulti-Leiste füllt sich mit dem Schaden, der wirklich ankommt (kein Überschuss beim Todesstoß)
+            float dealt = Mathf.Min(d, Mathf.Max(0f, m.Hp));
+            bool boss = m.Rank == Rank.Boss;
             bool killed = m.Hit(d, dir, knock, big || crit, crit, boosted);
+            if (src != Src.Ulti && src != Src.Hazard) Game.I.Player.AddUltiDamage(dealt, boss);
             if (hot && !killed) m.Ignite(d * 0.3f, 3f);
             if (boosted) PowerStar(at, dir, m.Radius, crit || big);
             // heavier kicks (knockback upgrades) land with a visible punch ring

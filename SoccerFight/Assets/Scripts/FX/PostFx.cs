@@ -71,6 +71,11 @@ namespace SoccerFight
 
         public void SetLowHealth(float amount) => lowHealth = amount;
 
+        // Ulti: das Bild wird für einen Moment dunkler und blasser, die Effekte leuchten heraus
+        float focus, focusHold;
+
+        public void UltiFocus(float seconds) => focusHold = Mathf.Max(focusHold, seconds);
+
         // ---- stage looks
         float themeVignette, themeVignetteShown, eclipse, darkness;
         Vector2 darkCenter = new Vector2(0.5f, 0.5f);
@@ -89,6 +94,9 @@ namespace SoccerFight
             hurt = Mathf.Max(0f, hurt - unscaledDt * 2.2f);
             bloomBoost = Mathf.Max(0f, bloomBoost - unscaledDt * 4f);
             themeVignetteShown = Mathf.MoveTowards(themeVignetteShown, themeVignette, unscaledDt * 0.2f);
+            focusHold = Mathf.Max(0f, focusHold - unscaledDt);
+            focus = Mathf.MoveTowards(focus, focusHold > 0f ? 1f : 0f, unscaledDt * (focusHold > 0f ? 7f : 2.2f));
+            float fo = MathUtil.Smooth01(focus);
 
             // subtle: a hint of aberration sells the hit, too much just looks broken
             float e = impact * impact;
@@ -101,14 +109,14 @@ namespace SoccerFight
             float red = Mathf.Max(hurt, lowHealth * (0.35f + 0.25f * pulse));
             Color baseVig = Color.Lerp(new Color(0.01f, 0.02f, 0.05f), new Color(0.2f, 0f, 0.04f), eclipse);
             vignette.color.value = Color.Lerp(baseVig, new Color(0.55f, 0.02f, 0.08f), red);
-            vignette.intensity.value = BaseVignette + themeVignetteShown + red * 0.18f + eclipse * 0.16f + darkness * 0.05f;
+            vignette.intensity.value = BaseVignette + themeVignetteShown + red * 0.18f + eclipse * 0.16f + darkness * 0.05f + fo * 0.2f;
             vignette.center.value = Vector2.Lerp(new Vector2(0.5f, 0.5f), darkCenter, darkness);
             vignette.smoothness.value = Mathf.Lerp(0.5f, 0.62f, darkness);
             vignette.rounded.value = darkness > 0.5f;
 
             color.colorFilter.value = Color.Lerp(Color.white, new Color(1f, 0.8f, 0.84f), eclipse);
-            color.saturation.value = 10f - 22f * eclipse;
-            color.postExposure.value = 0.05f - 0.25f * eclipse;
+            color.saturation.value = 10f - 22f * eclipse - 28f * fo;
+            color.postExposure.value = 0.05f - 0.25f * eclipse - 0.42f * fo;
         }
     }
 }

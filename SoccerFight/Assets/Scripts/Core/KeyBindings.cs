@@ -5,7 +5,7 @@ using UnityEngine.InputSystem.Controls;
 namespace SoccerFight
 {
     /// <summary>Movement, the two shots, and four skill slots — whatever the run unlocks lands in the slots in order.</summary>
-    public enum GameAction { Left, Right, Jump, Shoot, Down, PowerShot, Skill1, Skill2, Skill3, Skill4 }
+    public enum GameAction { Left, Right, Jump, Shoot, Down, PowerShot, Skill1, Skill2, Skill3, Skill4, Ulti }
 
     /// <summary>A single key or mouse button.</summary>
     public struct Binding
@@ -25,7 +25,7 @@ namespace SoccerFight
         public static readonly GameAction[] All =
         {
             GameAction.Left, GameAction.Right, GameAction.Jump, GameAction.Down, GameAction.Shoot,
-            GameAction.PowerShot, GameAction.Skill1, GameAction.Skill2, GameAction.Skill3, GameAction.Skill4
+            GameAction.PowerShot, GameAction.Skill1, GameAction.Skill2, GameAction.Skill3, GameAction.Skill4, GameAction.Ulti
         };
         static readonly Binding[] current = new Binding[All.Length];
         static bool loaded;
@@ -48,6 +48,7 @@ namespace SoccerFight
                 case GameAction.Skill1: return "FÄHIGKEIT 1";
                 case GameAction.Skill2: return "FÄHIGKEIT 2";
                 case GameAction.Skill3: return "FÄHIGKEIT 3";
+                case GameAction.Ulti: return "ULTI";
                 default: return "FÄHIGKEIT 4";
             }
         }
@@ -65,6 +66,7 @@ namespace SoccerFight
                 case GameAction.Skill1: return Binding.K(Key.E);
                 case GameAction.Skill2: return Binding.K(Key.Q);
                 case GameAction.Skill3: return Binding.K(Key.R);
+                case GameAction.Ulti: return Binding.K(Key.V);
                 default: return Binding.K(Key.F);
             }
         }
