@@ -411,7 +411,8 @@ async function openHand(id, ppu) {
 
 async function buildFigure(id) {
     const F = FIG[id];
-    const img = await load(id + '.png');
+    // file: Bogen außerhalb von CharackterNewDesign (die Boxer liegen in Inspiration/boxer/Figuren)
+    const img = await load(F.file || id + '.png');
     const ppu = (F.sole - F.top) / F.height;
     const J = { ...F.joints };
     J.ankle = [J.ankle[0], F.sole - ANKLE * ppu];
@@ -423,7 +424,9 @@ async function buildFigure(id) {
     // Rumpf, Hose, Hals, Kopf. Die Hose endet unten rund, knapp über dem Saum: das Hosenbein darunter gehört zum
     // Oberschenkel und schwingt mit dem Bein (sonst hinge beim Hochziehen des Knies ein starrer Kasten darunter).
     parts.Torso = o(region(img, F.torso, [F.arm]), J.hip, null);
-    parts.Pelvis = o(clip(region(img, F.pelvis, [F.arm, F.torso, ...(F.clothHide || [])]), ellipseSdf([J.hip[0] + 3, J.hip[1] - 6], th * 1.45, th * 0.98), 5), J.hip, null);
+    // tucked: das Trikot steckt in der Hose, der Bund liegt darüber – der Rumpf verdeckt die Hose dann nicht
+    const pelvisHide = [F.arm, ...(F.tucked ? [] : [F.torso]), ...(F.clothHide || [])];
+    parts.Pelvis = o(clip(region(img, F.pelvis, pelvisHide, F.pelvisZones || []), ellipseSdf([J.hip[0] + 3, J.hip[1] - 6], th * 1.45, th * 0.98), 5), J.hip, null);
     parts.Neck = o(region(img, F.neck, [F.torso, ...(F.neckHide || [])]), J.neck, null);
     parts.Head = o(region(img, F.head, F.headHide || []), J.head, null);
     if (F.tuft) parts.HairTuft = o(region(img, F.tuft.poly), F.tuft.root, null);
@@ -483,6 +486,8 @@ async function buildFigure(id) {
         tuft: F.tuft ? u(J.head, F.tuft.root) : [0, 0],
         hipHeight: (F.sole - J.hip[1]) / ppu, headTop: (F.sole - F.top) / ppu,
         tuftFlex: F.tuft ? F.tuft.flex : 0,
+        // 1: Hosenbund über dem Trikot (PlayerRig zeichnet die Hose dann vor dem Rumpf)
+        tucked: F.tucked ? 1 : 0,
         // Faust: Handgelenk → Knöchel entlang des Unterarms; Schuh: Knöchel → Spitze und Ferse (fürs Dribbeln)
         hand: extent(parts.Hand, (x, y) => y) / ppu,
         toe: extent(parts.Boot, (x, y) => x) / ppu, heel: extent(parts.Boot, (x, y) => -x) / ppu,
