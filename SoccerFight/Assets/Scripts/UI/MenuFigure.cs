@@ -26,7 +26,7 @@ namespace SoccerFight
         PlayerLook look;
         CharacterDef def;
         PlayerBody body = PlayerBody.Soccer;
-        bool hoops, hiRes, openShown;
+        bool hoops, boxing, hiRes, openShown;
         float dribU, dribW = -1f;
         float scale, spin, phase;
         float kickT = -1f;
@@ -72,6 +72,11 @@ namespace SoccerFight
             def = character;
             this.body = body.Body ?? PlayerBody.Soccer;
             hoops = body.Sport == Sport.Basketball;
+            boxing = body.Sport == Sport.Boxing;
+            // eingestecktes Trikot: der Hosenbund liegt über dem Rumpf
+            int ti = torso.rectTransform.GetSiblingIndex(), pi = pelvis.rectTransform.GetSiblingIndex();
+            if (this.body.Tucked && pi < ti) pelvis.rectTransform.SetSiblingIndex(ti);
+            else if (!this.body.Tucked && pi > ti) pelvis.rectTransform.SetSiblingIndex(neck.rectTransform.GetSiblingIndex() + 1);
             Color back = Palette.BackLimbTint;
             Bind(farHand, look.Hand, back); Bind(farFore, look.Forearm, back); Bind(farUpper, look.UpperArm, back);
             Bind(farShin, look.Shin, back); Bind(farThigh, look.Thigh, back); Bind(farBoot, look.Boot, back);
@@ -134,6 +139,7 @@ namespace SoccerFight
             if (kickT >= 0f) kickT += dt;
             phase += dt;
             if (hoops) UpdateHoops(dt, mode, lookAt);
+            else if (boxing) UpdateBoxing(dt, mode, lookAt);
             else UpdateSoccer(dt, mode, lookAt);
             if (kickT > 1.4f) kickT = -1f;
         }
@@ -278,6 +284,57 @@ namespace SoccerFight
             PlaceBall(b, kick);
         }
 
+        /// <summary>Ein Schlag über der Zeit: schnappt heraus, hält kurz, zieht zurück (0..1).</summary>
+        static float PunchCurve(float u, float hit = 0.065f)
+        {
+            if (u < 0f || u > hit + 0.2f) return 0f;
+            if (u < hit) return 1f - Mathf.Pow(1f - u / hit, 2.2f);
+            if (u < hit + 0.03f) return 1f;
+            return 1f - MathUtil.EaseInOutSine((u - hit - 0.03f) / 0.17f);
+        }
+
+        /// <summary>
+        /// Ein Boxer: im Boxstand wippt er federnd auf den Fußballen, die Fäuste in Deckung; auf dem Titelbild boxt er
+        /// gegen die Luft (Jab, Jab, Gerade im Takt). Der große Schlag zum Spielstart ist eine Gerade direkt in die Kamera.
+        /// </summary>
+        void UpdateBoxing(float dt, Mode mode, Vector2 lookAt)
+        {
+            float t = phase;
+            float kick = kickT >= 0f ? kickT : -1f;
+            float coil = kick >= 0f ? MathUtil.Smooth01(kick / 0.2f) * (1f - MathUtil.Smooth01((kick - 0.2f) / 0.08f)) : 0f;
+            float strike = kick >= 0f ? MathUtil.EaseOutCubic(Mathf.Clamp01((kick - 0.2f) / 0.08f)) * (1f - MathUtil.Smooth01((kick - 0.75f) / 0.4f)) : 0f;
+            float beat = 0.5f + 0.5f * Mathf.Cos(t * MathUtil.Tau * 1.6f);
+            float breathe = Mathf.Sin(t * 2.1f);
+            float jab = 0f, cross = 0f;
+            if (mode == Mode.Juggle && kick < 0f)
+            {
+                float u = Mathf.Repeat(t, 2.6f);
+                jab = Mathf.Max(PunchCurve(u - 0.2f), PunchCurve(u - 0.52f));
+                cross = PunchCurve(u - 0.82f, 0.075f);
+            }
+            Vector2 hip = new Vector2(0.01f * Mathf.Sin(t * 1.3f), body.StandHip - 0.065f - 0.026f * beat - 0.02f * cross - 0.05f * coil - 0.07f * strike);
+            float lean = -5f + 0.4f * breathe - 4f * jab - 9f * cross + 7f * coil - 16f * strike;
+            Vector2 nearAnkle = new Vector2(-0.21f - 0.12f * strike, A);
+            Vector2 farAnkle = new Vector2(0.25f + 0.04f * jab + 0.22f * strike, A + 0.06f * coil * (1f - strike));
+            PoseBody(hip, lean, nearAnkle, farAnkle, 0f, lookAt + new Vector2(0f, -0.25f), 0f, t, 0f);
+
+            Vector2 nearSh = NearShoulder(hip, lean), farSh = FarShoulder(hip, lean);
+            float L = body.UpperArmLen + body.ForearmLen;
+            Vector2 aim = new Vector2(1f, 0.04f).normalized;
+            Vector2 gn = MathUtil.Rotate(new Vector2(0.2f, -0.02f + 0.01f * beat), lean);
+            Vector2 gf = MathUtil.Rotate(new Vector2(0.3f, -0.05f + 0.012f * beat + 0.01f * Mathf.Sin(t * 3.3f)), lean);
+            Vector2 n = Vector2.Lerp(gn, aim * L * 0.97f, cross);
+            n = Vector2.Lerp(n, new Vector2(-0.14f, 0.01f), coil);
+            n = Vector2.Lerp(n, aim * L * 0.99f, strike);
+            Vector2 fr = Vector2.Lerp(gf, aim * L * 0.97f + new Vector2(0f, -0.02f), jab);
+            fr = Vector2.Lerp(fr, new Vector2(0.12f, -0.03f), strike);
+            ArmTo(farHand, farFore, farUpper, farSh, farSh + fr, 0f);
+            ArmTo(nearHand, nearFore, nearUpper, nearSh, nearSh + n, 0f);
+            // der unsichtbare Ball sitzt an der Schlaghand: von dort fliegt beim Start der Handschuh in die Kamera
+            spin = 0f;
+            PlaceBall(nearSh + n + aim * body.HandLen * 0.6f, kick);
+        }
+
         Vector2 NearShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(body.Shoulder, lean);
         Vector2 FarShoulder(Vector2 hip, float lean) => hip + MathUtil.Rotate(body.Shoulder + new Vector2(-0.05f, 0.02f), lean);
 
@@ -306,7 +363,7 @@ namespace SoccerFight
             BallLocal = Root.anchoredPosition + b * scale * Root.localScale.x;
             ball.anchoredPosition = b * scale;
             ballSpin.localRotation = Quaternion.Euler(0f, 0f, spin);
-            bool showBall = BallVisible && !(kick >= KickContact);
+            bool showBall = BallVisible && !boxing && !(kick >= KickContact);
             if (ball.gameObject.activeSelf != showBall) ball.gameObject.SetActive(showBall);
             // the ball's shadow shrinks as it rises
             float air = Mathf.Clamp01((b.y - Art.BallRadius) / 1f);

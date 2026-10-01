@@ -13,6 +13,8 @@ namespace SoccerFight
         None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash,
         // basketball: the three class moves, then the boss skills
         Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake,
+        // boxing: the three class moves, then the boss skills
+        PowerCross, Guard, Slip, Uppercut, Hooks, Pound, Shadow, Flurry,
     }
 
     public static class Abilities
@@ -25,26 +27,30 @@ namespace SoccerFight
 
         public static readonly Ability[] HoopsUnlockable = { Ability.AlleyOop, Ability.Block, Ability.FastBreak, Ability.StepBack, Ability.PumpFake };
 
-        public static Ability[] UnlockableFor(Sport s) => s == Sport.Basketball ? HoopsUnlockable : Unlockable;
+        public static readonly Ability[] BoxUnlockable = { Ability.Uppercut, Ability.Hooks, Ability.Pound, Ability.Shadow, Ability.Flurry };
+
+        public static Ability[] UnlockableFor(Sport s) => s == Sport.Basketball ? HoopsUnlockable : s == Sport.Boxing ? BoxUnlockable : Unlockable;
 
         /// <summary>The right-mouse-button move of a class (never in one of the four skill slots).</summary>
         public static bool IsClassMove(Ability a) => a == Ability.Power || a == Ability.Dash || a == Ability.Header
-                                                     || a == Ability.Three || a == Ability.Crossover || a == Ability.Dunk;
+                                                     || a == Ability.Three || a == Ability.Crossover || a == Ability.Dunk
+                                                     || a == Ability.PowerCross || a == Ability.Guard || a == Ability.Slip;
 
         /// <summary>The sport of the local player (names of the shared moves follow it).</summary>
         static bool Hoops => Characters.Current.Sport == Sport.Basketball;
+        static bool Boxing => Characters.Current.Sport == Sport.Boxing;
 
         public static string Name(Ability a)
         {
             switch (a)
             {
-                case Ability.Shot: return Hoops ? "WURF" : "SCHUSS";
+                case Ability.Shot: return Hoops ? "WURF" : Boxing ? "SCHLAG" : "SCHUSS";
                 case Ability.Power: return "POWER-SCHUSS";
                 case Ability.Flick: return "RAINBOW FLICK";
                 case Ability.Juggle: return "BALL HOCHHALTEN";
                 case Ability.StepOver: return "ÜBERSTEIGER";
                 case Ability.Bicycle: return "FALLRÜCKZIEHER";
-                case Ability.AirKick: return Hoops ? "BODENPASS" : "LUFT-RÜCKSTOSS";
+                case Ability.AirKick: return Hoops ? "BODENPASS" : Boxing ? "LUFTSCHLAG" : "LUFT-RÜCKSTOSS";
                 case Ability.Tackle: return "GRÄTSCHE";
                 case Ability.Punt: return "ABSTOSS";
                 case Ability.Wall: return "MAUER";
@@ -61,6 +67,14 @@ namespace SoccerFight
                 case Ability.FastBreak: return "FASTBREAK";
                 case Ability.StepBack: return "STEPBACK";
                 case Ability.PumpFake: return "PUMP FAKE";
+                case Ability.PowerCross: return "KRAFTGERADE";
+                case Ability.Guard: return "DECKUNG";
+                case Ability.Slip: return "KONTERSCHRITT";
+                case Ability.Uppercut: return "UPPERCUT";
+                case Ability.Hooks: return "DOPPELHAKEN";
+                case Ability.Pound: return "BODENSCHLAG";
+                case Ability.Shadow: return "SCHATTENBOXER";
+                case Ability.Flurry: return "TROMMELFEUER";
                 default: return "";
             }
         }
@@ -73,6 +87,8 @@ namespace SoccerFight
                 case Ability.Juggle: return "Halte den Ball im Takt hoch. Jede Berührung heilt, perfekte Berührungen heilen doppelt.";
                 case Ability.StepOver: return "Täuschung über den Ball, dann ein unverwundbarer Dash mitten durch die Gegner.";
                 case Ability.Bicycle: return "Rückwärtssalto in der Luft: Der Ball explodiert beim Aufprall.";
+                case Ability.Shot: return !Boxing ? "" : "Links, rechts, Haken: Jeder Schlag schickt eine kurze Druckwelle aus dem Handschuh, der dritte in Folge trifft am härtesten.";
+                case Ability.AirKick when Boxing: return "Schläge in der Luft stoßen dich in die Gegenrichtung. Nach unten: ein zweiter Sprung.";
                 case Ability.AirKick: return Hoops
                     ? "Würfe in der Luft stoßen dich in die Gegenrichtung. Nach unten: ein zweiter Sprung."
                     : "Schüsse in der Luft stoßen dich in die Gegenrichtung. Nach unten: ein zweiter Sprung.";
@@ -92,6 +108,14 @@ namespace SoccerFight
                 case Ability.Block: return "Springt mit hochgerissenen Armen: kurz unverwundbar, Gegner weichen zurück, jedes Geschoss fliegt zurück auf die Monster.";
                 case Ability.FastBreak: return "Unverwundbarer Sprint nach vorn mit dem Ball: Gegner auf dem Weg werden getroffen und kurz betäubt.";
                 case Ability.StepBack: return "Blitzschneller Satz nach hinten, Angriffe gehen ins Leere. Dein nächster Wurf trifft garantiert kritisch.";
+                case Ability.PowerCross: return "Ausholen, ein Schritt nach vorn, dann eine Gerade mit allem: Die Druckwelle fliegt durch jeden Gegner in ihrer Bahn.";
+                case Ability.Guard: return "Die Fäuste hoch: Solange die Deckung steht, kommt nichts durch. Jeder abgefangene Treffer lädt den Konterschlag am Ende auf.";
+                case Ability.Slip: return "Blitzschneller Schritt in Laufrichtung, auch in der Luft: kurz unverwundbar. Der nächste Schlag ist ein sicherer Konter: kritisch und durchschlagend.";
+                case Ability.Uppercut: return "Aus der Hocke nach oben: Der Aufwärtshaken schleudert die Gegner vor dir in die Luft, die Druckwelle steigt bis zu den Fliegern.";
+                case Ability.Hooks: return "Zwei Haken links und rechts aus der Drehung: Eine Ringwelle trifft alles um dich herum und stößt es weg.";
+                case Ability.Pound: return "Beide Fäuste in den Boden: Eine Bebenwelle rollt nach beiden Seiten und betäubt jeden Gegner, den sie erreicht.";
+                case Ability.Shadow: return "Ein Schatten von dir bleibt stehen: Die Gegner halten ihn für dich, und er boxt jeden, der ihm zu nahe kommt.";
+                case Ability.Flurry: return "Acht blitzschnelle Schläge aufs Fadenkreuz: ein Hagel aus Druckwellen, jede etwas schwächer als ein normaler Schlag.";
                 case Ability.PumpFake: return "Wurf angetäuscht: Ein Geisterball fliegt zum Fadenkreuz, die Gegner in der Nähe springen darauf herein, laufen ihm nach und nehmen mehr Schaden.";
                 default: return "";
             }
@@ -102,7 +126,7 @@ namespace SoccerFight
         {
             switch (a)
             {
-                case Ability.Shot: return Hoops ? UiArt.IconThrow : UiArt.IconShot;
+                case Ability.Shot: return Hoops ? UiArt.IconThrow : Boxing ? UiArt.IconPunch : UiArt.IconShot;
                 case Ability.Power: return UiArt.IconPower;
                 case Ability.Flick: return UiArt.IconFlick;
                 case Ability.Juggle: return UiArt.IconJuggle;
@@ -125,6 +149,14 @@ namespace SoccerFight
                 case Ability.FastBreak: return UiArt.IconFastBreak;
                 case Ability.StepBack: return UiArt.IconStepBack;
                 case Ability.PumpFake: return UiArt.IconPumpFake;
+                case Ability.PowerCross: return UiArt.IconCross;
+                case Ability.Guard: return UiArt.IconGuard;
+                case Ability.Slip: return UiArt.IconSlip;
+                case Ability.Uppercut: return UiArt.IconUppercut;
+                case Ability.Hooks: return UiArt.IconHooks;
+                case Ability.Pound: return UiArt.IconPound;
+                case Ability.Shadow: return UiArt.IconShadow;
+                case Ability.Flurry: return UiArt.IconFlurry;
                 default: return UiArt.IconShot;
             }
         }
@@ -133,7 +165,7 @@ namespace SoccerFight
         {
             switch (a)
             {
-                case Ability.Shot: return Hoops ? Palette.HoopOrange : Palette.ShotCyan;
+                case Ability.Shot: return Hoops ? Palette.HoopOrange : Boxing ? Palette.Punch : Palette.ShotCyan;
                 case Ability.Power: return Palette.PowerGold;
                 case Ability.Flick: return Color.white;
                 case Ability.Juggle: return Palette.Heal;
@@ -156,6 +188,14 @@ namespace SoccerFight
                 case Ability.FastBreak: return Palette.DashMint;
                 case Ability.StepBack: return Palette.Swish;
                 case Ability.PumpFake: return Palette.Showboat;
+                case Ability.PowerCross: return Palette.Cross;
+                case Ability.Guard: return Palette.Counter;
+                case Ability.Slip: return Palette.Slip;
+                case Ability.Uppercut: return Palette.Upper;
+                case Ability.Hooks: return Palette.Trick;
+                case Ability.Pound: return Palette.Slam;
+                case Ability.Shadow: return Palette.Shadow;
+                case Ability.Flurry: return Palette.Punch;
                 default: return Palette.ShotCyan;
             }
         }

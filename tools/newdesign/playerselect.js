@@ -616,7 +616,13 @@ async function savePart(name, part, crunch) {
     fs.writeFileSync(meta, fs.readFileSync(meta, 'utf8').replace('alphaIsTransparency: 0', 'alphaIsTransparency: 1').replace('filterMode: 1', 'filterMode: 2'));
 }
 
-(async () => {
+// Die Boxer haben eigene Entwürfe (Inspiration/boxer/Auswahlentwuerfe) mit einer leicht anders gemalten Kulisse:
+// playerselect.box.js zerlegt sie mit denselben Werkzeugen und hängt sie an layout.json an.
+module.exports = { W, H, N, F, ZONE, BACK, UI_CORNER, OUT, DEBUG, FAST, lumOf, clamp01, smooth, loadRGB, debug, blurRGB, distanceTo, dilate, erode,
+    components, largest, hull, soften, crop, withAlpha, trim, fillRows, fillText, figureMask, fillHole, fillSmooth, cutByColour, cutOctagon,
+    keyDarkText, cutAbility, isGold, isBlue, cutTile, savePart };
+
+if (require.main === module) (async () => {
     const t0 = Date.now();
     const imgs = [], soft = [];
     for (const id of IDS) {
@@ -816,4 +822,6 @@ async function savePart(name, part, crunch) {
         await debug('probe_' + IDS[a], out, W, H, 3);
     }
     console.log(`  fertig: ${names.length} Teile, ${IDS.length} Figuren (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+    // die Boxer kommen aus ihren eigenen Entwürfen dazu
+    await require('./playerselect.box').run();
 })().catch(e => { console.error(e); process.exit(1); });

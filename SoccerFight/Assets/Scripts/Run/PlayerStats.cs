@@ -90,6 +90,31 @@ namespace SoccerFight
         public bool HotHand, Downtown;
         public float AirThrowBonus;     // Fadeaway: throws from the air hit harder
 
+        // ---- boxing
+        public float JoltRangeMul;      // Lange Arme: how far the shock wave of a punch flies
+        public int JoltPierce;          // Durchschlag: monsters a punch wave passes through before it breaks
+        public float ComboBonus;        // Kombination: extra damage of the third punch in a row (the hook)
+        public bool HookRing;           // Eiserne Faust: every hook also sends a ring wave around the body
+        public bool Knockout;           // K.O.-König: a punch finishes off a normal monster below 20 % health
+        public float PcDamageMul, PcCooldownMul;   // Kraftgerade
+        public bool PcTriple;        // Dreifachgerade: the power cross fires three waves in a fan
+        public float GuardTimeBonus, GuardCooldownMul, CounterDamageMul, GuardHeal;
+        public bool GuardReflect;       // Spiegeldeckung: shots caught on the guard fly back at the monsters
+        public float SlipDistMul, SlipCooldownMul, SlipCritBonus;
+        public bool SlipShock;          // Schockschritt: the slip leaves a shock ring where it started
+        public float UpperDamageMul, UpperCooldownMul, UpperStun;
+        public bool UpperTwin;          // Zwillingshaken: a second uppercut wave from the other fist
+        public float HooksRadiusMul, HooksCooldownMul;
+        public bool HooksPull, HooksDouble;
+        public float PoundRadiusMul, PoundCooldownMul, PoundStunBonus;
+        public bool PoundFire;
+        public float ShadowLifeBonus, ShadowCooldownMul;
+        public int ShadowCount;
+        public bool ShadowBurst;
+        public int FlurryExtra;
+        public float FlurryCooldownMul;
+        public bool FlurryBoom;
+
         // ---- class traits and character perks (MetaPassives)
         /// <summary>Damage multiplier per SkillCategory, on top of DamageMul.</summary>
         public readonly float[] CategoryDamage = new float[System.Enum.GetValues(typeof(SkillCategory)).Length];
@@ -148,6 +173,16 @@ namespace SoccerFight
             StepCooldownMul = StepDistMul = 1f; StepCritBonus = 0f; StepPierce = false;
             FakeCooldownMul = 1f; FakeTimeBonus = 0f; FakeTrap = false;
             BankShots = 0; HotHand = Downtown = false; AirThrowBonus = 0f;
+
+            JoltRangeMul = 1f; JoltPierce = 0; ComboBonus = 0f; HookRing = Knockout = false;
+            PcDamageMul = PcCooldownMul = 1f; PcTriple = false;
+            GuardTimeBonus = 0f; GuardCooldownMul = CounterDamageMul = 1f; GuardHeal = 0f; GuardReflect = false;
+            SlipDistMul = SlipCooldownMul = 1f; SlipCritBonus = 0f; SlipShock = false;
+            UpperDamageMul = UpperCooldownMul = 1f; UpperStun = 0f; UpperTwin = false;
+            HooksRadiusMul = HooksCooldownMul = 1f; HooksPull = HooksDouble = false;
+            PoundRadiusMul = PoundCooldownMul = 1f; PoundStunBonus = 0f; PoundFire = false;
+            ShadowLifeBonus = 0f; ShadowCooldownMul = 1f; ShadowCount = 0; ShadowBurst = false;
+            FlurryExtra = 0; FlurryCooldownMul = 1f; FlurryBoom = false;
 
             for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = CategoryCooldown[i] = 1f;
             TechniqueHaste = 1f;

@@ -239,4 +239,6 @@ async function savePart(name, img, srcBox) {
         await savePart(name, trim(keyed), 325);
         if (name == 'select') await savePart('plate', trim(blankPlate(keyed)), 325);
     }
+    // die Boxer stehen nicht in der Vorlage: ihre Karten setzt shop.box.js zusammen und hängt sie an cards.json an
+    await require('./shop.box').run();
 })().catch(e => { console.error(e); process.exit(1); });

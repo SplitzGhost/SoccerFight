@@ -14,7 +14,9 @@ namespace SoccerFight
         Frost, Explode, Shockwave, Shield, Adrenaline, AirKick, Dash, Boomerang, Trident, Fan, Storm, Nova,
         Time, Frenzy, Cyclone, GoldenBoot, TwinSun, Phoenix, BlackHole, Infinity, Maestro, Synergy,
         // basketball
-        Hoop, Swish, Slam, Crossover, Palm, Distance
+        Hoop, Swish, Slam, Crossover, Palm, Distance,
+        // boxing
+        Glove, Combo, Counter, Upper, Quake
     }
 
     public sealed class UpgradeDef
@@ -218,6 +220,7 @@ namespace SoccerFight
                 (s, n) => { s.AirDashes += 1; s.DashCooldownMul *= 0.75f; }, ab: Ability.Dash);
 
             Hoops();
+            Boxing();
         }
 
         /// <summary>A basketball card: only players of that sport are offered it.</summary>
@@ -376,6 +379,140 @@ namespace SoccerFight
             B("bb_skywalker", "SKYWALKER", L, UpIcon.Slam, 1, n => "Besiegt ein Dunk einen Gegner, ist er sofort wieder bereit.", (s, n) => s.DunkRefund = true, ab: Ability.Dunk);
             B("bb_splash", "SPLASH ZONE", L, UpIcon.Swish, 1, n => "Wo der Dreier einschlägt, brennt der Boden " + N(3) + " s und setzt jeden Gegner darauf in Brand.",
                 (s, n) => s.ThreeBurn = true, ab: Ability.Three);
+        }
+
+        /// <summary>A boxing card: only players of that sport are offered it.</summary>
+        static UpgradeDef X(string id, string name, Rarity r, UpIcon icon, int max, Func<int, string> desc,
+            Action<PlayerStats, int> apply, string tag = null, string[] req = null, Ability ab = Ability.None, Action<Player> onPick = null)
+        {
+            var u = U(id, name, r, icon, max, desc, apply, tag, req, ab, onPick);
+            u.Sport = Sport.Boxing;
+            return u;
+        }
+
+        /// <summary>
+        /// The boxing pool: the general cards in boxing words (no ball: echoes are extra shock waves, the
+        /// ricochet bounces a wave on), cards for the punch combo and for the eight boxing moves.
+        /// </summary>
+        static void Boxing()
+        {
+            const Rarity C = Rarity.Common, R = Rarity.Rare, E = Rarity.Epic, L = Rarity.Legendary;
+
+            // ------------------------------------------------------------------ common
+            X("bx_power", "SCHLAGKRAFT", C, UpIcon.Damage, 10, n => "+" + P(0.12f) + " Schaden für alle Schläge.", (s, n) => s.DamageMul += 0.12f * n);
+            X("bx_feet", "TÄNZELN", C, UpIcon.Speed, 5, n => "+" + P(0.08f) + " Laufgeschwindigkeit.", (s, n) => s.MoveSpeedMul += 0.08f * n);
+            X("bx_hands", "SCHNELLE HÄNDE", C, UpIcon.AttackSpeed, 6, n => "Schlag-Abklingzeit " + V("−8%") + ".", (s, n) => s.ShotCooldownMul *= Mathf.Pow(0.92f, n));
+            X("bx_eye", "KAMPFBLICK", C, UpIcon.Crit, 8, n => "+" + P(0.05f) + " Chance auf kritische Treffer.", (s, n) => s.CritChance += 0.05f * n);
+            X("bx_precision", "PRÄZISION", C, UpIcon.CritDamage, 6, n => "+" + P(0.25f) + " kritischer Schaden.", (s, n) => s.CritMul += 0.25f * n);
+            X("bx_stamina", "AUSDAUER", C, UpIcon.Heart, 10, n => "+" + N(15) + " maximales Leben, heilt sofort " + N(15) + ".", (s, n) => s.MaxHpBonus += 15f * n,
+                onPick: p => p.Heal(15f));
+            X("bx_heft", "WUCHT", C, UpIcon.Knockback, 5, n => "+" + P(0.25f) + " Rückstoß auf Gegner.", (s, n) => s.KnockbackMul += 0.25f * n);
+            X("bx_area", "RINGGRÖSSE", C, UpIcon.Area, 6, n => "+" + P(0.1f) + " Größe aller Flächeneffekte.", (s, n) => s.AreaMul += 0.1f * n);
+            X("bx_camp", "TRAININGSLAGER", C, UpIcon.Cooldown, 6, n => "Abklingzeit aller Fähigkeiten " + V("−6%") + ".", (s, n) => s.CooldownMul *= Mathf.Pow(0.94f, n));
+            X("bx_reach", "LANGE ARME", C, UpIcon.Glove, 5, n => "Die Druckwelle der Schläge fliegt " + P(0.15f) + " weiter, +" + P(0.04f) + " Schaden.",
+                (s, n) => { s.JoltRangeMul += 0.15f * n; s.DamageMul += 0.04f * n; });
+            X("bx_breath", "DURCHATMEN", C, UpIcon.Regen, 5, n => "Regeneriert " + N(0.4f) + " Leben pro Sekunde.", (s, n) => s.RegenPerSec += 0.4f * n);
+            X("bx_corner", "RINGECKE", C, UpIcon.Heal, 5, n => "Heilt " + N(10) + " Leben nach jeder geschafften Welle.", (s, n) => s.HealOnWave += 10f * n);
+            X("bx_spirit", "KAMPFGEIST", C, UpIcon.Leech, 5, n => "Heilt " + N(1) + " Leben pro besiegtem Gegner.", (s, n) => s.LifeOnKill += 1f * n);
+            X("bx_wraps", "BANDAGEN", C, UpIcon.Armor, 6, n => V("−4%") + " erlittener Schaden.", (s, n) => s.Armor += 0.04f * n);
+            X("bx_rope", "SEILSPRINGEN", C, UpIcon.Jump, 4, n => "+" + P(0.07f) + " Sprunghöhe.", (s, n) => s.JumpMul += 0.07f * n);
+            X("bx_duck", "KOPF EINZIEHEN", C, UpIcon.Dodge, 4, n => "+" + N(0.2f) + " s Unverwundbarkeit nach einem Treffer.", (s, n) => s.InvulnBonus += 0.2f * n);
+            X("bx_luck", "GLÜCKSHANDSCHUH", C, UpIcon.Luck, 3, n => "Seltene, epische und legendäre Karten erscheinen häufiger.", (s, n) => s.Luck += n);
+            X("bx_drill", "KRAFTTRAINING", C, UpIcon.Power, 5, n => "Kraftgerade +" + P(0.15f) + " Schaden.", (s, n) => s.PcDamageMul += 0.15f * n, ab: Ability.PowerCross);
+            X("bx_steel", "STAHLDECKUNG", C, UpIcon.Counter, 3, n => "Die Deckung hält " + N(0.35f) + " s länger.", (s, n) => s.GuardTimeBonus += 0.35f * n, ab: Ability.Guard);
+            X("bx_light", "LEICHTE FÜSSE", C, UpIcon.Dodge, 3, n => "Konterschritt lädt " + V("−12%") + " schneller und reicht +" + P(0.1f) + " weiter.",
+                (s, n) => { s.SlipCooldownMul *= Mathf.Pow(0.88f, n); s.SlipDistMul += 0.1f * n; }, ab: Ability.Slip);
+            X("bx_upper", "AUFWÄRTSHAKEN", C, UpIcon.Upper, 4, n => "Uppercut +" + P(0.15f) + " Schaden.", (s, n) => s.UpperDamageMul += 0.15f * n, ab: Ability.Uppercut);
+            X("bx_torque", "DREHMOMENT", C, UpIcon.Cyclone, 3, n => "Doppelhaken lädt " + V("−12%") + " schneller, Ringwelle +" + P(0.1f) + ".",
+                (s, n) => { s.HooksCooldownMul *= Mathf.Pow(0.88f, n); s.HooksRadiusMul += 0.1f * n; }, ab: Ability.Hooks);
+            X("bx_tremor", "ERDSTOSS", C, UpIcon.Quake, 3, n => "Bodenschlag-Welle +" + P(0.12f) + " Reichweite, lädt " + V("−8%") + " schneller.",
+                (s, n) => { s.PoundRadiusMul += 0.12f * n; s.PoundCooldownMul *= Mathf.Pow(0.92f, n); }, ab: Ability.Pound);
+            X("bx_dusk", "LANGER SCHATTEN", C, UpIcon.Echo, 3, n => "Der Schattenboxer bleibt " + N(1f) + " s länger.", (s, n) => s.ShadowLifeBonus += 1f * n, ab: Ability.Shadow);
+            X("bx_drum", "SCHNELLFEUER", C, UpIcon.AttackSpeed, 3, n => "Trommelfeuer schlägt " + V("+2") + "-mal mehr zu.", (s, n) => s.FlurryExtra += 2 * n, ab: Ability.Flurry);
+
+            // ------------------------------------------------------------------ rare
+            X("bx_double", "DOPPELSCHLAG", R, UpIcon.Echo, 3, n => "Jeder Schlag schickt " + V("+1") + " Druckwelle im Fächer (" + P(0.55f) + " Schaden).", (s, n) => s.EchoBalls += n, tag: "echo");
+            X("bx_bounce", "SEILABPRALLER", R, UpIcon.Ricochet, 3, n => "Druckwellen springen zum nächsten Gegner weiter (" + V("+1") + " Abpraller).", (s, n) => s.Ricochets += n, tag: "ricochet");
+            X("bx_spark", "KETTENFUNKE", R, UpIcon.Chain, 3, n => "Treffer springen auf " + N(1 + n) + " nahe Gegner über (" + P(0.35f + 0.1f * (n - 1)) + " Schaden).",
+                (s, n) => { s.ChainTargets = 1 + n; s.ChainFrac = Mathf.Max(s.ChainFrac, 0.35f + 0.1f * (n - 1)); }, tag: "chain");
+            X("bx_fire", "FEUERFAUST", R, UpIcon.Fire, 3, n => "Treffer setzen Gegner in Brand: " + P(0.3f + 0.15f * (n - 1)) + " des Treffers pro Sekunde, 3 s.",
+                (s, n) => s.BurnFrac = 0.3f + 0.15f * (n - 1), tag: "fire");
+            X("bx_ice", "EISFAUST", R, UpIcon.Frost, 2, n => "Treffer verlangsamen Gegner um " + P(0.35f + 0.15f * (n - 1)) + " für 2 s.",
+                (s, n) => s.SlowAmount = 0.35f + 0.15f * (n - 1), tag: "frost");
+            X("bx_boom", "KETTENREAKTION", R, UpIcon.Explode, 3, n => "Besiegte Gegner explodieren: " + P(0.35f + 0.15f * (n - 1)) + " ihres max. Lebens als Flächenschaden.",
+                (s, n) => s.KillExplodeFrac = 0.35f + 0.15f * (n - 1), tag: "explode");
+            X("bx_stomp", "KONTER-STAMPFER", R, UpIcon.Shockwave, 2, n => "Wirst du getroffen, entlädt sich eine Schockwelle: " + N(40 * n) + " Schaden, starker Rückstoß.",
+                (s, n) => s.CounterStomp = 40f * n);
+            X("bx_guard", "MUNDSCHUTZ", R, UpIcon.Shield, 2, n => "Ein Schild blockt einen Treffer und lädt alle " + N(16 - 4 * (n - 1)) + " s neu.",
+                (s, n) => { s.ShieldCharges = 1; s.ShieldRecharge = 16f - 4f * (n - 1); });
+            X("bx_crowd", "ANFEUERUNG", R, UpIcon.Adrenaline, 2, n => "Nach jedem Sieg: +" + P(0.2f) + " Tempo und Schlagrate für " + N(2.5f * n) + " s.",
+                (s, n) => s.AdrenalineTime = 2.5f * n);
+            X("bx_air", "LUFTSCHLAG", R, UpIcon.AirKick, 2, n => V("+1") + " Rückstoß pro Sprung (ein Schlag in der Luft stößt dich ab).", (s, n) => s.AirBoosts += n);
+            X("bx_lucky", "LUCKY PUNCH", R, UpIcon.CritDamage, 2, n => "Kritische Treffer machen +" + P(0.6f) + " Schaden und schleudern Gegner weg.",
+                (s, n) => s.SharpshooterBonus += 0.6f * n);
+            X("bx_heart", "GROSSES HERZ", R, UpIcon.Heart, 2, n => "+" + N(35) + " maximales Leben und volle Heilung.", (s, n) => s.MaxHpBonus += 35f * n,
+                onPick: p => p.Heal(9999f));
+            X("bx_step", "SCHRITT NACH VORN", R, UpIcon.Speed, 2, n => "Schläge aus vollem Lauf machen +" + P(0.3f) + " Schaden.", (s, n) => s.RunUpBonus += 0.3f * n);
+            X("bx_pierce", "DURCHSCHLAG", R, UpIcon.Trident, 2, n => "Druckwellen fliegen durch " + V("+1") + " Gegner, bevor sie zerplatzen.", (s, n) => s.JoltPierce += n);
+            X("bx_combo", "KOMBINATION", R, UpIcon.Combo, 2, n => "Der dritte Schlag in Folge (der Haken) macht +" + P(0.5f) + " Schaden.", (s, n) => s.ComboBonus += 0.5f * n);
+            X("bx_firechain", "FUNKENFLUG", R, UpIcon.Synergy, 1, n => "Synergie: Kettenfunken setzen jedes Ziel in Brand.", (s, n) => s.ChainIgnites = true,
+                req: new[] { "bx_spark", "bx_fire" });
+            X("bx_relay", "WELLENSTAFFEL", R, UpIcon.Synergy, 1, n => "Synergie: Auch die Fächerwellen springen zum nächsten Gegner weiter.", (s, n) => s.EchoRicochet = true,
+                req: new[] { "bx_double", "bx_bounce" });
+            X("bx_snap", "SCHNELLE GERADE", R, UpIcon.Power, 2, n => "Die Kraftgerade lädt " + P(0.3f) + " schneller und macht +" + P(0.2f) + " Schaden.",
+                (s, n) => { s.PcCooldownMul *= Mathf.Pow(0.7f, n); s.PcDamageMul += 0.2f * n; }, ab: Ability.PowerCross);
+            X("bx_wind", "ZWEITER ATEM", R, UpIcon.Heal, 2, n => "Jeder Treffer auf die Deckung heilt " + N(4f * n) + " Leben.", (s, n) => s.GuardHeal += 4f * n, ab: Ability.Guard);
+            X("bx_fullcounter", "VOLLER KONTER", R, UpIcon.Counter, 2, n => "Der Konterschlag nach der Deckung macht +" + P(0.4f) + " Schaden.",
+                (s, n) => s.CounterDamageMul += 0.4f * n, ab: Ability.Guard);
+            X("bx_queen", "KONTERKÖNIGIN", R, UpIcon.CritDamage, 2, n => "Der sichere Konter nach dem Konterschritt macht +" + P(0.4f) + " Schaden.",
+                (s, n) => s.SlipCritBonus += 0.4f * n, ab: Ability.Slip);
+            X("bx_sky", "HIMMELSSTÜRMER", R, UpIcon.Upper, 2, n => "Vom Uppercut getroffene Gegner sind " + N(0.8f * n) + " s betäubt.", (s, n) => s.UpperStun += 0.8f * n, ab: Ability.Uppercut);
+            X("bx_suction", "SOG", R, UpIcon.Cyclone, 1, n => "Der Doppelhaken zieht alle Gegner in der Nähe erst zu dir heran.", (s, n) => s.HooksPull = true, ab: Ability.Hooks);
+            X("bx_quake", "BEBEN", R, UpIcon.Quake, 2, n => "Der Bodenschlag betäubt " + N(0.8f * n) + " s länger.", (s, n) => s.PoundStunBonus += 0.8f * n, ab: Ability.Pound);
+            X("bx_twins", "SCHATTENKRIEGER", R, UpIcon.Echo, 2, n => "Der Schattenboxer bringt " + V("+" + n) + " weiteren Schatten mit.", (s, n) => s.ShadowCount += n, ab: Ability.Shadow);
+            X("bx_drumcd", "TROMMELWIRBEL", R, UpIcon.Cooldown, 2, n => "Trommelfeuer lädt " + P(0.2f) + " schneller.", (s, n) => s.FlurryCooldownMul *= Mathf.Pow(0.8f, n), ab: Ability.Flurry);
+
+            // ------------------------------------------------------------------ epic
+            X("bx_fan", "FÄCHERSCHLAG", E, UpIcon.Fan, 1, n => "Jeder Schlag schickt " + V("+2") + " Druckwellen im Fächer. Fächer-Schaden " + P(0.7f) + ".",
+                (s, n) => { s.EchoBalls += 2; s.EchoDamageFrac = Mathf.Max(s.EchoDamageFrac, 0.7f); s.EchoSpread = 12f; }, tag: "echo");
+            X("bx_storm", "GEWITTERKETTE", E, UpIcon.Storm, 1, n => "Kettenfunken springen bis zu " + V("5-mal") + " weiter, können kritisch treffen und machen " + P(0.6f) + " Schaden.",
+                (s, n) => { s.ChainJumps = 5; s.ChainCanCrit = true; s.ChainFrac = Mathf.Max(s.ChainFrac, 0.6f); }, req: new[] { "bx_spark" });
+            X("bx_nova", "NOVA", E, UpIcon.Nova, 2, n => "Jeder " + N(n == 1 ? 12 : 9) + ". Treffer löst eine Nova um dich aus (" + N(60) + " Schaden).",
+                (s, n) => s.NovaEvery = n == 1 ? 12 : 9);
+            X("bx_wildfire", "LAUFFEUER", E, UpIcon.Fire, 1, n => "Brand +" + P(0.5f) + ". Brennende Gegner entzünden beim Tod alle in der Nähe.",
+                (s, n) => { s.BurnSpread = true; s.BurnBoost += 0.5f; s.BurnTime = 4f; }, req: new[] { "bx_fire" }, tag: "fire");
+            X("bx_frostcore", "FROSTKERN", E, UpIcon.Frost, 1, n => "Verlangsamte Gegner erleiden +" + P(0.35f) + " Schaden, jeder 3. Treffer friert sie ein.",
+                (s, n) => { s.FrostVuln = 0.35f; s.FreezeOnThird = true; }, req: new[] { "bx_ice" }, tag: "frost");
+            X("bx_cannon", "SPRENGFAUST", E, UpIcon.Explode, 1, n => "Druckwellen explodieren beim Treffer (" + P(0.5f) + " Schaden als Fläche).", (s, n) => s.Cannoneer = true, tag: "explode");
+            X("bx_clutch", "ZEITLUPE", E, UpIcon.Time, 1, n => "+" + P(0.1f) + " Krit-Chance. Kritische Treffer verlangsamen kurz die Zeit.",
+                (s, n) => { s.BulletTime = true; s.CritChance += 0.1f; });
+            X("bx_frenzy", "BLUTRAUSCH", E, UpIcon.Frenzy, 1, n => "Jeder Sieg: +" + P(0.06f) + " Schaden für 4 s, bis zu " + V("10-fach") + ".", (s, n) => s.BloodFrenzy = true);
+            X("bx_thermal", "THERMOSCHOCK", E, UpIcon.Synergy, 1, n => "Synergie: Treffer auf brennende UND verlangsamte Gegner lösen eine Frostexplosion aus (" + P(1.5f) + ").",
+                (s, n) => s.ThermalShock = true, req: new[] { "bx_fire", "bx_ice" });
+            X("bx_triple", "DREIFACHGERADE", E, UpIcon.Trident, 1, n => "Die Kraftgerade schickt " + V("3") + " durchschlagende Druckwellen im Fächer.", (s, n) => s.PcTriple = true, ab: Ability.PowerCross);
+            X("bx_mirror", "SPIEGELDECKUNG", E, UpIcon.Palm, 1, n => "Geschosse, die auf die Deckung treffen, fliegen als Druckwelle zurück zu den Monstern.",
+                (s, n) => s.GuardReflect = true, ab: Ability.Guard);
+            X("bx_shockstep", "SCHOCKSCHRITT", E, UpIcon.Shockwave, 1, n => "Der Konterschritt hinterlässt eine Schockwelle (" + N(30) + " Schaden), wo er begann.",
+                (s, n) => s.SlipShock = true, ab: Ability.Slip);
+            X("bx_twinupper", "ZWILLINGSHAKEN", E, UpIcon.Upper, 1, n => "Der Uppercut schlägt mit der zweiten Faust nach: noch eine Druckwelle nach oben.",
+                (s, n) => s.UpperTwin = true, ab: Ability.Uppercut);
+            X("bx_hurricane", "ORKAN", E, UpIcon.Cyclone, 1, n => "Der Doppelhaken schickt eine zweite, größere Ringwelle hinterher.", (s, n) => s.HooksDouble = true, ab: Ability.Hooks);
+            X("bx_lava", "LAVABODEN", E, UpIcon.Fire, 1, n => "Die Bebenwelle des Bodenschlags setzt jeden Gegner " + N(3) + " s in Brand.", (s, n) => s.PoundFire = true, ab: Ability.Pound);
+            X("bx_dark", "SCHATTENEXPLOSION", E, UpIcon.Explode, 1, n => "Verschwindet der Schattenboxer, platzt er: " + N(50) + " Schaden um ihn herum.",
+                (s, n) => s.ShadowBurst = true, ab: Ability.Shadow);
+            X("bx_fireworks", "FEUERWERK", E, UpIcon.Explode, 1, n => "Jede Druckwelle des Trommelfeuers explodiert beim Treffer.", (s, n) => s.FlurryBoom = true, ab: Ability.Flurry);
+
+            // ------------------------------------------------------------------ legendary
+            X("bx_golden", "GOLDENER HANDSCHUH", L, UpIcon.GoldenBoot, 1, n => "Jeder " + V("3.") + " Schlag ist garantiert kritisch, explodiert und verkettet Funken.", (s, n) => s.GoldenBoot = true);
+            X("bx_eight", "AUFSTEHEN BEI ACHT", L, UpIcon.Phoenix, 1, n => "Einmal pro Lauf: Tödlicher Schaden lässt dich mit " + P(0.5f) + " Leben in einer Feuerexplosion wieder aufstehen.",
+                (s, n) => s.Revives += 1);
+            X("bx_perpetual", "PERPETUUM MOBILE", L, UpIcon.Infinity, 1, n => "Jeder Sieg verkürzt alle Abklingzeiten um " + N(0.5f) + " s, jeder Krit um " + N(0.2f) + " s.",
+                (s, n) => s.Perpetual = true);
+            X("bx_champion", "WELTMEISTER", L, UpIcon.Maestro, 1, n => "Jede Fähigkeit macht dich " + N(1) + " s unverwundbar und schickt Druckwellen auf nahe Gegner.",
+                (s, n) => s.Maestro = true);
+            X("bx_iron", "EISERNE FAUST", L, UpIcon.Glove, 1, n => "Jeder Haken (der dritte Schlag in Folge) schickt zusätzlich eine Ringwelle um dich herum.",
+                (s, n) => s.HookRing = true);
+            X("bx_ko", "K.O.-KÖNIG", L, UpIcon.Combo, 1, n => "Schläge schicken normale Gegner unter " + P(0.2f) + " Leben sofort auf die Bretter.", (s, n) => s.Knockout = true);
         }
 
         public static int Count(Rarity r) { int c = 0; foreach (var u in All) if (u.Rarity == r) c++; return c; }

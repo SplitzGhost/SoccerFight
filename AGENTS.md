@@ -16,7 +16,7 @@ privaten Speicher, damit die andere KI sie auch kennt.
 
 ## Das Spiel: SportFighter (Repo-/Ordnername noch SoccerFight)
 
-2D-Side-View-Roguelite: Sportler (Fußball, Basketball; Boxen und Tennis folgen) kämpfen mit ihrem Ball gegen
+2D-Side-View-Roguelite: Sportler (Fußball, Basketball, Boxen; Tennis folgt) kämpfen mit Ball oder Fäusten gegen
 Monster-Wellen. Stage → Wellen → Boss, Upgrade-Karten, 3 Klassen pro Sportart, Meta-Fortschritt mit Münzen,
 Online-Duo per Raumcode. Details stehen im `README.md` – **das README ist die Spielbeschreibung und muss bei
 Spieländerungen mitgepflegt werden.**
@@ -42,6 +42,13 @@ Spieländerungen mitgepflegt werden.**
   Offene Dribbelhände für Basketball: Zusatzbogen `tools/newdesign/sources/dribble-hands.png` (mit versioniert),
   `characters.js` übernimmt ihn als `OpenHand` in die drei Atlanten. Die offene Hand zeigt im Atlas nach rechts
   statt nach unten; `PlayerRig.Hoops` steuert ihren Ballkontakt und den Winkel im Handgelenk.
+- **Boxer** (KAI, VERA, LUZ; `Sport.Boxing`): kein Ball – der Ball bleibt geparkt (`Player.SyncBallToSport`). Moves in
+  `Player/Player.Boxing.cs`, Ultis in `Player/Player.BoxUlti.cs`, Posen in `Player/PlayerRig.Boxing.cs` (Fäuste per Arm-IK
+  relativ zur Schulter, jeder Schlag als eigene Zeitlinie pro Arm, ausgelöst über `Player.PunchSerial` – auch beim Duo-Partner),
+  Druckwellen der Schläge in `Combat/FistWaves.cs` (Duo: `Ev.Jolt`). Figurenbögen in `Inspiration/boxer` (`characters.def.js`
+  mit `file`, `tucked`: Hosenbund über dem Rumpf). Spielerauswahl der Boxer: `tools/newdesign/playerselect.box.js` (läuft am
+  Ende von `playerselect.js` mit, eigene Kulisse `scene_box` über `Figure.scene`), Shop-Karten: `tools/newdesign/shop.box.js`
+  (läuft am Ende von `shop.js` mit). Screenshots: Szenario `boxing`.
 - **Monster sind ganze Bilder:** `tools/newdesign/monsters.js` stellt die rechte Ansicht jedes Bogens aus
   `Inspiration/Monsterpaket` frei → `Resources/Monsters/<stage>/<look>.png/.json/_rim.png`. Die Bilder **nicht** in Glieder
   zerlegen (Arme/Flügel/Augen herausschneiden und Löcher auffüllen sah im Spiel zerrissen und verschmiert aus und wurde

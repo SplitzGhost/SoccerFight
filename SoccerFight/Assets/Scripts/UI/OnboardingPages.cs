@@ -35,7 +35,7 @@ namespace SoccerFight
         public void Build(RectTransform parent, MenuNav menu)
         {
             nav = menu;
-            starterPage = new SubPage(parent, MenuPage.Starter, "WÄHLE DEINEN SPIELER", "DEIN ERSTER SPIELER IST GRATIS  ·  FUSSBALL ODER BASKETBALL", MetaUi.Gold, nav.Register, null);
+            starterPage = new SubPage(parent, MenuPage.Starter, "WÄHLE DEINEN SPIELER", "DEIN ERSTER SPIELER IST GRATIS  ·  FUSSBALL, BASKETBALL ODER BOXEN", MetaUi.Gold, nav.Register, null);
             var content = starterPage.Content;
             float step = CharacterCard.W + 50f;
             int n = Characters.Sports.Length;

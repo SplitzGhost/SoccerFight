@@ -58,9 +58,20 @@ namespace SoccerFight
             S(Ability.PumpFake,  SkillCategory.Technique),
         };
 
-        public static IReadOnlyList<SkillDef> ForSport(Sport s) => s == Sport.Basketball ? Hoops : All;
+        /// <summary>The boxing boss pool.</summary>
+        public static readonly IReadOnlyList<SkillDef> Boxing = new[]
+        {
+            S(Ability.Uppercut, SkillCategory.Shot),
+            S(Ability.Flurry,   SkillCategory.Shot),
+            S(Ability.Hooks,    SkillCategory.Technique),
+            S(Ability.Shadow,   SkillCategory.Technique),
+            S(Ability.Pound,    SkillCategory.Defense),
+        };
+
+        public static IReadOnlyList<SkillDef> ForSport(Sport s) => s == Sport.Basketball ? Hoops : s == Sport.Boxing ? Boxing : All;
 
         static bool IsHoops => Characters.Current.Sport == Sport.Basketball;
+        static bool IsBoxing => Characters.Current.Sport == Sport.Boxing;
 
         static readonly Dictionary<Ability, SkillDef> byAbility = new Dictionary<Ability, SkillDef>();
         static readonly Dictionary<string, SkillDef> byId = new Dictionary<string, SkillDef>();
@@ -69,6 +80,7 @@ namespace SoccerFight
         {
             foreach (var s in All) { byAbility[s.Ability] = s; byId[s.Id] = s; }
             foreach (var s in Hoops) { byAbility[s.Ability] = s; byId[s.Id] = s; }
+            foreach (var s in Boxing) { byAbility[s.Ability] = s; byId[s.Id] = s; }
         }
 
         public static SkillDef Get(Ability a) => byAbility.TryGetValue(a, out var s) ? s : null;
@@ -79,9 +91,9 @@ namespace SoccerFight
         {
             switch (a)
             {
-                case Ability.Shot: case Ability.Power: case Ability.Three: return SkillCategory.Shot;
-                case Ability.Dash: case Ability.Crossover: return SkillCategory.Technique;
-                case Ability.Header: case Ability.Dunk: return SkillCategory.Header;
+                case Ability.Shot: case Ability.Power: case Ability.Three: case Ability.PowerCross: return SkillCategory.Shot;
+                case Ability.Dash: case Ability.Crossover: case Ability.Slip: return SkillCategory.Technique;
+                case Ability.Header: case Ability.Dunk: case Ability.Guard: return SkillCategory.Header;
                 default:
                     var s = Get(a);
                     return s != null ? s.Category : (SkillCategory?)null;
@@ -92,10 +104,10 @@ namespace SoccerFight
         {
             switch (c)
             {
-                case SkillCategory.Shot: return IsHoops ? "WURF" : "SCHUSS";
+                case SkillCategory.Shot: return IsHoops ? "WURF" : IsBoxing ? "SCHLAG" : "SCHUSS";
                 case SkillCategory.Technique: return "TRICK";
                 case SkillCategory.Defense: return "ABWEHR";
-                case SkillCategory.Header: return IsHoops ? "DUNK" : "KOPFBALL";
+                case SkillCategory.Header: return IsHoops ? "DUNK" : IsBoxing ? "KONTER" : "KOPFBALL";
                 default: return "SPEZIAL";
             }
         }
@@ -122,12 +134,13 @@ namespace SoccerFight
             {
                 case Src.Shot: case Src.Returning: case Src.Echo: case Src.TwinSun:
                 case Src.Power: case Src.Blast: case Src.Punt: case Src.Three: case Src.AlleyOop:
+                case Src.Punch: case Src.Jolt: case Src.Cross: case Src.Uppercut:
                     return SkillCategory.Shot;
-                case Src.Rainbow: case Src.RainbowPass: case Src.Dash: case Src.Nutmeg: case Src.Decoy: case Src.FastBreak:
+                case Src.Rainbow: case Src.RainbowPass: case Src.Dash: case Src.Nutmeg: case Src.Decoy: case Src.FastBreak: case Src.Hook:
                     return SkillCategory.Technique;
-                case Src.Tackle: case Src.Block:
+                case Src.Tackle: case Src.Block: case Src.Pound:
                     return SkillCategory.Defense;
-                case Src.Header: case Src.Dunk:
+                case Src.Header: case Src.Dunk: case Src.Counter:
                     return SkillCategory.Header;
                 default:
                     return null;
@@ -142,12 +155,14 @@ namespace SoccerFight
                 case Player.Action.Flick: case Player.Action.StepOver: case Player.Action.Nutmeg: case Player.Action.Decoy:
                 case Player.Action.Dash: case Player.Action.Crossover: case Player.Action.FastBreak:
                 case Player.Action.StepBack: case Player.Action.PumpFake:
+                case Player.Action.Slip: case Player.Action.Hooks: case Player.Action.Shadow:
                     return SkillCategory.Technique;
                 case Player.Action.Bicycle: case Player.Action.Punt: case Player.Action.AlleyOop:
+                case Player.Action.Uppercut: case Player.Action.Flurry:
                     return SkillCategory.Shot;
-                case Player.Action.Tackle: case Player.Action.Wall: case Player.Action.Block:
+                case Player.Action.Tackle: case Player.Action.Wall: case Player.Action.Block: case Player.Action.Pound:
                     return SkillCategory.Defense;
-                case Player.Action.Header: case Player.Action.Dunk:
+                case Player.Action.Header: case Player.Action.Dunk: case Player.Action.Guard:
                     return SkillCategory.Header;
                 default:
                     return null;

@@ -121,6 +121,75 @@
    "headX": 566,
    "headY": 187,
    "swing": []
+  },
+  {
+   "id": "kai",
+   "x": 295,
+   "y": 154,
+   "w": 510,
+   "h": 615,
+   "ground": 745,
+   "hip": 455,
+   "chestX": 545,
+   "chestY": 390,
+   "neckX": 535,
+   "neckY": 310,
+   "headX": 515,
+   "headY": 250,
+   "swing": [],
+   "scene": "scene_box"
+  },
+  {
+   "id": "vera",
+   "x": 291,
+   "y": 144,
+   "w": 512,
+   "h": 625,
+   "ground": 748,
+   "hip": 440,
+   "chestX": 535,
+   "chestY": 380,
+   "neckX": 545,
+   "neckY": 290,
+   "headX": 550,
+   "headY": 240,
+   "swing": [
+    {
+     "rootX": 497,
+     "rootY": 200,
+     "tipX": 445,
+     "tipY": 228,
+     "radius": 36,
+     "flex": 0.3
+    }
+   ],
+   "scene": "scene_box"
+  },
+  {
+   "id": "luz",
+   "x": 295,
+   "y": 137,
+   "w": 512,
+   "h": 632,
+   "ground": 748,
+   "hip": 450,
+   "chestX": 550,
+   "chestY": 400,
+   "neckX": 565,
+   "neckY": 315,
+   "headX": 580,
+   "headY": 260,
+   "swing": [
+    {
+     "rootX": 525,
+     "rootY": 190,
+     "tipX": 412,
+     "tipY": 298,
+     "radius": 38,
+     "flex": 1
+    }
+   ],
+   "scene": "scene_box"
   }
  ],
  "parts": [
@@ -354,6 +423,90 @@
    "y": 769,
    "w": 176,
    "h": 133
+  },
+  {
+   "name": "title_kai",
+   "x": 1172,
+   "y": 213,
+   "w": 200,
+   "h": 107
+  },
+  {
+   "name": "ability_kai",
+   "x": 994,
+   "y": 340,
+   "w": 164,
+   "h": 159
+  },
+  {
+   "name": "tile_kai_on",
+   "x": 526,
+   "y": 768,
+   "w": 178,
+   "h": 120
+  },
+  {
+   "name": "tile_kai",
+   "x": 529,
+   "y": 767,
+   "w": 178,
+   "h": 124
+  },
+  {
+   "name": "title_vera",
+   "x": 1169,
+   "y": 212,
+   "w": 262,
+   "h": 108
+  },
+  {
+   "name": "ability_vera",
+   "x": 994,
+   "y": 340,
+   "w": 164,
+   "h": 159
+  },
+  {
+   "name": "tile_vera_on",
+   "x": 721,
+   "y": 768,
+   "w": 178,
+   "h": 114
+  },
+  {
+   "name": "tile_vera",
+   "x": 726,
+   "y": 769,
+   "w": 178,
+   "h": 118
+  },
+  {
+   "name": "title_luz",
+   "x": 1174,
+   "y": 213,
+   "w": 155,
+   "h": 107
+  },
+  {
+   "name": "ability_luz",
+   "x": 994,
+   "y": 340,
+   "w": 164,
+   "h": 159
+  },
+  {
+   "name": "tile_luz_on",
+   "x": 937,
+   "y": 768,
+   "w": 178,
+   "h": 114
+  },
+  {
+   "name": "tile_luz",
+   "x": 938,
+   "y": 769,
+   "w": 178,
+   "h": 115
   }
  ]
 }

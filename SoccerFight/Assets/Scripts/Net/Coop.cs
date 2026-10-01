@@ -15,7 +15,7 @@ namespace SoccerFight
     /// </summary>
     public static class Coop
     {
-        public const ushort Protocol = 2;
+        public const ushort Protocol = 3;
         /// <summary>Seconds a downed player waits before coming back.</summary>
         public const float DownTime = 30f;
 
@@ -211,6 +211,14 @@ namespace SoccerFight
             w.Byte((byte)kind); w.Byte(step); w.Vec(a); w.Vec(b); w.Float(f);
         }
 
+        /// <summary>Die Druckwelle eines Boxer-Schlags: nur das Bild, die Treffer zählt der, der schlägt.</summary>
+        public static void SendJolt(Vector2 from, Vector2 dir, float speed, float range, float radius, float size, Color c)
+        {
+            if (!Active) return;
+            var w = S.Event(Ev.Jolt);
+            w.Vec(from); w.Pos(dir); w.Float(speed); w.Float(range); w.Float(radius); w.Float(size); w.Color(c);
+        }
+
         public static void SendFake(Vector2 origin, Vector2 from, Vector2 to, float flight, float life, float radius)
         {
             if (!Active) return;
@@ -275,7 +283,7 @@ namespace SoccerFight
         Hazard = 30, Gust, Eclipse, Toast,
         Stage = 40, Wave, WaveDone, BossDown, Rewards, RewardsDone, RunOver,
         Down = 60, Up,
-        Wall = 70, Decoy, Vortex, Fx, Echo, Fake, Ulti,
+        Wall = 70, Decoy, Vortex, Fx, Echo, Fake, Ulti, Jolt,
     }
 
     /// <summary>One room: the link, the partner, the run in common.</summary>
@@ -806,6 +814,14 @@ namespace SoccerFight
                     Color c = r.Color();
                     int flags = r.Byte();
                     if (InRun) EchoBalls.I.Fire(from, dir, speed, 0f, Src.Echo, c, (flags & 1) != 0, (flags & 2) != 0, false, true);
+                    break;
+                }
+                case Ev.Jolt:
+                {
+                    Vector2 from = r.Vec(), dir = r.Pos();
+                    float speed = r.Float(), range = r.Float(), radius = r.Float(), size = r.Float();
+                    Color c = r.Color();
+                    if (InRun) FistWaves.I?.Fire(from, dir, speed, range, 0f, radius, 0f, Src.Jolt, c, size: size, partner: true);
                     break;
                 }
                 case Ev.Fake:

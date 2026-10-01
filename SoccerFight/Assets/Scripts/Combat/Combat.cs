@@ -4,7 +4,10 @@ using UnityEngine;
 namespace SoccerFight
 {
     /// <summary>Where a hit came from. Primary sources scale with the build; derived ones (chains, explosions, burn) carry already-scaled damage.</summary>
-    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Three, Dunk, AlleyOop, FastBreak, Block, Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard,
+    public enum Src { Shot, Returning, Echo, TwinSun, Power, Rainbow, RainbowPass, Blast, Header, Three, Dunk, AlleyOop, FastBreak, Block,
+        // boxing: the glove itself, its shock wave, the class moves and boss skills (all direct hits, so before Dash)
+        Punch, Jolt, Cross, Uppercut, Hook, Counter, Pound,
+        Dash, Tackle, Nutmeg, Punt, Decoy, Whistle, Nova, Stomp, Vortex, Chain, Explosion, Burn, Hazard,
         /// <summary>Die Ulti eines Spielers (füllt die eigene Ulti-Leiste nicht).</summary>
         Ulti }
 
@@ -48,6 +51,10 @@ namespace SoccerFight
                 case Src.Blast: return s.BlastDamageMul;
                 case Src.Three: return s.ThreeDamageMul;
                 case Src.AlleyOop: return s.OopDamageMul;
+                case Src.Punch: case Src.Jolt: return s.ShotDamageMul;
+                case Src.Cross: return s.PcDamageMul;
+                case Src.Uppercut: return s.UpperDamageMul;
+                case Src.Counter: return s.CounterDamageMul;
                 default: return 1f;
             }
         }
@@ -120,7 +127,7 @@ namespace SoccerFight
                     if (s.FreezeOnThird && m.Slowed && m.HitCount % 3 == 0) m.Freeze(1f);
                 }
                 if (s.ChainTargets > 0 || forceCrit && s.GoldenBoot) Chain(m, d, forceCrit && s.GoldenBoot);
-                if ((s.Cannoneer || (forceCrit && s.GoldenBoot)) && (src == Src.Shot || src == Src.Echo || src == Src.TwinSun))
+                if ((s.Cannoneer || (forceCrit && s.GoldenBoot)) && (src == Src.Shot || src == Src.Echo || src == Src.TwinSun || src == Src.Jolt))
                     Explosion(at, 1.3f * s.AreaMul, d * 0.5f, Palette.ShotCyan);
                 if (s.NovaEvery > 0 && ++novaHits >= s.NovaEvery) { novaHits = 0; Nova(Game.I.Player); }
                 if (shock)
@@ -325,7 +332,9 @@ namespace SoccerFight
                 var m = Nearest(from, 10f, chained);
                 Vector2 dir = m != null ? (m.Center - from).normalized : MathUtil.Dir(60f + i * 30f);
                 if (m != null) chained.Add(m.Id);
-                EchoBalls.I.Fire(from, dir, 22f, Player.ShotDamage, Src.Echo, Palette.Gold);
+                // Weltmeister: der Boxer schickt Druckwellen statt Bällen
+                if (p.Boxing) FistWaves.I.Fire(from + dir * 0.4f, dir, 24f, 9f, Player.ShotDamage, 0.5f, 5f, Src.Echo, Palette.Gold, 1);
+                else EchoBalls.I.Fire(from, dir, 22f, Player.ShotDamage, Src.Echo, Palette.Gold);
             }
         }
 

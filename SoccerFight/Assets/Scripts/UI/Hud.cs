@@ -83,6 +83,9 @@ namespace SoccerFight
         Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
         Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot;
         Slot threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot, backSlot, fakeSlot;
+        /// <summary>Die Boxer-Moves: Klassen-Moves (Rechtsklick) und Boss-Fähigkeiten, eine Kachel pro Move.</summary>
+        Slot[] boxSlots;
+        static readonly Ability[] BoxAbilities = { Ability.PowerCross, Ability.Guard, Ability.Slip, Ability.Uppercut, Ability.Hooks, Ability.Pound, Ability.Shadow, Ability.Flurry };
         Sport shotIconSport = (Sport)(-1);
         const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
@@ -269,9 +272,19 @@ namespace SoccerFight
             fastSlot = BuildSlot("FastBreak", Vector2.zero, SkillSlotSize, UiArt.IconFastBreak, UiArt.RingThick, Palette.DashMint, GameAction.Skill1, Ability.FastBreak);
             backSlot = BuildSlot("StepBack", Vector2.zero, SkillSlotSize, UiArt.IconStepBack, UiArt.RingThick, Palette.Swish, GameAction.Skill1, Ability.StepBack);
             fakeSlot = BuildSlot("PumpFake", Vector2.zero, SkillSlotSize, UiArt.IconPumpFake, UiArt.RingThick, Palette.Showboat, GameAction.Skill1, Ability.PumpFake);
-            slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
+            boxSlots = new Slot[BoxAbilities.Length];
+            for (int i = 0; i < BoxAbilities.Length; i++)
+            {
+                var a = BoxAbilities[i];
+                bool cls = Abilities.IsClassMove(a);
+                boxSlots[i] = BuildSlot(a.ToString(), Vector2.zero, SkillSlotSize, Abilities.Icon(a), UiArt.RingThick, Abilities.Accent(a),
+                    cls ? GameAction.PowerShot : GameAction.Skill1, a);
+            }
+            var all = new System.Collections.Generic.List<Slot> { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
                             tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot,
                             threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot, backSlot, fakeSlot };
+            all.AddRange(boxSlots);
+            slots = all.ToArray();
             foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
@@ -805,7 +818,8 @@ namespace SoccerFight
 
             UpdateHealth(dt);
             bool juggling = player.CurrentAction == Player.Action.Juggle;
-            bool withBall = player.Ball.IsHeld && !player.Dead && !juggling;
+            // ein Boxer hat immer seine Fäuste dabei
+            bool withBall = (player.Ball.IsHeld || player.Boxing) && !player.Dead && !juggling;
             LayoutSlots(run, dt);
             bool free = !player.Dead && !juggling;
             UpdateSlot(shotSlot, player.ShotCd, player.ShotCooldownTotal, withBall, dt, false, true);
@@ -831,6 +845,8 @@ namespace SoccerFight
             UpdateSlot(fastSlot, player.FastCd, player.FastCooldownTotal, player.Grounded && free, dt, false, true);
             UpdateSlot(backSlot, player.StepCd, player.StepCooldownTotal, player.CanStepBack && free, dt, false, true);
             UpdateSlot(fakeSlot, player.FakeCd, player.FakeCooldownTotal, withBall && player.Grounded, dt, false, true);
+            for (int i = 0; i < boxSlots.Length; i++)
+                UpdateSlot(boxSlots[i], player.BoxCooldown(BoxAbilities[i]), player.BoxCooldownTotal(BoxAbilities[i]), player.BoxAvailable(BoxAbilities[i]), dt, false, true);
             if (shotIconSport != player.Rig.Sport) { shotIconSport = player.Rig.Sport; shotSlot.icon.sprite = Abilities.Icon(Ability.Shot); shotSlot.accent = Abilities.Accent(Ability.Shot); RefreshBindings(); }
             UpdateUlti(dt);
             UpdateCrosshair(dt);

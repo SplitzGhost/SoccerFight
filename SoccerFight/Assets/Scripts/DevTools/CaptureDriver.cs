@@ -113,6 +113,7 @@ namespace SoccerFight
             else if (scenario == "death") yield return DeathTour();
             else if (scenario == "shop") yield return ShopTour();
             else if (scenario == "ultis") yield return UltiTour();
+            else if (scenario == "boxing") yield return BoxingTour();
             else yield return All();
 
             Debug.Log("[Capture] finished");

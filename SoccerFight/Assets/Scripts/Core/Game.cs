@@ -40,6 +40,7 @@ namespace SoccerFight
         Decoys decoys;
         Lightning lightning;
         EchoBalls echoes;
+        FistWaves fists;
         Vortices vortices;
         Court court;
         Ultis ultis;
@@ -138,6 +139,8 @@ namespace SoccerFight
             Mechanics.Build(transform);
             echoes = new EchoBalls();
             echoes.Build(transform);
+            fists = new FistWaves();
+            fists.Build(transform);
             vortices = new Vortices();
             vortices.Build(transform);
             court = new Court();
@@ -250,6 +253,7 @@ namespace SoccerFight
             enemyShots.Clear();
             bossTells.Clear();
             echoes.Clear();
+            fists.Clear();
             vortices.Clear();
             court.Clear();
             ultis.Clear();
@@ -263,6 +267,7 @@ namespace SoccerFight
             DevMode.OnRunStart();
             Player.Respawn();
             Ball.ResetTo(Player.Pos + new Vector2(0.5f, Art.BallRadius));
+            Player.SyncBallToSport();
             Waves.Restart();
             if (startRun) Director.StartRun();
             else { Player.ApplyStats(true); Director.Idle(); }
@@ -347,6 +352,7 @@ namespace SoccerFight
             Waves.Update(dt, Player, Ball);
             bossTells.Update(dt);
             echoes.Update(dt);
+            fists.Update(dt);
             vortices.Update(dt);
             court.Update(dt);
             ultis.Update(dt);

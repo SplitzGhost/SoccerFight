@@ -5,7 +5,7 @@ using UnityEngine.TextCore.LowLevel;
 namespace SoccerFight
 {
     /// <summary>Resolution-independent looking HUD sprites (rasterized at 2x) and the Inter font assets.</summary>
-    public static class UiArt
+    public static partial class UiArt
     {
         public static Sprite Pill, BarFill, Panel, PanelRing, Circle, Glow, RingThin, RingThick, RingRainbow;
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
@@ -253,6 +253,7 @@ namespace SoccerFight
 
             BuildMoveIcons(D);
             BuildHoopsIcons(D);
+            BuildBoxIcons(D);
 
             // Lock for abilities the run hasn't unlocked yet
             var lk = new SdfCanvas(new Rect(-32, -32, 64, 64), D * 2f);

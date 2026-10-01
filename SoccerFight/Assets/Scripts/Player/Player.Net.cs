@@ -26,6 +26,8 @@ namespace SoccerFight
         public bool JuggleMode, MeteorFalling;
         /// <summary>Ulti: wie viele Sprünge Novas Ankle Breaker macht (die Pose am Ende hängt daran).</summary>
         public int UltiSteps;
+        /// <summary>Boxer: Nummer und Art des letzten Schlags (der Rig spielt jeden Schlag pro Arm ab).</summary>
+        public int PunchSerial, PunchStep, GuardHits;
 
         public void Write(NetWriter w)
         {
@@ -46,6 +48,7 @@ namespace SoccerFight
             w.Unit(Charge); w.Unit(BallSize * 0.5f); w.Unit(DunkFlight);
             w.Byte((byte)((JuggleMode ? 1 : 0) | (MeteorFalling ? 2 : 0)));
             w.Byte((byte)Mathf.Clamp(UltiSteps, 0, 255));
+            w.Byte((byte)(PunchSerial & 255)); w.Byte((byte)PunchStep); w.Byte((byte)Mathf.Clamp(GuardHits, 0, 255));
         }
 
         public static PlayerNet Read(NetReader r)
@@ -69,6 +72,7 @@ namespace SoccerFight
             int bf = r.Byte();
             s.JuggleMode = (bf & 1) != 0; s.MeteorFalling = (bf & 2) != 0;
             s.UltiSteps = r.Byte();
+            s.PunchSerial = r.Byte(); s.PunchStep = r.Byte(); s.GuardHits = r.Byte();
             return s;
         }
 
@@ -124,6 +128,7 @@ namespace SoccerFight
                 BallSt = Ball.St, BallPos = Ball.Pos, BallVel = Ball.Vel, MeteorTarget = Ball.MeteorTarget,
                 Charge = Ball.Charge, BallSize = Ball.SizeMul, JuggleMode = Ball.JuggleMode, MeteorFalling = Ball.MeteorFalling, DunkFlight = DunkFlight,
                 UltiSteps = UltiSteps,
+                PunchSerial = PunchSerial, PunchStep = PunchStep, GuardHits = GuardHits,
             };
         }
 
@@ -140,6 +145,7 @@ namespace SoccerFight
             InvulnTimer = s.Invuln; Hp = s.Hp; MaxHp = Mathf.Max(1f, s.MaxHp);
             DunkFlight = Mathf.Max(0.3f, s.DunkFlight);
             UltiSteps = s.UltiSteps;
+            PunchSerial = s.PunchSerial; PunchStep = s.PunchStep; GuardHits = s.GuardHits;
             Ball.ApplyNet(s.BallSt, s.BallPos, s.BallVel, s.Charge, s.JuggleMode, s.BallSize, s.MeteorTarget, s.MeteorFalling, s.Facing);
         }
 
@@ -161,6 +167,7 @@ namespace SoccerFight
             Rig.SetVisible(true);
             Ball.ResetTo(Pos + new Vector2(0.5f * Facing, Art.BallRadius));
             Ball.SetVisible(true);
+            SyncBallToSport();
             var fx = FxSystem.I;
             Vector2 c = Pos + new Vector2(0f, 1f);
             fx.Flash(c, 3.4f, Palette.ShotCyan, 0.25f, 3f);

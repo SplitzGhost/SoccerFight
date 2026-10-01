@@ -97,7 +97,9 @@ namespace SoccerFight
             // basketball
             Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake,
             // die Ulti des Spielers (welche, sagt UltiKind)
-            Ulti }
+            Ulti,
+            // boxing (after the ulti so the older values stay as they were)
+            Punch, PowerCross, Guard, Slip, Uppercut, Hooks, Pound, Shadow, Flurry }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -116,7 +118,7 @@ namespace SoccerFight
         // ---- build (upgrades and unlocked abilities)
         static RunState Run => Game.I.Run;
         static PlayerStats S => Game.I.Run.Stats;
-        public float ShotCooldownTotal => ShotCooldown * S.ShotCooldownMul / Combat.AdrenalineMul;
+        public float ShotCooldownTotal => (Boxing ? PunchCooldown : ShotCooldown) * S.ShotCooldownMul / Combat.AdrenalineMul;
         public float PowerCooldownTotal => PowerCooldown * S.CooldownOf(SkillCategory.Shot);
         public float FlickCooldownTotal => FlickCooldown * S.CooldownOf(SkillCategory.Technique);
         public float StepOverCooldownTotal => StepOverCooldown * S.CooldownOf(SkillCategory.Technique);
@@ -261,10 +263,12 @@ namespace SoccerFight
             JuggleDropped = false;
             SinceTouch = 99f;
             ResetHoops();
+            ResetBoxing();
             Rig.ResetPose();
             Rig.SetVisible(true);
             ghosts.Clear();
             Ball.SetVisible(true);
+            SyncBallToSport();
         }
 
         void DecaySkillBuffers(float dt)
@@ -301,7 +305,7 @@ namespace SoccerFight
                 case Ability.Decoy: decoyBuffer = 0.25f; break;
                 case Ability.Whistle: whistleBuffer = 0.25f; break;
                 default:
-                    if (!PressHoopsSkill(a)) Game.I.Hud.OnEmptySlot(slot);   // nothing in this slot yet
+                    if (!PressHoopsSkill(a) && !PressBoxSkill(a)) Game.I.Hud.OnEmptySlot(slot);   // nothing in this slot yet
                     break;
             }
         }
@@ -314,7 +318,7 @@ namespace SoccerFight
                 case Ability.Power: powerBuffer = 0.3f; break;
                 case Ability.Dash: dashBuffer = 0.2f; break;
                 case Ability.Header: headerBuffer = 0.25f; break;
-                default: PressHoopsClassMove(a); break;
+                default: if (!PressHoopsClassMove(a)) PressBoxClassMove(a); break;
             }
         }
 
@@ -387,6 +391,14 @@ namespace SoccerFight
             FastCd = Mathf.Max(0f, FastCd - seconds);
             StepCd = Mathf.Max(0f, StepCd - seconds);
             FakeCd = Mathf.Max(0f, FakeCd - seconds);
+            CrossCdB = Mathf.Max(0f, CrossCdB - seconds);
+            GuardCd = Mathf.Max(0f, GuardCd - seconds);
+            SlipCd = Mathf.Max(0f, SlipCd - seconds);
+            UpperCd = Mathf.Max(0f, UpperCd - seconds);
+            HooksCd = Mathf.Max(0f, HooksCd - seconds);
+            PoundCd = Mathf.Max(0f, PoundCd - seconds);
+            ShadowCd = Mathf.Max(0f, ShadowCd - seconds);
+            FlurryCd = Mathf.Max(0f, FlurryCd - seconds);
         }
 
         /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
@@ -426,6 +438,7 @@ namespace SoccerFight
                 UltiCharge = 1f;
             }
             TickHoops(dt);
+            TickBoxing(dt);
             TickUlti(dt);
 
             var s = S;
@@ -480,6 +493,7 @@ namespace SoccerFight
                 if (ultiBuffer > 0f && UltiReady && StartUlti()) { }
                 else if (whistleBuffer > 0f && Ultimate >= 1f) StartWhistle();
                 else if (Hoops && StartHoopsAction()) { }
+                else if (Boxing) StartBoxAction();
                 else if (dashBuffer > 0f && DashCd <= 0f && (Grounded || airDashes > 0)) StartDash();
                 else if (flickBuffer > 0f && FlickCd <= 0f && Ball.IsHeld && Grounded) StartFlick();
                 else if (bikeBuffer > 0f && BicycleCd <= 0f && !Grounded && TakeBall()) StartBicycle();
@@ -514,6 +528,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Wall || CurrentAction == Action.Whistle) speedMul = 0.15f;
             else if (CurrentAction == Action.Tackle || CurrentAction == Action.Nutmeg || CurrentAction == Action.Decoy) speedMul = 0.1f;
             else if (CurrentAction == Action.Ulti) speedMul = UltiSpeedMul();
+            else if (IsBoxAction(CurrentAction)) speedMul = BoxSpeedMul();
             else if (CurrentAction >= Action.Throw) speedMul = HoopsSpeedMul();
             float target = input * MaxSpeedNow * speedMul;
             float accel;
@@ -536,6 +551,7 @@ namespace SoccerFight
             else if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
             else if (IsFastBreaking) Vel.x = fastDir * FastSpeed * s.FastBreakDistMul * rate;
             else if (IsStepping) Vel.x = stepDir * StepSpeedNow * rate;
+            else if (BoxVelocity(rate)) { }
             // the slide starts fast and runs out of steam — on ice it keeps going much further
             else if (IsSliding) Vel.x = slideDir * TackleSpeed * (1f - 0.72f * MathUtil.EaseInQuad(ActionTime / TackleSlide)) * (s.Slippery ? 1.45f : 1f);
             else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun) * rate;
@@ -546,7 +562,7 @@ namespace SoccerFight
             if (CurrentAction == Action.None && Mathf.Abs(input) > 0.01f) Facing = input > 0f ? 1 : -1;
 
             // --- drop through the platform underfoot (down, or down + jump)
-            bool canMove = (CurrentAction == Action.None || CurrentAction == Action.Kick) && !Dead;
+            bool canMove = (CurrentAction == Action.None || CurrentAction == Action.Kick || CurrentAction == Action.Punch) && !Dead;
             if (Grounded && OnPlatform != Level.None && canMove && (GameInput.DownPressed || (jumpBuffer > 0f && GameInput.DownHeld)))
             {
                 dropIgnore = OnPlatform;
@@ -577,7 +593,7 @@ namespace SoccerFight
             else if (UltiScripted) UltiMove(dt);
             else
             {
-                if (IsDashing || IsFastBreaking) Vel.y = 0f;
+                if (IsDashing || IsFastBreaking || IsSlipping) Vel.y = 0f;
                 else if (!Grounded)
                 {
                     if (Vel.y <= 0f) boostRise = false;
@@ -1160,6 +1176,7 @@ namespace SoccerFight
             else if (CurrentAction == Action.Header) UpdateHeader(dt);
             else if (CurrentAction == Action.Dash) UpdateDash(dt);
             else if (CurrentAction == Action.Ulti) UpdateUlti(dt);
+            else if (IsBoxAction(CurrentAction)) UpdateBoxAction(dt);
             else UpdateHoopsAction(dt);
         }
 
@@ -1699,6 +1716,8 @@ namespace SoccerFight
         public bool TakeDamage(float amount, Vector2 from)
         {
             if (Dead || InvulnTimer > 0f || DodgeTime > 0f || DevMode.God) return false;
+            // the boxer's guard catches the hit (and counts it for the counter)
+            if (GuardAbsorb(amount, from)) return true;
             var game = Game.I;
             var s = S;
             float dir = Mathf.Sign(Pos.x - from.x);
@@ -1754,6 +1773,7 @@ namespace SoccerFight
             if (CurrentAction == Action.Dunk && !released) { CurrentAction = Action.None; Ball.Release(); game.Cam.SetZoom(1f); }
             if (CurrentAction == Action.Three && !released) game.Cam.SetZoom(1f);
             AbortHoops();
+            AbortBoxing();
 
             if (Hp <= 0f)
             {

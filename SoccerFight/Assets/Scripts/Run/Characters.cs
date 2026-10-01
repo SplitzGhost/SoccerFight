@@ -30,7 +30,7 @@ namespace SoccerFight
     }
 
     /// <summary>The sports of the roster. Every sport has the same three classes with its own moves.</summary>
-    public enum Sport { Soccer, Basketball }
+    public enum Sport { Soccer, Basketball, Boxing }
 
     /// <summary>How the head is drawn for the basketball bodies (soccer uses the kit's tuft).</summary>
     public enum HairStyle { Tuft, Fade, Buzz, Braids }
@@ -62,6 +62,8 @@ namespace SoccerFight
         public float HandLen = 0.2f;
         /// <summary>Ankle → tip of the shoe (a dribbled ball bounces clear of it).</summary>
         public float Toe = 0.3f;
+        /// <summary>The shirt is tucked into the shorts (boxers): the waistband is drawn over the torso.</summary>
+        public bool Tucked;
 
         /// <summary>Standing hip height: the knees stay a touch bent, as in the design.</summary>
         public float StandHip => Mathf.Min(HipHeight - 0.012f, PlayerDims.AnkleHeight + ThighLen + ShinLen - 0.03f);
@@ -198,6 +200,38 @@ namespace SoccerFight
                 Perk = Perk("nova", "HANDLES", "Crossover-Boost hält 1 s länger, +8 % Tempo.",
                     (s, n) => { s.CrossTimeBonus += 1f; s.MoveSpeedMul += 0.08f; }),
             },
+
+            // ---- boxing: no ball – the fists do the work (punch combos with a short shock wave in front of the glove)
+            new CharacterDef
+            {
+                Id = "kai", Name = "KAI", Sport = Sport.Boxing, Class = CharacterClass.Striker, Starter = true, CoinPrice = 500,
+                Flavour = "Schnelle Hände, harter Punch. Wer stehen bleibt, kassiert die Kombination.",
+                Accent = Hex("#FF7A2E"), Attack = 5, Defence = 2, Tech = 3,
+                Kit = Kit("#1E1B22", "#0E0C12", "#3A3540", "#F2ECE4", "#A8A098", "#C98552", "#8E5634", "#EDB083",
+                          "#1A1416", "#4A3A3C", "#1E1C22", "#45424C", "#FF7A2E", 0.4f, false),
+                Perk = Perk("kai", "SCHNELLE HÄNDE", "Schläge: +15 % Schaden, 10 % schneller bereit.",
+                    (s, n) => { s.ShotDamageMul += 0.15f; s.ShotCooldownMul *= 0.9f; }),
+            },
+            new CharacterDef
+            {
+                Id = "vera", Name = "VERA", Sport = Sport.Boxing, Class = CharacterClass.Defender, Starter = true, CoinPrice = 500,
+                Flavour = "Steht wie eine Wand. Jeder Treffer auf die Deckung kommt doppelt zurück.",
+                Accent = Hex("#3D6BFF"), Attack = 3, Defence = 5, Tech = 2,
+                Kit = Kit("#1F3C9E", "#10225E", "#3F63D0", "#F1E6CC", "#B5A27C", "#B87A4E", "#7E4E30", "#E0A57A",
+                          "#1C1414", "#4A3634", "#1A2550", "#3A4C8A", "#E8B84A", 0.3f, false),
+                Perk = Perk("vera", "EISERNE DECKUNG", "+25 maximales Leben, die Deckung hält 0,3 s länger.",
+                    (s, n) => { s.MaxHpBonus += 25f; s.GuardTimeBonus += 0.3f; }),
+            },
+            new CharacterDef
+            {
+                Id = "luz", Name = "LUZ", Sport = Sport.Boxing, Class = CharacterClass.Skiller, Starter = true, CoinPrice = 500,
+                Flavour = "Tanzt um jeden Schlag herum und ist längst wieder da, bevor er landet.",
+                Accent = Hex("#3FD28A"), Attack = 2, Defence = 3, Tech = 5,
+                Kit = Kit("#17583F", "#0B3324", "#2C8A63", "#F4EEE2", "#B3AC9C", "#E3A47A", "#AE7352", "#F8CBA6",
+                          "#6E2A1C", "#A4503A", "#15402E", "#2E6A50", "#F2C230", 1.4f, false),
+                Perk = Perk("luz", "LEICHTFÜSSIG", "Konterschritt: 25 % weiter, lädt 20 % schneller, +8 % Tempo.",
+                    (s, n) => { s.SlipDistMul += 0.25f; s.SlipCooldownMul *= 0.8f; s.MoveSpeedMul += 0.08f; }),
+            },
         };
 
         static readonly Dictionary<string, CharacterDef> byId = new Dictionary<string, CharacterDef>();
@@ -224,11 +258,24 @@ namespace SoccerFight
         }
 
         /// <summary>The sports that have players, in display order.</summary>
-        public static readonly Sport[] Sports = { Sport.Soccer, Sport.Basketball };
+        public static readonly Sport[] Sports = { Sport.Soccer, Sport.Basketball, Sport.Boxing };
 
-        public static string SportName(Sport s) => s == Sport.Basketball ? "BASKETBALL" : "FUSSBALL";
+        /// <summary>Die Farbe der Boxhandschuhe (Menü: der Handschuh, der beim Start in die Kamera fliegt, das Abzeichen am Namensschild).</summary>
+        public static Color GloveColor(CharacterDef d)
+        {
+            switch (d.Id)
+            {
+                case "kai": return Hex("#E8332E");
+                case "vera": return Hex("#2A5BE8");
+                case "luz": return Hex("#F2B51C");
+                default: return d.Accent;
+            }
+        }
 
-        /// <summary>Characters sold in the shop before the sport update, with what they cost (refunded once, see Profile).</summary>
+        public static string SportName(Sport s) => s == Sport.Basketball ? "BASKETBALL" : s == Sport.Boxing ? "BOXEN" : "FUSSBALL";
+
+        /// <summary>Characters sold in the shop before the sport update, with what they cost (refunded once, see Profile).
+        /// "kai" is a boxer again now: an old save that bought the soccer Kai gets the coins back, not the boxer.</summary>
         public static readonly Dictionary<string, int> Retired = new Dictionary<string, int>
         {
             { "kai", 750 }, { "zara", 1100 }, { "ivo", 750 }, { "tala", 1100 }, { "luna", 750 }, { "nico", 1100 },

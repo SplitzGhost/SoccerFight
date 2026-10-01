@@ -502,7 +502,7 @@ namespace SoccerFight
         }
 
         public static Sprite ClassIcon(CharacterClass c) => c == CharacterClass.Defender ? IconDefender : c == CharacterClass.Skiller ? IconSkiller : IconStriker;
-        public static Sprite SportIcon(Sport s) => s == Sport.Basketball ? IconHoops : IconSoccer;
+        public static Sprite SportIcon(Sport s) => s == Sport.Basketball ? IconHoops : s == Sport.Boxing ? IconBoxing : IconSoccer;
 
         // ------------------------------------------------------------------ text
 

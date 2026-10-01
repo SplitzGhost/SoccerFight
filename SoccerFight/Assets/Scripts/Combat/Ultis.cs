@@ -1091,6 +1091,53 @@ namespace SoccerFight
             Game.I.Cam.AddTrauma(0.25f);
         }
 
+        // ================================================================== Boxer
+
+        /// <summary>KAIs K.O.-Schlag: ein weißer Blitz an der Faust, ein Kranz aus Schlagzacken, die Luft reißt in Schlagrichtung auf.</summary>
+        public static void KnockoutFx(Vector2 at, Vector2 dir, float r)
+        {
+            var fx = FxSystem.I;
+            Color c = UltiDefs.Accent(UltiKind.Knockout);
+            fx.Flash(at, r * 1.1f, c, 0.2f, 1.9f);
+            fx.Flash(at, r * 0.35f, Palette.PunchCore, 0.08f, 2.2f);
+            fx.Ring(FxLayer.Front, at, 0.3f, r * 1.6f, 0.36f, 0.02f, 0.45f, Color.white.WithAlpha(0.75f), c.WithAlpha(0f), 2.2f);
+            fx.Ring(FxLayer.Front, at, 0.2f, r * 0.9f, 0.3f, 0.01f, 0.3f, Palette.Gold, c.WithAlpha(0f), 2.4f);
+            float ang = MathUtil.Angle(dir);
+            for (int i = 0; i < 4; i++)
+                fx.Spawn(FxLayer.Front, true, Art.CellSparkle, at, Vector2.zero, 0.3f, r * (1.4f - i * 0.2f), r * 0.2f, Palette.PunchCore, c.WithAlpha(0f), 2.4f,
+                    0f, 0f, ang + i * 22.5f, 0f, false);
+            for (int i = 0; i < 22; i++)
+            {
+                float a = ang + Random.Range(-35f, 35f);
+                fx.Streak(FxLayer.Front, at, MathUtil.Dir(a) * Random.Range(12f, 28f), Random.Range(0.25f, 0.45f), 0.07f, 0.06f,
+                    Color.white.WithAlpha(0.9f), c.WithAlpha(0f), 2.6f, 3f);
+            }
+            fx.Sparks(at, dir, 90f, 26, 8f, 22f, Palette.Gold, 2.8f, 0.06f, 0.36f, 8f);
+            fx.Sparks(at, -dir, 120f, 10, 3f, 8f, c, 2.4f, 0.05f, 0.24f);
+        }
+
+        /// <summary>LUZ' Schlusspose: grüne und goldene Schwingen aus Licht, Funken wie Flügelstaub.</summary>
+        public static void ButterflyFinaleFx(Vector2 at)
+        {
+            var fx = FxSystem.I;
+            Color c = UltiDefs.Accent(UltiKind.Butterfly), gold = Palette.Upper;
+            fx.Flash(at, 2.6f, c, 0.22f, 1.8f);
+            fx.Ring(FxLayer.Front, at, 0.3f, 4.4f, 0.32f, 0.02f, 0.5f, Color.white.WithAlpha(0.85f), c.WithAlpha(0f), 2.2f);
+            fx.Ring(FxLayer.Front, at, 0.2f, 2.6f, 0.2f, 0.01f, 0.4f, gold, gold.WithAlpha(0f), 2.4f);
+            // zwei Flügelpaare: Bögen aus Funken links und rechts
+            for (int side = -1; side <= 1; side += 2)
+                for (int i = 0; i < 9; i++)
+                {
+                    float a = (side > 0 ? 0f : 180f) + side * (Mathf.Lerp(-50f, 70f, i / 8f));
+                    Color col = i % 2 == 0 ? c : gold;
+                    fx.Streak(FxLayer.Front, at, MathUtil.Dir(a) * Random.Range(6f, 10f), Random.Range(0.35f, 0.55f), 0.07f, 0.06f,
+                        Color.Lerp(col, Color.white, 0.4f), col.WithAlpha(0f), 2.6f, 4f);
+                }
+            fx.Sparkles(at, 1.4f, 22, c, 2.8f, 0.9f);
+            fx.Sparkles(at, 1f, 10, gold, 2.8f, 0.8f);
+            Game.I.Cam.AddTrauma(0.25f);
+        }
+
         // ================================================================== Duo: die Ulti des Partners auf diesem Bildschirm
 
         public void Remote(UltiKind kind, int step, Vector2 a, Vector2 b, float f)
@@ -1130,6 +1177,18 @@ namespace SoccerFight
                     return;
                 case UltiKind.AnkleBreaker when step == 1:
                     AnkleFinaleFx(a);
+                    return;
+                case UltiKind.Knockout when step == 1:
+                    KnockoutFx(a, b, f);
+                    game.Cam.AddTrauma(0.4f);
+                    return;
+                case UltiKind.Quake when step >= 1:
+                    Court.I?.Shockwave(a + new Vector2(0f, 0.15f), f, 0f, 0f, 0f, 0f, false);
+                    StompFx(a, f * 0.45f);
+                    game.Cam.AddTrauma(0.25f);
+                    return;
+                case UltiKind.Butterfly when step == 1:
+                    ButterflyFinaleFx(a);
                     return;
             }
             if (step != 0) return;

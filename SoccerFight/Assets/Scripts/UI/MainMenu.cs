@@ -94,6 +94,9 @@ namespace SoccerFight
         RectTransform logoRoot, logoSpin, logoShine, leftCol, rightCol, tagRoot;
         Image logoShineImg, pedestalGlow, tagBallPattern, playHalo, recordFill, modeGlow, modeLock;
         RectTransform tagBall;
+        /// <summary>Boxer: statt des Balls ein Handschuh im Namensschild und im Übergang zum Spiel.</summary>
+        Image tagGlove, tagGlovePlate, heroGlove, heroShade, heroHi;
+        bool heroBoxing;
         TextMeshProUGUI tagName, tagRole, recordValue;
         ChunkButton play, tagButton, modeButton;
         MenuTarget figureTarget, tagTarget;
@@ -294,6 +297,10 @@ namespace SoccerFight
             tagBallPattern = UiKit.Img("Pattern", tagBall, Art.HoopPattern, Color.white, Vector2.zero, Vector2.one * 74f);
             UiKit.Img("Shade", tagBall, Art.BallShade, Color.white, Vector2.zero, Vector2.one * 74f);
             UiKit.Img("Hi", tagBall, Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * 74f);
+            // Boxer: eine dunkle Scheibe deckt den gemalten Fußball, darauf der Handschuh
+            tagGlovePlate = UiKit.Img("Handschuhgrund", originalTagText, UiArt.Circle, new Color(0.05f, 0.09f, 0.14f, 0.96f), new Vector2(-108.5f, 1f), Vector2.one * 80f);
+            tagGlove = UiKit.Img("Handschuh", tagGlovePlate.rectTransform, null, Color.white, new Vector2(2f, 0f), Vector2.one * 70f);
+            tagGlovePlate.gameObject.SetActive(false);
             tagName = MenuArt.Label("Name", originalTagText, "", 30f, Color.white, new Vector2(24f, 12f), new Vector2(146f, 36f), TextAlignmentOptions.Left, 5f);
             tagName.enableAutoSizing = true;
             tagName.fontSizeMin = 20f;
@@ -580,8 +587,10 @@ namespace SoccerFight
             heroGlow = UiKit.Img("Glow", hero, UiArt.Glow, new Color(0.7f, 0.95f, 1f, 0f), Vector2.zero, Vector2.one * 260f);
             heroSpin = UiKit.Node("Spin", hero, Vector2.zero, Vector2.one * 100f);
             heroPattern = UiKit.Img("Pattern", heroSpin, MenuScenery.HeroBall != null ? MenuScenery.HeroBall : Art.BallPattern, Color.white, Vector2.zero, Vector2.one * 100f);
-            UiKit.Img("Shade", hero, MenuScenery.HeroShade != null ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * 100f);
-            UiKit.Img("Hi", hero, MenuScenery.HeroHighlight != null ? MenuScenery.HeroHighlight : Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * 100f);
+            heroShade = UiKit.Img("Shade", hero, MenuScenery.HeroShade != null ? MenuScenery.HeroShade : Art.BallShade, Color.white, Vector2.zero, Vector2.one * 100f);
+            heroHi = UiKit.Img("Hi", hero, MenuScenery.HeroHighlight != null ? MenuScenery.HeroHighlight : Art.BallHighlight, Color.white.WithAlpha(0.9f), Vector2.zero, Vector2.one * 100f);
+            heroGlove = UiKit.Img("Glove", heroSpin, null, Color.white, Vector2.zero, Vector2.one * 100f);
+            heroGlove.enabled = false;
             // speed lines streaming out from behind the ball
             speedLines = new Image[14];
             for (int i = 0; i < speedLines.Length; i++)
@@ -813,6 +822,19 @@ namespace SoccerFight
             tagRole.text = def.Role;
             tagBall.gameObject.SetActive(hoops);
             tagBallPattern.sprite = Art.PatternFor(def.Sport);
+            heroBoxing = def.Sport == Sport.Boxing;
+            tagGlovePlate.gameObject.SetActive(heroBoxing);
+            if (heroGlove != null)
+            {
+                heroPattern.enabled = heroShade.enabled = heroHi.enabled = !heroBoxing;
+                heroGlove.enabled = heroBoxing;
+            }
+            if (heroBoxing)
+            {
+                var glove = UiArt.HeroGlove(Characters.GloveColor(def));
+                tagGlove.sprite = glove;
+                if (heroGlove != null) heroGlove.sprite = glove;
+            }
             tagRole.color = Color.Lerp(def.Accent, Color.white, 0.55f);
             tagButton.Color = def.Accent;
             RefreshChallenge();
@@ -1369,7 +1391,8 @@ namespace SoccerFight
                     heroFrom = root.InverseTransformPoint(ballRt.TransformPoint(Vector3.zero));
                     Vector2 at = heroFrom;
                     Bump(MenuArt.Burst, at, 60f, 520f, Color.white, 0.3f, 2f, 40f);
-                    Bump(MenuArt.Shock, at, 40f, 420f, (Characters.Current.Sport == Sport.Basketball ? Palette.HoopOrange : Palette.ShotCyan).WithAlpha(0.9f), 0.4f, 1.6f, 0f);
+                    var sp = Characters.Current.Sport;
+                    Bump(MenuArt.Shock, at, 40f, 420f, (sp == Sport.Basketball ? Palette.HoopOrange : sp == Sport.Boxing ? Palette.Punch : Palette.ShotCyan).WithAlpha(0.9f), 0.4f, 1.6f, 0f);
                     shake = 1.2f;
                     shakeVel = 0f;
                     hero.gameObject.SetActive(true);
@@ -1389,7 +1412,8 @@ namespace SoccerFight
                     hero.sizeDelta = Vector2.one * 100f;
                     float sc = Mathf.Lerp(start, end, grow) / 100f;
                     hero.localScale = new Vector3(sc, sc, 1f);
-                    heroSpin.localRotation = Quaternion.Euler(0f, 0f, -heroT * 900f);
+                    // der Handschuh dreht sich nicht wie ein Ball: er kippt nur ein wenig in den Schlag
+                    heroSpin.localRotation = Quaternion.Euler(0f, 0f, heroBoxing ? -8f * u : -heroT * 900f);
                     heroA = 1f;
                     heroGlow.color = new Color(0.7f, 0.95f, 1f, 0.6f * (1f - u));
                     UpdateSpeedLines(u, sc * 50f);

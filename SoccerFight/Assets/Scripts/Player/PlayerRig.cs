@@ -161,9 +161,14 @@ namespace SoccerFight
             for (int i = 0; i < Parts.Count; i++) Parts[i].sprite = PlayerArt.SpriteOf(look, partKinds[i]);
             body = look.Body ?? PlayerBody.Soccer;
             Sport = look.Sport;
+            // eingestecktes Trikot (Boxer): der Hosenbund liegt über dem Rumpf
+            pelvis.GetComponent<SpriteRenderer>().sortingOrder = OrderBase + (body.Tucked ? 18 : 10);
+            torso.GetComponent<SpriteRenderer>().sortingOrder = OrderBase + (body.Tucked ? 17 : 18);
+            seenSerial = int.MinValue;
             closedHand = look.Hand;
             openHand = look.OpenHand;
             player.Ball?.SetSport(Sport);
+            if (player.Ball != null && !player.Puppet) player.SyncBallToSport();
         }
 
         public void ResetPose()
@@ -361,7 +366,7 @@ namespace SoccerFight
             }
 
             if (speed01 < 0.05f && grounded && !acting) idleTime += dt; else idleTime = 0f;
-            float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree && Sport != Sport.Basketball ? 1f : 0f;
+            float footOnBallTarget = idleTime > 0.7f && player.Ball.IsHeldFree && Sport == Sport.Soccer ? 1f : 0f;
             MathUtil.Spring(ref footOnBall, ref footOnBallVel, footOnBallTarget, 2.6f, 1f, dt);
             float fob = Mathf.Clamp01(footOnBall);
 
@@ -500,8 +505,11 @@ namespace SoccerFight
             nearWrist = farWrist = 0f;
             nearGripW = farGripW = 0f;
             dribbleOpen = false;
+            boxRel = false;
             if (Sport == Sport.Basketball)
                 HoopsCarry(dt, ref hipY, air, cycleLen, sk, ref nearFoot, ref farFoot, ref leanTarget, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref ballLocal);
+            else if (Sport == Sport.Boxing)
+                BoxCarry(dt, ref hipY, air, sk, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint, ref leanTarget, ref headTarget, ref extraHipY);
 
             // =============================================================== action layers
             float t = player.ActionTime;
@@ -607,6 +615,11 @@ namespace SoccerFight
                     ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget,
                     ref extraHipY, ref ballLocal);
             }
+            else if (Player.IsBoxAction(player.CurrentAction))
+            {
+                PoseBox(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                    ref leanTarget, ref headTarget, ref extraHipY);
+            }
             else if (player.CurrentAction >= Player.Action.Throw)
             {
                 PoseHoops(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
@@ -655,6 +668,7 @@ namespace SoccerFight
             Vector2 farSh = hip + MathUtil.Rotate(body.Shoulder + new Vector2(-0.05f, 0.02f), torsoRot);
             // hands that hold or dribble the basketball reach for it (IK blended over the swing)
             float farAbs = farShoulder + torsoRot, nearAbs = nearShoulder + torsoRot;
+            ResolveBoxIK(nearSh, farSh, torsoRot);
             if (farIKw > 0.001f)
             {
                 ArmIK(farSh, farIK, out float a, out float e);

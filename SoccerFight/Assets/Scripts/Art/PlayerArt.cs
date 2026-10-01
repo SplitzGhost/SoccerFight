@@ -51,7 +51,7 @@ namespace SoccerFight
         [Serializable]
         sealed class BodyEntry
         {
-            public float thigh, shin, upperArm, forearm, hipHeight, headTop, tuftFlex, hand, toe;
+            public float thigh, shin, upperArm, forearm, hipHeight, headTop, tuftFlex, hand, toe, tucked;
             public float[] shoulder, neck, head, tuft;
         }
 
@@ -133,6 +133,7 @@ namespace SoccerFight
                 body.HipHeight = b.hipHeight; body.HeadTop = b.headTop;
                 if (b.hand > 0f) body.HandLen = b.hand;
                 if (b.toe > 0f) body.Toe = b.toe;
+                body.Tucked = b.tucked > 0.5f;
             }
             return sheet;
         }

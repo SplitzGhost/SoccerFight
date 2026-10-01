@@ -1,7 +1,7 @@
 # SportFighter
 
-2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball – Boxen und Tennis folgen) kämpfen sich mit ihrem Ball durch Stages voller Monster-Wellen.
-Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die sechs Spielfiguren sind aus den Figurenbögen des Designs ausgeschnitten (`tools/newdesign/characters.js` → `Assets/Resources/Characters`, siehe unten) und werden prozedural animiert. Auch die Monster sind gemalte Bilder aus `Inspiration/Monsterpaket` (`tools/newdesign/monsters.js` → `Assets/Resources/Monsters/<stage>`): jedes Monster wird als ganzes, unverändertes Bild gezeigt und im Spiel wie ein Gummituch verformt (`MonsterWarp`): unsichtbare Knochen in Flügeln, Schwänzen, Tentakeln, Umhängen, Armen, Beinen, Blättern und Zündschnüren sind gedämpfte Federn, die der Körperbewegung folgen – Tentakel und Mäntel schleifen im Flug nach, Blätter, Hörner und Kronen wippen beim Landen nach, Arme holen beim Ausholen aus, Flügel schlagen schneller bei hohem Tempo, bei Treffern schwingt alles mit, Füße baumeln nur in der Luft. Dazu atmet der Körper, federt wie Gelee über der Sohle und neigt sich beim Angriff (`Monster.PoseWhole`). Die Spielwelt jeder Stage (Kulisse, Boden, Plattformen, Deko) ist aus ihrem Stage-Bogen des Designs ausgeschnitten (`tools/newdesign/stages.js` → `Assets/Resources/Stages/<stage>`, siehe „Arena“) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
+2D-Side-View-Roguelite: Sportler aus verschiedenen Sportarten (Fußball, Basketball, Boxen – Tennis folgt) kämpfen sich mit Ball oder Fäusten durch Stages voller Monster-Wellen.
+Animation, Effekte und HUD werden zur Laufzeit im Code erzeugt. Die neun Spielfiguren sind aus den Figurenbögen des Designs ausgeschnitten (`tools/newdesign/characters.js` → `Assets/Resources/Characters`, siehe unten) und werden prozedural animiert. Auch die Monster sind gemalte Bilder aus `Inspiration/Monsterpaket` (`tools/newdesign/monsters.js` → `Assets/Resources/Monsters/<stage>`): jedes Monster wird als ganzes, unverändertes Bild gezeigt und im Spiel wie ein Gummituch verformt (`MonsterWarp`): unsichtbare Knochen in Flügeln, Schwänzen, Tentakeln, Umhängen, Armen, Beinen, Blättern und Zündschnüren sind gedämpfte Federn, die der Körperbewegung folgen – Tentakel und Mäntel schleifen im Flug nach, Blätter, Hörner und Kronen wippen beim Landen nach, Arme holen beim Ausholen aus, Flügel schlagen schneller bei hohem Tempo, bei Treffern schwingt alles mit, Füße baumeln nur in der Luft. Dazu atmet der Körper, federt wie Gelee über der Sohle und neigt sich beim Angriff (`Monster.PoseWhole`). Die Spielwelt jeder Stage (Kulisse, Boden, Plattformen, Deko) ist aus ihrem Stage-Bogen des Designs ausgeschnitten (`tools/newdesign/stages.js` → `Assets/Resources/Stages/<stage>`, siehe „Arena“) und wird im Spiel zu mitlaufenden Ebenen zusammengesetzt.
 
 Die Bilder sind fertige Körper ohne getrennte Glieder – ein früherer Versuch, Arme, Flügel und Augen herauszuschneiden, ließ die Monster zerrissen und verschmiert aussehen. `node tools/newdesign/monsters.js` stellt deshalb nur die rechte Ansicht jedes Bogens frei, verkleinert sie und legt Drehpunkt (Sohle oder Mitte), Maßstab und Randlicht-Maske fest (Tabelle `LOOKS` im Skript); die Blickrichtung entsteht durch Spiegeln. Die Knochen jedes Bildes stehen in `tools/newdesign/monsters.rig.js` (Prozent-Koordinaten im Bild), `node tools/newdesign/rigview.js <stage>/<look>,… <ziel.png>` zeichnet sie zur Kontrolle auf die Bilder. Für Kombinationen ohne Bildvorlage bleiben die bisherigen prozeduralen Körper verfügbar. Das Capture-Szenario `monster-art` prüft die Stage-Gegner und Bosse in acht Darstellungszuständen, `monster-motion` zeigt ihre Verformung (Ruhe, Ausholen, Flug, Steigen, Fallen, Landung, Nachfedern, Treffer), `bestiary` zeigt zusätzlich alle Grundtypen in jeder Stage.
 
@@ -50,10 +50,10 @@ Die Bilder sind fertige Körper ohne getrennte Glieder – ein früherer Versuch
   glüht rot. Verlangsamte Gegner bekommen einen leichten Eisüberzug mit wachsenden Eiskristallen, eingefrorene
   einen stärkeren, brennende glühen und züngeln.
 
-## Sportarten: Fußball und Basketball
+## Sportarten: Fußball, Basketball und Boxen
 
-SportFighter hat mehrere Sportarten mit denselben drei Klassen (Angreifer/Stürmer, Verteidiger, Skiller); Boxen und
-Tennis stehen schon als „kommt bald“ im Spielermenü. Welt, Monster und Ablauf eines Laufs sind für alle gleich, jede
+SportFighter hat mehrere Sportarten mit denselben drei Klassen (Angreifer/Stürmer, Verteidiger, Skiller); Tennis
+steht schon als „kommt bald“ im Spielermenü. Welt, Monster und Ablauf eines Laufs sind für alle gleich, jede
 Sportart bringt aber ihre eigenen Moves, Boss-Fähigkeiten und Upgrade-Karten mit (`Run/Characters.cs`, `Sport`).
 
 **Basketball** (`Player/Player.Hoops.cs`, Posen in `Player/PlayerRig.Hoops.cs`): größere Spieler mit eigenen
@@ -208,15 +208,43 @@ Shop. `tools/newdesign/currency.js` stellt die Leisten aus `tools/newdesign/sour
 | Skiller | **Technikmeister** | Trick-Fähigkeiten (Rainbow Flick, Übersteiger, Tunnel, Lockvogel) laufen 35 % schneller ab (gleiche Strecke in kürzerer Zeit), machen +25 % Schaden und geben danach 1,6 s lang +30 % Tempo mit violetten Nachbildern |
 | Verteidiger | **Kopfballspezialist** | +40 Leben (160 statt 120), 15 % weniger erlittener Schaden (zusätzlich zu Schienbeinschonern), dafür 10 % weniger Schaden. Nur Verteidiger können den **Kopfball** spielen (+25 % Schaden) |
 
+**Boxen** (`Player/Player.Boxing.cs`, Posen in `Player/PlayerRig.Boxing.cs`, Druckwellen in `Combat/FistWaves.cs`):
+kein Ball – die Boxer kämpfen mit den Fäusten. Grundhaltung ist der Boxstand: Führhand vorn auf Kinnhöhe, Schlaghand am
+Kinn, Füße versetzt, die Knie federn auf den Fußballen; beim Laufen pumpen die Fäuste leicht mit. **Linksklick** schlägt
+eine Kombination: Jab (Führhand), Gerade (Schlaghand, die Hüfte dreht ein, die Ferse geht hoch), und der dritte Schlag
+in Folge ein Haken (Bogen auf Kopfhöhe, trifft am härtesten). Jeder Schlag drückt die Luft vor dem Handschuh zu einer
+hellen **Druckwelle** zusammen, die ~5 m weiterfliegt, dabei breiter und blasser wird und am Gegner mit einem
+Schlagstern platzt – so trifft ein Boxer auch Flieger knapp über ihm. Jeder Arm spielt seinen Schlag als eigene
+Zeitlinie (ausholen, schnappen, halten, zurückziehen), damit eine schnelle Eins-Zwei sauber ineinanderläuft. Ein Schlag
+nach unten in der Luft stößt hoch (**Luftschlag**, der Doppelsprung). Das Trikot steckt in der Hose: der Hosenbund liegt
+über dem Rumpf (`PlayerBody.Tucked`).
+
+| | Spieler | Rechtsklick |
+|---|---|---|
+| Angreifer | **KAI** (Orange-Schwarz, rote Handschuhe) | **Kraftgerade:** eindrehen, Schritt nach vorn, eine Gerade mit allem – die große Druckwelle fliegt 11 m weit durch jeden Gegner |
+| Verteidigerin | **VERA** (Blau-Gold, Flechtdutt) | **Deckung:** Fäuste vors Gesicht, 1,1 s kommt nichts durch; jeder abgefangene Treffer lädt den **Konter** am Ende auf (+12 Schaden pro Treffer, bis 5) |
+| Skillerin | **LUZ** (Grün-Gelb, Pferdeschwanz) | **Konterschritt:** blitzschneller, unverwundbarer Schritt in Laufrichtung (auch in der Luft); der nächste Schlag ist ein sicherer **Konter** – kritisch und durchschlagend |
+
+Boss-Fähigkeiten: **Uppercut** (aus der Hocke nach oben, schleudert Gegner in die Luft, steile Welle bis zu den
+Fliegern), **Doppelhaken** (zwei Haken aus der Drehung, Ringwellen um den Körper), **Bodenschlag** (beide Fäuste in den
+Boden, Bebenwelle betäubt), **Schattenboxer** (ein Schatten bleibt stehen, lenkt die Gegner ab und boxt selbst) und
+**Trommelfeuer** (acht schnelle Schläge aufs Fadenkreuz). 74 eigene Upgrade-Karten (`UpgradeDb.Boxing`): die
+allgemeinen in Box-Sprache (Doppelschlag = Fächerwellen, Seilabpraller, Feuerfaust …) und Karten für jeden Move, dazu
+z. B. Kombination (+50 % auf den Haken), Durchschlag, Eiserne Faust (jeder Haken mit Ringwelle) und K.O.-König
+(angeschlagene normale Gegner gehen sofort zu Boden). Die Figuren kommen aus `Inspiration/boxer/Figuren`
+(`characters.def.js`, `file`), Spielerauswahl aus `Inspiration/boxer/Auswahlentwuerfe` (`playerselect.box.js`, eigene
+Kulisse `scene_box`), Shop-Karten aus `shop.box.js`. Prüfen: Szenario `boxing` (alle Moves, Ultis, Karten, Menüs).
+
 **Kopfball** (neue Fähigkeit, nur Verteidiger, 4,5 s): Der Fuß lupft den Ball hoch, der Spieler steigt hinein und
 köpft ihn wuchtig Richtung Fadenkreuz. Der Getroffene wird 1,1 s betäubt, der Ball springt von seinem Kopf hoch und
 kommt zurück. Dazu drei Upgrade-Karten: Lufthoheit (+15 % Schaden), Kopfnuss (längere Betäubung), Flugkopfball
 (fliegt durch zwei Gegner).
 
-**Sechs Spieler** (`Run/Characters.cs`), einer pro Klasse und Sportart: RIO, BRUNO und MIRA (Fußball), DRE, TITAN und
-NOVA (Basketball), jeder mit einem kleinen persönlichen **Perk** zusätzlich zum Klassen-Talent (z. B. DRE: Dreier
+**Neun Spieler** (`Run/Characters.cs`), einer pro Klasse und Sportart: RIO, BRUNO und MIRA (Fußball), DRE, TITAN und
+NOVA (Basketball), KAI, VERA und LUZ (Boxen), jeder mit einem kleinen persönlichen **Perk** zusätzlich zum Klassen-Talent (z. B. DRE: Dreier
 +20 % Schaden, TITAN: +25 Leben und größere Druckwellen, NOVA: längerer Crossover-Boost). Die früheren Shop-Spieler
-KAI, ZARA, IVO, TALA, LUNA und NICO sind weg; wer sie gekauft hatte, bekommt die Münzen einmalig zurück (`Profile`, Version 2).
+KAI, ZARA, IVO, TALA, LUNA und NICO sind weg; wer sie gekauft hatte, bekommt die Münzen einmalig zurück (`Profile`, Version 2) –
+der neue Boxer KAI gehört damit nicht automatisch dazu.
 
 **Erster Start** (`UI/OnboardingPages.cs`): Das Menü öffnet auf *Wähle deinen Spieler* – ein Tab pro Sportart mit je drei
 Karten (Porträt, Klasse, Talent, Rechtsklick-Move und Perk); ein beliebiger Spieler ist gratis, *Los geht's* speichert die Wahl.
@@ -304,6 +332,9 @@ unverwundbar. Ihr Schaden wächst mit gut der Hälfte der Monster-Stärke mit (`
 | MIRA | **Ballzauber-Sturm** | Lupft den Ball über den Kopf und schwebt ein Stück hoch, der Ball teilt sich in fünf Zauberbälle in Regenbogenfarben. Sie kreisen immer schneller um sie (vorne groß, hinten kleiner und hinter ihr) und schießen dann nacheinander mit Regenbogenspur auf die nächsten Gegner; Mira zeigt jedem sein Ziel |
 | DRE | **Buzzer Beater** | Auf bis zu fünf Gegnern rasten Fadenkreuze ein, Dre springt hoch und wirft fünf Bälle im hohen Bogen; eine Wurfuhr zählt 3-2-1, die Würfe folgen ihren Gegnern und schlagen beim **BUZZER!** alle zugleich ein (je „+3“) |
 | TITAN | **Meteor-Dunk** | Am Ziel wächst ein Schatten, Titan springt aus dem Bild (die Kamera bleibt am Ziel), hängt kurz und kracht brennend wie ein Meteor herunter: drei Druckwellen, Gesteinsbrocken, Feuer, ein glühender Krater, der langsam abkühlt |
+| KAI | **K.O.-Schlag** | Die Schlaghand lädt sich auf (Funken strömen hinein), dann hechtet Kai flach zum stärksten Gegner in Reichweite und schlägt eine Gerade, die die Arena erschüttert: sicherer kritischer Treffer, Explosion, eine große Druckwelle fliegt weiter durch alles dahinter, „K.O.!“ |
+| VERA | **Dreifach-Beben** | Dreimal die Fäuste über den Kopf und mit dem ganzen Körper in den Boden, dazwischen ein kleiner Satz nach oben; jede Bebenwelle rollt weiter als die letzte und betäubt alles am Boden |
+| LUZ | **Schmetterlingstanz** | Tanzt von Gegner zu Gegner (bis zu sieben in der Nähe), landet hinter jedem und setzt eine Eins-Zwei, jeder ist betäubt; am Ende die Faust in die Höhe, grüne und goldene Lichtschwingen, alle Getroffenen bekommen noch einen mit |
 | NOVA | **Ankle Breaker** | Springt mit blitzschnellen Crossovers von Gegner zu Gegner (bis zu sieben in der Nähe), jeder fällt um, ist betäubt und nimmt mehr Schaden; am Ende steht Nova da, die Hand in der Hüfte, und lässt den Ball auf dem Finger kreiseln, ein letzter Schlag trifft alle Gefallenen. Ohne Gegner in der Nähe startet sie nicht |
 
 Code: Leiste, Ablauf und Zahlen in `Player/Player.Ulti.cs`, Posen in `Player/PlayerRig.Ulti.cs`, Komet, Kuppel, Zauberbälle,

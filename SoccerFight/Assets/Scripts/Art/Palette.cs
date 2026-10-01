@@ -125,6 +125,15 @@ namespace SoccerFight
         public static readonly Color BallLeatherLight = Hex("#F5A262");
         public static readonly Color BallRib = Hex("#1B1413");
 
+        // Boxen
+        public static readonly Color Punch = Hex("#FF8A5C");       // Schlag-Druckwelle
+        public static readonly Color PunchCore = Hex("#FFE6C8");   // heller Kern der Druckwelle
+        public static readonly Color Cross = Hex("#FF5A3A");       // Kraftgerade
+        public static readonly Color Counter = Hex("#6FA8FF");     // Deckung und Konter
+        public static readonly Color Slip = Hex("#5CF0A8");        // Konterschritt
+        public static readonly Color Upper = Hex("#FFC24A");       // Uppercut
+        public static readonly Color Shadow = Hex("#9A7CFF");      // Schattenboxer
+
         // UI
         public static readonly Color UiGlass = Hex("#0C1522");
         public static readonly Color UiRim = Hex("#FFFFFF");

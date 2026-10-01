@@ -56,6 +56,12 @@ namespace SoccerFight
             return best != null ? best.pos : playerPos;
         }
 
+        /// <summary>Wo die eigenen Nachbilder stehen (der Schattenboxer schlägt von dort aus zu).</summary>
+        public void OwnSpots(List<Vector2> into)
+        {
+            foreach (var g in pool) if (g.active && !g.partner) into.Add(g.pos);
+        }
+
         public bool Any
         {
             get { foreach (var g in pool) if (g.active) return true; return false; }

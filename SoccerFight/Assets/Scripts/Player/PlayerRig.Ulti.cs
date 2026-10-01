@@ -40,6 +40,12 @@ namespace SoccerFight
                         ref farFoot, ref farFlat, ref farPoint, ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow,
                         ref leanTarget, ref headTarget, ref extraHipY, ref ballLocal);
                     break;
+                case UltiKind.Knockout:
+                case UltiKind.Quake:
+                case UltiKind.Butterfly:
+                    PoseBoxUlti(t, hipY, air, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
+                        ref leanTarget, ref headTarget, ref extraHipY);
+                    break;
                 case UltiKind.AnkleBreaker:
                     PoseAnkle(t, hipY, ref nearFoot, ref nearFlat, ref nearPoint, ref farFoot, ref farFlat, ref farPoint,
                         ref nearShoulder, ref nearElbow, ref farShoulder, ref farElbow, ref leanTarget, ref headTarget, ref extraHipY, ref ballLocal);

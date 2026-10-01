@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace SoccerFight
 {
-    /// <summary>Die sechs Ultis, eine pro Spieler.</summary>
-    public enum UltiKind : byte { None, Volley, Bulwark, Storm, Buzzer, Meteor, AnkleBreaker }
+    /// <summary>Die Ultis, eine pro Spieler.</summary>
+    public enum UltiKind : byte { None, Volley, Bulwark, Storm, Buzzer, Meteor, AnkleBreaker, Knockout, Quake, Butterfly }
 
     /// <summary>Name, Farbe und Beschreibung der Ultis; welcher Spieler welche hat.</summary>
     public static class UltiDefs
@@ -21,6 +21,9 @@ namespace SoccerFight
                 case "dre": return UltiKind.Buzzer;
                 case "titan": return UltiKind.Meteor;
                 case "nova": return UltiKind.AnkleBreaker;
+                case "kai": return UltiKind.Knockout;
+                case "vera": return UltiKind.Quake;
+                case "luz": return UltiKind.Butterfly;
                 default: return UltiKind.None;
             }
         }
@@ -35,6 +38,9 @@ namespace SoccerFight
                 case UltiKind.Buzzer: return "BUZZER BEATER";
                 case UltiKind.Meteor: return "METEOR-DUNK";
                 case UltiKind.AnkleBreaker: return "ANKLE BREAKER";
+                case UltiKind.Knockout: return "K.O.-SCHLAG";
+                case UltiKind.Quake: return "DREIFACH-BEBEN";
+                case UltiKind.Butterfly: return "SCHMETTERLINGSTANZ";
                 default: return "ULTI";
             }
         }
@@ -49,6 +55,9 @@ namespace SoccerFight
                 case UltiKind.Buzzer: return "3-2-1: fünf Würfe im hohen Bogen auf fünf Gegner, alle schlagen beim Buzzer zugleich ein.";
                 case UltiKind.Meteor: return "Aus dem Bild springen, dann als Meteor herunterkrachen: der Boden bricht, alles fliegt.";
                 case UltiKind.AnkleBreaker: return "Blitzschnelle Crossovers durch alle Gegner in der Nähe: sie fallen um und sind betäubt.";
+                case UltiKind.Knockout: return "Kraft sammeln, zum stärksten Gegner hechten und ein Schlag, der die ganze Arena erschüttert.";
+                case UltiKind.Quake: return "Drei Hiebe in den Boden: Jede Bebenwelle rollt weiter als die letzte und betäubt alles.";
+                case UltiKind.Butterfly: return "Von Gegner zu Gegner tanzen, an jedem eine Eins-Zwei. Am Ende gehen alle zu Boden.";
                 default: return "";
             }
         }
@@ -63,6 +72,9 @@ namespace SoccerFight
                 case UltiKind.Buzzer: return Palette.HoopFlame;
                 case UltiKind.Meteor: return new Color(1f, 0.62f, 0.3f);
                 case UltiKind.AnkleBreaker: return Palette.Showboat;
+                case UltiKind.Knockout: return Palette.Cross;
+                case UltiKind.Quake: return Palette.Counter;
+                case UltiKind.Butterfly: return Palette.Slip;
                 default: return Color.white;
             }
         }
@@ -202,9 +214,9 @@ namespace SoccerFight
             ultiBuffer = 0f;
             var kind = Ulti;
             if (kind == UltiKind.None || UltiBallOut) return false;
-            if (kind == UltiKind.AnkleBreaker && !PlanAnkleBreaker())
+            if ((kind == UltiKind.AnkleBreaker || kind == UltiKind.Butterfly) && !PlanAnkleBreaker())
             {
-                Game.I.Hud.ShowToast("ANKLE BREAKER  ·  KEIN GEGNER IN DER NÄHE");
+                Game.I.Hud.ShowToast(UltiDefs.Name(kind) + "  ·  KEIN GEGNER IN DER NÄHE");
                 return false;
             }
             UltiCharge = 0f;
@@ -213,14 +225,16 @@ namespace SoccerFight
             released = false;
             ultiFired = false;
             ultiStep = 0;
+            quakeHops = 0;
             ultiWait = ultiFxT = 0f;
             ultiFrom = Pos;
             ghostTimer = 0f;
             StepCarry = false;
             DodgeTime = Mathf.Max(DodgeTime, 0.2f);
             float dx = GameInput.AimWorld.x - Pos.x;
-            if (Mathf.Abs(dx) > 0.3f && kind != UltiKind.AnkleBreaker) Facing = dx > 0f ? 1 : -1;
-            if (kind != UltiKind.Bulwark) GrabUltiBall(kind);
+            if (Mathf.Abs(dx) > 0.3f && kind != UltiKind.AnkleBreaker && kind != UltiKind.Butterfly) Facing = dx > 0f ? 1 : -1;
+            // Boxer haben keinen Ball, das Bollwerk braucht keinen
+            if (kind != UltiKind.Bulwark && !Boxing) GrabUltiBall(kind);
 
             switch (kind)
             {
@@ -228,6 +242,7 @@ namespace SoccerFight
                 case UltiKind.Storm: StartStorm(); break;
                 case UltiKind.Buzzer: StartBuzzer(); break;
                 case UltiKind.Meteor: StartMeteor(); break;
+                case UltiKind.Knockout: StartKnockout(); break;
             }
             UltiIntro(kind);
             return true;
@@ -304,6 +319,7 @@ namespace SoccerFight
                 case UltiKind.Storm: return 0f;                                         // Mira schwebt (UpdateStorm hält die Höhe)
                 case UltiKind.Buzzer: return t > BuzzerRelease - 0.14f && t < BuzzerRelease + 0.2f ? 0.25f : 1f;   // die Hangtime am Scheitel
                 case UltiKind.Bulwark: return t >= BulwarkStomp && !released ? 2.5f : 1f;   // in der Luft: hart herunter zum Stampfer
+                case UltiKind.Quake: return ultiWait > 0f ? 2.5f : 1f;                     // in der Luft: hart herunter zum nächsten Hieb
                 default: return 1f;
             }
         }
@@ -311,7 +327,8 @@ namespace SoccerFight
         /// <summary>Titans Flug und Novas Sprünge folgen ihrer eigenen Bahn statt der Physik.</summary>
         bool UltiScripted => CurrentAction == Action.Ulti &&
             ((Ulti == UltiKind.Meteor && ActionTime >= MeteorGather && !ultiFired) ||
-             (Ulti == UltiKind.AnkleBreaker && ActionTime >= AnkleCrouch && ultiStep < UltiSteps && ultiSpots.Count >= UltiSteps));
+             (Ulti == UltiKind.Knockout && ActionTime >= KoGather && !ultiFired) ||
+             ((Ulti == UltiKind.AnkleBreaker || Ulti == UltiKind.Butterfly) && ActionTime >= AnkleCrouch && ultiStep < UltiSteps && ultiSpots.Count >= UltiSteps));
 
         void UltiMove(float dt)
         {
@@ -330,12 +347,19 @@ namespace SoccerFight
                     if (k >= 1f) { MeteorSlam(); return; }
                 }
             }
+            else if (Ulti == UltiKind.Knockout)
+            {
+                // KAI hechtet flach zum Ziel: erst ein Abdruck, dann voller Flug
+                float k = Mathf.Clamp01((ActionTime - KoGather) / KoDash);
+                Pos = Vector2.Lerp(ultiFrom, HoopTarget, MathUtil.EaseInQuad(k)) + new Vector2(0f, 0.25f * MathUtil.Bump(k));
+            }
             else
             {
-                // Nova: von Gegner zu Gegner, jeweils knapp an ihm vorbei auf den Boden darunter
+                // Nova und Luz: von Gegner zu Gegner, jeweils knapp an ihm vorbei auf den Boden darunter
+                float hop = Ulti == UltiKind.Butterfly ? ButterflyHop : AnkleHop;
                 float t = ActionTime - AnkleCrouch;
-                int i = Mathf.Clamp(Mathf.FloorToInt(t / AnkleHop), 0, UltiSteps - 1);
-                float k = Mathf.Clamp01((t - i * AnkleHop) / AnkleHop);
+                int i = Mathf.Clamp(Mathf.FloorToInt(t / hop), 0, UltiSteps - 1);
+                float k = Mathf.Clamp01((t - i * hop) / hop);
                 Vector2 a = i == 0 ? ultiFrom : ultiSpots[i - 1], b = ultiSpots[i];
                 if (Mathf.Abs(b.x - a.x) > 0.05f) Facing = b.x > a.x ? 1 : -1;
                 float e = MathUtil.EaseInOutCubic(Mathf.Clamp01(k * 1.15f));
@@ -358,6 +382,9 @@ namespace SoccerFight
                 case UltiKind.Buzzer: UpdateBuzzer(dt); break;
                 case UltiKind.Meteor: UpdateMeteor(dt); break;
                 case UltiKind.AnkleBreaker: UpdateAnkle(dt); break;
+                case UltiKind.Knockout: UpdateKnockout(dt); break;
+                case UltiKind.Quake: UpdateQuake(dt); break;
+                case UltiKind.Butterfly: UpdateButterfly(dt); break;
                 default: EndUlti(); break;
             }
         }

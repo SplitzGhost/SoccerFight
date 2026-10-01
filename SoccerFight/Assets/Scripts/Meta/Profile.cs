@@ -107,6 +107,9 @@ namespace SoccerFight
                     if (!found) d.Wallet.Add(new ProfileData.Entry { Id = Currencies.Coins.Id, Value = refund });
                     Debug.Log("[SportFighter] Refunded " + refund + " coins for retired characters");
                 }
+                // the refunded ids may name new players today (the boxer KAI): bought then is not owned now
+                d.Characters.RemoveAll(id => Characters.Retired.ContainsKey(id));
+                if (Characters.Retired.ContainsKey(d.Character)) d.Character = "";
             }
             d.Characters.RemoveAll(id => Characters.Get(id) == null);
             if (Characters.Get(d.Character) == null || !d.Characters.Contains(d.Character))

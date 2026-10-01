@@ -79,6 +79,20 @@ namespace SoccerFight
 
         internal static void Line(SdfCanvas c, Vector2 a, Vector2 b, float w, Color col) => c.Fill(p => Sdf.Capsule(p, a, b, w), col);
 
+        /// <summary>Ein Boxhandschuh als Glyphe: die Form voll, Stulpe und Daumenlinie ausgespart.</summary>
+        internal static void Glove(SdfCanvas c, Vector2 at, float s, float angleDeg, Color col)
+        {
+            c.Fill(p => UiArt.GloveSdf(p, at, s, angleDeg), col);
+            // die Naht zwischen Stulpe und Faust und die Daumenlinie: das Medaillon scheint durch
+            c.Erase(p =>
+            {
+                Vector2 q = MathUtil.Rotate(p - at, -angleDeg) / s;
+                float seam = Sdf.Intersect(Mathf.Abs(q.x + 0.4f) - 0.045f, Mathf.Abs(q.y + 0.04f) - 0.3f);
+                float thumb = Sdf.Segment(q, new Vector2(-0.16f, -0.2f), new Vector2(0.34f, -0.26f)) - 0.04f;
+                return Mathf.Min(seam, thumb) * s;
+            });
+        }
+
         internal static void Arrow(SdfCanvas c, Vector2 from, Vector2 to, float w, float head, Color col)
         {
             Vector2 d = (to - from).normalized, n = new Vector2(-d.y, d.x);
@@ -450,6 +464,39 @@ namespace SoccerFight
                     HoopBall(c, V(44f, -6f), 14f);
                     c.Fill(p => Sdf.Ring(p, V(-46f, -30f), 10f, 3f), W);
                     c.Fill(p => Sdf.Circle(p, V(-46f, -30f), 3f), W);
+                    break;
+                case UpIcon.Glove:
+                    for (int i = 0; i < 3; i++) Line(c, V(-56f + i * 6f, 22f - i * 22f), V(-26f, 22f - i * 22f), 3f, H);
+                    Glove(c, V(6f, 0f), 34f, 0f, W);
+                    c.Fill(p => Sdf.Subtract(Sdf.Circle(p, V(44f, 0f), 24f), Sdf.Circle(p, V(32f, 0f), 26f)), H);
+                    break;
+                case UpIcon.Combo:
+                    // eins, zwei, drei: drei Handschuhe treppauf, der letzte groß
+                    Glove(c, V(-34f, -30f), 16f, 0f, H);
+                    Glove(c, V(-10f, -6f), 20f, 0f, H);
+                    Glove(c, V(20f, 22f), 28f, 10f, W);
+                    c.Fill(p => Sdf.Star4(p, V(50f, 46f), 14f, 0.5f), W);
+                    break;
+                case UpIcon.Counter:
+                    // die Deckung: zwei Handschuhe senkrecht, ein Pfeil prallt zurück
+                    Glove(c, V(-14f, 2f), 24f, 90f, W);
+                    Glove(c, V(16f, -2f), 24f, 90f, W);
+                    Arrow(c, V(46f, 40f), V(52f, 6f), 3.5f, 10f, H);
+                    Arrow(c, V(-40f, -46f), V(-56f, -22f), 3.5f, 10f, H);
+                    break;
+                case UpIcon.Upper:
+                    for (int i = 0; i < 3; i++) Line(c, V(-20f + i * 14f, -56f), V(-16f + i * 14f, -30f), 3f, H);
+                    c.Fill(p => Sdf.Subtract(Sdf.Circle(p, V(4f, 34f), 26f), Sdf.Circle(p, V(4f, 22f), 28f)), H);
+                    Glove(c, V(0f, -2f), 30f, 80f, W);
+                    break;
+                case UpIcon.Quake:
+                    for (int i = 0; i < 3; i++)
+                    {
+                        float rr = 14f + i * 13f;
+                        c.Fill(p => Sdf.Intersect(Mathf.Abs(Sdf.Ellipse(p, V(0f, -40f), V(rr * 1.4f, rr * 0.35f))) - 2.8f, p.y + 52f), i == 0 ? W : H);
+                    }
+                    Glove(c, V(-12f, 8f), 22f, -95f, W);
+                    Glove(c, V(14f, 12f), 22f, -85f, W);
                     break;
                 default: // Synergy
                     c.Fill(p => Sdf.Ring(p, V(-16f, 0f), 28f, 8f), W);

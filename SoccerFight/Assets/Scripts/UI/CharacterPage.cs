@@ -27,10 +27,12 @@ namespace SoccerFight
         /// <summary>What each sport plays like (the line under the tabs of the starter pick).</summary>
         public static string SportLine(Sport s) => s == Sport.Basketball
             ? "BASKETBALL  ·  WÜRFE, CROSSOVER UND DUNKS  ·  DER BALL WIRD GEDRIBBELT UND KOMMT NACH JEDEM WURF ZURÜCK"
+            : s == Sport.Boxing
+            ? "BOXEN  ·  KOMBINATIONEN, DECKUNG UND KONTER  ·  KEIN BALL: JEDER SCHLAG SCHICKT EINE DRUCKWELLE"
             : "FUSSBALL  ·  SCHÜSSE, TRICKS UND KOPFBÄLLE  ·  DER BALL KLEBT AM FUSS UND KOMMT NACH JEDEM SCHUSS ZURÜCK";
 
         /// <summary>The colour a sport is shown in (tabs, the sport line).</summary>
-        public static Color SportAccent(Sport s) => s == Sport.Basketball ? Palette.HoopOrange : MenuArt.Accent;
+        public static Color SportAccent(Sport s) => s == Sport.Basketball ? Palette.HoopOrange : s == Sport.Boxing ? Palette.Cross : MenuArt.Accent;
 
         // ------------------------------------------------------------------ Bausteine
 
@@ -142,7 +144,9 @@ namespace SoccerFight
 
         // Welt
         RectTransform world, figRoot, backMask, fxRoot;
-        RawImage scene, backOld, backNew, fill;
+        RawImage scene, sceneTop, backOld, backNew, fill;
+        float sceneFadeT;
+        Texture blurSource;
         RectMask2D edge, backSoft;
         RenderTexture[] blur;
         FigureWarp figure;
@@ -284,6 +288,9 @@ namespace SoccerFight
             Vector2 size = page.ArtworkSize;
             world = UiKit.Node("Welt", page.Content, Vector2.zero, size);
             scene = Raw("Kulisse", world, Vector2.zero, size);
+            // die Boxer haben ihre eigene Kulisse: beim Wechsel blendet sie über die alte
+            sceneTop = Raw("Kulisse neu", world, Vector2.zero, size);
+            sceneTop.enabled = false;
             // das Steinbild des Spielers: ein Ausschnitt über der Kulisse, Ränder weich; beim Wechsel blendet der neue über den alten
             var b = PlayerSelectArt.Back;
             backHome = PlayerSelectArt.Center(b);
@@ -484,14 +491,16 @@ namespace SoccerFight
                 if (!painted) blue = PlayerSelectArt.Get("tile_blank");
                 // die Kachel sitzt im Entwurf in ihrem Fach: gleicher Versatz zur Fachmitte in jedem Fach
                 int slot = System.Array.IndexOf(PaintedOrder, def.Id);
-                Vector2 off = painted ? PlayerSelectArt.Center(blue) - At(FirstTileX + slot * TileStep, TileY) : Vector2.zero;
+                // Spieler aus einem anderen Entwurf (die Boxer): ihre Kachel steht mittig im Fach
+                Vector2 slotCenter = painted && slot < 0 ? PlayerSelectArt.Center(blue) : At(FirstTileX + slot * TileStep, TileY);
+                Vector2 off = painted ? PlayerSelectArt.Center(blue) - slotCenter : Vector2.zero;
                 tile.Knob = new Knob(row, "Kachel " + def.Name, Vector2.zero, new Vector2(blue.w, blue.h), PlayerSelectArt.Sprite(painted ? "tile_" + def.Id : "tile_blank"), false) { Delay = 0.26f + n * 0.04f };
                 tile.Knob.Img.rectTransform.anchoredPosition = off;
                 var gold = PlayerSelectArt.Get("tile_" + def.Id + "_on");
                 if (painted && gold != null)
                 {
                     tile.Gold = UiKit.Img("Gewählt", tile.Knob.Lift, PlayerSelectArt.Sprite("tile_" + def.Id + "_on"), Color.clear,
-                        PlayerSelectArt.Center(gold) - At(FirstTileX + slot * TileStep, TileY), new Vector2(gold.w, gold.h));
+                        PlayerSelectArt.Center(gold) - slotCenter, new Vector2(gold.w, gold.h));
                 }
                 else
                 {
@@ -508,7 +517,7 @@ namespace SoccerFight
                 n++;
             }
             // Sportarten, die noch kommen: leere Kacheln hinter dem Pfeil
-            (string name, Sprite icon)[] soon = { ("BOXEN", MenuArt.IconBoxing), ("TENNIS", MenuArt.IconTennis) };
+            (string name, Sprite icon)[] soon = { ("TENNIS", MenuArt.IconTennis) };
             foreach (var s in soon)
             {
                 var blank = PlayerSelectArt.Get("tile_blank");
@@ -694,9 +703,15 @@ namespace SoccerFight
             backOld.enabled = backOld.texture != null;
             backNew.texture = back;
             backNew.enabled = back != null;
-            if (scene.texture == null) scene.texture = PlayerSelectArt.Texture("scene");
-
             var f = PlayerSelectArt.FigureOf(def.Id);
+            var sceneTex = PlayerSelectArt.Texture(f != null && !string.IsNullOrEmpty(f.scene) ? f.scene : "scene");
+            if (scene.texture == null || first) { scene.texture = sceneTex; sceneTop.enabled = false; }
+            else if (sceneTex != null && sceneTex != scene.texture && sceneTex != sceneTop.texture)
+            {
+                sceneTop.texture = sceneTex;
+                sceneTop.enabled = true;
+                sceneFadeT = 0f;
+            }
             var tex = f != null ? PlayerSelectArt.Texture("figure_" + def.Id) : null;
             figure.enabled = tex != null;
             if (tex != null)
@@ -888,7 +903,9 @@ namespace SoccerFight
         /// <summary>Die Kulisse in drei Schritten auf 26 × 15 Punkte verkleinert: vergrößert ergibt das weiche Farbflächen.</summary>
         Texture Blurred(Texture source)
         {
-            if (blur != null) return blur[2];
+            if (blur != null && source == blurSource) return blur[2];
+            blurSource = source;
+            if (blur != null) { for (int i = 0; i < 3; i++) Graphics.Blit(i == 0 ? source : blur[i - 1], blur[i]); return blur[2]; }
             blur = new RenderTexture[3];
             for (int i = 0; i < 3; i++)
                 blur[i] = new RenderTexture(416 >> (i * 2), 234 >> (i * 2), 0, RenderTextureFormat.ARGB32) { name = "Spieler-Unschärfe " + i, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
@@ -926,7 +943,9 @@ namespace SoccerFight
                 // zu: die großen Bilder wieder freigeben
                 if (scene.texture != null)
                 {
-                    scene.texture = backOld.texture = backNew.texture = null;
+                    scene.texture = sceneTop.texture = backOld.texture = backNew.texture = null;
+                    sceneTop.enabled = false;
+                    fill.texture = null;
                     figure.enabled = false;
                     shown = null;
                     PlayerSelectArt.Release();
@@ -991,6 +1010,18 @@ namespace SoccerFight
             // Steinbild: das neue blendet in 0,35 s über das alte
             float fade = figSwapped ? MathUtil.Smooth01(swap / 0.35f) : 1f;
             backNew.color = Color.white.WithAlpha(backOld.enabled ? fade : 1f);
+            if (sceneTop.enabled)
+            {
+                sceneFadeT += dt;
+                float a = MathUtil.Smooth01(sceneFadeT / 0.35f);
+                sceneTop.color = Color.white.WithAlpha(a);
+                if (a >= 1f)
+                {
+                    scene.texture = sceneTop.texture;
+                    sceneTop.enabled = false;
+                    fill.texture = null;   // die weichgezeichnete Kopie neu aus der neuen Kulisse
+                }
+            }
 
             float hw = hazeLayer.sizeDelta.x, fw = fogLayer.sizeDelta.x;
             haze.uvRect = new Rect(-drift * 0.3f / hw, 0f, 1f, 1f);

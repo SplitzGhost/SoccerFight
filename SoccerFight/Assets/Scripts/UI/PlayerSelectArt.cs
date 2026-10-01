@@ -20,6 +20,8 @@ namespace SoccerFight
             public string id;
             public float x, y, w, h, ground, hip, chestX, chestY, neckX, neckY, headX, headY;
             public Swing[] swing;
+            /// <summary>Eigene Kulisse (die Boxer: "scene_box"); leer: die gemeinsame.</summary>
+            public string scene;
         }
         [System.Serializable] public sealed class Part { public string name; public float x, y, w, h; }
         [System.Serializable] sealed class Layout { public int width, height; public Box back; public Figure[] figures; public Part[] parts; }

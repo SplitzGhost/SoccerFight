@@ -218,11 +218,68 @@ namespace SoccerFight
             Trait = DefenderTrait("Dunk"),
         };
 
+        // ------------------------------------------------------------------ boxing
+
+        public static readonly ClassDef BoxStriker = new ClassDef
+        {
+            Class = CharacterClass.Striker, Sport = Sport.Boxing, Name = "ANGREIFER", TraitName = "SCHLAGKRAFT",
+            Tagline = "Harte Kombinationen, hoher Schaden",
+            Description = "Lebt von der Kombination: Jeder Schlag trifft härter, Schlag-Fähigkeiten laden schneller, die Kraftgerade schickt eine Druckwelle quer durch die Arena.",
+            Strengths = new[]
+            {
+                "+" + Pct(ClassTuning.StrikerShotBonus) + " SCHADEN MIT SCHLÄGEN",
+                "SCHLAG-FÄHIGKEITEN LADEN " + Pct(1f - ClassTuning.StrikerShotCooldown) + " SCHNELLER",
+                "RECHTSKLICK: KRAFTGERADE",
+            },
+            Drawback = "",
+            Accent = Hex("#FF7A2E"), Icon = () => MenuArt.IconStriker, Specialty = SkillCategory.Shot, Primary = Ability.PowerCross,
+            Attack = 5, Defence = 2, Tech = 3,
+            Bonus = "+" + Pct(ClassTuning.StrikerShotBonus) + " Schaden mit Schlägen • Schlag-Fähigkeiten laden " + Pct(1f - ClassTuning.StrikerShotCooldown) + " schneller",
+            Trait = StrikerTrait("SCHLAGKRAFT", "Schlägen"),
+        };
+
+        public static readonly ClassDef BoxSkiller = new ClassDef
+        {
+            Class = CharacterClass.Skiller, Sport = Sport.Boxing, Name = "SKILLER", TraitName = "TECHNIKMEISTER",
+            Tagline = "Ausweichen und kontern",
+            Description = "Tricks statt Kraft: Der Konterschritt weicht jedem Angriff aus, danach sitzt der nächste Schlag garantiert kritisch und fliegt durch Gegner hindurch.",
+            Strengths = new[]
+            {
+                "+" + Pct(ClassTuning.SkillerTechBonus) + " SCHADEN MIT TRICKS",
+                "TRICKS " + Pct(ClassTuning.SkillerHaste - 1f) + " SCHNELLER, LADEN " + Pct(1f - ClassTuning.SkillerTechCooldown) + " SCHNELLER",
+                "RECHTSKLICK: KONTERSCHRITT",
+            },
+            Drawback = "",
+            Accent = Hex("#3FD28A"), Icon = () => MenuArt.IconSkiller, Specialty = SkillCategory.Technique, Primary = Ability.Slip,
+            Attack = 2, Defence = 3, Tech = 5,
+            Bonus = "+" + Pct(ClassTuning.SkillerTechBonus) + " Schaden mit Tricks • Tricks laden " + Pct(1f - ClassTuning.SkillerTechCooldown) + " schneller",
+            Trait = SkillerTrait,
+        };
+
+        public static readonly ClassDef BoxDefender = new ClassDef
+        {
+            Class = CharacterClass.Defender, Sport = Sport.Boxing, Name = "VERTEIDIGERIN", TraitName = "BOLLWERK",
+            Tagline = "Feste Deckung, harter Konter",
+            Description = "Stellt sich dazwischen: mehr Leben, weniger Schaden durch Treffer, und ihre Deckung schluckt jeden Angriff und gibt ihn als Konterschlag zurück.",
+            Strengths = new[]
+            {
+                "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " MAXIMALES LEBEN",
+                Pct(1f - ClassTuning.DefenderDamageTaken) + " WENIGER ERLITTENER SCHADEN",
+                "RECHTSKLICK: DECKUNG MIT KONTER (+" + Pct(ClassTuning.DefenderHeaderBonus) + ")",
+            },
+            Drawback = Pct(1f - ClassTuning.DefenderDamageMul) + " WENIGER SCHADEN",
+            Accent = Hex("#3D6BFF"), Icon = () => MenuArt.IconDefender, Specialty = SkillCategory.Header, Primary = Ability.Guard,
+            Attack = 3, Defence = 5, Tech = 2,
+            Bonus = "+" + Mathf.RoundToInt(ClassTuning.DefenderHp) + " maximales Leben • " + Pct(1f - ClassTuning.DefenderDamageTaken) + " weniger erlittener Schaden",
+            Trait = DefenderTrait("Konter"),
+        };
+
         /// <summary>The soccer classes (the order of the class tabs).</summary>
         public static readonly IReadOnlyList<ClassDef> All = new[] { Striker, Defender, Skiller };
         public static readonly IReadOnlyList<ClassDef> Hoops = new[] { HoopsStriker, HoopsDefender, HoopsSkiller };
+        public static readonly IReadOnlyList<ClassDef> Boxing = new[] { BoxStriker, BoxDefender, BoxSkiller };
 
-        public static IReadOnlyList<ClassDef> ForSport(Sport sport) => sport == Sport.Basketball ? Hoops : All;
+        public static IReadOnlyList<ClassDef> ForSport(Sport sport) => sport == Sport.Basketball ? Hoops : sport == Sport.Boxing ? Boxing : All;
 
         public static ClassDef Of(CharacterClass c, Sport sport = Sport.Soccer)
         {

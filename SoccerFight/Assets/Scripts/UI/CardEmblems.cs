@@ -159,6 +159,14 @@ namespace SoccerFight
                 case SoccerFight.Ability.Crossover: return c => UpgradeIcons.Draw(c, UpIcon.Crossover);
                 case SoccerFight.Ability.Dunk: return c => UpgradeIcons.Draw(c, UpIcon.Slam);
                 case SoccerFight.Ability.Header: return c => UpgradeIcons.Draw(c, UpIcon.Knockback);
+                case SoccerFight.Ability.PowerCross: return PowerCrossGlyph;
+                case SoccerFight.Ability.Guard: return c => UpgradeIcons.Draw(c, UpIcon.Counter);
+                case SoccerFight.Ability.Slip: return SlipGlyph;
+                case SoccerFight.Ability.Uppercut: return c => UpgradeIcons.Draw(c, UpIcon.Upper);
+                case SoccerFight.Ability.Hooks: return HooksGlyph;
+                case SoccerFight.Ability.Pound: return c => UpgradeIcons.Draw(c, UpIcon.Quake);
+                case SoccerFight.Ability.Shadow: return ShadowGlyph;
+                case SoccerFight.Ability.Flurry: return FlurryGlyph;
                 default: return c => UpgradeIcons.Draw(c, UpIcon.BallSpeed);
             }
         }
@@ -366,6 +374,54 @@ namespace SoccerFight
             UpgradeIcons.HoopBall(c, V(2f, 0f), 23f);
             c.Fill(p => Sdf.Union(Sdf.Capsule(p, V(36f, 24f), V(54f, 0f), 6.5f), Sdf.Capsule(p, V(54f, 0f), V(36f, -24f), 6.5f)), Wc);
             c.Fill(p => Sdf.Box(p, V(0f, -40f), V(40f, 3f), 1.5f), Sc);
+        }
+
+        // ------------------------------------------------------------------ Boxen
+
+        /// <summary>Kraftgerade: ein großer Handschuh, vor den Knöcheln ein Stern.</summary>
+        static void PowerCrossGlyph(SdfCanvas c)
+        {
+            for (int i = 0; i < 3; i++) UpgradeIcons.Line(c, V(-58f, 20f - i * 20f), V(-36f, 20f - i * 20f), 3f, Sc);
+            UpgradeIcons.Glove(c, V(-4f, 0f), 34f, 0f, Wc);
+            c.Fill(p => Sdf.Star4(p, V(42f, 2f), 24f, 0.45f), Sc);
+        }
+
+        /// <summary>Konterschritt: zwei Winkel nach hinten, der Handschuh bereit mit Krit-Funken.</summary>
+        static void SlipGlyph(SdfCanvas c)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -12f - i * 25f;
+                c.Fill(p => Sdf.Union(Sdf.Capsule(p, V(x + 19f, 28f), V(x, 0f), 6.5f), Sdf.Capsule(p, V(x, 0f), V(x + 19f, -28f), 6.5f)), i == 0 ? Wc : Sc);
+            }
+            UpgradeIcons.Glove(c, V(30f, 6f), 22f, 0f, Wc);
+            c.Fill(p => Sdf.Star4(p, V(48f, 42f), 13f, 0.5f), Wc);
+        }
+
+        /// <summary>Doppelhaken: zwei Bögen rundherum, der Handschuh in der Mitte.</summary>
+        static void HooksGlyph(SdfCanvas c)
+        {
+            UpgradeIcons.Arc(c, Vector2.zero, 46f, 4f, 20f, 150f, Wc);
+            UpgradeIcons.Arc(c, Vector2.zero, 46f, 4f, 200f, 330f, Sc);
+            UpgradeIcons.Glove(c, V(0f, 0f), 24f, 20f, Wc);
+        }
+
+        /// <summary>Schattenboxer: der Handschuh und sein Schatten dahinter.</summary>
+        static void ShadowGlyph(SdfCanvas c)
+        {
+            UpgradeIcons.Glove(c, V(-14f, 14f), 28f, 10f, Sc);
+            UpgradeIcons.Glove(c, V(12f, -10f), 28f, 10f, Wc);
+        }
+
+        /// <summary>Trommelfeuer: drei Handschuhe mit ihren Wellen.</summary>
+        static void FlurryGlyph(SdfCanvas c)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                float y = 28f - i * 28f, x = -22f + (i % 2) * 12f;
+                UpgradeIcons.Glove(c, V(x, y), 18f, 0f, Wc);
+                c.Fill(p => Sdf.Subtract(Sdf.Circle(p, V(x + 40f, y), 14f), Sdf.Circle(p, V(x + 33f, y), 15f)), Sc);
+            }
         }
 
         /// <summary>Stepback: zwei Winkel treiben nach hinten, der Ball liegt wurfbereit mit Krit-Funken.</summary>
