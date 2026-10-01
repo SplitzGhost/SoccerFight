@@ -54,6 +54,8 @@ namespace SoccerFight
             S(Ability.AlleyOop,  SkillCategory.Shot),
             S(Ability.Block,     SkillCategory.Defense),
             S(Ability.FastBreak, SkillCategory.Technique),
+            S(Ability.StepBack,  SkillCategory.Technique),
+            S(Ability.PumpFake,  SkillCategory.Technique),
         };
 
         public static IReadOnlyList<SkillDef> ForSport(Sport s) => s == Sport.Basketball ? Hoops : All;
@@ -139,6 +141,7 @@ namespace SoccerFight
             {
                 case Player.Action.Flick: case Player.Action.StepOver: case Player.Action.Nutmeg: case Player.Action.Decoy:
                 case Player.Action.Dash: case Player.Action.Crossover: case Player.Action.FastBreak:
+                case Player.Action.StepBack: case Player.Action.PumpFake:
                     return SkillCategory.Technique;
                 case Player.Action.Bicycle: case Player.Action.Punt: case Player.Action.AlleyOop:
                     return SkillCategory.Shot;

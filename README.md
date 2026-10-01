@@ -68,9 +68,23 @@ der Luft halten ihn beide Hände vor der Brust. Beim Fußball führen die Spiele
 
 Linksklick ist ein **Wurf**, der wie der Schuss zurückkommt; ein Wurf in der Luft stößt ab (**Bodenpass**, der
 Doppelsprung). Boss-Fähigkeiten: **Alley-Oop** (hoch, kurz hängen, auf den nächsten Gegner), **Block** (Sprung mit
-hochgerissenen Armen, Geschosse fliegen zurück) und **Fastbreak** (unverwundbarer Sprint, Gegner werden umgeworfen).
-77 eigene Upgrade-Karten (die passenden Fußball-Karten umbenannt, dazu Karten für jeden Move sowie z. B. Heiße Hand,
+hochgerissenen Armen, Geschosse fliegen zurück), **Fastbreak** (unverwundbarer Sprint, Gegner werden umgeworfen),
+**Stepback** und **Pump Fake** (siehe unten).
+83 eigene Upgrade-Karten (die passenden Fußball-Karten umbenannt, dazu Karten für jeden Move sowie z. B. Heiße Hand,
 Brettwurf, Downtown, Skywalker, Splash Zone). Treffer und Effekte laufen über `Combat/Court.cs`.
+
+- **Stepback** (Trick, 4 s): Der vordere Fuß stampft auf, dann ein flacher, unverwundbarer Satz ~3,6 m weg vom
+  Fadenkreuz (auch einmal pro Sprung in der Luft), der Ball wandert mit beiden Händen in die Wurftasche. Danach glitzert
+  er 1,6 s lang limettengrün: Der nächste Wurf trifft garantiert kritisch. Ein Klick noch im Sprung wirft sofort aus
+  dem Stepback heraus (Stepback-Jumper). Karten: Rückwärtsgang (schneller, weiter), Eiskalt (+40 % auf den Krit-Wurf),
+  Pull-up (der Wurf fliegt durch alle Gegner).
+- **Pump Fake** (Trick, 8 s, nur am Boden mit Ball): eintauchen, in den Wurf steigen, oben ein kurzer Ruck – der Ball
+  bleibt in den Händen und wird tief geschützt, nur ein rosa Geisterball fliegt im Wurfbogen zum Fadenkreuz, springt
+  dort aus und flackert nach 2,4 s weg. Alle Gegner im Umkreis von 9 m fallen darauf herein (die nahen zuerst, die
+  fernen einen Augenblick später): Bodengegner springen zum Blocken hoch, Flieger zucken hin, über jedem ein „?“; dann
+  laufen alle zur Landestelle, vergessen ihre Angriffe und nehmen 40 % mehr Schaden. Bosse nur 0,7 s. Karten:
+  Täuschungskünstler (schneller), Kopftäuschung (+0,8 s), Falle (der Geisterball platzt mit 40 Schaden, die Getroffenen
+  liegen 1 s). Im Duo täuscht der Pump Fake auch die Monster des Hosts (`Ev.Fake`). Prüfen: Szenario `hoopsmoves`.
 
 ## ▶ Im Browser spielen
 

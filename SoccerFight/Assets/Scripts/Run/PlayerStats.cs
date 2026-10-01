@@ -82,6 +82,10 @@ namespace SoccerFight
         public bool BlockStun;
         public float FastBreakDistMul, FastBreakCooldownMul, FastBreakHeal;
         public bool FastBreakFire;
+        public float StepCooldownMul, StepDistMul, StepCritBonus;
+        public bool StepPierce;         // Pull-up: the throw after the stepback flies through monsters
+        public float FakeCooldownMul, FakeTimeBonus;
+        public bool FakeTrap;           // Falle: the ghost ball bursts when the fake runs out
         public int BankShots;           // Brettwurf: a throw bounces off the floor into the next monster
         public bool HotHand, Downtown;
         public float AirThrowBonus;     // Fadeaway: throws from the air hit harder
@@ -141,6 +145,8 @@ namespace SoccerFight
             OopDamageMul = OopCooldownMul = 1f; OopBounce = false;
             BlockTimeBonus = 0f; BlockRadiusMul = BlockReflectMul = BlockCooldownMul = 1f; BlockStun = false;
             FastBreakDistMul = FastBreakCooldownMul = 1f; FastBreakHeal = 0f; FastBreakFire = false;
+            StepCooldownMul = StepDistMul = 1f; StepCritBonus = 0f; StepPierce = false;
+            FakeCooldownMul = 1f; FakeTimeBonus = 0f; FakeTrap = false;
             BankShots = 0; HotHand = Downtown = false; AirThrowBonus = 0f;
 
             for (int i = 0; i < CategoryDamage.Length; i++) CategoryDamage[i] = CategoryCooldown[i] = 1f;

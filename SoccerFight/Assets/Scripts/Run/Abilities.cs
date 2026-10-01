@@ -12,7 +12,7 @@ namespace SoccerFight
     {
         None, Shot, Power, Flick, Juggle, StepOver, Bicycle, AirKick, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash,
         // basketball: the three class moves, then the boss skills
-        Three, Crossover, Dunk, AlleyOop, Block, FastBreak,
+        Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake,
     }
 
     public static class Abilities
@@ -23,7 +23,7 @@ namespace SoccerFight
             Ability.Tackle, Ability.Punt, Ability.Wall, Ability.Nutmeg, Ability.Decoy, Ability.Whistle
         };
 
-        public static readonly Ability[] HoopsUnlockable = { Ability.AlleyOop, Ability.Block, Ability.FastBreak };
+        public static readonly Ability[] HoopsUnlockable = { Ability.AlleyOop, Ability.Block, Ability.FastBreak, Ability.StepBack, Ability.PumpFake };
 
         public static Ability[] UnlockableFor(Sport s) => s == Sport.Basketball ? HoopsUnlockable : Unlockable;
 
@@ -59,6 +59,8 @@ namespace SoccerFight
                 case Ability.AlleyOop: return "ALLEY-OOP";
                 case Ability.Block: return "BLOCK";
                 case Ability.FastBreak: return "FASTBREAK";
+                case Ability.StepBack: return "STEPBACK";
+                case Ability.PumpFake: return "PUMP FAKE";
                 default: return "";
             }
         }
@@ -89,6 +91,8 @@ namespace SoccerFight
                 case Ability.AlleyOop: return "Wirft den Ball steil in die Luft. Oben hängt er einen Moment, dann kracht er auf den nächsten Gegner.";
                 case Ability.Block: return "Springt mit hochgerissenen Armen: kurz unverwundbar, Gegner weichen zurück, jedes Geschoss fliegt zurück auf die Monster.";
                 case Ability.FastBreak: return "Unverwundbarer Sprint nach vorn mit dem Ball: Gegner auf dem Weg werden getroffen und kurz betäubt.";
+                case Ability.StepBack: return "Blitzschneller Satz nach hinten, Angriffe gehen ins Leere. Dein nächster Wurf trifft garantiert kritisch.";
+                case Ability.PumpFake: return "Wurf angetäuscht: Ein Geisterball fliegt zum Fadenkreuz, die Gegner in der Nähe springen darauf herein, laufen ihm nach und nehmen mehr Schaden.";
                 default: return "";
             }
         }
@@ -119,6 +123,8 @@ namespace SoccerFight
                 case Ability.AlleyOop: return UiArt.IconAlleyOop;
                 case Ability.Block: return UiArt.IconBlock;
                 case Ability.FastBreak: return UiArt.IconFastBreak;
+                case Ability.StepBack: return UiArt.IconStepBack;
+                case Ability.PumpFake: return UiArt.IconPumpFake;
                 default: return UiArt.IconShot;
             }
         }
@@ -148,6 +154,8 @@ namespace SoccerFight
                 case Ability.AlleyOop: return Palette.Oop;
                 case Ability.Block: return Palette.Guard;
                 case Ability.FastBreak: return Palette.DashMint;
+                case Ability.StepBack: return Palette.Swish;
+                case Ability.PumpFake: return Palette.Showboat;
                 default: return Palette.ShotCyan;
             }
         }

@@ -150,6 +150,8 @@ namespace SoccerFight
                 case SoccerFight.Ability.AlleyOop: return AlleyOop;
                 case SoccerFight.Ability.Block: return Block;
                 case SoccerFight.Ability.FastBreak: return FastBreak;
+                case SoccerFight.Ability.StepBack: return StepBack;
+                case SoccerFight.Ability.PumpFake: return PumpFake;
                 case SoccerFight.Ability.Power: return c => UpgradeIcons.Draw(c, UpIcon.Power);
                 case SoccerFight.Ability.AirKick: return c => UpgradeIcons.Draw(c, UpIcon.AirKick);
                 case SoccerFight.Ability.Dash: return c => UpgradeIcons.Draw(c, UpIcon.Dash);
@@ -364,6 +366,34 @@ namespace SoccerFight
             UpgradeIcons.HoopBall(c, V(2f, 0f), 23f);
             c.Fill(p => Sdf.Union(Sdf.Capsule(p, V(36f, 24f), V(54f, 0f), 6.5f), Sdf.Capsule(p, V(54f, 0f), V(36f, -24f), 6.5f)), Wc);
             c.Fill(p => Sdf.Box(p, V(0f, -40f), V(40f, 3f), 1.5f), Sc);
+        }
+
+        /// <summary>Stepback: zwei Winkel treiben nach hinten, der Ball liegt wurfbereit mit Krit-Funken.</summary>
+        static void StepBack(SdfCanvas c)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -10f - i * 25f;
+                c.Fill(p => Sdf.Union(Sdf.Capsule(p, V(x + 19f, 28f), V(x, 0f), 6.5f), Sdf.Capsule(p, V(x, 0f), V(x + 19f, -28f), 6.5f)), i == 0 ? Wc : Sc);
+            }
+            UpgradeIcons.HoopBall(c, V(32f, 12f), 19f);
+            c.Fill(p => Sdf.Star4(p, V(48f, 42f), 13f, 0.5f), Wc);
+            c.Fill(p => Sdf.Box(p, V(-4f, -46f), V(44f, 3f), 1.5f), Sc);
+        }
+
+        /// <summary>Pump Fake: der echte Ball bleibt unten, die gepunktete Bahn führt zu einem Geisterball.</summary>
+        static void PumpFake(SdfCanvas c)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                float t = (i + 1) / 6f;
+                Vector2 a = V(-22f, 0f), m = V(-2f, 56f), b = V(24f, 28f);
+                Vector2 q = Vector2.Lerp(Vector2.Lerp(a, m, t), Vector2.Lerp(m, b, t), t);
+                c.Fill(p => Sdf.Circle(p, q, 3.4f), Sc);
+            }
+            c.Fill(p => Sdf.Ring(p, V(34f, 22f), 16f, 3.4f), Sc);
+            UpgradeIcons.HoopBall(c, V(-24f, -24f), 22f);
+            c.Fill(p => Sdf.Star4(p, V(50f, 50f), 11f, 0.5f), Wc);
         }
 
         // ------------------------------------------------------------------ Relief

@@ -11,7 +11,7 @@ namespace SoccerFight
         public static Sprite IconShot, IconFlick, IconMouse, IconMouseRight, LineFade, Heart;
         public static Sprite IconPower, IconStepOver, IconBicycle, IconJuggle, IconAirKick, IconLock, Diamond;
         public static Sprite IconTackle, IconPunt, IconWall, IconNutmeg, IconDecoy, IconWhistle, IconHeader, IconDash;
-        public static Sprite IconThrow, IconThree, IconCrossover, IconDunk, IconAlleyOop, IconBlock, IconFastBreak;
+        public static Sprite IconThrow, IconThree, IconCrossover, IconDunk, IconAlleyOop, IconBlock, IconFastBreak, IconStepBack, IconPumpFake;
         public static TMP_FontAsset FontBold, FontRegular;
         public static Material FontBoldShadow, FontRegularShadow;
 
@@ -513,6 +513,36 @@ namespace SoccerFight
             IconHoopBall(fb, new Vector2(26f, -40f), 16f);
             fb.Fill(p => Sdf.Intersect(Mathf.Abs(p.y + 58f) - 2f, Mathf.Abs(p.x - 26f) - 28f), mint.WithAlpha(0.7f));
             IconFastBreak = ToUi(fb, "UiIconFastBreak");
+
+            // Stepback: two chevrons driving back (left), the ball ready on the right with a lime crit spark
+            var sb = new SdfCanvas(rect, D);
+            Color lime = new Color(0.75f, 0.96f, 0.45f);
+            for (int i = 0; i < 2; i++)
+            {
+                float x = -12f - i * 26f;
+                sb.Fill(p => Sdf.Union(Sdf.Capsule(p, new Vector2(x + 20f, 30f), new Vector2(x, 0f), 7f), Sdf.Capsule(p, new Vector2(x, 0f), new Vector2(x + 20f, -30f), 7f)),
+                    i == 0 ? Color.white : lime.WithAlpha(0.75f));
+            }
+            IconHoopBall(sb, new Vector2(32f, 14f), 19f);
+            sb.Fill(p => Sdf.Star4(p, new Vector2(46f, 44f), 15f, 0.45f), lime);
+            sb.Fill(p => Sdf.Intersect(Mathf.Abs(p.y + 50f) - 2f, Mathf.Abs(p.x + 6f) - 46f), lime.WithAlpha(0.7f));
+            IconStepBack = ToUi(sb, "UiIconStepBack");
+
+            // Pump fake: the real ball stays low in the hands, a dotted arc leads to a pink ghost outline
+            var pf = new SdfCanvas(rect, D);
+            Color pink = new Color(1f, 0.5f, 0.85f);
+            for (int i = 0; i < 5; i++)
+            {
+                float t = (i + 1) / 6f;
+                Vector2 a = new Vector2(-24f, 0f), m = new Vector2(-4f, 58f), b = new Vector2(24f, 28f);
+                Vector2 q = Vector2.Lerp(Vector2.Lerp(a, m, t), Vector2.Lerp(m, b, t), t);
+                pf.Fill(p => Sdf.Circle(p, q, 3.4f), pink.WithAlpha(0.6f + t * 0.4f));
+            }
+            pf.Fill(p => Sdf.Ring(p, new Vector2(34f, 22f), 17f, 3.4f), pink);
+            pf.Fill(p => Sdf.Circle(p, new Vector2(34f, 22f), 14f), pink.WithAlpha(0.22f));
+            IconHoopBall(pf, new Vector2(-26f, -24f), 22f);
+            pf.Fill(p => Sdf.Star4(p, new Vector2(50f, 50f), 11f, 0.45f), Color.white);
+            IconPumpFake = ToUi(pf, "UiIconPumpFake");
         }
 
         static void IconWhiteSparks(SdfCanvas c, Vector2 at, Color col)

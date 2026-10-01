@@ -119,6 +119,7 @@ namespace SoccerFight
         public static readonly Color HoopFlame = Hex("#FFB25A");   // Dreier-Explosion
         public static readonly Color Slam = Hex("#9FD8FF");        // Dunk-Druckwellen
         public static readonly Color Oop = Hex("#FFE07A");         // Alley-Oop
+        public static readonly Color Swish = Hex("#B9F26A");       // Stepback (Pump Fake nutzt Showboat wie die Bloßstellung)
         public static readonly Color BallLeather = Hex("#E0712F");
         public static readonly Color BallLeatherDark = Hex("#A94A1C");
         public static readonly Color BallLeatherLight = Hex("#F5A262");

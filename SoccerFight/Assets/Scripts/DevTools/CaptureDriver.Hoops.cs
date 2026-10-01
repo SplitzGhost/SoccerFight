@@ -10,6 +10,90 @@ namespace SoccerFight
     /// </summary>
     public sealed partial class CaptureDriver
     {
+        /// <summary>
+        /// Stepback und Pump Fake: Posen als Kontaktbogen, der Stepback-Wurf (muss kritisch treffen) und die
+        /// Gegner, die auf den Geisterball hereinfallen. Logzeilen „[HoopsMoves]“ mit den Zahlen.
+        /// </summary>
+        IEnumerator HoopsMoves()
+        {
+            Characters.Preview(Characters.IndexOf(Characters.Get("dre")));
+            G.Director.DebugJump(1, 1, 0, false);
+            G.Run.Unlock(Ability.StepBack);
+            G.Run.Unlock(Ability.PumpFake);
+            P.ApplyStats(true);
+            P.Pos = new Vector2(-2f, 0f);
+            P.Vel = Vector2.zero;
+            P.Rig.ResetPose();
+            G.Ball.ResetTo(P.Pos + new Vector2(0.6f, Art.BallRadius));
+            Aim(new Vector2(6f, 1.4f));
+            Move(0f);
+            yield return Seconds(1f);
+
+            // ---- stepback: the pose frame by frame (the camera rides along), then the scene
+            float x0 = P.Pos.x;
+            GameInput.PressAbility(Ability.StepBack);
+            BeginSheet(6, 3);
+            for (int i = 0; i < 18; i++) { yield return SheetCell(new Vector2(0.1f, 1.05f), 1.5f); yield return Frames(1); }
+            EndSheet("hm_stepback_pose");
+            Debug.Log($"[HoopsMoves] stepback: moved {P.Pos.x - x0:0.00} m, ready {P.StepReadyLeft:0.00} s, cd {P.StepCd:0.0}");
+            yield return Seconds(1f);
+            yield return WaitBallHome();
+
+            // ---- the stepback jumper: hop, throw out of the hop at a monster — a sure crit
+            G.Waves.Restart(999f);
+            var target = G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(5.5f, 0f));
+            yield return Seconds(0.6f);
+            Monster.Hold = true;   // the target stands still so the throw lands
+            float hp0 = target.Hp;
+            P.StepCd = 0f;
+            Aim(target.Center - P.Pos);
+            G.Hud.SetVisible(true);
+            GameInput.PressAbility(Ability.StepBack);
+            for (int i = 0; i < 9; i++) yield return null;
+            GameInput.ShootPressed = true;
+            bool logged = false;
+            for (int i = 0; i < 30; i++)
+            {
+                if (!logged && P.CurrentAction == Player.Action.Throw && P.ActionReleased)
+                {
+                    logged = true;
+                    Debug.Log($"[HoopsMoves] jumper released: sure crit {P.Ball.GoldenShot}, in the air {!P.Grounded}");
+                }
+                if (i % 5 == 0) yield return Shot("hm_jumper_" + (i / 5));
+                else yield return null;
+            }
+            yield return Seconds(0.5f);
+            Debug.Log($"[HoopsMoves] jumper: dealt {hp0 - target.Hp:0.0} (plain throw {Player.ShotDamage:0}), alive {target.Alive}, ready after {P.StepReadyLeft:0.00}");
+            Monster.Hold = false;
+            yield return Seconds(1f);
+            yield return WaitBallHome();
+
+            // ---- pump fake: a crowd on both sides, the ghost ball goes far right — they all go there
+            G.Waves.Restart(999f);
+            P.Pos = new Vector2(-4f, 0f);
+            var crowd = new System.Collections.Generic.List<Monster>();
+            P.DodgeTime = 999f;
+            P.FakeCd = 0f;
+            foreach (float dx in new[] { -5.5f, -3.5f, 3.5f, 5.5f })
+                crowd.Add(G.Waves.SpawnAt(Monster.Kind.Blob, P.Pos + new Vector2(dx, 0f)));
+            crowd.Add(G.Waves.SpawnAt(Monster.Kind.Wisp, P.Pos + new Vector2(2f, 3.2f)));
+            yield return Seconds(0.8f);
+            Aim(new Vector2(9f, 0.4f));
+            GameInput.PressAbility(Ability.PumpFake);
+            BeginSheet(6, 2);
+            for (int i = 0; i < 12; i++) { yield return SheetCell(new Vector2(0.15f, 1.1f), 1.5f); yield return Frames(2); }
+            EndSheet("hm_pumpfake_pose");
+            int fooled = 0;
+            foreach (var m in crowd) if (m.Alive && m.FakeTime > 0f) fooled++;
+            Debug.Log($"[HoopsMoves] pump fake: {fooled}/{crowd.Count} fooled, target {P.FakeTarget}, cd {P.FakeCd:0.0}");
+            for (int i = 0; i < 6; i++) { yield return Shot("hm_fake_" + i); yield return Seconds(0.3f); }
+            float avg = 0f;
+            foreach (var m in crowd) avg += m.Pos.x;
+            Debug.Log($"[HoopsMoves] pump fake: crowd mean x {avg / crowd.Count:0.0} (player {P.Pos.x:0.0}, ghost {P.FakeTarget.x:0.0})");
+            yield return Seconds(1.5f);
+            yield return Shot("hm_fake_after");
+        }
+
         /// <summary>Alle Menüfiguren über einen vollständigen Dribbeltakt, ohne den Spielstand anzufassen.</summary>
         IEnumerator MenuBodies()
         {

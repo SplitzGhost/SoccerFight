@@ -32,6 +32,9 @@ namespace SoccerFight
         /// <summary>The throw leaves the hand: a small pop through the body.</summary>
         public void OnThrowRelease() { squashXVel += 1f; squashYVel -= 0.9f; }
 
+        /// <summary>The pump fake's jab: the body stretches up as if to shoot (and doesn't).</summary>
+        public void OnFakeJab() { squashXVel -= 0.6f; squashYVel += 0.8f; }
+
         float Reach => body.UpperArmLen + body.ForearmLen;
 
         /// <summary>Near shoulder, root-local, standing upright (the moves aim the hand from here).</summary>
@@ -338,6 +341,108 @@ namespace SoccerFight
                         nearIKw = 1f - back;
                         nearGrip = b; nearGripW = 1f - back;
                     }
+                    break;
+                }
+
+                // ---- the stepback: stamp the front foot, rip the ball to the hip, glide back leaning away
+                case Player.Action.StepBack:
+                {
+                    float tP = Player.StepPlant, tR = tP + Player.StepRun, tE = Player.StepDuration;
+                    float w = MathUtil.Smooth01(t / 0.04f) * (1f - MathUtil.Smooth01((t - (tE - 0.1f)) / 0.1f));
+                    float leg = body.ThighLen + body.ShinLen;
+                    bool landed = player.Grounded && t > tP + 0.08f;
+                    if (t < tP)
+                    {
+                        // the plant: weight over the front foot, knees loaded for the push
+                        float k = MathUtil.Smooth01(t / tP);
+                        nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.38f, A), k);
+                        nearFlat = Mathf.Lerp(nearFlat, 1f, k); nearPoint = Mathf.Lerp(nearPoint, 0f, k);
+                        farFoot = Vector2.Lerp(farFoot, new Vector2(-0.12f, A), k);
+                        farFlat = Mathf.Lerp(farFlat, 0.4f, k);
+                        extraHipY += -0.11f * k;
+                        leanTarget = Mathf.Lerp(leanTarget, -9f, k);
+                    }
+                    else if (!landed)
+                    {
+                        // in the air: the push foot trails out in front, the back leg reaches for the floor behind,
+                        // the body fades away from the target with the chin up
+                        float k = MathUtil.Smooth01((t - tP) / 0.08f);
+                        float reach = MathUtil.Smooth01((t - tP) / (tR - tP));
+                        nearFoot = Vector2.Lerp(nearFoot, new Vector2(Mathf.Lerp(0.44f, 0.3f, reach), hipY - leg * 0.94f), k);
+                        farFoot = Vector2.Lerp(farFoot, new Vector2(Mathf.Lerp(-0.06f, -0.2f, reach), hipY - leg * Mathf.Lerp(0.72f, 0.88f, reach)), k);
+                        nearFlat = Mathf.Lerp(nearFlat, 0f, k); farFlat = Mathf.Lerp(farFlat, 0.2f, k);
+                        nearPoint = Mathf.Lerp(nearPoint, 0.75f, k); farPoint = Mathf.Lerp(farPoint, 0.3f, k);
+                        leanTarget = Mathf.Lerp(leanTarget, 17f, k * w);
+                        headTarget = Mathf.Lerp(headTarget, 4f, k * w);
+                    }
+                    else
+                    {
+                        // the landing: the back foot catches the weight, a short sink (the landing squash adds to it)
+                        const float k = 0.6f;
+                        nearFoot = Vector2.Lerp(nearFoot, new Vector2(0.24f, A), w);
+                        farFoot = Vector2.Lerp(farFoot, new Vector2(-0.24f, A), w);
+                        nearFlat = farFlat = Mathf.Lerp(nearFlat, 1f, w);
+                        extraHipY += -0.09f * k * w;
+                        leanTarget = Mathf.Lerp(leanTarget, 4f, w);
+                        headTarget = Mathf.Lerp(headTarget, 6f, w);
+                    }
+                    if (player.StepCarry)
+                    {
+                        // ripped up from the dribble into both hands at the hip, the shooting pocket
+                        Vector2 pocket = new Vector2(0.26f, hipY + body.Shoulder.y * 0.45f);
+                        Vector2 b = Vector2.Lerp(player.KickBallLocal, pocket, MathUtil.EaseOutCubic(Mathf.Clamp01(t / (tP + 0.04f))));
+                        ballLocal = b;
+                        BallIsScripted = true;
+                        GripNear(b, new Vector2(0.05f, -1f), w);
+                        GripFar(b, new Vector2(-1f, 0.3f), w);
+                    }
+                    else
+                    {
+                        // no ball: the arms swing forward against the lean
+                        nearShoulder = Mathf.Lerp(nearShoulder, 48f, w); nearElbow = Mathf.Lerp(nearElbow, 55f, w);
+                        farShoulder = Mathf.Lerp(farShoulder, 30f, w); farElbow = Mathf.Lerp(farElbow, 70f, w);
+                    }
+                    break;
+                }
+
+                // ---- the pump fake: dip, rise into the shot, a sharp jab at the top — then rip it down low and protect it
+                case Player.Action.PumpFake:
+                {
+                    float tU = Player.FakeRise, tJ = Player.FakeRelease, tE = Player.FakeDuration;
+                    float w = MathUtil.Smooth01(t / 0.04f) * (1f - MathUtil.Smooth01((t - (tE - 0.1f)) / 0.1f));
+                    // over the forehead, never in front of the face (the ball is drawn on top of the head)
+                    Vector2 set = sh + new Vector2(0.14f, 0.62f);
+                    Vector2 jab = sh + new Vector2(0.24f, 0.8f);
+                    Vector2 low = new Vector2(0.3f, hipY - 0.04f);
+                    Vector2 b;
+                    if (t < tU) b = Vector2.Lerp(player.KickBallLocal, set, MathUtil.EaseInOutSine(t / tU));
+                    else if (t < tJ) b = Vector2.Lerp(set, jab, MathUtil.EaseOutCubic((t - tU) / (tJ - tU)));
+                    else
+                    {
+                        // a beat at the top so the eye can follow the ghost, then a hard snap down
+                        float k = Mathf.Clamp01((t - tJ - 0.03f) / 0.12f);
+                        b = Vector2.Lerp(jab, low, MathUtil.EaseInQuad(k));
+                    }
+                    ballLocal = b;
+                    BallIsScripted = true;
+                    Vector2 fromSh = (b - sh).sqrMagnitude > 0.001f ? (b - sh).normalized : Vector2.up;
+                    GripNear(b, -fromSh + new Vector2(0f, -0.4f));
+                    GripFar(b, new Vector2(-1f, 0.15f));
+                    nearWrist = t > tU && t < tJ + 0.05f ? 30f : 0f;
+
+                    // the legs sell it: a dip, the heels come up at the jab (the feet stay planted — it is no jump),
+                    // then down low and wide to drive
+                    float dip = MathUtil.Bump(Mathf.Clamp01(t / tU));
+                    float rise = MathUtil.Bump(Mathf.Clamp01((t - tU * 0.6f) / (tJ + 0.06f - tU * 0.6f)));
+                    float drop = MathUtil.Smooth01((t - tJ - 0.04f) / 0.1f);
+                    extraHipY += (-0.08f * dip - 0.13f * drop) * w * (1f - air);
+                    nearFoot = Vector2.Lerp(nearFoot, new Vector2(Mathf.Lerp(0.2f, 0.32f, drop), A), w);
+                    farFoot = Vector2.Lerp(farFoot, new Vector2(Mathf.Lerp(-0.12f, -0.26f, drop), A), w);
+                    float toes = rise * (1f - drop);
+                    nearFlat = Mathf.Lerp(1f, 0.55f, toes); farFlat = Mathf.Lerp(1f, 0.45f, toes);
+                    nearPoint = 0.15f * toes; farPoint = 0.22f * toes;
+                    leanTarget = Mathf.Lerp(leanTarget, Mathf.Lerp(3f, -14f, drop), w);
+                    headTarget = Mathf.Lerp(headTarget, Mathf.Lerp(18f, 2f, drop), w);
                     break;
                 }
             }

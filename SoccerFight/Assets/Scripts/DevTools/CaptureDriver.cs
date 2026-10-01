@@ -71,7 +71,7 @@ namespace SoccerFight
             Debug.Log("[Capture] started → " + outDir);
 
             string scenario = Arg("-sfCapture");
-            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "stages" && scenario != "dev" && scenario != "menu" && scenario != "cleanup" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops" && scenario != "cards" && scenario != "screens" && scenario != "death" && scenario != "shop")
+            if (scenario != "run" && scenario != "quick" && scenario != "sim" && scenario != "themes" && scenario != "stages" && scenario != "dev" && scenario != "menu" && scenario != "cleanup" && scenario != "vista" && scenario != "newskills" && scenario != "look" && scenario != "meta" && scenario != "duo" && scenario != "hoops" && scenario != "hoopsmoves" && scenario != "cards" && scenario != "screens" && scenario != "death" && scenario != "shop")
             {
                 // the older scenarios show every move: skip the run intro and unlock everything
                 G.Director.DebugJump(1, 1, 0, false);
@@ -103,6 +103,7 @@ namespace SoccerFight
             else if (scenario == "meta") yield return MetaTour();
             else if (scenario == "duo") yield return Duo();
             else if (scenario == "hoops") yield return Hoops();
+            else if (scenario == "hoopsmoves") yield return HoopsMoves();
             else if (scenario == "dribble") yield return Dribble();
             else if (scenario == "menubodies") yield return MenuBodies();
             else if (scenario == "stage1") yield return StageOneLook();

@@ -95,7 +95,7 @@ namespace SoccerFight
 
         public enum Action { None, Kick, Flick, Juggle, Power, StepOver, Bicycle, Tackle, Punt, Wall, Nutmeg, Decoy, Whistle, Header, Dash,
             // basketball
-            Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak }
+            Throw, Three, Crossover, Dunk, AlleyOop, Block, FastBreak, StepBack, PumpFake }
 
         public const float BaseMaxHp = 120f;
         const float DashStrikeDamage = 30f;
@@ -381,6 +381,8 @@ namespace SoccerFight
             OopCd = Mathf.Max(0f, OopCd - seconds);
             BlockCd = Mathf.Max(0f, BlockCd - seconds);
             FastCd = Mathf.Max(0f, FastCd - seconds);
+            StepCd = Mathf.Max(0f, StepCd - seconds);
+            FakeCd = Mathf.Max(0f, FakeCd - seconds);
         }
 
         /// <summary>Afterburner: the dash tears through monsters, each once per dash.</summary>
@@ -524,6 +526,7 @@ namespace SoccerFight
             if (CurrentAction == Action.Dash && ActionTime < DashRun) Vel.x = dashDir * DashRunSpeed * s.DashDistanceMul * rate;
             else if (IsDashing) Vel.x = dashDir * DashSpeed * s.DashDistanceMul * rate;
             else if (IsFastBreaking) Vel.x = fastDir * FastSpeed * s.FastBreakDistMul * rate;
+            else if (IsStepping) Vel.x = stepDir * StepSpeedNow * rate;
             // the slide starts fast and runs out of steam — on ice it keeps going much further
             else if (IsSliding) Vel.x = slideDir * TackleSpeed * (1f - 0.72f * MathUtil.EaseInQuad(ActionTime / TackleSlide)) * (s.Slippery ? 1.45f : 1f);
             else if (CurrentAction == Action.Nutmeg && ActionTime < NutmegRun) Vel.x = nutmegDir * (NutmegReach / NutmegRun) * rate;

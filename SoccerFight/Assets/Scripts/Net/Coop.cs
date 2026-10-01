@@ -202,6 +202,14 @@ namespace SoccerFight
             w.Vec(from); w.Pos(dir.normalized); w.Float(speed); w.Color(c); w.Byte((byte)((pierce ? 1 : 0) | (explosive ? 2 : 0)));
         }
 
+        /// <summary>A pump fake: the ghost ball for the partner's screen, and the bait for the host's monsters.</summary>
+        public static void SendFake(Vector2 origin, Vector2 from, Vector2 to, float flight, float life, float radius)
+        {
+            if (!Active) return;
+            var w = S.Event(Ev.Fake);
+            w.Vec(origin); w.Vec(from); w.Vec(to); w.Float(flight); w.Float(life); w.Float(radius);
+        }
+
         public static void SendVortex(Vector2 at, float radius, float life, bool implode, Color c)
         {
             if (!Active) return;
@@ -259,7 +267,7 @@ namespace SoccerFight
         Hazard = 30, Gust, Eclipse, Toast,
         Stage = 40, Wave, WaveDone, BossDown, Rewards, RewardsDone, RunOver,
         Down = 60, Up,
-        Wall = 70, Decoy, Vortex, Fx, Echo,
+        Wall = 70, Decoy, Vortex, Fx, Echo, Fake,
     }
 
     /// <summary>One room: the link, the partner, the run in common.</summary>
@@ -790,6 +798,15 @@ namespace SoccerFight
                     Color c = r.Color();
                     int flags = r.Byte();
                     if (InRun) EchoBalls.I.Fire(from, dir, speed, 0f, Src.Echo, c, (flags & 1) != 0, (flags & 2) != 0, false, true);
+                    break;
+                }
+                case Ev.Fake:
+                {
+                    Vector2 origin = r.Vec(), from = r.Vec(), to = r.Vec();
+                    float flight = r.Float(), life = r.Float(), radius = r.Float();
+                    if (!InRun) break;
+                    Court.I?.FakeBall(from, to, flight, life, false);
+                    Court.ApplyFake(origin, to, radius, life);   // only the host's monsters listen
                     break;
                 }
                 default:

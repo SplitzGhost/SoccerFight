@@ -65,6 +65,10 @@ namespace SoccerFight
         public float StunTime;
         /// <summary>Nutmegged: takes more damage from everything for a while.</summary>
         public float ExposeTime;
+        /// <summary>Pump fake: the monster bit and chases the ghost ball's landing spot until this runs out.</summary>
+        public float FakeTime;
+        Vector2 fakeAt;
+        float fakeReact;                // the jump at the ghost ball comes a reaction beat after the fake
         public int HitCount;
         public bool Burning => BurnTime > 0f;
         public bool Slowed => SlowTime > 0f || FreezeTime > 0f;
@@ -253,7 +257,7 @@ namespace SoccerFight
             attackTimer = Random.Range(1.8f, 3f); attackWind = 0f; chargeTime = 0f; burst = 0; burstTimer = 0f;
             primeTime = 0f; detonated = false; slamPending = false; teleportT = -1f; regenDelay = 0f;
             BurnTime = BurnDps = SlowTime = SlowAmount = FreezeTime = 0f; HitCount = 0; PullStrength = 0f;
-            StunTime = ExposeTime = 0f;
+            StunTime = ExposeTime = FakeTime = fakeReact = 0f;
             frostK = heatK = 0f;
             moveIndex = 0; moveT = 0f; moveCd = 2.2f; moveActive = false; lastPhase = 0;
             t = Random.value * 10f;
@@ -437,6 +441,54 @@ namespace SoccerFight
             ExposeTime = Mathf.Max(ExposeTime, time);
         }
 
+        /// <summary>
+        /// Pump fake: the monster falls for the ghost ball. After a short reaction beat it jumps at
+        /// it (fliers jerk towards it), then chases its landing spot, open for harder hits. Bosses
+        /// only bite briefly. Host side only — the partner's monsters follow the host.
+        /// </summary>
+        public void Fake(Vector2 at, float time, float react)
+        {
+            if (!Alive || Ghost) return;
+            if (Rank == Rank.Boss) time = Mathf.Min(time, Player.FakeBossTime);
+            FakeTime = Mathf.Max(FakeTime, time);
+            fakeAt = at;
+            fakeReact = Mathf.Max(0.02f, react);
+            Expose(FakeTime);
+            if (Rank == Rank.Boss) return;
+            // whatever it was winding up for is forgotten
+            windup = 0f;
+            diveTime = 0f;
+            attackWind = 0f;
+        }
+
+        /// <summary>The beat after the fake: the monster takes the bait in its own way.</summary>
+        void BiteOnFake()
+        {
+            var fx = FxSystem.I;
+            Vector2 top = Center + new Vector2(0f, Radius + 0.35f);
+            Game.I.Hud.Popup(top, "?", Color.Lerp(Palette.Showboat, Color.white, 0.35f), Rank == Rank.Boss ? 48f : 40f, false);
+            fx.Sparkles(top, 0.25f, 3, Palette.Showboat, 2.4f, 0.35f);
+            if (Rank == Rank.Boss || Halted) return;
+            float dir = Mathf.Sign(fakeAt.x - Pos.x == 0f ? 1f : fakeAt.x - Pos.x);
+            if (K == Kind.Blob)
+            {
+                if (!grounded) return;
+                // a block attempt: straight up, arms (and everything else) after the ball
+                Vel = new Vector2(dir * 1.6f, 7.2f);
+                grounded = false;
+                standing = Level.None;
+                squashVel += 18f;
+                fx.Dust(Pos, Vector2.up, 4, 1.4f, 0.34f, 0.28f);
+            }
+            else
+            {
+                // fliers jerk round towards it
+                Vector2 d = fakeAt + new Vector2(0f, 1.2f) - Center;
+                Vel += (d.sqrMagnitude > 0.01f ? d.normalized : Vector2.up) * 5f;
+                squashVel += 10f;
+            }
+        }
+
         void Die(Vector2 dir)
         {
             Alive = false;
@@ -488,11 +540,14 @@ namespace SoccerFight
             scaleNow = MathUtil.EaseOutBack(spawnT, 2.2f) * sizeMul;
             // the decoy takes the attention while it lasts: every chase and every shot aims here
             focus = Decoys.Focus(player.Pos);
+            // a pump fake outranks everything: the monster only has eyes for the ghost ball
+            if (FakeTime > 0f) focus = fakeAt;
             Vector2 toPlayer = focus + new Vector2(0f, 0.8f) - Center;
             float targetFace = Mathf.Abs(toPlayer.x) > 0.2f ? Mathf.Sign(toPlayer.x) : faceT;
 
             UpdateStatus(dt);
             if (!Alive) return;
+            if (fakeReact > 0f && (fakeReact -= dt) <= 0f) BiteOnFake();
             if (Hold)
             {
                 grounded = K == Kind.Blob;
@@ -558,6 +613,7 @@ namespace SoccerFight
             if (FreezeTime > 0f) FreezeTime -= dt;
             if (StunTime > 0f) StunTime -= dt;
             if (ExposeTime > 0f) ExposeTime -= dt;
+            if (FakeTime > 0f) FakeTime -= dt;
             if (Has(EliteAffix.Regenerating))
             {
                 regenDelay -= dt;

@@ -82,7 +82,7 @@ namespace SoccerFight
 
         Slot shotSlot, flickSlot, powerSlot, stepSlot, bikeSlot, jugSlot;
         Slot tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot;
-        Slot threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot;
+        Slot threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot, backSlot, fakeSlot;
         Sport shotIconSport = (Sport)(-1);
         const float ShotSlotSize = 94f, SkillSlotSize = 76f, SlotGap = 18f, SlotRight = 44f, SlotBottom = 46f;
         Slot[] slots;
@@ -267,9 +267,11 @@ namespace SoccerFight
             oopSlot = BuildSlot("AlleyOop", Vector2.zero, SkillSlotSize, UiArt.IconAlleyOop, UiArt.RingThick, Palette.Oop, GameAction.Skill1, Ability.AlleyOop);
             blockSlot = BuildSlot("Block", Vector2.zero, SkillSlotSize, UiArt.IconBlock, UiArt.RingThick, Palette.Guard, GameAction.Skill1, Ability.Block);
             fastSlot = BuildSlot("FastBreak", Vector2.zero, SkillSlotSize, UiArt.IconFastBreak, UiArt.RingThick, Palette.DashMint, GameAction.Skill1, Ability.FastBreak);
+            backSlot = BuildSlot("StepBack", Vector2.zero, SkillSlotSize, UiArt.IconStepBack, UiArt.RingThick, Palette.Swish, GameAction.Skill1, Ability.StepBack);
+            fakeSlot = BuildSlot("PumpFake", Vector2.zero, SkillSlotSize, UiArt.IconPumpFake, UiArt.RingThick, Palette.Showboat, GameAction.Skill1, Ability.PumpFake);
             slots = new[] { shotSlot, powerSlot, flickSlot, stepSlot, bikeSlot, jugSlot,
                             tackleSlot, puntSlot, wallSlot, nutmegSlot, decoySlot, whistleSlot, headerSlot, dashSlot,
-                            threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot };
+                            threeSlot, crossSlot, dunkSlot, oopSlot, blockSlot, fastSlot, backSlot, fakeSlot };
             foreach (var s in slots) s.root.gameObject.SetActive(false);   // LayoutSlots shows the unlocked ones
             BuildCrosshair();
             BuildWave();
@@ -823,6 +825,8 @@ namespace SoccerFight
             UpdateSlot(oopSlot, player.OopCd, player.OopCooldownTotal, withBall, dt, false, true);
             UpdateSlot(blockSlot, player.BlockCd, player.BlockCooldownTotal, free, dt, false, true);
             UpdateSlot(fastSlot, player.FastCd, player.FastCooldownTotal, player.Grounded && free, dt, false, true);
+            UpdateSlot(backSlot, player.StepCd, player.StepCooldownTotal, player.CanStepBack && free, dt, false, true);
+            UpdateSlot(fakeSlot, player.FakeCd, player.FakeCooldownTotal, withBall && player.Grounded, dt, false, true);
             if (shotIconSport != player.Rig.Sport) { shotIconSport = player.Rig.Sport; shotSlot.icon.sprite = Abilities.Icon(Ability.Shot); shotSlot.accent = Abilities.Accent(Ability.Shot); RefreshBindings(); }
             UpdateCrosshair(dt);
             UpdateWave(dt, run);

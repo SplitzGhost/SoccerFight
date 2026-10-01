@@ -270,6 +270,10 @@ namespace SoccerFight
             B("bb_ready", "SPRUNGBEREIT", C, UpIcon.Cooldown, 3, n => "Block lädt " + V("−12%") + " schneller.", (s, n) => s.BlockCooldownMul *= Mathf.Pow(0.88f, n), ab: Ability.Block);
             B("bb_pace", "TEMPOMACHER", C, UpIcon.Dash, 3, n => "Fastbreak lädt " + V("−12%") + " schneller und reicht +" + P(0.1f) + " weiter.",
                 (s, n) => { s.FastBreakCooldownMul *= Mathf.Pow(0.88f, n); s.FastBreakDistMul += 0.1f * n; }, ab: Ability.FastBreak);
+            B("bb_stepcd", "RÜCKWÄRTSGANG", C, UpIcon.Dodge, 3, n => "Stepback lädt " + V("−12%") + " schneller und reicht +" + P(0.15f) + " weiter.",
+                (s, n) => { s.StepCooldownMul *= Mathf.Pow(0.88f, n); s.StepDistMul += 0.15f * n; }, ab: Ability.StepBack);
+            B("bb_fakecd", "TÄUSCHUNGSKÜNSTLER", C, UpIcon.Cooldown, 3, n => "Pump Fake lädt " + V("−12%") + " schneller.",
+                (s, n) => s.FakeCooldownMul *= Mathf.Pow(0.88f, n), ab: Ability.PumpFake);
 
             // ------------------------------------------------------------------ rare
             B("bb_nolook", "NO-LOOK-PASS", R, UpIcon.Echo, 3, n => "Jeder Wurf feuert " + V("+1") + " Echo-Ball (" + P(0.55f) + " Schaden).", (s, n) => s.EchoBalls += n, tag: "echo");
@@ -315,6 +319,10 @@ namespace SoccerFight
                 (s, n) => { s.BlockReflectMul += 0.5f * n; s.BlockRadiusMul += 0.3f * n; }, ab: Ability.Block);
             B("bb_counter", "TEMPOGEGENSTOSS", R, UpIcon.Dash, 2, n => "Fastbreak reicht +" + P(0.3f) + " weiter und heilt " + N(3) + " pro getroffenem Gegner.",
                 (s, n) => { s.FastBreakDistMul += 0.3f * n; s.FastBreakHeal += 3f * n; }, ab: Ability.FastBreak);
+            B("bb_icecold", "EISKALT", R, UpIcon.CritDamage, 2, n => "Der kritische Wurf nach dem Stepback macht +" + P(0.4f) + " Schaden.",
+                (s, n) => s.StepCritBonus += 0.4f * n, ab: Ability.StepBack);
+            B("bb_headfake", "KOPFTÄUSCHUNG", R, UpIcon.Time, 2, n => "Getäuschte Gegner fallen " + N(0.8f) + " s länger auf den Pump Fake herein.",
+                (s, n) => s.FakeTimeBonus += 0.8f * n, ab: Ability.PumpFake);
 
             // ------------------------------------------------------------------ epic
             B("bb_fan", "FÄCHERPASS", E, UpIcon.Fan, 1, n => "Jeder Wurf feuert " + V("+2") + " Echo-Bälle im Fächer. Echo-Schaden " + P(0.7f) + ".",
@@ -346,6 +354,10 @@ namespace SoccerFight
             B("bb_lockdown", "LOCKDOWN", E, UpIcon.Palm, 1, n => "Der Block betäubt alle Gegner in der Nähe " + N(1.2f) + " s lang.", (s, n) => s.BlockStun = true, ab: Ability.Block);
             B("bb_trail", "FLAMMENSPUR", E, UpIcon.Fire, 1, n => "Der Fastbreak setzt jeden getroffenen Gegner " + N(3) + " s in Brand und zieht eine Feuerspur.",
                 (s, n) => s.FastBreakFire = true, ab: Ability.FastBreak);
+            B("bb_pullup", "PULL-UP", E, UpIcon.Swish, 1, n => "Der Wurf nach dem Stepback fliegt durch alle Gegner hindurch.",
+                (s, n) => s.StepPierce = true, ab: Ability.StepBack);
+            B("bb_trap", "FALLE", E, UpIcon.Explode, 1, n => "Der Geisterball des Pump Fakes platzt am Ende: " + N(40) + " Schaden um ihn herum, die Getroffenen liegen " + N(1) + " s am Boden.",
+                (s, n) => s.FakeTrap = true, ab: Ability.PumpFake);
             B("bb_fade", "FADEAWAY", E, UpIcon.AirKick, 1, n => "Würfe aus der Luft machen +" + P(0.35f) + " Schaden, " + V("+1") + " Bodenpass pro Sprung.",
                 (s, n) => { s.AirThrowBonus += 0.35f; s.AirBoosts += 1; });
 

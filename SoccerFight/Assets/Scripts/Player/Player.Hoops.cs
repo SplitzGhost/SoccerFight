@@ -35,8 +35,23 @@ namespace SoccerFight
         public const float FastRun = 0.32f, FastDuration = 0.46f, FastCooldown = 6f, FastDamage = 20f, FastStun = 1f;
         const float FastSpeed = 22f;   // ≈ 7 units in FastRun
 
-        public float ThreeCd, CrossCd, DunkCd, OopCd, BlockCd, FastCd;
-        float threeBuffer, crossBuffer, dunkBuffer, oopBuffer, blockBuffer, fastBuffer;
+        // stepback: plant the front foot, then a long, low hop away from the aim; the next throw is a sure crit
+        public const float StepPlant = 0.07f, StepRun = 0.24f, StepDuration = 0.5f, StepCooldown = 4f, StepReady = 1.6f;
+        const float StepDist = 3.6f;
+
+        // pump fake: the ball goes up as if to shoot, a ghost ball flies at the cursor, the monsters bite
+        public const float FakeRise = 0.12f, FakeRelease = 0.16f, FakeDuration = 0.44f, FakeCooldown = 8f;
+        public const float FakeRadius = 9f, FakeTime = 2.4f, FakeBossTime = 0.7f, FakeRange = 13f;
+
+        public float ThreeCd, CrossCd, DunkCd, OopCd, BlockCd, FastCd, StepCd, FakeCd;
+        float threeBuffer, crossBuffer, dunkBuffer, oopBuffer, blockBuffer, fastBuffer, backBuffer, fakeBuffer;
+        /// <summary>After a stepback: the next throw in this window is a sure crit.</summary>
+        public float StepReadyLeft;
+        /// <summary>Where the pump fake's ghost ball comes down (ball centre).</summary>
+        public Vector2 FakeTarget;
+        int stepDir = -1;
+        bool stepHopped, stepAirUsed;
+        float stepLandT, stepFxT;
 
         /// <summary>Crossover boost left: faster legs, throws pass through monsters.</summary>
         public float CrossBoostLeft;
@@ -64,6 +79,15 @@ namespace SoccerFight
         public float OopCooldownTotal => OopCooldown * S.CooldownOf(SkillCategory.Shot) * S.OopCooldownMul;
         public float BlockCooldownTotal => BlockCooldown * S.CooldownOf(SkillCategory.Defense) * S.BlockCooldownMul;
         public float FastCooldownTotal => FastCooldown * S.CooldownOf(SkillCategory.Technique) * S.FastBreakCooldownMul;
+        public float StepCooldownTotal => StepCooldown * S.CooldownOf(SkillCategory.Technique) * S.StepCooldownMul;
+        public float FakeCooldownTotal => FakeCooldown * S.CooldownOf(SkillCategory.Technique) * S.FakeCooldownMul;
+
+        /// <summary>The stepback works on the ground and once per jump.</summary>
+        public bool CanStepBack => Grounded || !stepAirUsed;
+        /// <summary>The hop of the stepback is running: the legs are scripted.</summary>
+        public bool IsStepping => CurrentAction == Action.StepBack && stepHopped && ActionTime < StepPlant + StepRun;
+        /// <summary>Speed of the stepback hop: a hard push off the front foot that glides out.</summary>
+        float StepSpeedNow => 2f * StepDist * S.StepDistMul / (StepRun * 1.25f) * (1f - 0.75f * Mathf.Clamp01((ActionTime - StepPlant) / StepRun));
 
         /// <summary>The dunk is in the air: the body follows its arc instead of the physics.</summary>
         public bool DunkFlying => CurrentAction == Action.Dunk && ActionTime >= DunkGather && !dunkSlammed;
@@ -73,9 +97,10 @@ namespace SoccerFight
 
         void ResetHoops()
         {
-            ThreeCd = CrossCd = DunkCd = OopCd = BlockCd = FastCd = 0f;
-            threeBuffer = crossBuffer = dunkBuffer = oopBuffer = blockBuffer = fastBuffer = 0f;
-            CrossBoostLeft = BlockLeft = HotHandLeft = 0f;
+            ThreeCd = CrossCd = DunkCd = OopCd = BlockCd = FastCd = StepCd = FakeCd = 0f;
+            threeBuffer = crossBuffer = dunkBuffer = oopBuffer = blockBuffer = fastBuffer = backBuffer = fakeBuffer = 0f;
+            CrossBoostLeft = BlockLeft = HotHandLeft = StepReadyLeft = 0f;
+            stepAirUsed = false;
             hotStreak = 0; lastHitFlight = lastThrowFlight = -1;
         }
 
@@ -87,7 +112,13 @@ namespace SoccerFight
             OopCd = Mathf.Max(0f, OopCd - dt);
             BlockCd = Mathf.Max(0f, BlockCd - dt);
             FastCd = Mathf.Max(0f, FastCd - dt);
-            if (DevMode.NoCooldowns) ThreeCd = CrossCd = DunkCd = OopCd = BlockCd = FastCd = 0f;
+            StepCd = Mathf.Max(0f, StepCd - dt);
+            FakeCd = Mathf.Max(0f, FakeCd - dt);
+            if (DevMode.NoCooldowns) ThreeCd = CrossCd = DunkCd = OopCd = BlockCd = FastCd = StepCd = FakeCd = 0f;
+            backBuffer = Mathf.Max(0f, backBuffer - dt);
+            fakeBuffer = Mathf.Max(0f, fakeBuffer - dt);
+            if (Grounded && CurrentAction != Action.StepBack) stepAirUsed = false;
+            if (StepReadyLeft > 0f) TickStepReady(dt);
             threeBuffer = Mathf.Max(0f, threeBuffer - dt);
             crossBuffer = Mathf.Max(0f, crossBuffer - dt);
             dunkBuffer = Mathf.Max(0f, dunkBuffer - dt);
@@ -138,6 +169,8 @@ namespace SoccerFight
                 case Ability.AlleyOop: oopBuffer = 0.3f; return true;
                 case Ability.Block: blockBuffer = 0.25f; return true;
                 case Ability.FastBreak: fastBuffer = 0.25f; return true;
+                case Ability.StepBack: backBuffer = 0.25f; return true;
+                case Ability.PumpFake: fakeBuffer = 0.3f; return true;
                 default: return false;
             }
         }
@@ -157,6 +190,8 @@ namespace SoccerFight
         bool StartHoopsAction()
         {
             if (blockBuffer > 0f && BlockCd <= 0f) { StartBlock(); return true; }
+            if (backBuffer > 0f && StepCd <= 0f && CanStepBack) { StartStepBack(); return true; }
+            if (fakeBuffer > 0f && FakeCd <= 0f && Grounded && TakeBall()) { StartPumpFake(); return true; }
             if (fastBuffer > 0f && FastCd <= 0f && Grounded) { StartFastBreak(); return true; }
             if (crossBuffer > 0f && CrossCd <= 0f && TakeBall()) { StartCrossover(); return true; }
             if (dunkBuffer > 0f && DunkCd <= 0f && TakeBall()) { StartDunk(); return true; }
@@ -177,6 +212,8 @@ namespace SoccerFight
                 case Action.AlleyOop: return 0.35f;
                 case Action.Block: return 0.3f;
                 case Action.FastBreak: return 0.1f;
+                case Action.StepBack: return 0.2f;
+                case Action.PumpFake: return 0.12f;
                 default: return 1f;
             }
         }
@@ -192,6 +229,8 @@ namespace SoccerFight
                 case Action.AlleyOop: UpdateOop(); break;
                 case Action.Block: UpdateBlock(); break;
                 case Action.FastBreak: UpdateFastBreak(dt); break;
+                case Action.StepBack: UpdateStepBack(dt); break;
+                case Action.PumpFake: UpdatePumpFake(); break;
             }
         }
 
@@ -203,9 +242,14 @@ namespace SoccerFight
                 case Action.Throw: case Action.Three: case Action.AlleyOop:
                     if (!released) { Ball.Release(); CurrentAction = Action.None; }
                     break;
-                case Action.Crossover: case Action.FastBreak:
+                case Action.Crossover: case Action.FastBreak: case Action.StepBack:
                     CurrentAction = Action.None;
                     if (StepCarry) { Ball.EndScripted(); StepCarry = false; }
+                    break;
+                case Action.PumpFake:
+                    // the ball never left the hands
+                    CurrentAction = Action.None;
+                    Ball.EndScripted();
                     break;
                 case Action.Block:
                     CurrentAction = Action.None;
@@ -265,6 +309,7 @@ namespace SoccerFight
                 fx.Sparkles(from, 0.3f, 8, Palette.Gold, 3f, 0.5f);
             }
             if (runUp) fx.Sparks(from, -dir, 40f, 5, 4f, 8f, Palette.Gold, 2.2f, 0.035f, 0.18f);
+            if (StepReadyLeft > 0f) StepbackJumper(from, dir);
 
             Color c = Palette.HoopOrange;
             for (int i = 0; i < s.EchoBalls; i++)
@@ -740,6 +785,172 @@ namespace SoccerFight
                 if (StepCarry) Ball.EndScripted();
                 StepCarry = false;
             }
+        }
+
+        // ------------------------------------------------------------------ stepback
+
+        void StartStepBack()
+        {
+            backBuffer = 0f;
+            float dx = GameInput.AimWorld.x - Pos.x;
+            if (Mathf.Abs(dx) > 0.2f) Facing = dx > 0f ? 1 : -1;
+            stepDir = -Facing;   // away from where the throw will go
+            CurrentAction = Action.StepBack;
+            ActionTime = 0f;
+            stepHopped = false;
+            stepLandT = -1f;
+            StepCd = StepCooldownTotal;
+            DodgeTime = Mathf.Max(DodgeTime, StepPlant + StepRun + 0.08f);
+            StepCarry = Ball.IsHeldFree;
+            if (StepCarry) { KickBallLocal = ToLocal(Ball.Pos); Ball.BeginScripted(); }
+            ghostTimer = 0f;
+            Game.I.Hud.OnSkillUsed(Ability.StepBack);
+            OnTrick();
+            Combat.Maestro(this);
+        }
+
+        void UpdateStepBack(float dt)
+        {
+            var fx = FxSystem.I;
+            if (!stepHopped && ActionTime >= StepPlant)
+            {
+                // the push: the front foot drives the body back in a low hop
+                stepHopped = true;
+                bool air = !Grounded;
+                if (air) stepAirUsed = true;
+                Vel.y = air ? Mathf.Max(Vel.y, 4.2f) : 6.4f * S.JumpMul;
+                Grounded = false;
+                OnPlatform = Level.None;
+                boostRise = true;
+                Rig.OnJump();
+                StepReadyLeft = StepReady + StepRun;
+                stepFxT = 0f;
+                Color c = Palette.Swish;
+                Vector2 foot = Pos + new Vector2(Facing * 0.3f, 0.05f);
+                if (!air) fx.Dust(foot, new Vector2(Facing, 0.35f), 7, 2.6f, 0.4f, 0.32f);
+                fx.Ring(FxLayer.Front, foot, 0.1f, 0.75f, 0.08f, 0.01f, 0.2f, Color.white.WithAlpha(0.6f), c.WithAlpha(0f), 2f);
+                for (int i = 0; i < 4; i++)
+                    fx.Streak(FxLayer.Front, Pos + new Vector2(0f, Random.Range(0.3f, 1.7f)), new Vector2(-stepDir * Random.Range(6f, 10f), 0f),
+                        Random.Range(0.12f, 0.2f), 0.03f, 0.05f, Color.white.WithAlpha(0.7f), c.WithAlpha(0f), 2f, 5f);
+                Game.I.Cam.Kick(new Vector2(stepDir * 0.12f, 0f));
+                Game.I.Cam.AddTrauma(0.06f);
+                Rig.OnDash();
+                ghostTimer = 0f;
+            }
+            if (IsStepping)
+            {
+                ghostTimer -= dt;
+                if (ghostTimer <= 0f) { ghostTimer = 0.05f; ghosts.Spawn(Palette.Swish, 0.14f, 0.18f); }
+            }
+            // a throw out of the hop: the stepback jumper (the window makes it a crit)
+            if (stepHopped && ActionTime >= StepPlant + 0.1f && shotBuffer > 0f && ShotCd <= 0f && Ball.IsHeld)
+            {
+                EndStepBack();
+                StartThrow();
+                return;
+            }
+            if (stepHopped && Grounded && ActionTime > StepPlant + 0.08f && stepLandT < 0f) stepLandT = ActionTime;
+            if (ActionTime >= StepDuration || (stepLandT >= 0f && ActionTime - stepLandT >= 0.12f)) EndStepBack();
+        }
+
+        void EndStepBack()
+        {
+            CurrentAction = Action.None;
+            if (StepCarry) Ball.EndScripted();
+            StepCarry = false;
+        }
+
+        /// <summary>The crit window after a stepback: a lime glint plays on the ball until the throw (or the end).</summary>
+        void TickStepReady(float dt)
+        {
+            StepReadyLeft -= dt;
+            Vector2 hand = Ball.IsHeld ? Ball.Pos : Pos + new Vector2(Facing * 0.3f, 1.2f);
+            var fx = FxSystem.I;
+            if (StepReadyLeft <= 0f)
+            {
+                StepReadyLeft = 0f;
+                fx.Ring(FxLayer.Front, hand, 0.1f, 0.6f, 0.06f, 0.01f, 0.2f, Palette.Swish.WithAlpha(0.6f), Palette.Swish.WithAlpha(0f), 1.8f);
+                return;
+            }
+            stepFxT -= dt;
+            if (stepFxT <= 0f && !Dead)
+            {
+                stepFxT = 0.06f;
+                fx.Sparkles(hand, 0.22f, 1, Palette.Swish, 2.4f, 0.3f);
+            }
+        }
+
+        /// <summary>The throw that comes out of the stepback: a sure crit with a crisp lime release.</summary>
+        void StepbackJumper(Vector2 from, Vector2 dir)
+        {
+            var s = S;
+            StepReadyLeft = 0f;
+            Ball.GoldenShot = true;   // the hit is forced critical
+            Ball.ShotMul *= 1f + s.StepCritBonus;
+            if (s.StepPierce) Ball.PierceShot = true;
+            var fx = FxSystem.I;
+            Color c = Palette.Swish;
+            fx.Flash(from, 0.9f, c, 0.08f, 2.4f);
+            fx.Sparkles(from, 0.3f, 6, c, 2.6f, 0.4f);
+            for (int i = 0; i < 4; i++)
+                fx.Streak(FxLayer.Front, from + Random.insideUnitCircle * 0.12f, dir * Random.Range(13f, 19f), 0.18f, 0.035f, 0.05f,
+                    Color.white.WithAlpha(0.85f), c.WithAlpha(0f), 2.2f, 4f);
+            Game.I.Cam.AddTrauma(0.06f);
+        }
+
+        // ------------------------------------------------------------------ pump fake
+
+        void StartPumpFake()
+        {
+            fakeBuffer = 0f;
+            Vector2 aim = GameInput.AimWorld;
+            float tx = Mathf.Clamp(aim.x, Pos.x - FakeRange, Pos.x + FakeRange);
+            tx = Mathf.Clamp(tx, -ArenaHalf, ArenaHalf);
+            FakeTarget = new Vector2(tx, Level.FloorBelow(tx, aim.y + 0.3f) + Art.BallRadius);
+            if (Mathf.Abs(tx - Pos.x) > 0.2f) Facing = tx > Pos.x ? 1 : -1;
+            KickBallLocal = ToLocal(Ball.Pos);
+            CurrentAction = Action.PumpFake;
+            ActionTime = 0f;
+            released = false;
+            FakeCd = FakeCooldownTotal;
+            Ball.BeginScripted();
+            Game.I.Hud.OnSkillUsed(Ability.PumpFake);
+        }
+
+        void UpdatePumpFake()
+        {
+            if (!released && ActionTime >= FakeRelease) { released = true; ReleaseFake(); }
+            if (ActionTime < FakeDuration) return;
+            CurrentAction = Action.None;
+            Ball.EndScripted();
+        }
+
+        /// <summary>The jab at the top: the ball stays, a ghost of it flies — and every monster near watches it go.</summary>
+        void ReleaseFake()
+        {
+            var s = S;
+            Vector2 from = Ball.Pos + new Vector2(Facing * 0.08f, 0.12f);
+            float dist = (FakeTarget - from).magnitude;
+            float flight = Mathf.Clamp(0.42f + dist * 0.035f, 0.42f, 0.85f);
+            float life = FakeTime + s.FakeTimeBonus;
+            float radius = FakeRadius * s.AreaMul;
+            Vector2 origin = Pos + new Vector2(0f, 1f);
+            Court.I.FakeBall(from, FakeTarget, flight, life, true);
+            Court.ApplyFake(origin, FakeTarget, radius, life);
+            Coop.SendFake(origin, from, FakeTarget, flight, life, radius);
+            OnTrick();
+            Combat.Maestro(this);
+            Rig.OnFakeJab();
+
+            // a fake has no weight: no hit-stop, no flash — just the ghost leaving and a ripple that shows the reach
+            var fx = FxSystem.I;
+            Color c = Palette.Showboat;
+            Vector2 launch = (FakeTarget - from).sqrMagnitude > 0.01f ? (FakeTarget - from).normalized : Vector2.up;
+            fx.Ring(FxLayer.Front, from, 0.08f, 0.55f, 0.08f, 0.01f, 0.18f, Color.white.WithAlpha(0.6f), c.WithAlpha(0f), 2.2f);
+            fx.Sparks(from, new Vector2(launch.x, Mathf.Max(launch.y, 0.6f)), 35f, 6, 4f, 9f, c, 2.2f, 0.035f, 0.2f);
+            fx.Ring(FxLayer.Back, origin, 0.5f, radius, 0.05f, 0.01f, 0.45f, c.WithAlpha(0.22f), c.WithAlpha(0f), 1.4f, false, false);
+            Game.I.Hud.Popup(Pos + new Vector2(0f, 2.6f), "PUMP FAKE", c, 26f, false);
+            Game.I.Cam.AddTrauma(0.04f);
         }
 
         void FastBreakHit(Monster m)
